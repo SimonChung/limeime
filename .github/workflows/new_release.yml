@@ -18,8 +18,8 @@ jobs:
       - name: Read version from build.gradle
         id: version
         run: |
-          ver=$(grep "versionName" LimeStudio/app/build.gradle | sed "s/.*'\(.*\)'.*/\1/" | tr -d '[:space:]')
-          code=$(grep "versionCode" LimeStudio/app/build.gradle | grep -v applicationId | sed 's/.*versionCode[[:space:]]*//' | tr -d '[:space:]')
+          ver=$(grep "versionName '" LimeStudio/app/build.gradle | sed "s/.*'\(.*\)'.*/\1/" | tr -d '[:space:]')
+          code=$(grep "versionCode [0-9]" LimeStudio/app/build.gradle | sed 's/.*versionCode[[:space:]]*//' | tr -d '[:space:]')
           apk="LIMEHD${code}-${ver}.apk"
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "tag=v$ver" >> "$GITHUB_OUTPUT"
