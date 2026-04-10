@@ -1,75 +1,49 @@
-# LIME 2026 — 版本 v6.0.0
+# LIME 2026 — 版本 v6.0.1
 
-**版本標籤：** `6.0.0-2026`
-**APK：** `LIMEHD2026-6.0.0.apk`
+**版本標籤：** `6.0.1-2026`
+**APK：** `LIMEHD2026-6.0.1.apk`
 **套件名稱：** `net.toload.main.hd2026`
 **目標 SDK：** 36 | **最低 SDK：** 21
+**前一版本：** v6.0.0
 
-本次發行距離前一個正式版本約 8 年，定位為「長週期整體升級版」，重點在於平台現代化、相容性重建與程式架構整理。
+本次為 v6.0.0 之後的維護更新，集中修復使用者於 Android 16 / 含手勢列裝置上回報的兩個顯示問題，並補強鍵盤在不同視窗寬度下的版面計算。
 
 ---
 
 ## 更新內容
 
-### 現代化升級
-- 更新專案以支援 Android Studio Otter，並升級 Gradle 建置系統
-- 目標 API 36，向下相容至 API 21
-- 以現代相依套件取代所有內附 JAR 函式庫（Dropbox SDK、Google API client 等）
-- 以 zip4j 取代內建 zip，確保備份功能向下相容（Android < 14.0）
-- 建立單元測試基礎設施（採用 Mockito 4.11.x），補齊過去版本缺乏測試的狀態
+### 修正
 
-### 架構重構
-- 重構核心架構，強化關注點分離
-- 重構 UI 層為 MVC 架構
-- 將 `IM` 更名為 `IMConfig`，並將所有 SQL 邏輯整合至 `LimeDB`
-- 重構核心資料結構：`Mapping`、`Record` 及 `Related`
+- **#44 — 英文輸入：選關聯字後游標未移到字尾**
+  - 問題：英文輸入模式下打一兩個字母後，從上方候選列直接點選關聯字，游標停留在原本位置而非移到該單字最後，導致接續輸入位置錯亂。
+  - 根因：`LIMEService` 在英文候選字選取流程中以 `InputConnection.commitText(text, 0)` 提交文字，第二個參數 `0` 代表 commit 後游標停在新文字的起點；應使用 `1` 讓游標落在新文字之後。
+  - 修正：將兩處英文候選字 commit（一般詞與 emoji）皆改為 `commitText(..., 1)`，游標即正確跳到單字尾端，可直接接續輸入。
+  - 影響檔案：`LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`（約 line 3647 / 3652）
 
-### 平台相容與穩定性更新
-- 重建新版 Android（API 31 至 36）上的輸入、觸覺回饋與沉浸式顯示行為
-- 重新整理備份/還原流程與檔案選取相容路徑，降低不同裝置型態（手機/平板）差異造成的失敗率
-- 改善語音輸入提交流程、候選字顯示及鍵盤標籤定位一致性
-- 調整系統列與虛擬鍵盤區域的視覺整合，提升新舊 Android 版本外觀一致性
-- 強化碼表載入期間的輸入法切換穩定度
+- **#46 — 深色鍵盤主題未連動系統導覽列顏色**
+  - 問題：選用「深色」鍵盤主題時，鍵盤本體呈深灰 (`#FF373737`)，但底部系統導覽列仍維持淺色，於 Android 16（如 Samsung A16）出現一條明顯的淺色帶。
+  - 根因有兩處：
+    1. `LIMEService.setNavigationBarIconsDark()` 寫死「淺色背景／深色圖示」，與目前主題無關，且未設定導覽列背景顏色。
+    2. API 35+ 的 edge-to-edge inset 處理只對 `mCandidateInInputView` 補上 `bottomInset` padding，但容器背景為透明，導致補出的區塊顯示為宿主 App 的導覽列底色。
+  - 修正：以新的 `applyNavigationBarTheme()` 取代舊方法，讀取 `mKeyboardThemeIndex` 取得當前主題的鍵盤背景色（6 種主題：Light / Dark / Pink / TechBlue / FashionPurple / RelaxGreen），同時：
+    - 將 `mCandidateInInputView` 的背景色直接塗成主題色（這是讓淺色帶消失的關鍵）。
+    - 對 IME 視窗呼叫 `setNavigationBarColor()` 並依 Rec. 709 luma 自動選擇淺／深圖示，於有支援的裝置上直接連動系統列顏色。
+    - 於 `onCreateInputView()` 與 `onStartInputView()` 兩處皆呼叫，使用者切換主題後可立即生效，不需重建輸入框。
+  - 影響檔案：`LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
 
-### 資料庫
-- 資料庫升級至版本 102
-- 新增注音（HS）及倉頡（WB）鍵盤項目
+- **#47 — 軟鍵盤右側按鍵被裁切**
+  - 問題：QWERTY 配置最右邊一行（`p`、`0`、Backspace 一帶）在部分裝置上被切掉，難以點擊。
+  - 根因：`LIMEBaseKeyboard` 以 `dm.widthPixels` 作為佈局寬度基準，但實際 IME 容器在有 display cutout、手勢列、分割視窗等情況下會比 `dm.widthPixels` 小；`LIMEKeyboardBaseView.onMeasure()` 雖將 view 寬度收斂至父層 spec，卻未重算每個按鍵的座標。
+  - 修正：
+    - `LIMEBaseKeyboard` 改以 `WindowManager.getCurrentWindowMetrics()` 扣除 `systemBars()` 與 `displayCutout()` insets，取得真正可用寬度（API 30+），舊版維持 `dm.widthPixels` fallback。
+    - `LIMEKeyboardBaseView.onMeasure()` 於父層寬度仍小於計算寬度時，呼叫 `mKeyboard.resize()` 將所有按鍵依比例縮回，避免舍入誤差或多視窗動態調整造成的溢位。
+  - 影響檔案：
+    - `LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/LIMEBaseKeyboard.java`
+    - `LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/LIMEKeyboardBaseView.java`
 
-### 介面改善
-- 統一使用 CandidateInInputView 顯示候選字
-- 細調 UI 主題樣式
-- 調整直式鍵盤標籤位置
-- 補齊各螢幕密度缺少的 drawable PNG 圖片
+### 文件
 
-### 清理
-- 移除 AndroidManifest 中不必要的權限
-- 移除失效下載連結（Openfoundry 及 Google Code 均已於 2025 年關閉）
-- 更新行列及行列10下載連結與項目數量
-- 一般程式碼清理
+- `docs/EDGE_TO_EDGE_REVIEW.md` § 2 補充交叉引用 #46，註明 inset padding 區塊需自行塗背景。
+- 新增 `docs/#46_ISSUE.md`、`docs/#47_ISSUE.md` 完整記錄問題分析、修正策略與驗證步驟。
 
 ---
-
-## 相容性
-
-| API 等級 | Android 版本 | 狀態 |
-|-----------|----------------|--------|
-| 21 | 5.0 Lollipop | 最低支援版本 |
-| 31 | 12 | 新版行為相容基線 |
-| 33 | 13 | 觸覺回饋與輸入流程穩定 |
-| 35 | 15 | 全面屏與系統列整合 |
-| 36 | 16 | 目標 SDK（主要驗證版本） |
-
-## 安裝說明
-
-本版本使用新套件名稱（`net.toload.main.hd2026`），可與舊版 LIME HD 並存安裝。
-
-## 文件
-
-- [架構總覽](LIMEIME_ARCHITECTURE.md)
-- [UI 架構](UI_ARCHITECTURE.md)
-- [重構架構](REFACTORING_ARCHITECTURE.md)
-- [測試計畫](TEST_PLAN.md)
-- [測試覆蓋報告](TEST_COVERAGE_REPORT.md)
-- [API 相容性評估](API_COMPATIBILITY_REVIEW.md)
-- [全面屏評估](EDGE_TO_EDGE_REVIEW.md)
-- [權限評估](PERMISSION_REVIEW.md)

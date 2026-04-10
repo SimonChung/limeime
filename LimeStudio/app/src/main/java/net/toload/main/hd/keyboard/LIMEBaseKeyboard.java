@@ -35,12 +35,17 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
+import android.graphics.Insets;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.util.Xml;
+import android.view.WindowInsets;
+import android.view.WindowManager;
+import android.view.WindowMetrics;
 
 import net.toload.main.hd.R;
 import net.toload.main.hd.global.LIME;
@@ -766,7 +771,10 @@ public class LIMEBaseKeyboard {
      */
     public LIMEBaseKeyboard(Context context, int xmlLayoutResId, int modeId, float keySizeScale, int showArrowKeys, int splitKeyboard) {
         DisplayMetrics dm = context.getResources().getDisplayMetrics();
-        mDisplayWidth = dm.widthPixels;
+        // Issue #47: use the actual usable window width (excluding system bars and
+        // display cutout insets) so percentage-based key widths don't overflow the
+        // IME container on devices with notches, gesture nav, or split-screen.
+        mDisplayWidth = getUsableDisplayWidth(context, dm.widthPixels);
         mDisplayHeight = dm.heightPixels;
 
         if (DEBUG)
@@ -933,6 +941,48 @@ public class LIMEBaseKeyboard {
 
     public int getMinWidth() {
         return mTotalWidth;
+    }
+
+    /**
+     * Issue #47: returns the actual usable width for the IME window, excluding system
+     * bar and display cutout insets. Falls back to the supplied display-metrics width
+     * on Android versions older than R (API 30) where {@link WindowMetrics} is not
+     * available.
+     */
+    private static int getUsableDisplayWidth(Context context, int fallbackWidthPx) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+                if (wm != null) {
+                    WindowMetrics metrics = wm.getCurrentWindowMetrics();
+                    Insets insets = metrics.getWindowInsets().getInsetsIgnoringVisibility(
+                            WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                    int width = metrics.getBounds().width() - insets.left - insets.right;
+                    if (width > 0) return width;
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "getUsableDisplayWidth() failed, falling back to displayMetrics: " + t);
+            }
+        }
+        return fallbackWidthPx;
+    }
+
+    /**
+     * Issue #47: uniformly scale every key's horizontal position, width and gap so the
+     * keyboard fits exactly into {@code newWidth} pixels. Called from
+     * {@link LIMEKeyboardBaseView#onMeasure(int, int)} when the parent view is narrower
+     * than the originally laid-out keyboard (rounding accumulation, post-construction
+     * window resize, multi-window mode, etc.). No-op if the keyboard already fits.
+     */
+    public void scaleHorizontally(int newWidth) {
+        if (newWidth <= 0 || mTotalWidth <= 0 || newWidth >= mTotalWidth) return;
+        float ratio = (float) newWidth / (float) mTotalWidth;
+        for (Key key : mKeys) {
+            key.x = Math.round(key.x * ratio);
+            key.width = Math.round(key.width * ratio);
+            key.gap = Math.round(key.gap * ratio);
+        }
+        mTotalWidth = newWidth;
     }
 
     public boolean setShifted(boolean shiftState) {

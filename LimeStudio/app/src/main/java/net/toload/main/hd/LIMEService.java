@@ -87,6 +87,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import androidx.core.os.ConfigurationCompat;
+import androidx.core.content.ContextCompat;
 import java.util.Objects;
 
 
@@ -426,8 +427,8 @@ public class LIMEService extends InputMethodService
 
         // Touch listeners will be set up in onStartInputView() after views are fully initialized
 
-        // Set navigation bar icons to dark when keyboard is shown
-        setNavigationBarIconsDark();
+        // Issue #46: Tint nav bar to match active keyboard theme
+        applyNavigationBarTheme();
 
         return inputView;
     }
@@ -697,8 +698,8 @@ public class LIMEService extends InputMethodService
             mIsVoiceInputActive = false;
         }
 
-        // Set navigation bar icons to dark when keyboard is shown
-        setNavigationBarIconsDark();
+        // Issue #46: Tint nav bar to match active keyboard theme (re-apply in case theme changed)
+        applyNavigationBarTheme();
     }
 
     /**
@@ -3644,12 +3645,12 @@ public class LIMEService extends InputMethodService
 
             if (this.tempEnglishList.get(index).isEmojiRecord()) {
                 if (ic != null) ic.commitText(
-                        this.tempEnglishList.get(index).getWord() + " ", 0);
+                        this.tempEnglishList.get(index).getWord() + " ", 1);
             } else {
                 if (ic != null) ic.commitText(
                         this.tempEnglishList.get(index).getWord()
                                 .substring(tempEnglishWord.length())
-                                + " ", 0);
+                                + " ", 1);
             }
 
             resetTempEnglishWord();
@@ -4390,30 +4391,64 @@ public class LIMEService extends InputMethodService
     }
 
     /**
-     * Set navigation bar (gesture bar) icons to dark when keyboard is shown.
-     * This ensures navigation bar icons are visible on light backgrounds.
+     * Issue #46: Tint the system navigation bar to match the active keyboard theme,
+     * and pick light/dark nav-bar icons based on the background's luminance so the
+     * icons remain visible. Called from onCreateInputView() and onStartInputView().
      */
-    private void setNavigationBarIconsDark() {
-        // In InputMethodService, getWindow() returns a Dialog, not a Window
-        // We need to get the window from the Dialog
+    private void applyNavigationBarTheme() {
         android.app.Dialog dialog = getWindow();
-        if (dialog != null) {
-            android.view.Window window = dialog.getWindow();
-            if (window != null) {
-                View decorView = window.getDecorView();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    // API 23+ (Marshmallow+): Use WindowInsetsControllerCompat
-                    WindowInsetsControllerCompat windowInsetsController = WindowCompat.getInsetsController(window, decorView);
-                    // Use dark navigation bar icons (black) for visibility on light backgrounds
-                    // setAppearanceLightNavigationBars(true) = light navigation bar appearance = dark icons
-                    windowInsetsController.setAppearanceLightNavigationBars(true);
-                } else {
-                    // API 21-22: Cannot programmatically change navigation bar icon color
-                    // Set a light navigation bar color to encourage dark icons (system behavior)
-                    window.setNavigationBarColor(0xFFFFFFFF); // Solid white
-                }
-            }
+        if (dialog == null) return;
+        android.view.Window window = dialog.getWindow();
+        if (window == null) return;
+
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+
+        int bgColor = getKeyboardBackgroundColorForCurrentTheme();
+        window.setNavigationBarColor(bgColor);
+
+        // The IME container applies bottomInset padding to clear the gesture bar
+        // (see onCreateInputView). That padded strip is transparent by default, so
+        // the host app's nav bar shows through. Paint the container background
+        // with the theme color so the strip visually matches the keyboard.
+        if (mCandidateInInputView != null) {
+            mCandidateInInputView.setBackgroundColor(bgColor);
         }
+
+        boolean lightBackground = isColorLight(bgColor);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            WindowInsetsControllerCompat controller =
+                    WindowCompat.getInsetsController(window, window.getDecorView());
+            // setAppearanceLightNavigationBars(true) => DARK icons on LIGHT bar
+            controller.setAppearanceLightNavigationBars(lightBackground);
+        }
+        // API 21-22 cannot toggle nav-bar icon brightness; the colored bar alone
+        // still gives the user the matching look.
+    }
+
+    private int getKeyboardBackgroundColorForCurrentTheme() {
+        int colorRes;
+        switch (mKeyboardThemeIndex) {
+            case 1:  colorRes = R.color.keyboard_background_dark;            break;
+            case 2:  colorRes = R.color.keyboard_background_pink;            break;
+            case 3:  colorRes = R.color.keyboard_background_tech_blue;       break;
+            case 4:  colorRes = R.color.keyboard_background_fashion_purple;  break;
+            case 5:  colorRes = R.color.keyboard_background_relax_green;     break;
+            case 0:
+            default: colorRes = R.color.keyboard_background_light;           break;
+        }
+        return ContextCompat.getColor(this, colorRes);
+    }
+
+    private static boolean isColorLight(int color) {
+        int r = (color >> 16) & 0xFF;
+        int g = (color >>  8) & 0xFF;
+        int b =  color        & 0xFF;
+        // Rec. 709 luma
+        double luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+        return luma >= 0.5;
     }
 
 }

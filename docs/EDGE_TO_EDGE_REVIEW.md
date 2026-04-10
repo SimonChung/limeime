@@ -21,13 +21,24 @@ This document reviews the project's edge-to-edge display compatibility for Andro
   - Set status bar and navigation bar colors to transparent
 - **Compatibility**: Works on API 21-36 (backward compatible, required for API 35+)
 
-### 2. **LIMEService (IME Keyboard)** ✅
+### 2. **LIMEService (IME Keyboard)** ✅ (with caveat — see Issue #46)
 - **Location**: `app/src/main/java/net/toload/main/hd/LIMEService.java`
-- **Status**: ✅ Already Implemented
-- **Implementation**: 
+- **Status**: ✅ Implemented
+- **Implementation**:
   - Uses `ViewCompat.setOnApplyWindowInsetsListener()` in `onCreateInputView()`
-  - Applies bottom padding to keyboard view to account for navigation bar
-  - Prevents keyboard overlap with system gesture navigation bar
+  - Applies bottom padding to `mCandidateInInputView` equal to the system bar inset
+    to keep the bottom row of keys clear of the gesture bar
+  - `applyNavigationBarTheme()` (called from `onCreateInputView()` and
+    `onStartInputView()`) paints the container background AND the IME window's
+    `navigationBarColor` with the active keyboard theme color, and picks light/dark
+    nav-bar icons from the background's Rec. 709 luminance
+- **Caveat — container background must be tinted**: the inset handler pads the
+  container but leaves the padded strip transparent. On API 35+ that strip lets
+  the host app's nav bar show through, producing a visible light band under a dark
+  keyboard (Issue #46). `setNavigationBarColor()` on the IME dialog window is
+  **not** reliably honored on API 35+ IMEs (confirmed on Samsung A16 / Android 16),
+  so the container itself must be painted with the theme color. See
+  `docs/#46_ISSUE.md` for the full analysis.
 - **Compatibility**: Works on API 21-36
 
 ### 3. **LIMEPreferenceHC (Settings Activity)** ✅
