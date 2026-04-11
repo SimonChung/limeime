@@ -1,5 +1,4 @@
-﻿import SwiftUI
-import ZIPFoundation
+import SwiftUI
 
 // MARK: - Download state per variant
 
@@ -53,11 +52,11 @@ final class IMDownloadManager: ObservableObject {
 
     func refreshInstalledTables() {
         Task.detached(priority: .background) { [weak self] in
-            guard let db = openDB() else { return }
+            let server = DBServer.shared
             // Use tableHasData() — all tables exist in bundled lime.db, only populated ones are installed
             let tables = IMCatalog.allVariants
                 .map { $0.tableName }
-                .filter { db.tableHasData($0) }
+                .filter { server.tableHasData($0) }
             await MainActor.run { self?.installedTables = Set(tables) }
         }
     }
@@ -111,23 +110,20 @@ final class IMDownloadManager: ObservableObject {
     private func importDownloaded(tempURL: URL, variant: IMVariant) {
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            guard let db = openDB() else {
-                await MainActor.run { self.states[variant.id] = .error("無法開啟資料庫") }
-                return
-            }
+            let server = DBServer.shared
 
             do {
                 if variant.isLimeDB {
                     // .limedb is a plain SQLite file — ATTACH directly
-                    try db.importFromAttachedDB(sourcePath: tempURL.path, tableName: variant.tableName)
+                    try server.importFromAttachedDB(sourcePath: tempURL.path, tableName: variant.tableName)
                 } else {
                     // .zip — extract the .db inside, then ATTACH
-                    try db.importFromZip(at: tempURL, tableName: variant.tableName)
+                    try server.importFromZip(at: tempURL, tableName: variant.tableName)
                 }
 
                 // Register in im table so the keyboard can see it
-                try db.registerIM(imName: variant.imName, tableName: variant.tableName,
-                                  label: variant.label, keyboardId: variant.keyboardId)
+                try server.registerIM(imName: variant.imName, tableName: variant.tableName,
+                                      label: variant.label, keyboardId: variant.keyboardId)
 
                 await MainActor.run {
                     self.states[variant.id] = .installed
@@ -363,23 +359,4 @@ struct InstallButton: View {
         case .error:          return 4
         }
     }
-}
-
-// MARK: - Shared DB opener
-private func openDB() -> LimeDB? {
-    guard let containerURL = FileManager.default.containerURL(
-        forSecurityApplicationGroupIdentifier: "group.net.toload.limeime") else { return nil }
-    let dbURL = containerURL.appendingPathComponent("lime.db")
-    copyBundledDBIfNeeded(to: dbURL)
-    return try? LimeDB(path: dbURL.path)
-}
-
-/// Copies the bundled lime.db from the app bundle to the App Group if the
-/// destination is missing or too small (< 1 MB) to be the real bundled db.
-private func copyBundledDBIfNeeded(to dest: URL) {
-    guard let src = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
-    let size = (try? dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-    guard size < 1_000_000 else { return }
-    try? FileManager.default.removeItem(at: dest)
-    try? FileManager.default.copyItem(at: src, to: dest)
 }

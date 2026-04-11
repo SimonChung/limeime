@@ -391,7 +391,7 @@ iOS provides built-in English word completion that keyboard extensions can use, 
 ### Selection Entry Points
 
 - **`pickHighlightedCandidate()`**: Called by Space/Enter key. Delegates to `mCandidateView.takeSelectedSuggestion()` which calls back `pickCandidateManually(index)`.
-- **`pickCandidateManually(int index)`**: Called when user taps a candidate or via selection key. Sets `selectedCandidate = mCandidateList.get(index)`.
+- **`pickCandidateManually(int index)`**: Called when user taps a candidate or via selection key. Sets `selectedCandidate = mCandidateList.get(index)`, then dispatches to one of the three commit paths below.
 
 ### Three Commit Paths
 
@@ -400,8 +400,9 @@ iOS provides built-in English word completion that keyboard extensions can use, 
 - Action: `ic.commitCompletion(mCompletions[index])`
 
 **Path 2 — Chinese / Related Phrase Candidate**:
-- Condition: `mComposing.length() > 0` OR candidate is not a composing code record (i.e., it's a related phrase or database match)
+- Condition: `mComposing.length() > 0` OR candidate is not a composing code record (i.e., it's a related phrase or database match); AND not English-only mode
 - Action: `commitTyped(ic)` (see detailed flow below)
+- **After commitTyped returns, `updateRelatedPhrase(false)` is called from inside `commitTyped()` post-commit block (not from `pickCandidateManually` directly) — see step 7 of commitTyped() Detailed Flow.**
 
 **Path 3 — English Prediction**:
 - Condition: English-only mode with prediction
@@ -409,7 +410,7 @@ iOS provides built-in English word completion that keyboard extensions can use, 
 - If regular word: `ic.commitText(word.substring(tempEnglishWord.length()) + " ", 0)` — commits only the suffix not yet typed, plus a space
 - Then: `resetTempEnglishWord()`, `clearSuggestions()`
 
-After any selection via `pickCandidateManually()` → `updateRelatedPhrase(true)` to fetch related phrases for the next word.
+**Related Phrase Chaining**: When the user selects a candidate from the related phrase list, the same commit path (Path 2) runs again, because the candidate is not a composing code record and `mComposing` is empty (condition holds). `updateRelatedPhrase(false)` fires again after each related phrase commit, displaying the next level of associated words. This chaining continues as long as the `related` table has entries for each successive committed word.
 
 ### commitTyped() Detailed Flow
 
@@ -446,56 +447,78 @@ When a `RUNTIME_BUILT_PHRASE` candidate is selected, `getRealCodeLength()` spawn
 
 ### Related Phrase Display
 
-`updateRelatedPhrase()` runs after commit on a background thread:
-1. Check `committedCandidate` has a non-empty word
-2. Skip if committed candidate is emoji or Chinese punctuation
-3. Query: `SearchSrv.getRelatedByWord(committedCandidate.getWord(), getAllRecords)`
-4. Display results as candidate list with selkey "1234567890"
+`updateRelatedPhrase(boolean getAllRecords)` runs after commit on a background thread:
+1. Check `committedCandidate` has a non-empty word — return if null/empty
+2. Check `hasMappingList` is true — return if no mapping results were ever displayed (nothing to relate against)
+3. Skip query if committed candidate is emoji or Chinese punctuation — call `clearSuggestions()` and return
+4. Query: `SearchSrv.getRelatedByWord(committedCandidate.getWord(), getAllRecords)` with `getAllRecords = false` (top results only)
+5. **If results non-empty**: Display as candidate list with selkey `"1234567890"` via `setSuggestions()`
+6. **If results empty**: Set `committedCandidate = null`, call `clearSuggestions()` — candidate bar returns to empty state
+
+**`getAllRecords` parameter**: Always `false` when called from `commitTyped()`. The `true` variant is only used for "show all" expansion requests, not after normal commits.
 
 ---
 
 ## 9. Learning Flow
 
-Learning is triggered in the background thread spawned by `learnRelatedPhraseAndUpdateScore()`. Three mechanisms operate in sequence:
+Learning has **two timing tiers**:
+- **Immediate (per-commit)**: Score cache update — fires a background thread on every candidate selection to update in-memory ordering and persist to DB.
+- **Deferred (session-end)**: Related phrase (RP) learning and LD phrase learning — processed in a single background thread when `postFinishInput()` is called (text field loses focus).
 
-### Score Learning
+### Tier 1 — Immediate Score Update (per-commit)
 
-When the user selects a candidate, `learnRelatedPhraseAndUpdateScore(committedCandidate)` adds it to a `scorelist` queue. The background thread processes the queue:
-- Updates the `score` column in the IM table for the selected mapping
-- Updates in-memory cache to reflect the new score
-- Higher scores cause the candidate to appear higher in future results (when `sortSuggestions` is enabled)
+`learnRelatedPhraseAndUpdateScore(committedCandidate)` is called from `commitTyped()` step 7 immediately after every commit:
 
-### Related Phrase (RP) Learning
+1. **Thread-safe enqueue**: Adds a copy of `committedCandidate` to the synchronized `scorelist` (used later by `postFinishInput()`).
+2. **Spawn background thread** to call `updateScoreCache(mapping)`:
+   - Calls `dbadapter.addScore(mapping)` — persists the incremented score to the IM table in DB.
+   - **For related phrase records** (`isRelatedPhraseRecord()`): Removes the cache entry for that code, forcing a fresh DB query next time.
+   - **For partial match records** (`isPartialMatchToCodeRecord()`): Removes the whole cache entry for that code.
+   - **For exact match records** (`isExactMatchToCodeRecord()`): If `sortSuggestions` is enabled, finds the matching entry in the in-memory cache list, increments its score, and moves it up if its new score exceeds the preceding entry (insertion-sort step). If `sortSuggestions` is disabled, still increments the cached score but doesn't reorder. Then calls `updateSimilarCodeCache(code)` to rebuild related-code (similar-code prefix) caches.
 
-`learnRelatedPhrase()` processes consecutive pairs from the `scorelist`:
+### Tier 2 — Deferred Learning (session-end via `postFinishInput()`)
 
-For each pair (unit, unit2) where:
-- Both have non-empty words
-- unit is exact match, partial match, or related phrase record
-- unit2 is exact match, partial match, related phrase, Chinese punctuation, or emoji
+`postFinishInput()` is called when the text field loses focus (input session ends). It spawns a single background thread that runs two learners in sequence, operating on snapshots to avoid locking the input thread:
 
-Action:
-1. `dbadapter.addOrUpdateRelatedPhraseRecord(unit.getWord(), unit2.getWord())` — increments score in `related` table
-2. Returns the updated score
-3. **LD trigger**: If returned score > 20 AND `learnPhrase` is enabled → `addLDPhrase(unit, false)` + `addLDPhrase(unit2, true)` — feeds the pair into LD learning
+1. **Snapshot `scorelist`**: Thread-safely copies `scorelist` into `scorelistSnapshot` and clears `scorelist`.
+2. **Run `learnRelatedPhrase(scorelistSnapshot)`** — see RP Learning below.
+3. **Snapshot `LDPhraseListArray`**: Copies into a local list and clears the global array.
+4. **Run `learnLDPhrase(localLDPhraseListArray)`** — see LD Learning below.
 
-### LD (Learning Dictionary) Phrase Learning
+### Related Phrase (RP) Learning (deferred)
 
-`addLDPhrase(mapping, ending)` buffers individual mappings:
-- If `mapping` is not null → add to `LDPhraseList`
-- If `ending` is true → if list has > 1 mappings, add to `LDPhraseListArray`; start new `LDPhraseList`
-- If `mapping` is null and `ending` is true → discard current list (interrupted)
+`learnRelatedPhrase(localScorelist)` runs inside `postFinishInput()`'s background thread:
 
-`learnLDPhrase()` processes accumulated phrases from `LDPhraseListArray`:
+- **Guard**: `mLIMEPref.getLearnRelatedWord()` must be enabled AND `localScorelist.size() > 1` (need at least two consecutive selections to form a pair).
+- Iterates consecutive pairs `(unit at i, unit2 at i+1)` in the scorelist.
+- **Pair acceptance conditions**:
+  - Both `unit.word` and `unit2.word` are non-empty.
+  - `unit` must be: exact match, partial match, **or related phrase** record.
+  - `unit2` must be: exact match, partial match, related phrase, Chinese punctuation, **or emoji** record.
+- **Action**: `dbadapter.addOrUpdateRelatedPhraseRecord(unit.word, unit2.word)` — increments `score` in the `related` table and returns the new score.
+- **LD trigger**: If returned score > 20 **AND** `mLIMEPref.getLearnPhrase()` is enabled → `addLDPhrase(unit, false)` + `addLDPhrase(unit2, true)` — feeds the pair as a completed phrase into the LD buffer.
 
-For each phrase list (max 4 characters):
+**Note on related phrase records in the scorelist**: When the user selects a candidate from the *related phrase list* (after a previous commit), `learnRelatedPhraseAndUpdateScore()` is called again for that selection, so it too goes onto the `scorelist`. This means the related-word chain (commit A → select from related → commit B → select from related → commit C) is fully captured as consecutive pairs: `(A,B)` and `(B,C)` are both learned as related associations.
 
-1. **Get first unit's code**: If the unit has no code (selected from related phrase list), do reverse lookup via `dbadapter.getMappingByWord()` to find the canonical code
+### LD (Learning Dictionary) Phrase Learning (deferred)
+
+`addLDPhrase(mapping, ending)` buffers mappings into `LDPhraseListArray` throughout the session:
+- If `mapping` is not null → append to current `LDPhraseList`.
+- If `ending` is true: if `LDPhraseList.size() > 1` → save it to `LDPhraseListArray` and start a new empty list; if size ≤ 1 → discard it (single word is not a learnable phrase).
+- If `mapping` is null AND `ending` is true → discard current list (interrupted sequence — e.g., LD composing was interrupted mid-sequence).
+
+**`addLDPhrase` call sites**:
+- From `commitTyped()` during continuous typing (LD composing) — one `addLDPhrase(mapping, false)` per intermediate commit, then `addLDPhrase(mapping, true)` at the final commit.
+- From `learnRelatedPhrase()` when RP score exceeds 20 — `addLDPhrase(unit, false)` + `addLDPhrase(unit2, true)` for high-frequency pairs.
+
+`learnLDPhrase(localLDPhraseListArray)` runs inside `postFinishInput()`'s background thread. For each accumulated phrase list (max 4 characters):
+
+1. **Get first unit's code**: If the unit has no code (selected from related phrase list), do reverse lookup via `dbadapter.getMappingByWord()` to find the canonical code.
 2. **Build codes character by character**:
-   - **LDCode**: Full concatenation of each character's code (e.g., "su3" + "cl3" = "su3cl3")
-   - **QPCode**: First character of each character's code (e.g., "s" + "c" = "sc")
-3. **For multi-character words within the phrase**: Break down into individual characters, look up each one's code
-4. **For phonetic table**: Strip tone symbols [3467 ] from LDCode → e.g., "su3cl3" becomes "sucl"
+   - **LDCode**: Full concatenation of each character's code (e.g., "su3" + "cl3" = "su3cl3").
+   - **QPCode**: First character of each character's code (e.g., "s" + "c" = "sc").
+3. **For multi-character words within the phrase**: Break down into individual characters, look up each one's code.
+4. **For phonetic table**: Strip tone symbols `[3467 ]` from LDCode → e.g., "su3cl3" becomes "sucl".
 5. **Write to database**:
    - If phonetic and LDCode length > 1: `addOrUpdateMappingRecord(LDCode, baseWord)`
    - If phonetic and QPCode length > 1: `addOrUpdateMappingRecord(QPCode, baseWord)`
@@ -505,10 +528,10 @@ For each phrase list (max 4 characters):
 ### QP (Quick Phrase) Code
 
 QPCode is part of LD learning. It creates a first-letter shortcut for learned phrases:
-- QPCode = first character of each constituent word's code, concatenated
-- Example: 你好 with codes "su3" + "cl3" → QPCode = "sc"
-- User can later type "sc" and "你好" appears as a candidate
-- Only generated for phonetic table (other IMs use the full concatenated code as LDCode)
+- QPCode = first character of each constituent word's code, concatenated.
+- Example: 你好 with codes "su3" + "cl3" → QPCode = "sc".
+- User can later type "sc" and "你好" appears as a candidate.
+- Only generated for phonetic table (other IMs use the full concatenated code as LDCode).
 
 ---
 
@@ -643,104 +666,270 @@ Since iOS `textDocumentProxy` has no `setComposingText()`:
 
 ## 13. SearchServer API Reference
 
-Methods called by IMService, with parameters and behavior:
+All methods are called by IMService. Thread safety: query/learning methods are called from background threads; configuration methods are called from the main thread during IM switching.
 
-### Query Methods
+### 13.1 Query Methods
 
-```
-getMappingByCode(String code, boolean isSoftKeyboard, boolean getAllRecords) → List<Mapping>
-```
-Main candidate lookup. Returns mappings matching `code` from the current IM table, sorted by score. Triggers `makeRunTimeSuggestion()` internally if smart input is enabled.
+#### `getMappingByCode`
 
 ```
-getRelatedByWord(String word, boolean getAllRecords) → List<Mapping>
+getMappingByCode(code: String, isSoftKeyboard: Bool, getAllRecords: Bool) → [Mapping]
 ```
-Related phrase lookup. Returns words that commonly follow `word`, from the `related` table.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `code` | String | Current composing string |
+| `isSoftKeyboard` | Bool | `true` for soft keyboard (affects candidate ordering) |
+| `getAllRecords` | Bool | `false` = top results only; `true` = full result set ("show all") |
+
+**Returns**: Mappings matching `code` from the active IM table, sorted by score.  
+**Side effect**: If `smartChineseInput` is enabled, calls `makeRunTimeSuggestion()` internally to build phrase candidates.
+
+---
+
+#### `getRelatedByWord`
 
 ```
-getEnglishSuggestions(String word) → List<Mapping>
+getRelatedByWord(word: String, getAllRecords: Bool) → [Mapping]
 ```
-English word prediction. Returns words starting with `word` from the English dictionary.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `word` | String | The word just committed |
+| `getAllRecords` | Bool | `false` = top results; `true` = full set |
+
+**Returns**: Words that commonly follow `word`, from the `related` table. Empty list if none found.
+
+---
+
+#### `getEnglishSuggestions`
+
+```
+getEnglishSuggestions(word: String) → [Mapping]
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `word` | String | Partial English word typed so far |
+
+**Returns**: Words starting with `word` from the English dictionary, as `RECORD_ENGLISH_SUGGESTION` mappings.  
+**iOS replacement**: Drop this method. Use `UITextChecker.completions(forPartialWordRange:in:language:)` instead. See §7 for full English prediction porting notes.
+
+---
+
+#### `getSelkey`
 
 ```
 getSelkey() → String
 ```
-Returns the selection key string for the current IM (e.g., "1234567890").
+
+**Returns**: The selection key string for the current IM (e.g., `"1234567890"`). Used to build the candidate selection key row.
+
+---
+
+#### `keyToKeyname`
 
 ```
-keyToKeyname(String code) → String
+keyToKeyname(code: String) → String
 ```
-Converts typed code to display symbol names (e.g., "bp" → "ㄅㄆ"). Cached.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `code` | String | Raw typed code sequence |
+
+**Returns**: Display-friendly symbol names for the code (e.g., `"bp"` → `"ㄅㄆ"`, `"ab"` → `"日月"`). Result is cached per code. If the returned value equals `code`, nothing extra is shown in the composing bar.
+
+---
+
+#### `getRealCodeLength`
 
 ```
-getRealCodeLength(Mapping selectedMapping, String currentCode) → int
+getRealCodeLength(selectedMapping: Mapping, currentCode: String) → Int
 ```
-Determines the actual code length consumed by the selected mapping in the composing buffer. Handles phonetic tone stripping and ETEN remapping. Also triggers runtime phrase learning for `RUNTIME_BUILT_PHRASE` candidates.
 
-### Learning Methods
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selectedMapping` | Mapping | The candidate the user just selected |
+| `currentCode` | String | Current full composing string |
+
+**Returns**: Number of characters from the front of `currentCode` consumed by `selectedMapping`. Used to trim the composing buffer in continuous typing (LD) mode.  
+**Behaviour details**:
+- Phonetic: strips tone symbols `[3467 ]` from the matched code to find the boundary.
+- ETEN: applies `preProcessingRemappingCode()` before boundary detection.
+- Dual-mapped code: returns full composing length (abandons LD).  
+**Side effect**: If `selectedMapping` is `RECORD_RUNTIME_BUILT_PHRASE`, spawns a background thread to persist all sub-phrases via `addOrUpdateMappingRecord()`.
+
+---
+
+### 13.2 Learning Methods
+
+#### `learnRelatedPhraseAndUpdateScore`
 
 ```
-learnRelatedPhraseAndUpdateScore(Mapping committedCandidate)
+learnRelatedPhraseAndUpdateScore(committedCandidate: Mapping)
 ```
-Adds mapping to score queue. Background thread processes: updates score in DB, learns related phrases, triggers LD learning when RP score > 20.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `committedCandidate` | Mapping | The mapping just committed |
+
+**Called from**: `commitTyped()` step 7 (main thread), after every successful commit.  
+**Behaviour**:
+1. Thread-safely appends a copy of `committedCandidate` to `scorelist` (consumed later by `postFinishInput()`).
+2. Spawns a background thread to call `updateScoreCache(mapping)`:
+   - `dbadapter.addScore(mapping)` — persists incremented score to DB.
+   - Related phrase record → invalidates its code cache entry.
+   - Partial match record → invalidates the whole code cache entry.
+   - Exact match record → increments cached score; if `sortSuggestions` enabled, re-positions entry in cache (insertion-sort step); calls `updateSimilarCodeCache()`.
+
+---
+
+#### `addLDPhrase`
 
 ```
-addLDPhrase(Mapping mapping, boolean ending)
+addLDPhrase(mapping: Mapping?, ending: Bool)
 ```
-Buffers a mapping for LD phrase learning. When `ending=true`, saves the accumulated list. When `mapping=null` and `ending=true`, discards the current list.
 
-### Configuration Methods
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mapping` | Mapping? | Mapping to buffer; `nil` signals an interrupted sequence |
+| `ending` | Bool | `true` = this is the final mapping in the phrase |
+
+**Behaviour**:
+- `mapping != nil` → append to current `LDPhraseList`.
+- `ending == true` AND `LDPhraseList.count > 1` → save list to `LDPhraseListArray`, start new list.
+- `ending == true` AND `LDPhraseList.count ≤ 1` → discard (single word is not a learnable phrase).
+- `mapping == nil` AND `ending == true` → discard current list (LD sequence was interrupted).
+
+**Call sites**: `commitTyped()` during continuous typing (one `false` per intermediate commit, one `true` at final); `learnRelatedPhrase()` when RP score exceeds 20.
+
+---
+
+### 13.3 Configuration Methods
+
+#### `setTableName`
 
 ```
-setTableName(String table, boolean numberMapping, boolean symbolMapping)
+setTableName(table: String, numberMapping: Bool, symbolMapping: Bool)
 ```
-Switches the active IM table. Updates `hasNumberMapping` and `hasSymbolMapping` flags. Triggers cache prefetch.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `table` | String | IM table name to switch to (e.g., `"cj"`, `"phonetic"`) |
+| `numberMapping` | Bool | Whether the IM accepts digit keys as code input |
+| `symbolMapping` | Bool | Whether the IM accepts symbol keys as code input |
+
+**Behaviour**: Switches the active IM table. Updates `hasNumberMapping` and `hasSymbolMapping` flags used by `handleCharacter()`. Triggers cache prefetch for the new table.
+
+---
+
+#### `getTablename`
 
 ```
 getTablename() → String
 ```
-Returns the current active table name.
+
+**Returns**: The currently active IM table name.
+
+---
+
+#### `resetCache`
 
 ```
 resetCache()
 ```
-Clears all cached mappings. Called when switching IMs or clearing user data.
 
-### Conversion Methods
+Clears all in-memory candidate caches. Called when switching IMs or after user data is cleared.
 
-```
-hanConvert(String input) → String
-```
-Applies Traditional↔Simplified Chinese conversion based on `hanConvertOption` setting. **iOS alternative**: Replace with `CFStringTransform(kCFStringTransformToSimplifiedChinese / kCFStringTransformToTraditionalChinese)` — no need to port `LimeHanConverter` or ship `hanconvertv2.db`.
+---
 
-```
-emojiConvert(String code, int type) → List<Mapping>
-```
-Converts a word to emoji. Type: `EMOJI_EN`, `EMOJI_TW`, `EMOJI_CN`. **iOS note**: No built-in word-to-emoji API exists on iOS. Keep the feature by converting `emoji.db` to a bundled JSON dictionary (small read-only dataset, no SQLite overhead needed). Preserves the inline emoji suggestion UX.
+### 13.4 Conversion Methods
+
+#### `hanConvert`
 
 ```
-getCodeListStringFromWord(String word)
+hanConvert(input: String) → String
 ```
-Reverse lookup: returns all codes that produce `word`. Used for notification display.
 
-### Lifecycle Methods
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `input` | String | Word to convert |
+
+**Returns**: Converted word per `hanConvertOption` (0=off, 1=T→S, 2=S→T).  
+**iOS replacement**: Drop `LimeHanConverter` and `hanconvertv2.db`. Replace with a single `CFStringTransform()` call:
+- T→S: `CFStringTransform(str, nil, kCFStringTransformToSimplifiedChinese, false)`
+- S→T: `CFStringTransform(str, nil, kCFStringTransformToTraditionalChinese, false)`
+
+---
+
+#### `emojiConvert`
+
+```
+emojiConvert(code: String, type: Int) → [Mapping]
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `code` | String | Word to look up |
+| `type` | Int | `EMOJI_EN` / `EMOJI_TW` / `EMOJI_CN` |
+
+**Returns**: Emoji candidates matching the word, as `RECORD_EMOJI_WORD` mappings.  
+**iOS implementation**: No built-in word-to-emoji API on iOS. Convert `emoji.db` to a bundled read-only JSON dictionary. Wrap results as `Mapping` objects with `RECORD_EMOJI_WORD` type and feed into the standard candidate pipeline. Eliminates SQLite overhead for a small static dataset.
+
+---
+
+#### `getCodeListStringFromWord`
+
+```
+getCodeListStringFromWord(word: String) → String
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `word` | String | Word to reverse-look up |
+
+**Returns**: Comma-separated string of all codes that produce `word`. Used to build the reverse-lookup notification shown after commit when `reverse_lookup_notify` is enabled.
+
+---
+
+### 13.5 Lifecycle Methods
+
+#### `postFinishInput`
 
 ```
 postFinishInput()
 ```
-Called when input finishes (text field loses focus). Flushes pending learning: copies `scorelist` to snapshot, spawns background thread to run `learnRelatedPhrase()` and `learnLDPhrase()` on accumulated data. Ensures all queued learning is processed even if the user switches away.
 
-### IM Configuration Methods
+Called when the text field loses focus (input session ends). Flushes all pending learning in a single background thread:
+
+1. Snapshot `scorelist` → `scorelistSnapshot`; clear `scorelist`.
+2. Run `learnRelatedPhrase(scorelistSnapshot)` — RP learning (see §9).
+3. Snapshot `LDPhraseListArray` → local copy; clear global array.
+4. Run `learnLDPhrase(localLDPhraseListArray)` — LD phrase learning (see §9).
+
+Ensures all queued learning is processed even if the user switches away mid-session.
+
+---
+
+### 13.6 IM Configuration Methods
+
+#### `getAllImKeyboardConfigList`
 
 ```
-getAllImKeyboardConfigList() → List<ImConfig>
+getAllImKeyboardConfigList() → [ImConfig]
 ```
-Returns all IM-to-keyboard configuration mappings.
+
+**Returns**: All IM-to-keyboard configuration mappings from the `im` table. Used during IM switching to determine which keyboard layout to load for each IM.
+
+---
+
+#### `getKeyboardConfigList`
 
 ```
-getKeyboardConfigList() → List<Keyboard>
+getKeyboardConfigList() → [Keyboard]
 ```
-Returns all keyboard layout configurations from the `keyboard` table. Used by `LIMEKeyboardSwitcher` to map IM codes to keyboard XML resources.
+
+**Returns**: All keyboard layout configurations from the `keyboard` table. Used by `LIMEKeyboardSwitcher` to map IM codes to keyboard resource files.
 
 ---
 
@@ -804,6 +993,7 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 | Auto Chinese symbol | `auto_chinese_symbol` | boolean | false | Shows Chinese punctuation candidates when candidate list cleared |
 | Persistent language mode | `persistent_language_mode` | boolean | false | Remembers Chinese/English mode across text fields |
 | Language mode | `language_mode` | String | "no" | Stored Chinese/English state ("yes"=English, "no"=Chinese) |
+| Swipe candidate bar | `candidate_switch` | boolean | true | `CandidateView` swipe gesture: `true` = dragging scrolls the candidate list; `false` = swipe left/right commits previous/next candidate. Global — applies to all IMs |
 
 ### Learning
 
@@ -855,6 +1045,13 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 |---------|----------|------|---------|---------|
 | Reverse lookup notify | `reverse_lookup_notify` | boolean | true | Show code lookup notification after commit |
 | Reverse lookup table | `{table}_im_reverselookup` | String | "none" | Which IM to use for reverse lookup display |
+
+### Custom IM
+
+| Setting | Pref Key | Type | Default | Affects |
+|---------|----------|------|---------|--------|
+| Allow digit keys as IM codes | `accept_number_index` | boolean | false | `hasNumberMapping` flag in `initializeIMKeyboard()` — **custom IM only**; all built-in IMs hardcode their own value regardless of this pref |
+| Allow symbol keys as IM codes | `accept_symbol_index` | boolean | false | `hasSymbolMapping` flag in `initializeIMKeyboard()` — **custom IM only**; all built-in IMs hardcode their own value regardless of this pref |
 
 ### Physical Keyboard (exclude from iOS port)
 

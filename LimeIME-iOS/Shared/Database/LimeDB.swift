@@ -156,8 +156,8 @@ final class LimeDB {
                     _id        INTEGER PRIMARY KEY AUTOINCREMENT,
                     pword      TEXT,
                     cword      TEXT,
-                    basescore  INTEGER DEFAULT 0,
-                    score      INTEGER DEFAULT 0
+                    base_score INTEGER DEFAULT 0,
+                    user_score INTEGER DEFAULT 0
                 )
             """)
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS related_idx_pword ON related (pword)")
@@ -252,6 +252,26 @@ final class LimeDB {
     @discardableResult
     func openDBConnection(_ forceReload: Bool = false) -> Bool {
         return true
+    }
+
+    /// Parse a column that may be stored as either TEXT ("true"/"false") or
+    /// INTEGER (0/1) — some legacy Android schemas mix both in the same column.
+    /// Reading as a Swift-typed subscript crashes on the mismatched storage
+    /// class, so this helper takes a DatabaseValue and handles every case.
+    static func parseBoolFlag(_ value: DatabaseValue) -> Bool {
+        switch value.storage {
+        case .null:
+            return false
+        case .int64(let n):
+            return n != 0
+        case .double(let d):
+            return d != 0
+        case .string(let s):
+            let t = s.lowercased()
+            return t == "true" || t == "1"
+        case .blob:
+            return false
+        }
     }
 
     func holdDBConnection() {
@@ -476,18 +496,18 @@ final class LimeDB {
                 LIMIT \(limit)
             """
             var results = try Row.fetchAll(db, sql: sql).compactMap { row -> Mapping? in
-                guard let word = row["word"] as String?, !word.isEmpty else { return nil }
+                guard let word = row.optString("word"), !word.isEmpty else { return nil }
                 var m = Mapping(
-                    id:        row["_id"] as Int64? ?? 0,
-                    code:      row["code"] as String? ?? "",
+                    id:        (row.optInt64("_id") ?? 0),
+                    code:      (row.optString("code") ?? ""),
                     word:      word,
-                    score:     row["score"] as Int? ?? 0,
-                    baseScore: row["basescore"] as Int? ?? 0,
+                    score:     (row.optInt("score") ?? 0),
+                    baseScore: (row.optInt("basescore") ?? 0),
                     code3r:    row["code3r"],
                     codeorig:  originalCode,
-                    related:   row["related"] as String?   // spec §14
+                    related:   row.optString("related")   // spec §14
                 )
-                let isExact = (row["exactmatch"] as Int? ?? 0) == 1
+                let isExact = (row.optInt("exactmatch") ?? 0) == 1
                 m.recordType = isExact ? Mapping.RecordType.exactMatchToCode : Mapping.RecordType.partialMatchToCode
                 return m
             }
@@ -521,7 +541,7 @@ final class LimeDB {
             return try Row.fetchAll(db, sql: sql, arguments: [code, limit]).map { row in
                 Mapping(id: row["_id"], code: row["code"], word: row["word"],
                         score: row["score"], baseScore: row["basescore"], code3r: row["code3r"],
-                        related: row["related"] as String?)
+                        related: row.optString("related"))
             }
         }
     }
@@ -544,7 +564,7 @@ final class LimeDB {
                 return try Row.fetchAll(db, sql: sql, arguments: [stripped, limit]).map { row in
                     Mapping(id: row["_id"], code: row["code"], word: row["word"],
                             score: row["score"], baseScore: row["basescore"], code3r: row["code3r"],
-                            related: row["related"] as String?)
+                            related: row.optString("related"))
                 }
             }
         }
@@ -556,20 +576,25 @@ final class LimeDB {
         let escaped = code.replacingOccurrences(of: "'", with: "''")
         var clauses: [String] = []
         let len = code.count
-        let end = min(len, 5)
+        // C1 fix: Java uses (len > 5 ? 6 : len), so end = min(len, 5)+1 when len <= 5
+        // yielding prefixes of length 1..min(len,5), same as Java's 0..<(end-1) where end=(len>5?6:len)
+        let end = len > 5 ? 6 : len
         if len > 1 {
             for j in 0..<(end - 1) {
                 let prefix = String(code.prefix(j + 1)).replacingOccurrences(of: "'", with: "''")
                 clauses.append("\(column) = '\(prefix)'")
             }
         }
-        // Range query for full-code prefix match
-        var nextCodeChars = Array(code)
-        if !nextCodeChars.isEmpty {
-            let lastIdx = nextCodeChars.count - 1
-            nextCodeChars[lastIdx] = Character(UnicodeScalar(nextCodeChars[lastIdx].asciiValue! + 1))
+        // Range query for full-code prefix match.
+        // C2 fix: use Unicode scalar arithmetic instead of asciiValue! force-unwrap
+        // to handle non-ASCII remapped codes safely.
+        var nextCode = escaped
+        if let lastScalar = code.unicodeScalars.last,
+           let incremented = Unicode.Scalar(lastScalar.value + 1) {
+            let stem = String(code.dropLast()).replacingOccurrences(of: "'", with: "''")
+            let nextChar = String(incremented).replacingOccurrences(of: "'", with: "''")
+            nextCode = stem + nextChar
         }
-        let nextCode = String(nextCodeChars).replacingOccurrences(of: "'", with: "''")
         clauses.append("(\(column) >= '\(escaped)' AND \(column) < '\(nextCode)')")
         return clauses.joined(separator: " OR ")
     }
@@ -587,11 +612,11 @@ final class LimeDB {
                 ORDER BY score DESC
             """
             return try Row.fetchAll(db, sql: sql, arguments: [keyword]).map { row in
-                var m = Mapping(id: row["_id"] as Int64? ?? 0,
-                                code: row["code"] as String? ?? "",
-                                word: row["word"] as String? ?? "",
-                                score: row["score"] as Int? ?? 0,
-                                baseScore: row["basescore"] as Int? ?? 0)
+                var m = Mapping(id: (row.optInt64("_id") ?? 0),
+                                code: (row.optString("code") ?? ""),
+                                word: (row.optString("word") ?? ""),
+                                score: (row.optInt("score") ?? 0),
+                                baseScore: (row.optInt("basescore") ?? 0))
                 m.recordType = Mapping.RecordType.exactMatchToWord
                 return m
             }
@@ -609,8 +634,8 @@ final class LimeDB {
                 ORDER BY total DESC LIMIT ?
             """
             return try Row.fetchAll(db, sql: sql, arguments: [parentWord, limit]).map { row in
-                Mapping(id: 0, code: "", word: row["cword"] ?? "",
-                        score: row["total"] ?? 0, baseScore: 0,
+                Mapping(id: 0, code: "", word: (row.optString("cword") ?? ""),
+                        score: (row.optInt("total") ?? 0), baseScore: 0,
                         recordType: Mapping.RecordType.relatedPhrase,
                         pword: parentWord)   // spec §14: populate pword
             }
@@ -628,11 +653,11 @@ final class LimeDB {
                 LIMIT ?
             """
             return try Row.fetchAll(db, sql: sql, arguments: [parentWord, limit]).map { row in
-                Related(id:         row["_id"] as Int64? ?? 0,
-                        parentWord: row["pword"] as String? ?? "",
-                        childWord:  row["cword"] as String? ?? "",
-                        score:      row["score"] as Int? ?? 0,
-                        baseScore:  row["basescore"] as Int? ?? 0)
+                Related(id:         (row.optInt64("_id") ?? 0),
+                        parentWord: (row.optString("pword") ?? ""),
+                        childWord:  (row.optString("cword") ?? ""),
+                        score:      (row.optInt("score") ?? 0),
+                        baseScore:  (row.optInt("basescore") ?? 0))
             }
         }
     }
@@ -670,13 +695,13 @@ final class LimeDB {
         guard let rows = rows else { return [] }
         var rsize = 0
         for row in rows {
-            guard let cword = row["cword"] as String?, !cword.isEmpty else { continue }
-            let rowPword = row["pword"] as String? ?? pword ?? ""
-            var m = Mapping(id:        row["_id"] as Int64? ?? 0,
+            guard let cword = row.optString("cword"), !cword.isEmpty else { continue }
+            let rowPword = row.optString("pword") ?? pword ?? ""
+            var m = Mapping(id:        (row.optInt64("_id") ?? 0),
                             code:      "",
                             word:      cword,
-                            score:     row["score"] as Int? ?? 0,
-                            baseScore: row["basescore"] as Int? ?? 0,
+                            score:     (row.optInt("score") ?? 0),
+                            baseScore: (row.optInt("basescore") ?? 0),
                             pword:     rowPword)   // spec §14: populate pword
             m.recordType = Mapping.RecordType.relatedPhrase
             result.append(m)
@@ -705,11 +730,11 @@ final class LimeDB {
                 args = [pword]
             }
             guard let row = try Row.fetchOne(db, sql: sql, arguments: args) else { return nil }
-            var m = Mapping(id:        row["_id"] as Int64? ?? 0,
+            var m = Mapping(id:        (row.optInt64("_id") ?? 0),
                             code:      "",
-                            word:      row["cword"] as String? ?? "",
-                            score:     row["score"] as Int? ?? 0,
-                            baseScore: row["basescore"] as Int? ?? 0)
+                            word:      (row.optString("cword") ?? ""),
+                            score:     (row.optInt("score") ?? 0),
+                            baseScore: (row.optInt("basescore") ?? 0))
             m.recordType = Mapping.RecordType.relatedPhrase
             return m
         }
@@ -891,36 +916,38 @@ final class LimeDB {
         return (try? dbQueue.read { db in
             try Row.fetchAll(db, sql: sql, arguments: StatementArguments(args)).map { row in
                 LimeImConfigRow(
-                    id:         row["_id"] as Int? ?? 0,
-                    code:       row["code"] as String? ?? "",
-                    title:      row["title"] as String? ?? "",
-                    desc:       row["desc"] as String? ?? "",
-                    keyboard:   row["keyboard"] as String? ?? "",
-                    disable:    (row["disable"] as Int? ?? 0) != 0,
-                    selkey:     row["selkey"] as String? ?? "",
-                    endkey:     row["endkey"] as String? ?? "",
-                    spacestyle: row["spacestyle"] as String? ?? ""
+                    id:         (row.optInt("_id") ?? 0),
+                    code:       (row.optString("code") ?? ""),
+                    title:      (row.optString("title") ?? ""),
+                    desc:       (row.optString("desc") ?? ""),
+                    keyboard:   (row.optString("keyboard") ?? ""),
+                    disable:    Self.parseBoolFlag(row["disable"]),
+                    selkey:     (row.optString("selkey") ?? ""),
+                    endkey:     (row.optString("endkey") ?? ""),
+                    spacestyle: (row.optString("spacestyle") ?? "")
                 )
             }
         }) ?? []
     }
 
-    /// Returns enabled IMs for keyboard extension use.
+    /// Returns all registered IMs from the im table.
+    /// iOS uses a structured schema (one row per IM, title = display label, keyboard = keyboard ID)
+    /// written by seedDefaultIMs() and registerIM(). Android's key-value schema is not used.
     func getAllImConfigs() throws -> [ImConfig] {
-        try dbQueue.read { db in
-            let sql = "SELECT _id, code, title, keyboard, disable FROM im ORDER BY _id ASC"
-            return try Row.fetchAll(db, sql: sql).map { row in
-                ImConfig(
-                    id:                  row["_id"] ?? 0,
-                    imName:              row["code"] ?? "",
-                    tableNick:           row["code"] ?? "",
-                    label:               row["title"] ?? "",
-                    keyboardId:          row["keyboard"] ?? "",
-                    keyboardLandscapeId: row["keyboard"] ?? "",
-                    enabled:             (row["disable"] as Int? ?? 0) == 0,
-                    sortOrder:           row["_id"] as Int? ?? 0
-                )
-            }
+        let rows = getImConfigList(nil, nil)
+        // Structured rows have a non-empty keyboard column; skip any legacy key-value rows.
+        return rows.compactMap { row in
+            guard !row.code.isEmpty, !row.keyboard.isEmpty else { return nil }
+            return ImConfig(
+                id:                  Int64(row.id),
+                imName:              row.code,
+                tableNick:           row.code,
+                label:               row.title,   // title = display name in iOS structured format
+                keyboardId:          row.keyboard,
+                keyboardLandscapeId: row.keyboard,
+                enabled:             !row.disable,
+                sortOrder:           row.id
+            )
         }
     }
 
@@ -951,20 +978,40 @@ final class LimeDB {
             guard let row = try Row.fetchOne(db,
                 sql: "SELECT * FROM keyboard WHERE code = ? LIMIT 1",
                 arguments: [keyboard]) else { return nil }
+            // Bind to TYPED OPTIONAL locals (see getKeyboardConfigList for the
+            // rationale — inline `as T?` can hit the force-decode overload).
+            let id:            Int64?  = row["_id"]
+            let code:          String? = row["code"]
+            let name:          String? = row["name"]
+            let desc:          String? = row["desc"]
+            let type:          String? = row["type"]
+            let image:         String? = row["image"]
+            let imkb:          String? = row["imkb"]
+            let imshiftkb:     String? = row["imshiftkb"]
+            let engkb:         String? = row["engkb"]
+            let engshiftkb:    String? = row["engshiftkb"]
+            let symbolkb:      String? = row["symbolkb"]
+            let symbolshiftkb: String? = row["symbolshiftkb"]
+            // The Android schema stores `disable` with mixed storage:
+            // some rows hold TEXT ("true"/"false"), others hold INTEGER (0/1).
+            // Any Swift-typed subscript (Int? or String?) fatal-errors on the
+            // other storage class, so read the raw DatabaseValue and interpret
+            // both forms ourselves.
+            let isDisabled = Self.parseBoolFlag(row["disable"])
             return KeyboardConfig(
-                id:            row["_id"] as Int64? ?? 0,
-                code:          row["code"] as String? ?? "",
-                name:          row["name"] as String? ?? "",
-                desc:          row["desc"] as String? ?? "",
-                type:          row["type"] as String? ?? "",
-                image:         row["image"] as String? ?? "",
-                imkb:          row["imkb"] as String? ?? "",
-                imshiftkb:     row["imshiftkb"] as String? ?? "",
-                engkb:         row["engkb"] as String? ?? "",
-                engshiftkb:    row["engshiftkb"] as String? ?? "",
-                symbolkb:      row["symbolkb"] as String? ?? "",
-                symbolshiftkb: row["symbolshiftkb"] as String? ?? "",
-                isDisabled:    (row["disable"] as Int? ?? 0) != 0
+                id:            id ?? 0,
+                code:          code ?? "",
+                name:          name ?? "",
+                desc:          desc ?? "",
+                type:          type ?? "",
+                image:         image ?? "",
+                imkb:          imkb ?? "",
+                imshiftkb:     imshiftkb ?? "",
+                engkb:         engkb ?? "",
+                engshiftkb:    engshiftkb ?? "",
+                symbolkb:      symbolkb ?? "",
+                symbolshiftkb: symbolshiftkb ?? "",
+                isDisabled:    isDisabled
             )
         }
     }
@@ -974,20 +1021,38 @@ final class LimeDB {
         return try? dbQueue.read { db in
             try Row.fetchAll(db,
                 sql: "SELECT * FROM keyboard ORDER BY name ASC").map { row in
-                KeyboardConfig(
-                    id:            row["_id"] as Int64? ?? 0,
-                    code:          row["code"] as String? ?? "",
-                    name:          row["name"] as String? ?? "",
-                    desc:          row["desc"] as String? ?? "",
-                    type:          row["type"] as String? ?? "",
-                    image:         row["image"] as String? ?? "",
-                    imkb:          row["imkb"] as String? ?? "",
-                    imshiftkb:     row["imshiftkb"] as String? ?? "",
-                    engkb:         row["engkb"] as String? ?? "",
-                    engshiftkb:    row["engshiftkb"] as String? ?? "",
-                    symbolkb:      row["symbolkb"] as String? ?? "",
-                    symbolshiftkb: row["symbolshiftkb"] as String? ?? "",
-                    isDisabled:    (row["disable"] as Int? ?? 0) != 0
+                // Bind every column to a TYPED OPTIONAL local first so Swift
+                // dispatches to GRDB's optional `Row.subscript<Value>(_:) -> Value?`
+                // overload. The compact `row["col"] as Int?` form can still hit the
+                // non-optional force-decode overload, which crashes on NULL.
+                let id:            Int64?  = row["_id"]
+                let code:          String? = row["code"]
+                let name:          String? = row["name"]
+                let desc:          String? = row["desc"]
+                let type:          String? = row["type"]
+                let image:         String? = row["image"]
+                let imkb:          String? = row["imkb"]
+                let imshiftkb:     String? = row["imshiftkb"]
+                let engkb:         String? = row["engkb"]
+                let engshiftkb:    String? = row["engshiftkb"]
+                let symbolkb:      String? = row["symbolkb"]
+                let symbolshiftkb: String? = row["symbolshiftkb"]
+                // Mixed TEXT/INTEGER storage — see parseBoolFlag.
+                let isDisabled = Self.parseBoolFlag(row["disable"])
+                return KeyboardConfig(
+                    id:            id ?? 0,
+                    code:          code ?? "",
+                    name:          name ?? "",
+                    desc:          desc ?? "",
+                    type:          type ?? "",
+                    image:         image ?? "",
+                    imkb:          imkb ?? "",
+                    imshiftkb:     imshiftkb ?? "",
+                    engkb:         engkb ?? "",
+                    engshiftkb:    engshiftkb ?? "",
+                    symbolkb:      symbolkb ?? "",
+                    symbolshiftkb: symbolshiftkb ?? "",
+                    isDisabled:    isDisabled
                 )
             }
         }
@@ -999,7 +1064,9 @@ final class LimeDB {
             guard let row = try Row.fetchOne(db,
                 sql: "SELECT * FROM keyboard WHERE code = ? LIMIT 1",
                 arguments: [keyboardCode]) else { return nil }
-            return row[field] as String?
+            // Safe optional cast — dispatches to GRDB's `-> Value?` subscript overload.
+            let value: String? = row[field]
+            return value
         }
     }
 
@@ -1024,11 +1091,10 @@ final class LimeDB {
         setIMConfigKeyboard(imCode, keyboard.desc, keyboard.code)
     }
 
-    func updateIMEnabled(id: Int64, enabled: Bool) throws {
-        try dbQueue.write { db in
-            try db.execute(sql: "UPDATE im SET disable = ? WHERE _id = ?",
-                           arguments: [enabled ? 0 : 1, id])
-        }
+    /// Mirrors Android setImConfig(imCode, "disable", "true"/"false").
+    /// The im table is a key-value store — there is no disable column.
+    func updateIMEnabled(imName: String, enabled: Bool) {
+        setImConfig(imName, "disable", enabled ? "false" : "true")
     }
 
     func updateIMSortOrder(id: Int64, sortOrder: Int) throws {}
@@ -1056,13 +1122,13 @@ final class LimeDB {
         let sql = "SELECT _id, code, word, score, basescore, code3r FROM \(table) WHERE \(whereClause) ORDER BY \(orderCol) ASC\(limitStr)"
         let rows = try? dbQueue.read { db in try Row.fetchAll(db, sql: sql) }
         return (rows ?? []).map { row in
-            let rowId = row["_id"] as Int64? ?? 0
+            let rowId = (row.optInt64("_id") ?? 0)
             return LimeRecord(id: "\(rowId)",
-                          code:      row["code"] as String? ?? "",
-                          word:      row["word"] as String? ?? "",
-                          score:     row["score"] as Int? ?? 0,
-                          baseScore: row["basescore"] as Int? ?? 0,
-                          code3r:    row["code3r"] as String? ?? "")
+                          code:      (row.optString("code") ?? ""),
+                          word:      (row.optString("word") ?? ""),
+                          score:     (row.optInt("score") ?? 0),
+                          baseScore: (row.optInt("basescore") ?? 0),
+                          code3r:    (row.optString("code3r") ?? ""))
         }
     }
 
@@ -1075,11 +1141,11 @@ final class LimeDB {
         }
         guard let row = row else { return nil }
         return LimeRecord(id:        "\(id)",
-                      code:      row["code"] as String? ?? "",
-                      word:      row["word"] as String? ?? "",
-                      score:     row["score"] as Int? ?? 0,
-                      baseScore: row["basescore"] as Int? ?? 0,
-                      code3r:    row["code3r"] as String? ?? "")
+                      code:      (row.optString("code") ?? ""),
+                      word:      (row.optString("word") ?? ""),
+                      score:     (row.optInt("score") ?? 0),
+                      baseScore: (row.optInt("basescore") ?? 0),
+                      code3r:    (row.optString("code3r") ?? ""))
     }
 
     // MARK: - Related Table Operations
@@ -1107,11 +1173,11 @@ final class LimeDB {
         let sql = "SELECT _id, pword, cword, basescore, score FROM related WHERE \(whereStr) ORDER BY score DESC, basescore DESC\(limitStr)"
         return (try? dbQueue.read { db in
             try Row.fetchAll(db, sql: sql, arguments: StatementArguments(args)).map { row in
-                Related(id:         row["_id"] as Int64? ?? 0,
-                        parentWord: row["pword"] as String? ?? "",
-                        childWord:  row["cword"] as String? ?? "",
-                        score:      row["score"] as Int? ?? 0,
-                        baseScore:  row["basescore"] as Int? ?? 0)
+                Related(id:         (row.optInt64("_id") ?? 0),
+                        parentWord: (row.optString("pword") ?? ""),
+                        childWord:  (row.optString("cword") ?? ""),
+                        score:      (row.optInt("score") ?? 0),
+                        baseScore:  (row.optInt("basescore") ?? 0))
             }
         }) ?? []
     }
@@ -1198,12 +1264,6 @@ final class LimeDB {
     func checkAndUpdateRelatedTable() {
         guard !checkDBConnection() else { return }
         try? dbQueue.write { db in
-            // Add basescore column if missing
-            let hasBasescore = (try? Row.fetchOne(db,
-                sql: "SELECT basescore FROM related LIMIT 1")) != nil
-            if !hasBasescore {
-                try? db.execute(sql: "ALTER TABLE related ADD COLUMN basescore INTEGER")
-            }
             // Ensure indexes exist
             try? db.execute(sql: "CREATE INDEX IF NOT EXISTS related_idx_pword ON related (pword)")
             try? db.execute(sql: "CREATE INDEX IF NOT EXISTS related_idx_cword ON related (cword)")
@@ -1694,14 +1754,16 @@ final class LimeDB {
                         exactMatchClauses.append("(\(col) = '\(escapedCode)')")
                     }
                 } else {
-                    // Check whether any prefix-extensions exist (to decide blacklist scope)
-                    var nextChars = Array(escapedCode)
-                    if !nextChars.isEmpty {
-                        let last = nextChars.count - 1
-                        let v = nextChars[last].asciiValue ?? 0
-                        nextChars[last] = Character(UnicodeScalar(v &+ 1))
+                    // Check whether any prefix-extensions exist (to decide blacklist scope).
+                    // Build the open-upper-bound by incrementing the last unicode scalar of `escapedCode`
+                    // — same safe pattern used by expandBetweenSearchClause (no asciiValue force-wrap).
+                    var nextCode = escapedCode
+                    if let lastScalar = escapedCode.unicodeScalars.last,
+                       let incremented = Unicode.Scalar(lastScalar.value + 1) {
+                        let stem = String(escapedCode.dropLast())
+                        nextCode = stem + String(incremented)
                     }
-                    let nextCode = String(nextChars).replacingOccurrences(of: "'", with: "''")
+                    nextCode = nextCode.replacingOccurrences(of: "'", with: "''")
                     let hasExtension = (try? dbQueue.read { db in
                         try Row.fetchOne(db,
                             sql: "SELECT \(col) FROM \(table) WHERE \(col) > ? AND \(col) < ? LIMIT 1",
@@ -1770,22 +1832,30 @@ final class LimeDB {
 
     // MARK: - Raw Query
 
-    /// Execute a SELECT query with basic table-name validation. Returns row dicts or nil.
+    /// Execute a SELECT query with strict table-name validation. Returns row dicts or nil.
+    /// Hardened: rejects multi-statement queries, subqueries, joins, and any FROM target
+    /// not in the canonical allowlist (`isValidTableName`). Rejects pragma_*/sqlite_master.
     func rawQuery(_ query: String?) -> [[String: Any]]? {
         guard !checkDBConnection() else { return nil }
         guard let query = query, !query.isEmpty else { return nil }
-        // Extract table name for validation
         let lower = query.lowercased().trimmingCharacters(in: .whitespaces)
-        guard lower.hasPrefix("select") else { return nil }
-        let fromParts = query.components(separatedBy: NSRegularExpression.escapedPattern(for: " from "))
-        // Simple extraction: split on " FROM " or " from "
-        let parts = lower.components(separatedBy: " from ")
-        if parts.count > 1 {
-            let tablePart = parts[1].trimmingCharacters(in: .whitespaces).components(separatedBy: " ").first ?? ""
-            let tableOnly = tablePart.components(separatedBy: CharacterSet(charactersIn: ";\n\t ")).first ?? tablePart
-            if !isValidTableName(tableOnly) { return nil }
-        }
-        _ = fromParts  // suppress warning
+        // Must be a single SELECT — no semicolons (defeats statement chaining).
+        guard lower.hasPrefix("select"), !lower.contains(";") else { return nil }
+        // Disallow subqueries, joins, CTEs, and table-valued functions.
+        let banned = [" join ", "(select", " with ", "pragma_", "sqlite_master", "sqlite_schema"]
+        for needle in banned where lower.contains(needle) { return nil }
+        // Strict regex: capture exactly one table identifier after FROM.
+        let pattern = #"(?i)\bfrom\s+([A-Za-z_][A-Za-z0-9_]*)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: query, range: NSRange(query.startIndex..., in: query)),
+              match.numberOfRanges >= 2,
+              let tableRange = Range(match.range(at: 1), in: query) else { return nil }
+        let table = String(query[tableRange])
+        guard isValidTableName(table) else { return nil }
+        // Make sure there's only one FROM occurrence (no implicit join via comma + FROM).
+        let secondMatch = regex.firstMatch(in: query,
+            range: NSRange(query.index(after: tableRange.upperBound)..., in: query))
+        guard secondMatch == nil else { return nil }
         return try? dbQueue.read { db in
             try Row.fetchAll(db, sql: query).map { row in
                 var dict: [String: Any] = [:]
@@ -1996,10 +2066,12 @@ final class LimeDB {
         var lines: [String] = []
         if isRelated {
             let related = getRelated(nil, 0, 0)
+            lines.append("%chardef begin")
             for r in related {
                 guard !r.parentWord.isEmpty, !r.childWord.isEmpty else { continue }
                 lines.append("\(r.parentWord)|\(r.childWord)|\(r.baseScore)|\(r.score)")
             }
+            lines.append("%chardef end")
         } else {
             if let configs = imConfig {
                 for c in configs {
@@ -2010,11 +2082,13 @@ final class LimeDB {
                     if t == "spacestyle" { lines.append("@spacestyle@|\(c.desc)") }
                 }
             }
+            lines.append("%chardef begin")
             let records = getRecordList(table, nil, searchByCode: false, 0, 0)
             for r in records {
                 guard !(r.word.isEmpty || r.word == "null") else { continue }
                 lines.append("\(r.code)|\(r.word)|\(r.score)|\(r.baseScore)")
             }
+            lines.append("%chardef end")
         }
         let content = lines.joined(separator: "\n")
         do {
@@ -2163,6 +2237,22 @@ final class LimeDB {
         }
     }
 
+    /// Registers the "custom" (自建) IM in the im table if it is not already present.
+    /// Unlike seedDefaultIMs (which only seeds IMs with data), custom IM is always seeded
+    /// on explicit user action — even when the custom table is empty.
+    func seedCustomIM() throws {
+        try dbQueue.write { db in
+            let exists = (try? Int.fetchOne(db,
+                sql: "SELECT COUNT(*) FROM im WHERE code = ?",
+                arguments: ["custom"]) ?? 0) ?? 0 > 0
+            guard !exists else { return }
+            try db.execute(sql: """
+                INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                VALUES ('custom', '自建', '', 'lime_abc', 0, '', '', '')
+            """)
+        }
+    }
+
     // MARK: - Factory Reset (mirrors Android restoredToDefault)
 
     /// Resets all user-learned data to factory state.
@@ -2261,15 +2351,49 @@ private final class StreamReader: Sequence {
     func makeIterator() -> AnyIterator<String> {
         AnyIterator {
             while true {
+                // `Data` indices are not always 0-based after mutation, so translate
+                // the absolute `nl` index to an offset from startIndex before using
+                // it as a count with `removeFirst`.
                 if let nl = self.buffer.firstIndex(of: UInt8(ascii: "\n")) {
-                    let lineData = self.buffer.prefix(upTo: nl)
-                    self.buffer.removeFirst(nl + 1)
+                    let lineData = self.buffer[self.buffer.startIndex..<nl]
+                    let removeCount = self.buffer.distance(from: self.buffer.startIndex, to: nl) + 1
+                    self.buffer.removeFirst(removeCount)
                     return String(data: lineData, encoding: self.encoding)
                 }
-                if self.eof { return nil }
+                if self.eof {
+                    // Return any trailing data without a final newline as a last line.
+                    if !self.buffer.isEmpty {
+                        let tail = self.buffer
+                        self.buffer.removeAll(keepingCapacity: false)
+                        return String(data: tail, encoding: self.encoding)
+                    }
+                    return nil
+                }
                 let chunk = self.fileHandle.readData(ofLength: self.chunkSize)
                 if chunk.isEmpty { self.eof = true } else { self.buffer.append(chunk) }
             }
         }
+    }
+}
+
+// MARK: - Safe Row accessors
+//
+// GRDB's generic `Row.subscript<Value>(_:) -> Value` calls `try! decode(...)` and
+// crashes on NULL columns. The `row["col"] as Type? ?? default` inline form is
+// unreliable — Swift overload resolution can still dispatch to the non-optional
+// overload, force-decoding and crashing. These helpers bind to a TYPED OPTIONAL
+// local first, which unambiguously picks GRDB's `-> Value?` overload.
+fileprivate extension Row {
+    func optString(_ column: String) -> String? {
+        let v: String? = self[column]
+        return v
+    }
+    func optInt(_ column: String) -> Int? {
+        let v: Int? = self[column]
+        return v
+    }
+    func optInt64(_ column: String) -> Int64? {
+        let v: Int64? = self[column]
+        return v
     }
 }

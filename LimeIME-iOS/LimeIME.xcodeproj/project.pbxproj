@@ -8,7 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		054C1466956DBE2D8BEA3A34 /* lime_cj.json in Resources */ = {isa = PBXBuildFile; fileRef = 1736168811E753E9330AA481 /* lime_cj.json */; };
-		090FE96F5983C4AAFEDE4AD7 /* IMStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8905C956F3A8B895DC1D239 /* IMStoreView.swift */; };
+		05655700F55F7F2F05431516 /* KeyboardPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55ACA3BC6FDCE9C013025EB0 /* KeyboardPickerView.swift */; };
+		05CE854A1417A2D45839D8D2 /* DBServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE1BC618A27E7629062FC20 /* DBServer.swift */; };
+		0638AFC436CE8D769E24B98D /* SetupImControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9627C2D44209CBC7935864D /* SetupImControllerTest.swift */; };
+		079D51B244090D1F399274BD /* ViewProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B737A52F55888952FFB32FC /* ViewProtocols.swift */; };
 		12187D253A452F9C88E7C3E1 /* lime_et26.json in Resources */ = {isa = PBXBuildFile; fileRef = E291FC497AF0014D898E57FA /* lime_et26.json */; };
 		1230969E78D532747075B0A1 /* lime_cj_number_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = BD9E7EE11221BAE243B120CD /* lime_cj_number_shift.json */; };
 		12383EA9BE71DC6C521BE418 /* lime_array.json in Resources */ = {isa = PBXBuildFile; fileRef = 1C4F9CE98A2F9BFF29641233 /* lime_array.json */; };
@@ -16,17 +19,28 @@
 		15A7155D44FB31C8E5FA81A7 /* lime_abc.json in Resources */ = {isa = PBXBuildFile; fileRef = 55C6C7CF0775CFE705BB3B43 /* lime_abc.json */; };
 		17766B10C8DE7763C32633C1 /* Mapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0956117FEB1C2F5C09EB5C5 /* Mapping.swift */; };
 		179D101D08689450880985FA /* lime_et_41.json in Resources */ = {isa = PBXBuildFile; fileRef = D0CDCC557DD26055CA872A57 /* lime_et_41.json */; };
+		19553070C791A938D59B8098 /* NavigationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D282B6F5D58C2A1211F5DA /* NavigationManager.swift */; };
 		1ABA5CCCC3B8B68420955EDA /* lime_wb_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = F8352DFA101AE0D5E1606C9A /* lime_wb_shift.json */; };
+		1DBB21F1304CE6388E830E57 /* LIMEPreferenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7D0A62A4FA590A149AF441 /* LIMEPreferenceManager.swift */; };
 		1F3AF38E0937B9889CAEC6AE /* lime_ez_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = BF5C2CE83CEB146D8C56CA62 /* lime_ez_shift.json */; };
 		246EAA15755121E22608F909 /* lime_array_number.json in Resources */ = {isa = PBXBuildFile; fileRef = AB8617B6EB9EBC4689424A49 /* lime_array_number.json */; };
+		273FC9499F6AFA5F033213D4 /* LIMEPreferenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7D0A62A4FA590A149AF441 /* LIMEPreferenceManager.swift */; };
 		27553064FBBC2A0E4E5ACDC9 /* Related.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14502A56A42472FB229360DB /* Related.swift */; };
 		277F7AAC5172A82852C00322 /* lime_ez.json in Resources */ = {isa = PBXBuildFile; fileRef = 00CD73E75A8CF0D717BCDC50 /* lime_ez.json */; };
+		2A964733C022A582DDF047D5 /* ManageImController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */; };
 		2D6B665397277A10660A2280 /* LimeIMEKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 782285680D8D9FE97C096F39 /* LimeIMEKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2EE2BFCC6A02AFA1E73E7D27 /* ImConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0757CC0618D9DFE1917DB1 /* ImConfig.swift */; };
+		2FD666E4E6936D6EED00518A /* IMListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D73F6D92EFFE21C79BBE9E /* IMListView.swift */; };
+		30A1639B07058FC030BD00CF /* LIMEPreferenceManagerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A616F712F666B45F6A993A5C /* LIMEPreferenceManagerTest.swift */; };
 		3627870C41CBCF6BBC97C35C /* lime_number_symbol.json in Resources */ = {isa = PBXBuildFile; fileRef = 86957E4A2DDA8D483FC30D94 /* lime_number_symbol.json */; };
+		3741F86BFFCC4D76A2155780 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5F2482E8ED4695AA042F49 /* IntentHandler.swift */; };
 		381F28F38C655529F1922A2A /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = D84706F48CD91AF3D1857A1F /* ZIPFoundation */; };
+		394FDBA2792355ADDE3ADDB2 /* ShareManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D9C2FB678210C7B4C64424 /* ShareManager.swift */; };
+		3A2F164CC78CD804C67805DE /* SetupTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41390FAC918F440A66942DF3 /* SetupTabView.swift */; };
 		3E81089E57F6CB90A2BFF152 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75E50434E278FAEF4A4654C /* KeyboardView.swift */; };
+		41CFFB478874C876C611CC47 /* ManageRelatedControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0595186AC824BB0CCF9D15EF /* ManageRelatedControllerTest.swift */; };
 		41F0C74C36F32BE94395EF6C /* Mapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0956117FEB1C2F5C09EB5C5 /* Mapping.swift */; };
+		493AFBCF68750E34559BA2E2 /* ProgressManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D9E95479778379D903ABB5 /* ProgressManager.swift */; };
 		495495B3EC2756E2FA4BF57A /* lime_english_number_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 45BBFE60A3BC8E3A9EFBFED2 /* lime_english_number_shift.json */; };
 		4B920F8769522781A1177534 /* lime_dayi_sym_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 75D020F016341574B4FF2E84 /* lime_dayi_sym_shift.json */; };
 		4C1012BD29921E3B0201DBBC /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43AF70BA22361D8084D34B7F /* Keyboard.swift */; };
@@ -46,36 +60,52 @@
 		76BEE873AC0F13CDBB4969AF /* lime_english_number.json in Resources */ = {isa = PBXBuildFile; fileRef = 526D1D44C8B349F1C4E03E4A /* lime_english_number.json */; };
 		782E5A3464C0CEE76B8F75D9 /* lime_hsu_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 5D8D9FA3BB7317CC35DCEEE6 /* lime_hsu_shift.json */; };
 		789E933FF233931B215B68C9 /* lime_hs_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = A066ECD24F9A4BF55136EAD8 /* lime_hs_shift.json */; };
+		7EC4434D0F3C544314B64131 /* RecordListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A25E75494E2A56B606A8AC /* RecordListView.swift */; };
 		7F9F9E4BA76E6189F91E57E3 /* Mapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0956117FEB1C2F5C09EB5C5 /* Mapping.swift */; };
+		83C7E2007EFF3D10C4F43EAF /* ManageRelatedController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D119F9E017971393DE59BAF /* ManageRelatedController.swift */; };
 		84261E617020CF869698CE7C /* lime_cj_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = AD0AE1C6B0C4ACFF5512A9BF /* lime_cj_shift.json */; };
+		8525ADC346FD46AA6F2FF251 /* SetupImController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A94150D0447C90FB5163C0C /* SetupImController.swift */; };
+		869F6DB2830E0B87119A2E4F /* PreferencesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B9D489710C3F87093FD8EB /* PreferencesTabView.swift */; };
 		8AC6B7DC76692A7FBFDDF3F9 /* ChineseSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C791A042EAF0B0D85E4AEC3 /* ChineseSymbol.swift */; };
 		8B72D83300CAD566BFCF3FE1 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51309BD0A4AEAF429010BB4F /* KeyboardViewController.swift */; };
 		8B8D5CEFF8EB0D19EEB0F35C /* LimeDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = C413C5F3C96DA0D6411EAD4B /* LimeDB.swift */; };
 		8EBAC89F106963E2B9A020A1 /* SearchServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD7B903A3658D6EBB77E60 /* SearchServer.swift */; };
+		8F245640844D5E2553C17BF5 /* ReverseLookupSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577CC268BA6F7CF6C121BA1F /* ReverseLookupSettingsView.swift */; };
+		90A2992BD492D2D9B8D1ECB5 /* DBServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE1BC618A27E7629062FC20 /* DBServer.swift */; };
 		91114A2E568054305BF86C11 /* ImConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0757CC0618D9DFE1917DB1 /* ImConfig.swift */; };
 		969E9ECB3E49FD62355A5DCD /* lime_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = A4E19D552BFEAA3E2632A221 /* lime_shift.json */; };
 		9A89239ABF584278D63C802F /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 7D65C99D71D2AC588F3B3903 /* GRDB */; };
 		9B1ECA9BBCEE603587497032 /* LimeDBTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C07357EED170657A3BF133 /* LimeDBTest.swift */; };
 		9E8C11739737F32191ABCD0E /* lime_cj_number.json in Resources */ = {isa = PBXBuildFile; fileRef = 5881111DCA9ED12EFE8C4039 /* lime_cj_number.json */; };
+		9F2367C0D0894DAA927C14D5 /* DBManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05956B91D60A7720342125CA /* DBManagerView.swift */; };
 		9F691C57C1223C205DBE0A70 /* lime_et26_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 5CA64EBB9FF2770C1978FA54 /* lime_et26_shift.json */; };
 		9FB37AFD7E021F497B9BC5C7 /* ChineseSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C791A042EAF0B0D85E4AEC3 /* ChineseSymbol.swift */; };
 		9FF9B6B6C491BD7514AAEFA0 /* lime_english_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A142D8C48B8080CACC06BF5 /* lime_english_shift.json */; };
 		A2E7579A48126A3587829923 /* ImConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0757CC0618D9DFE1917DB1 /* ImConfig.swift */; };
+		A2F219F1CBA53FD575DA827D /* BaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE58AA4A8D7C8C7CAB2DD1B /* BaseController.swift */; };
+		A4621818C72E0671433B8C79 /* IMDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9956767005AF49619EA7AD68 /* IMDetailView.swift */; };
 		A74D09B3AEDBF27CDBBD079E /* lime_phonetic.json in Resources */ = {isa = PBXBuildFile; fileRef = 930EE39E03E98427009BFB60 /* lime_phonetic.json */; };
+		A80635FAE2E8FE18ED2B15A4 /* LIMEPreferenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7D0A62A4FA590A149AF441 /* LIMEPreferenceManager.swift */; };
 		A8AF9BBEF924BCFC21672E25 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 6D731A726502199FD73E3CF5 /* ZIPFoundation */; };
+		AA9958D46518A84859225554 /* EditRelatedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3212ABE29FA8702C293DD9 /* EditRelatedView.swift */; };
 		AAB43ADB780D8C94FCFF9D68 /* IMCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C519D06270032D72E51CF613 /* IMCatalog.swift */; };
 		B174D69873CFB28046FD2166 /* SearchServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD7B903A3658D6EBB77E60 /* SearchServer.swift */; };
 		B7114F1C925F5668C7B1426F /* popup_template.json in Resources */ = {isa = PBXBuildFile; fileRef = 955B457572A329E2A1ADEA50 /* popup_template.json */; };
 		BCBFE011E27ED97F41C1A1DB /* lime_hsu.json in Resources */ = {isa = PBXBuildFile; fileRef = B2E2CC2294E9DD745CA44937 /* lime_hsu.json */; };
+		BD958D0BA5A814EF01A5C2AD /* RelatedListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4100A6E7F721B8C08183DAF3 /* RelatedListView.swift */; };
 		BDD2EAB7644539066FF9FF55 /* lime_url.json in Resources */ = {isa = PBXBuildFile; fileRef = DB41E641804023A28303BAE5 /* lime_url.json */; };
+		C109FBA362D78FD3CEF3ABF4 /* lime_array10_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 6B13B8A0DAD6BA0B7599D6CA /* lime_array10_shift.json */; };
 		C29DD224E7D5797D71BFD56C /* LayoutLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84CB76CFC92DAA008483771 /* LayoutLoader.swift */; };
 		C704ECEA2AA4777A7F4F0D52 /* lime_dayi_sym.json in Resources */ = {isa = PBXBuildFile; fileRef = C8CEAFA241DA366CFB51031E /* lime_dayi_sym.json */; };
 		C798DBEA7EC7AAD1D9821E2E /* lime_array_number_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 48A1A8F3D03D778777ACC688 /* lime_array_number_shift.json */; };
+		C8B325C7466723E467598705 /* AddRelatedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4F0B69CBAE8FC8C5547350 /* AddRelatedView.swift */; };
 		C8ECC0AE9971356C025A4864 /* lime_array_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 86E3E355AECB6CF44FE1CB4F /* lime_array_shift.json */; };
 		C9C4D445F9D778B1F3CB5102 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7E6D814B179560C36A6F65E /* MainViewController.swift */; };
 		D028529390E0D4AB93F413FB /* lime_phonetic_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D385999861624C778BD7C83 /* lime_phonetic_shift.json */; };
 		D3739EC294D3485404012D3B /* lime_number.json in Resources */ = {isa = PBXBuildFile; fileRef = C0A5FC3D6D44CBBA94E88C16 /* lime_number.json */; };
+		D464685F5EEDE297A1308B0D /* lime_array10.json in Resources */ = {isa = PBXBuildFile; fileRef = F4FC8B91EDE5C18040A0DA6F /* lime_array10.json */; };
 		D56F9308DBE0E2982A156EDC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95784239B04D9F726B1DE025 /* AppDelegate.swift */; };
+		AA3B0F4752A14402A5D451EEE3EDB867 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0428D3A9C54F5AAE294AB794F8AE09 /* SceneDelegate.swift */; };
 		D721F1B7CEA6C5FC9CD152A3 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 59409130182D005E62853937 /* ZIPFoundation */; };
 		D82AE1FA73F859BBABBF644C /* LimeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9EE5BA80907FE7407DC189 /* LimeSettingsView.swift */; };
 		D85527A1D89F1ACD5D86FE5A /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5AC9140B64BE293B4125AC /* GRDB */; };
@@ -83,15 +113,24 @@
 		DD329C69B687BA18D2865041 /* lime_wb.json in Resources */ = {isa = PBXBuildFile; fileRef = 63D7BA593E5AEB581D0E15C5 /* lime_wb.json */; };
 		E02BE727FF878D591A3D34B5 /* LimeDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = C413C5F3C96DA0D6411EAD4B /* LimeDB.swift */; };
 		E1A1FABDFEEB6C9DF7A93E59 /* popup_symbol_mode.json in Resources */ = {isa = PBXBuildFile; fileRef = FEB7554DFA2B6A6F31A1D39C /* popup_symbol_mode.json */; };
+		E6F12A9A974F2C5E8AA0B5EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7DA2B1BD116A2D6A7E7EEE90 /* Assets.xcassets */; };
+		E8E5B5DA570FE25A0B191DB8 /* EditRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D003E6B950F019B0269750C6 /* EditRecordView.swift */; };
+		EA5199243A781A843C22C763 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECF3F8B20C28BBE4D97C3104 /* AddRecordView.swift */; };
+		EAD28C8417B2750D41E39C3A /* DBServerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3A5071216F1AB96116BC3F /* DBServerTest.swift */; };
 		ECC6875166947EFFA1140D0B /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 48B5C1F9A381B91371CE5694 /* GRDB */; };
+		EEBE3123079A0761711F29AA /* ManageImControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5742CE7E6AE114FF37312A03 /* ManageImControllerTest.swift */; };
 		EFBC852F9176543E0F0EE2BA /* lime_hs.json in Resources */ = {isa = PBXBuildFile; fileRef = FD47F81F6585217423024BE3 /* lime_hs.json */; };
+		EFD4CBEFA78D4808E9E1178D /* DBServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE1BC618A27E7629062FC20 /* DBServer.swift */; };
 		F20EA45656BE08E5A291F4F5 /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43AF70BA22361D8084D34B7F /* Keyboard.swift */; };
+		F2B817702A0EB8A2941473F6 /* SearchServerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70669219C0D562C4F98D828D /* SearchServerTest.swift */; };
 		F2C8C872E8796234504622A6 /* popup_smileys.json in Resources */ = {isa = PBXBuildFile; fileRef = CB92E7B40C1C7C8BE4561773 /* popup_smileys.json */; };
 		F6DC3F8E9D7CB81AB558668A /* lime_english.json in Resources */ = {isa = PBXBuildFile; fileRef = 0A1B5D154B1A949CA010C9CE /* lime_english.json */; };
 		F732111715EF1196B7295C24 /* ChineseSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C791A042EAF0B0D85E4AEC3 /* ChineseSymbol.swift */; };
 		F86AF51C921192791F73AFA9 /* lime_number_symbol_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = F0787C19D84A228F8B9731E4 /* lime_number_symbol_shift.json */; };
+		F90E1A332F8A90460093FD67 /* IMStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90E1A322F8A90460093FD67 /* IMStoreView.swift */; };
 		F9D73852B20448B404C09BAB /* LimeDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = C413C5F3C96DA0D6411EAD4B /* LimeDB.swift */; };
 		FB1C3B404DFFA9F23F06F7A5 /* CandidateBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B510DDC8A4131A41B66AF682 /* CandidateBarView.swift */; };
+		FB30ABA5721A413D840B98E7 /* IMInstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B87B40971A4789BA6F4D7EF9 /* IMInstallView.swift */; };
 		FB79C88DB4D99018F75EEAFA /* Record.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91652FC0787DE834F53E57B3 /* Record.swift */; };
 		FC4F73BB12D8F2E1EC9F48EF /* lime_et_41_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = EDDD136F5375CC1B486B368C /* lime_et_41_shift.json */; };
 /* End PBXBuildFile section */
@@ -129,48 +168,78 @@
 
 /* Begin PBXFileReference section */
 		00CD73E75A8CF0D717BCDC50 /* lime_ez.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_ez.json; sourceTree = "<group>"; };
+		0595186AC824BB0CCF9D15EF /* ManageRelatedControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageRelatedControllerTest.swift; sourceTree = "<group>"; };
+		05956B91D60A7720342125CA /* DBManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBManagerView.swift; sourceTree = "<group>"; };
 		0A1B5D154B1A949CA010C9CE /* lime_english.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english.json; sourceTree = "<group>"; };
+		0CE58AA4A8D7C8C7CAB2DD1B /* BaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseController.swift; sourceTree = "<group>"; };
+		0D119F9E017971393DE59BAF /* ManageRelatedController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageRelatedController.swift; sourceTree = "<group>"; };
 		14502A56A42472FB229360DB /* Related.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Related.swift; sourceTree = "<group>"; };
 		1736168811E753E9330AA481 /* lime_cj.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_cj.json; sourceTree = "<group>"; };
 		1C4F9CE98A2F9BFF29641233 /* lime_array.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array.json; sourceTree = "<group>"; };
+		1D7D0A62A4FA590A149AF441 /* LIMEPreferenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LIMEPreferenceManager.swift; sourceTree = "<group>"; };
+		2A94150D0447C90FB5163C0C /* SetupImController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupImController.swift; sourceTree = "<group>"; };
 		2BBD717D9016C3670D1726BD /* LimeIMETests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LimeIMETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C0757CC0618D9DFE1917DB1 /* ImConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImConfig.swift; sourceTree = "<group>"; };
 		38B13D232556DEB9E4DCA530 /* lime_dayi.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi.json; sourceTree = "<group>"; };
+		4100A6E7F721B8C08183DAF3 /* RelatedListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedListView.swift; sourceTree = "<group>"; };
+		41390FAC918F440A66942DF3 /* SetupTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupTabView.swift; sourceTree = "<group>"; };
 		43AF70BA22361D8084D34B7F /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		45BBFE60A3BC8E3A9EFBFED2 /* lime_english_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_number_shift.json; sourceTree = "<group>"; };
 		46C07357EED170657A3BF133 /* LimeDBTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeDBTest.swift; sourceTree = "<group>"; };
+		47B9D489710C3F87093FD8EB /* PreferencesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesTabView.swift; sourceTree = "<group>"; };
 		48A1A8F3D03D778777ACC688 /* lime_array_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_number_shift.json; sourceTree = "<group>"; };
 		51309BD0A4AEAF429010BB4F /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		526D1D44C8B349F1C4E03E4A /* lime_english_number.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_number.json; sourceTree = "<group>"; };
+		55ACA3BC6FDCE9C013025EB0 /* KeyboardPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardPickerView.swift; sourceTree = "<group>"; };
 		55C6C7CF0775CFE705BB3B43 /* lime_abc.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_abc.json; sourceTree = "<group>"; };
+		5742CE7E6AE114FF37312A03 /* ManageImControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageImControllerTest.swift; sourceTree = "<group>"; };
+		577CC268BA6F7CF6C121BA1F /* ReverseLookupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReverseLookupSettingsView.swift; sourceTree = "<group>"; };
 		5881111DCA9ED12EFE8C4039 /* lime_cj_number.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_cj_number.json; sourceTree = "<group>"; };
 		5CA64EBB9FF2770C1978FA54 /* lime_et26_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et26_shift.json; sourceTree = "<group>"; };
 		5D8D9FA3BB7317CC35DCEEE6 /* lime_hsu_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_hsu_shift.json; sourceTree = "<group>"; };
 		5E9EE5BA80907FE7407DC189 /* LimeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeSettingsView.swift; sourceTree = "<group>"; };
+		60D9E95479778379D903ABB5 /* ProgressManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressManager.swift; sourceTree = "<group>"; };
+		61D9C2FB678210C7B4C64424 /* ShareManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareManager.swift; sourceTree = "<group>"; };
 		63D7BA593E5AEB581D0E15C5 /* lime_wb.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_wb.json; sourceTree = "<group>"; };
+		6B13B8A0DAD6BA0B7599D6CA /* lime_array10_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array10_shift.json; sourceTree = "<group>"; };
 		6C791A042EAF0B0D85E4AEC3 /* ChineseSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChineseSymbol.swift; sourceTree = "<group>"; };
 		6D385999861624C778BD7C83 /* lime_phonetic_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_phonetic_shift.json; sourceTree = "<group>"; };
-		7114E7123639C57474145B35 /* LimeIME.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LimeIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E5F2482E8ED4695AA042F49 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
+		70669219C0D562C4F98D828D /* SearchServerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchServerTest.swift; sourceTree = "<group>"; };
+		7114E7123639C57474145B35 /* LimeIME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LimeIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		72D282B6F5D58C2A1211F5DA /* NavigationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationManager.swift; sourceTree = "<group>"; };
 		75D020F016341574B4FF2E84 /* lime_dayi_sym_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi_sym_shift.json; sourceTree = "<group>"; };
-		782285680D8D9FE97C096F39 /* LimeIMEKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = LimeIMEKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		782285680D8D9FE97C096F39 /* LimeIMEKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LimeIMEKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A03CFBF615643C92EF59C8E /* KeyLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyLayout.swift; sourceTree = "<group>"; };
 		7BC49B99C3EAFF81057556EC /* LimeIME.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LimeIME.entitlements; sourceTree = "<group>"; };
+		7DA2B1BD116A2D6A7E7EEE90 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		868BBFF2AF500C4B76479AA6 /* popup_domains.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = popup_domains.json; sourceTree = "<group>"; };
 		86957E4A2DDA8D483FC30D94 /* lime_number_symbol.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_number_symbol.json; sourceTree = "<group>"; };
 		86E3E355AECB6CF44FE1CB4F /* lime_array_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_shift.json; sourceTree = "<group>"; };
 		89D98FE64ECEC8DE0535C88A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8A142D8C48B8080CACC06BF5 /* lime_english_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_shift.json; sourceTree = "<group>"; };
+		8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageImController.swift; sourceTree = "<group>"; };
 		91652FC0787DE834F53E57B3 /* Record.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Record.swift; sourceTree = "<group>"; };
 		930EE39E03E98427009BFB60 /* lime_phonetic.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_phonetic.json; sourceTree = "<group>"; };
 		955B457572A329E2A1ADEA50 /* popup_template.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = popup_template.json; sourceTree = "<group>"; };
 		95784239B04D9F726B1DE025 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		8A0428D3A9C54F5AAE294AB794F8AE09 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		9956767005AF49619EA7AD68 /* IMDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMDetailView.swift; sourceTree = "<group>"; };
+		9B737A52F55888952FFB32FC /* ViewProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewProtocols.swift; sourceTree = "<group>"; };
 		A066ECD24F9A4BF55136EAD8 /* lime_hs_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_hs_shift.json; sourceTree = "<group>"; };
 		A4E19D552BFEAA3E2632A221 /* lime_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_shift.json; sourceTree = "<group>"; };
+		A616F712F666B45F6A993A5C /* LIMEPreferenceManagerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LIMEPreferenceManagerTest.swift; sourceTree = "<group>"; };
+		A9627C2D44209CBC7935864D /* SetupImControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupImControllerTest.swift; sourceTree = "<group>"; };
 		AB8617B6EB9EBC4689424A49 /* lime_array_number.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_number.json; sourceTree = "<group>"; };
+		AC4F0B69CBAE8FC8C5547350 /* AddRelatedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRelatedView.swift; sourceTree = "<group>"; };
 		AD0AE1C6B0C4ACFF5512A9BF /* lime_cj_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_cj_shift.json; sourceTree = "<group>"; };
+		ADE1BC618A27E7629062FC20 /* DBServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBServer.swift; sourceTree = "<group>"; };
 		B2E2CC2294E9DD745CA44937 /* lime_hsu.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_hsu.json; sourceTree = "<group>"; };
 		B510DDC8A4131A41B66AF682 /* CandidateBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateBarView.swift; sourceTree = "<group>"; };
+		B7A25E75494E2A56B606A8AC /* RecordListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordListView.swift; sourceTree = "<group>"; };
+		B87B40971A4789BA6F4D7EF9 /* IMInstallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMInstallView.swift; sourceTree = "<group>"; };
 		BA669B17DFE81A3ADB4188FF /* lime_abc_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_abc_shift.json; sourceTree = "<group>"; };
+		BB3212ABE29FA8702C293DD9 /* EditRelatedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditRelatedView.swift; sourceTree = "<group>"; };
 		BC7C55BF2A2E802706106E50 /* lime_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_number_shift.json; sourceTree = "<group>"; };
 		BD9E7EE11221BAE243B120CD /* lime_cj_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_cj_number_shift.json; sourceTree = "<group>"; };
 		BF5C2CE83CEB146D8C56CA62 /* lime_ez_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_ez_shift.json; sourceTree = "<group>"; };
@@ -179,22 +248,27 @@
 		C519D06270032D72E51CF613 /* IMCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMCatalog.swift; sourceTree = "<group>"; };
 		C8CEAFA241DA366CFB51031E /* lime_dayi_sym.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi_sym.json; sourceTree = "<group>"; };
 		CB92E7B40C1C7C8BE4561773 /* popup_smileys.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = popup_smileys.json; sourceTree = "<group>"; };
+		CC3A5071216F1AB96116BC3F /* DBServerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBServerTest.swift; sourceTree = "<group>"; };
+		D003E6B950F019B0269750C6 /* EditRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditRecordView.swift; sourceTree = "<group>"; };
 		D0956117FEB1C2F5C09EB5C5 /* Mapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mapping.swift; sourceTree = "<group>"; };
 		D0CDCC557DD26055CA872A57 /* lime_et_41.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et_41.json; sourceTree = "<group>"; };
 		D75E50434E278FAEF4A4654C /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
-		D8905C956F3A8B895DC1D239 /* IMStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMStoreView.swift; sourceTree = "<group>"; };
+		D7D73F6D92EFFE21C79BBE9E /* IMListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMListView.swift; sourceTree = "<group>"; };
 		DB41E641804023A28303BAE5 /* lime_url.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_url.json; sourceTree = "<group>"; };
 		E291FC497AF0014D898E57FA /* lime_et26.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et26.json; sourceTree = "<group>"; };
 		E84CB76CFC92DAA008483771 /* LayoutLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutLoader.swift; sourceTree = "<group>"; };
 		E95F4D38E0DC06E619BAC1EE /* LimeIMEKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LimeIMEKeyboard.entitlements; sourceTree = "<group>"; };
+		ECF3F8B20C28BBE4D97C3104 /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
 		EDDD136F5375CC1B486B368C /* lime_et_41_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et_41_shift.json; sourceTree = "<group>"; };
 		F04435F2855594DD68DDAB57 /* popup_punctuation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = popup_punctuation.json; sourceTree = "<group>"; };
 		F0787C19D84A228F8B9731E4 /* lime_number_symbol_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_number_symbol_shift.json; sourceTree = "<group>"; };
 		F0AD7B903A3658D6EBB77E60 /* SearchServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchServer.swift; sourceTree = "<group>"; };
 		F485D645136F28A3B5AFED04 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F4FC8B91EDE5C18040A0DA6F /* lime_array10.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array10.json; sourceTree = "<group>"; };
 		F6CE80A85C6FB759A9C33E95 /* popup_c_punctuation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = popup_c_punctuation.json; sourceTree = "<group>"; };
 		F7E6D814B179560C36A6F65E /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		F8352DFA101AE0D5E1606C9A /* lime_wb_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_wb_shift.json; sourceTree = "<group>"; };
+		F90E1A322F8A90460093FD67 /* IMStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMStoreView.swift; sourceTree = "<group>"; };
 		FB7A16FA3131160C10D80369 /* lime_email.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_email.json; sourceTree = "<group>"; };
 		FCCC8E71C5E48A1A81AB896E /* lime_dayi_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi_shift.json; sourceTree = "<group>"; };
 		FD47F81F6585217423024BE3 /* lime_hs.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_hs.json; sourceTree = "<group>"; };
@@ -232,12 +306,43 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		48F53721929606973F5A4805 /* Controllers */ = {
+			isa = PBXGroup;
+			children = (
+				F90E1A322F8A90460093FD67 /* IMStoreView.swift */,
+				0CE58AA4A8D7C8C7CAB2DD1B /* BaseController.swift */,
+				8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */,
+				0D119F9E017971393DE59BAF /* ManageRelatedController.swift */,
+				72D282B6F5D58C2A1211F5DA /* NavigationManager.swift */,
+				60D9E95479778379D903ABB5 /* ProgressManager.swift */,
+				2A94150D0447C90FB5163C0C /* SetupImController.swift */,
+				61D9C2FB678210C7B4C64424 /* ShareManager.swift */,
+				6E5F2482E8ED4695AA042F49 /* IntentHandler.swift */,
+				9B737A52F55888952FFB32FC /* ViewProtocols.swift */,
+			);
+			path = Controllers;
+			sourceTree = "<group>";
+		};
 		4D9BBA9BACFA40D84274DB5E /* LimeIMETests */ = {
 			isa = PBXGroup;
 			children = (
+				CC3A5071216F1AB96116BC3F /* DBServerTest.swift */,
 				46C07357EED170657A3BF133 /* LimeDBTest.swift */,
+				A616F712F666B45F6A993A5C /* LIMEPreferenceManagerTest.swift */,
+				5742CE7E6AE114FF37312A03 /* ManageImControllerTest.swift */,
+				0595186AC824BB0CCF9D15EF /* ManageRelatedControllerTest.swift */,
+				70669219C0D562C4F98D828D /* SearchServerTest.swift */,
+				A9627C2D44209CBC7935864D /* SetupImControllerTest.swift */,
 			);
 			path = LimeIMETests;
+			sourceTree = "<group>";
+		};
+		52229CF7656ADB872BEA5ADE /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				1D7D0A62A4FA590A149AF441 /* LIMEPreferenceManager.swift */,
+			);
+			path = Preferences;
 			sourceTree = "<group>";
 		};
 		65127AB5C42E2A957A36A91F /* Products */ = {
@@ -257,7 +362,6 @@
 				F485D645136F28A3B5AFED04 /* Info.plist */,
 				D75E50434E278FAEF4A4654C /* KeyboardView.swift */,
 				51309BD0A4AEAF429010BB4F /* KeyboardViewController.swift */,
-				7A03CFBF615643C92EF59C8E /* KeyLayout.swift */,
 				E84CB76CFC92DAA008483771 /* LayoutLoader.swift */,
 				E95F4D38E0DC06E619BAC1EE /* LimeIMEKeyboard.entitlements */,
 				C0A9736D68847FDA38616DD6 /* Layouts */,
@@ -282,12 +386,15 @@
 			isa = PBXGroup;
 			children = (
 				95784239B04D9F726B1DE025 /* AppDelegate.swift */,
+				8A0428D3A9C54F5AAE294AB794F8AE09 /* SceneDelegate.swift */,
+				7DA2B1BD116A2D6A7E7EEE90 /* Assets.xcassets */,
 				C519D06270032D72E51CF613 /* IMCatalog.swift */,
-				D8905C956F3A8B895DC1D239 /* IMStoreView.swift */,
 				89D98FE64ECEC8DE0535C88A /* Info.plist */,
 				7BC49B99C3EAFF81057556EC /* LimeIME.entitlements */,
 				5E9EE5BA80907FE7407DC189 /* LimeSettingsView.swift */,
 				F7E6D814B179560C36A6F65E /* MainViewController.swift */,
+				48F53721929606973F5A4805 /* Controllers */,
+				F483912EA3D360958DC81427 /* Views */,
 			);
 			path = LimeIME;
 			sourceTree = "<group>";
@@ -295,6 +402,7 @@
 		AD656E8960176F318C303682 /* Database */ = {
 			isa = PBXGroup;
 			children = (
+				ADE1BC618A27E7629062FC20 /* DBServer.swift */,
 				C413C5F3C96DA0D6411EAD4B /* LimeDB.swift */,
 			);
 			path = Database;
@@ -309,6 +417,8 @@
 				AB8617B6EB9EBC4689424A49 /* lime_array_number.json */,
 				86E3E355AECB6CF44FE1CB4F /* lime_array_shift.json */,
 				1C4F9CE98A2F9BFF29641233 /* lime_array.json */,
+				6B13B8A0DAD6BA0B7599D6CA /* lime_array10_shift.json */,
+				F4FC8B91EDE5C18040A0DA6F /* lime_array10.json */,
 				BD9E7EE11221BAE243B120CD /* lime_cj_number_shift.json */,
 				5881111DCA9ED12EFE8C4039 /* lime_cj_number.json */,
 				AD0AE1C6B0C4ACFF5512A9BF /* lime_cj_shift.json */,
@@ -371,11 +481,34 @@
 			);
 			sourceTree = "<group>";
 		};
+		F483912EA3D360958DC81427 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				ECF3F8B20C28BBE4D97C3104 /* AddRecordView.swift */,
+				AC4F0B69CBAE8FC8C5547350 /* AddRelatedView.swift */,
+				05956B91D60A7720342125CA /* DBManagerView.swift */,
+				D003E6B950F019B0269750C6 /* EditRecordView.swift */,
+				BB3212ABE29FA8702C293DD9 /* EditRelatedView.swift */,
+				9956767005AF49619EA7AD68 /* IMDetailView.swift */,
+				B87B40971A4789BA6F4D7EF9 /* IMInstallView.swift */,
+				D7D73F6D92EFFE21C79BBE9E /* IMListView.swift */,
+				55ACA3BC6FDCE9C013025EB0 /* KeyboardPickerView.swift */,
+				47B9D489710C3F87093FD8EB /* PreferencesTabView.swift */,
+				B7A25E75494E2A56B606A8AC /* RecordListView.swift */,
+				4100A6E7F721B8C08183DAF3 /* RelatedListView.swift */,
+				577CC268BA6F7CF6C121BA1F /* ReverseLookupSettingsView.swift */,
+				41390FAC918F440A66942DF3 /* SetupTabView.swift */,
+				7A03CFBF615643C92EF59C8E /* KeyLayout.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		FAE59527757C912D6D45DF23 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
 				AD656E8960176F318C303682 /* Database */,
 				9C1506ACA815880475569550 /* Models */,
+				52229CF7656ADB872BEA5ADE /* Preferences */,
 				E57CCE835A3A3E3B16A04EBC /* Search */,
 			);
 			path = Shared;
@@ -411,6 +544,7 @@
 			buildPhases = (
 				F5E01FBCA298C9F9AAE9A8A9 /* Copy lime.db to bundle */,
 				A2A322193FD1089E054DCD60 /* Sources */,
+				5CDE9B03925CC3482ECA1228 /* Resources */,
 				34D06C4DC6A0297415E88E79 /* Frameworks */,
 				5F7BE0979F0F761E8B3CCFC6 /* Embed Foundation Extensions */,
 			);
@@ -463,12 +597,6 @@
 					4E79250369850046806B9D14 = {
 						DevelopmentTeam = "";
 					};
-					8E0810E1C8E2E432E67648A5 = {
-						DevelopmentTeam = "";
-					};
-					E5EEAC95CEE986BFC16612A3 = {
-						DevelopmentTeam = "";
-					};
 				};
 			};
 			buildConfigurationList = 3D1639DE66308122314B4178 /* Build configuration list for PBXProject "LimeIME" */;
@@ -481,7 +609,7 @@
 			mainGroup = EBC7471D5225EDBA1B16EA44;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB" */,
 				D3355D92D36CA4E7DA904632 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -497,6 +625,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		5CDE9B03925CC3482ECA1228 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6F12A9A974F2C5E8AA0B5EE /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F3F12614B80FA93D90347100 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -504,6 +640,8 @@
 				15A7155D44FB31C8E5FA81A7 /* lime_abc.json in Resources */,
 				50E96984370C01489813E77A /* lime_abc_shift.json in Resources */,
 				12383EA9BE71DC6C521BE418 /* lime_array.json in Resources */,
+				D464685F5EEDE297A1308B0D /* lime_array10.json in Resources */,
+				C109FBA362D78FD3CEF3ABF4 /* lime_array10_shift.json in Resources */,
 				246EAA15755121E22608F909 /* lime_array_number.json in Resources */,
 				C798DBEA7EC7AAD1D9821E2E /* lime_array_number_shift.json in Resources */,
 				C8ECC0AE9971356C025A4864 /* lime_array_shift.json in Resources */,
@@ -617,14 +755,22 @@
 			buildActionMask = 2147483647;
 			files = (
 				F732111715EF1196B7295C24 /* ChineseSymbol.swift in Sources */,
+				EFD4CBEFA78D4808E9E1178D /* DBServer.swift in Sources */,
+				EAD28C8417B2750D41E39C3A /* DBServerTest.swift in Sources */,
 				2EE2BFCC6A02AFA1E73E7D27 /* ImConfig.swift in Sources */,
 				F20EA45656BE08E5A291F4F5 /* Keyboard.swift in Sources */,
+				1DBB21F1304CE6388E830E57 /* LIMEPreferenceManager.swift in Sources */,
+				30A1639B07058FC030BD00CF /* LIMEPreferenceManagerTest.swift in Sources */,
 				E02BE727FF878D591A3D34B5 /* LimeDB.swift in Sources */,
 				9B1ECA9BBCEE603587497032 /* LimeDBTest.swift in Sources */,
+				EEBE3123079A0761711F29AA /* ManageImControllerTest.swift in Sources */,
+				41CFFB478874C876C611CC47 /* ManageRelatedControllerTest.swift in Sources */,
 				41F0C74C36F32BE94395EF6C /* Mapping.swift in Sources */,
 				DAB0143D532C5A092FAE707C /* Record.swift in Sources */,
 				13652AFA1DEB88089B2BCC8E /* Related.swift in Sources */,
 				B174D69873CFB28046FD2166 /* SearchServer.swift in Sources */,
+				F2B817702A0EB8A2941473F6 /* SearchServerTest.swift in Sources */,
+				0638AFC436CE8D769E24B98D /* SetupImControllerTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -632,19 +778,45 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EA5199243A781A843C22C763 /* AddRecordView.swift in Sources */,
+				C8B325C7466723E467598705 /* AddRelatedView.swift in Sources */,
 				D56F9308DBE0E2982A156EDC /* AppDelegate.swift in Sources */,
+				AA3B0F4752A14402A5D451EEE3EDB867 /* SceneDelegate.swift in Sources */,
+				A2F219F1CBA53FD575DA827D /* BaseController.swift in Sources */,
 				9FB37AFD7E021F497B9BC5C7 /* ChineseSymbol.swift in Sources */,
+				9F2367C0D0894DAA927C14D5 /* DBManagerView.swift in Sources */,
+				90A2992BD492D2D9B8D1ECB5 /* DBServer.swift in Sources */,
+				E8E5B5DA570FE25A0B191DB8 /* EditRecordView.swift in Sources */,
+				AA9958D46518A84859225554 /* EditRelatedView.swift in Sources */,
 				AAB43ADB780D8C94FCFF9D68 /* IMCatalog.swift in Sources */,
-				090FE96F5983C4AAFEDE4AD7 /* IMStoreView.swift in Sources */,
+				F90E1A332F8A90460093FD67 /* IMStoreView.swift in Sources */,
+				A4621818C72E0671433B8C79 /* IMDetailView.swift in Sources */,
+				FB30ABA5721A413D840B98E7 /* IMInstallView.swift in Sources */,
+				2FD666E4E6936D6EED00518A /* IMListView.swift in Sources */,
 				91114A2E568054305BF86C11 /* ImConfig.swift in Sources */,
 				4C1012BD29921E3B0201DBBC /* Keyboard.swift in Sources */,
+				05655700F55F7F2F05431516 /* KeyboardPickerView.swift in Sources */,
+				A80635FAE2E8FE18ED2B15A4 /* LIMEPreferenceManager.swift in Sources */,
 				F9D73852B20448B404C09BAB /* LimeDB.swift in Sources */,
 				D82AE1FA73F859BBABBF644C /* LimeSettingsView.swift in Sources */,
 				C9C4D445F9D778B1F3CB5102 /* MainViewController.swift in Sources */,
+				2A964733C022A582DDF047D5 /* ManageImController.swift in Sources */,
+				83C7E2007EFF3D10C4F43EAF /* ManageRelatedController.swift in Sources */,
 				7F9F9E4BA76E6189F91E57E3 /* Mapping.swift in Sources */,
+				19553070C791A938D59B8098 /* NavigationManager.swift in Sources */,
+				869F6DB2830E0B87119A2E4F /* PreferencesTabView.swift in Sources */,
+				493AFBCF68750E34559BA2E2 /* ProgressManager.swift in Sources */,
 				6DDCA062AC27D53BE405CECB /* Record.swift in Sources */,
+				7EC4434D0F3C544314B64131 /* RecordListView.swift in Sources */,
 				27553064FBBC2A0E4E5ACDC9 /* Related.swift in Sources */,
+				BD958D0BA5A814EF01A5C2AD /* RelatedListView.swift in Sources */,
+				8F245640844D5E2553C17BF5 /* ReverseLookupSettingsView.swift in Sources */,
 				8EBAC89F106963E2B9A020A1 /* SearchServer.swift in Sources */,
+				8525ADC346FD46AA6F2FF251 /* SetupImController.swift in Sources */,
+				3A2F164CC78CD804C67805DE /* SetupTabView.swift in Sources */,
+				394FDBA2792355ADDE3ADDB2 /* ShareManager.swift in Sources */,
+				3741F86BFFCC4D76A2155780 /* IntentHandler.swift in Sources */,
+				079D51B244090D1F399274BD /* ViewProtocols.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -654,11 +826,13 @@
 			files = (
 				FB1C3B404DFFA9F23F06F7A5 /* CandidateBarView.swift in Sources */,
 				8AC6B7DC76692A7FBFDDF3F9 /* ChineseSymbol.swift in Sources */,
+				05CE854A1417A2D45839D8D2 /* DBServer.swift in Sources */,
 				A2E7579A48126A3587829923 /* ImConfig.swift in Sources */,
 				644A29210C83B5B9BD11A9AC /* KeyLayout.swift in Sources */,
 				54537083062A7847A6BAE8BC /* Keyboard.swift in Sources */,
 				3E81089E57F6CB90A2BFF152 /* KeyboardView.swift in Sources */,
 				8B72D83300CAD566BFCF3FE1 /* KeyboardViewController.swift in Sources */,
+				273FC9499F6AFA5F033213D4 /* LIMEPreferenceManager.swift in Sources */,
 				C29DD224E7D5797D71BFD56C /* LayoutLoader.swift in Sources */,
 				8B8D5CEFF8EB0D19EEB0F35C /* LimeDB.swift in Sources */,
 				17766B10C8DE7763C32633C1 /* Mapping.swift in Sources */,
@@ -690,7 +864,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = LimeIME/LimeIME.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4DXY8QPPAK;
 				INFOPLIST_FILE = LimeIME/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -770,7 +944,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LimeIMEKeyboard/LimeIMEKeyboard.entitlements;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4DXY8QPPAK;
 				INFOPLIST_FILE = LimeIMEKeyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -828,7 +1002,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = LimeIME/LimeIME.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4DXY8QPPAK;
 				INFOPLIST_FILE = LimeIME/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -845,7 +1019,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LimeIMEKeyboard/LimeIMEKeyboard.entitlements;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4DXY8QPPAK;
 				INFOPLIST_FILE = LimeIMEKeyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -957,7 +1131,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+		B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift";
 			requirement = {
@@ -978,7 +1152,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		48B5C1F9A381B91371CE5694 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
 		};
 		59409130182D005E62853937 /* ZIPFoundation */ = {
@@ -993,12 +1167,12 @@
 		};
 		7D65C99D71D2AC588F3B3903 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
 		};
 		9D5AC9140B64BE293B4125AC /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			package = B8B97FF38A758B2C2E9EB075 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
 		};
 		D84706F48CD91AF3D1857A1F /* ZIPFoundation */ = {

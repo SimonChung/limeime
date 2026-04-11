@@ -12,6 +12,7 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - SearchServer
     private var searchServer: SearchServer?
     private var db: LimeDB?
+    private var lastKnownRestoreTimestamp: Double = 0
 
     // MARK: - Composing State (spec §3)
     private var mComposing:      String = ""  // current composing code buffer
@@ -24,13 +25,17 @@ final class KeyboardViewController: UIInputViewController {
     private var committedCandidate: Mapping? = nil
     private var mCandidateList:     [Mapping] = []
     private var hasCandidatesShown: Bool = false
+    /// True when the candidate bar is currently showing related phrases (for "More" expansion).
+    private var isShowingRelatedPhrases: Bool = false
 
     // MARK: - Mode State (spec §3)
     private var mEnglishOnly: Bool = false
     private var mCapsLock:    Bool = false
     private var isShiftOn:    Bool = false
     private var activeIM:     String = "phonetic"
-    private var currentLayout: LimeKeyLayout = .phonetic
+    // Sentinel ID "__unset__" ensures initOnStartInput always loads the JSON layout on first call,
+    // even when the JSON id matches the hardcoded fallback id ("lime_phonetic").
+    private var currentLayout: LimeKeyLayout = LimeKeyLayout(id: "__unset__", rows: [])
 
     // MARK: - English Prediction (spec §7 — iOS: UITextChecker replaces custom dict)
     private var tempEnglishWord: String = ""
@@ -40,6 +45,8 @@ final class KeyboardViewController: UIInputViewController {
     private var autoCommit: Int = 0  // 0 = off; >0 = auto-commit at that composing length
 
     // MARK: - Settings (spec §15 — read from shared UserDefaults)
+    /// Raw `keyboard_theme` value (0–5 = explicit palette; 6 = follow system appearance).
+    private var currentKeyboardTheme:    Int  = 0
     private var hanConvertOption:        Int  = 0     // 0=off, 1=T→S, 2=S→T
     private var autoChineseSymbol:       Bool = false // show Chinese punctuation after commit
     private var sortSuggestions:         Bool = false
@@ -76,10 +83,23 @@ final class KeyboardViewController: UIInputViewController {
     // Set true around our own insertText/deleteBackward calls to suppress textDidChange checks
     private var isSelfUpdate = false
 
+    // MARK: - Key Preview
+    private weak var keyPreviewView: UIView?
+
+    // MARK: - Composing Popup (mirrors Android mComposingTextPopup, spec §6)
+    // A thin collapsible strip ABOVE the candidate bar that shows the IM
+    // keyname (e.g. "日月" for Dayi "dj"). Height is 0 when idle so it takes
+    // zero vertical space — candidates keep their full width.
+    private var composingPopupLabel: UILabel!
+    private var composingPopupHeightConstraint: NSLayoutConstraint!
+    private let composingPopupHeight: CGFloat = 22
+
     // MARK: - Keyboard Geometry
     private let candidateBarHeight: CGFloat = 44
-    private let keyRowHeight:       CGFloat = 44
+    // keyRowHeight removed — height is now driven by KeyboardView.preferredHeight,
+    // which sums actual per-row heights (54 pt regular, 56 pt bottom row).
     private var keyboardHeightConstraint: NSLayoutConstraint?
+    private weak var inlineMenuPanel: UIView?
 
     // MARK: - Lifecycle
 
@@ -87,19 +107,52 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         if let loaded = LayoutLoader.load("lime_phonetic") { currentLayout = loaded }
         LayoutLoader.prefetchCommonLayouts()
-        setupDatabase()
         setupKeyboardUI()
         applyHeight()
+        // Run DB setup off the main thread — avoids blocking the keyboard's view
+        // lifecycle and prevents the Settings watchdog from killing the Preferences
+        // app (0x8BADF00D) when it presents the keyboard extension for the first time.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.setupDatabase()
+        }
     }
 
     /// Called every time the keyboard becomes visible (spec §2 initOnStartInput).
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Reload database if Settings app performed a restore while the keyboard was inactive.
+        // After restore, the keyboard's DatabaseQueue points to the old (replaced) file.
+        let restoredAt = UserDefaults(suiteName: "group.net.toload.limeime")?
+            .double(forKey: "lime_db_restored_at") ?? 0
+        if restoredAt > lastKnownRestoreTimestamp {
+            lastKnownRestoreTimestamp = restoredAt
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.setupDatabase()
+            }
+        }
         initOnStartInput()
+    }
+
+    /// Called every time the keyboard is dismissed — equivalent to Android postFinishInput().
+    /// Triggers deferred LD phrase learning (spec §9 Tier 2).
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if let ss = searchServer {
+            DispatchQueue.global(qos: .background).async {
+                ss.learnLDPhrase()
+            }
+        }
     }
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
+        // Use screen bounds to detect orientation — NOT view.bounds.
+        // The keyboard extension view is always wider than tall (e.g. 430 × 270pt),
+        // so view.bounds.width > view.bounds.height is always true and would
+        // permanently force landscape row heights and horizontal label layout.
+        let screen = UIScreen.main.bounds
+        let landscape = screen.width > screen.height
+        keyboardView?.isLandscape = landscape
         applyHeight()
         updateGlobeKeyVisibility()
     }
@@ -112,6 +165,8 @@ final class KeyboardViewController: UIInputViewController {
 
         // Theme change (light ↔ dark): keyboard background updates automatically via system colors,
         // but we need to refresh the keyboard view to pick up any color-dependent resources.
+        // When keyboard_theme == 6 (系統設定), resolvedKeyboardTheme re-evaluates here so the
+        // palette switches automatically as the user toggles system appearance.
         if prev.userInterfaceStyle != traitCollection.userInterfaceStyle {
             keyboardView?.setLayout(currentLayout)
         }
@@ -145,6 +200,13 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Initialization (spec §2 initOnStartInput)
 
     private func initOnStartInput() {
+        // If the container app modified IM records (score/code/word), clear the stale cache
+        // so the first keystroke re-queries from the updated DB.
+        if sharedDefaults?.bool(forKey: "needsKeyboardCacheReset") == true {
+            searchServer?.clearAllCaches()
+            sharedDefaults?.removeObject(forKey: "needsKeyboardCacheReset")
+        }
+
         mCompletionOn = false
         mCapsLock     = false
 
@@ -166,8 +228,30 @@ final class KeyboardViewController: UIInputViewController {
             mPredictionOn = true
         }
 
-        let layoutName = mEnglishOnly ? "lime_abc" : "lime_phonetic"
-        if let newLayout = LayoutLoader.load(layoutName), newLayout.id != currentLayout.id {
+        // Restore last-used LIME IM (mirrors Android mLIMEPref.getActiveIM(), key "keyboard_list")
+        if !mEnglishOnly {
+            let saved = sharedDefaults?.string(forKey: "keyboard_list") ?? ""
+            if !saved.isEmpty && saved != activeIM {
+                // Find the saved IM in the activated list and restore index
+                if let idx = activatedIMs.firstIndex(where: { $0.tableNick == saved }) {
+                    activeIM      = saved
+                    activeIMIndex = idx
+                    if let db = self.db {
+                        let caps = imCapabilities(for: activeIM, db: db)
+                        searchServer?.setTableName(activeIM,
+                            hasNumberMapping: caps.hasNumber,
+                            hasSymbolMapping: caps.hasSymbol)
+                    } else {
+                        searchServer?.setTableName(activeIM)
+                    }
+                    searchServer?.setPhoneticKeyboardType(phoneticKeyboardType)
+                }
+            }
+        }
+
+        let layoutName = mEnglishOnly ? "lime_english" : "lime_\(activeIM)"
+        if let newLayout = LayoutLoader.load(layoutName) ?? LayoutLoader.load("lime_phonetic"),
+           newLayout.id != currentLayout.id {
             currentLayout = newLayout
             keyboardView?.setLayout(currentLayout)
             applyHeight()
@@ -192,46 +276,45 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         guard let limeDB = try? LimeDB(path: dbPath) else { return }
-        db = limeDB
-        searchServer = SearchServer(db: limeDB)
 
-        // Load settings from shared UserDefaults (spec §15)
-        loadSettings()
-
-        // Auto-import phonetic (and seedDefaultIMs) FIRST so getAllImConfigs() is populated.
+        // Auto-import phonetic (and seedDefaultIMs) FIRST — this is the heavy I/O work
+        // that must stay off the main thread.
         importPhoneticIfNeeded(db: limeDB, containerURL: containerURL)
+        importRelatedIfNeeded(db: limeDB)
 
-        // Load activated IM list from keyboard_state preference
+        // Build the activated IM list off-thread (DB reads only)
         let allIMs = (try? limeDB.getAllImConfigs()) ?? []
-        let kbState = sharedDefaults?.string(forKey: "keyboard_state") ?? ""
+        let kbState = UserDefaults(suiteName: "group.net.toload.limeime")?.string(forKey: "keyboard_state") ?? ""
+        var resolved: [ImConfig]
         if kbState.isEmpty {
-            activatedIMs = allIMs.filter { $0.enabled }
+            resolved = allIMs.filter { $0.enabled }
         } else {
             let enabled = Set(kbState.components(separatedBy: ","))
-            activatedIMs = allIMs.filter { enabled.contains($0.tableNick) }
+            resolved = allIMs.filter { enabled.contains($0.tableNick) }
         }
-        if activatedIMs.isEmpty {
-            activatedIMs = allIMs.filter { $0.enabled }
-        }
+        if resolved.isEmpty { resolved = allIMs.filter { $0.enabled } }
+        if resolved.isEmpty { resolved = buildFallbackIMList(db: limeDB) }
 
-        // Final fallback: im table still empty (e.g. no DB yet) — scan tables with data directly.
-        if activatedIMs.isEmpty {
-            activatedIMs = buildFallbackIMList(db: limeDB)
-        }
+        let firstNick = resolved.first?.tableNick ?? allIMs.first(where: { $0.enabled })?.tableNick ?? "phonetic"
+        let resolvedIM = firstNick.isEmpty ? "phonetic" : firstNick
+        let caps = imCapabilities(for: resolvedIM, db: limeDB)
+        let ss = SearchServer(db: limeDB)
+        ss.setTableName(resolvedIM, hasNumberMapping: caps.hasNumber, hasSymbolMapping: caps.hasSymbol)
 
-        // Set initial active IM
-        if let first = activatedIMs.first {
-            activeIM      = first.tableNick.isEmpty ? "phonetic" : first.tableNick
-            activeIMIndex = 0
-        } else if let firstIM = allIMs.first(where: { $0.enabled }) {
-            activeIM = firstIM.tableNick.isEmpty ? "phonetic" : firstIM.tableNick
+        // Marshal all state assignments back to the main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.db           = limeDB
+            self.searchServer = ss
+            self.activatedIMs  = resolved
+            self.activeIM      = resolvedIM
+            self.activeIMIndex = 0
+            // Load settings from shared UserDefaults (spec §15)
+            self.loadSettings()
+            self.searchServer?.setPhoneticKeyboardType(self.phoneticKeyboardType)
+            self.searchServer?.sortSuggestions = self.sortSuggestions
+            self.applyFeedbackSettings()
         }
-        let caps = imCapabilities(for: activeIM, db: limeDB)
-        searchServer?.setTableName(activeIM, hasNumberMapping: caps.hasNumber,
-                                   hasSymbolMapping: caps.hasSymbol)
-        searchServer?.setPhoneticKeyboardType(phoneticKeyboardType)
-        searchServer?.sortSuggestions = sortSuggestions
-        applyFeedbackSettings()
     }
 
     /// Build an activatedIMs list directly from IM data tables that have rows.
@@ -243,7 +326,7 @@ final class KeyboardViewController: UIInputViewController {
             ("cj",       "倉頡",     "lime_cj"),
             ("cj5",      "倉頡五代", "lime_cj"),
             ("array",    "行列",     "lime_array"),
-            ("array10",  "行列十",   "lime_array"),
+            ("array10",  "行列十",   "lime_array10"),
             ("wb",       "筆順五碼", "lime_wb"),
             ("hs",       "許氏",     "lime_hs"),
             ("ez",       "輕鬆",     "lime_ez"),
@@ -266,8 +349,18 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     /// Load all user preferences from shared UserDefaults (spec §15).
+    /// Returns the resolved theme index (0–5), mapping value 6 (系統設定) to 0 (淺色) or 1 (深色)
+    /// based on the current UITraitCollection. Callers use this when applying colour palettes.
+    var resolvedKeyboardTheme: Int {
+        if currentKeyboardTheme == 6 {
+            return traitCollection.userInterfaceStyle == .dark ? 1 : 0
+        }
+        return currentKeyboardTheme
+    }
+
     private func loadSettings() {
         let d = sharedDefaults
+        currentKeyboardTheme = d?.integer(forKey: "keyboard_theme") ?? 0
         hanConvertOption     = d?.integer(forKey: "hanConvertOption")     ?? 0
         autoChineseSymbol    = d?.bool(forKey: "autoChineseSymbol")       ?? false
         sortSuggestions      = d?.bool(forKey: "sortSuggestions")         ?? false
@@ -303,6 +396,12 @@ final class KeyboardViewController: UIInputViewController {
         searchServer?.clearAllCaches()
     }
 
+    private func importRelatedIfNeeded(db: LimeDB) {
+        guard !db.tableHasData("related") else { return }
+        guard let srcURL = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
+        db.importDbRelated(srcURL)
+    }
+
     /// Determine whether an IM's code table uses digit and/or symbol characters.
     /// The phonetic family (and similar tone-based IMs) use digits 0-9 for initials/tones
     /// and symbols like ;, /, ., - for finals. Non-phonetic IMs (Cangjie, Array, etc.)
@@ -323,7 +422,23 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - UI Setup
 
     private func setupKeyboardUI() {
-        view.backgroundColor = UIColor.systemGray4
+        // Transparent so the area above the candidate bar (the collapsible
+        // popup strip) doesn't paint a gray rectangle next to the keyname bubble.
+        view.backgroundColor = .clear
+
+        // Composing keyname strip (collapsible, 0pt height when idle).
+        // Background matches the candidate bar so the popup reads as part of it.
+        composingPopupLabel = UILabel()
+        composingPopupLabel.translatesAutoresizingMaskIntoConstraints = false
+        composingPopupLabel.font = UIFont.systemFont(ofSize: 15, weight: .medium)
+        composingPopupLabel.textColor = .label
+        composingPopupLabel.textAlignment = .left
+        composingPopupLabel.backgroundColor = UIColor.systemGray6
+        composingPopupLabel.isHidden = true
+        composingPopupLabel.clipsToBounds = true
+        composingPopupLabel.layer.cornerRadius = 4
+        view.addSubview(composingPopupLabel)
+        composingPopupHeightConstraint = composingPopupLabel.heightAnchor.constraint(equalToConstant: 0)
 
         // Candidate bar
         candidateBar = CandidateBarView()
@@ -338,7 +453,12 @@ final class KeyboardViewController: UIInputViewController {
         view.addSubview(keyboardView)
 
         NSLayoutConstraint.activate([
-            candidateBar.topAnchor.constraint(equalTo: view.topAnchor),
+            composingPopupLabel.topAnchor.constraint(equalTo: view.topAnchor),
+            composingPopupLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
+            composingPopupLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -6),
+            composingPopupHeightConstraint,
+
+            candidateBar.topAnchor.constraint(equalTo: composingPopupLabel.bottomAnchor),
             candidateBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             candidateBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             candidateBar.heightAnchor.constraint(equalToConstant: candidateBarHeight),
@@ -353,8 +473,12 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func applyHeight() {
-        let rowCount = CGFloat(currentLayout.rows.count)
-        let totalHeight = candidateBarHeight + rowCount * keyRowHeight
+        // Use KeyboardView.preferredHeight so the outer extension view is sized to
+        // exactly match the sum of each row's actual height (54 pt regular, 56 pt
+        // bottom row), rather than a flat per-row constant that would squish keys.
+        let keysHeight = keyboardView?.preferredHeight ?? CGFloat(currentLayout.rows.count) * 54
+        let popupHeight = composingPopupHeightConstraint?.constant ?? 0
+        let totalHeight = popupHeight + candidateBarHeight + keysHeight
         if let existing = keyboardHeightConstraint {
             existing.constant = totalHeight
         } else {
@@ -492,7 +616,8 @@ final class KeyboardViewController: UIInputViewController {
             finishComposing()
         }
 
-        if isShiftOn && code != LimeKeyCode.shift.rawValue { setShift(false) }
+        // One-shot shift: auto-reset after a character (caps lock stays)
+        if isShiftOn && !mCapsLock && code != LimeKeyCode.shift.rawValue { setShift(false) }
     }
 
     // MARK: - English Character Handling (spec §5 English Mode)
@@ -510,7 +635,7 @@ final class KeyboardViewController: UIInputViewController {
         textDocumentProxy.insertText(insertChar)
         isSelfUpdate = false
         updateEnglishPrediction()
-        if isShiftOn { setShift(false) }
+        if isShiftOn && !mCapsLock { setShift(false) }   // one-shot reset
     }
 
     // MARK: - Backspace Handling (spec §5 handleBackspace — 6 cases)
@@ -525,7 +650,7 @@ final class KeyboardViewController: UIInputViewController {
             isSelfUpdate = false
             composingLength -= 1
             updateCandidates()
-            candidateBar.setComposingCode(keyname(mComposing))
+            showComposingPopup()
 
         } else if mComposing.count == 1 {
             // Case 2: composing == 1 → clear composing and force-remove from document (spec §5)
@@ -558,20 +683,52 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     // MARK: - Shift / CapsLock (spec §4 handleShift)
+    // Three states matching Android: off → one-shot (on) → caps lock → off
+    // Layout switching: normal ↔ _shift variant (mirrors Android toggleShift())
 
     private func handleShift() {
         if mCapsLock {
-            mCapsLock = false; setShift(false)
+            // Caps lock → off
+            mCapsLock = false
+            isShiftOn = false
+            applyShiftState()
         } else if isShiftOn {
-            mCapsLock = true   // second tap → caps lock
+            // One-shot → caps lock
+            mCapsLock = true
+            isShiftOn = true
+            applyShiftState()
         } else {
-            setShift(true)
+            // Off → one-shot
+            isShiftOn = true
+            applyShiftState()
+        }
+    }
+
+    /// Apply the current shift/capsLock state to the keyboard view (icon) and layout.
+    private func applyShiftState() {
+        // Update shift key icon (3 states)
+        let state: KeyboardView.ShiftState = mCapsLock ? .capsLock : (isShiftOn ? .on : .off)
+        keyboardView?.setShiftState(state)
+
+        // Switch to shift layout variant when active, normal variant when off.
+        // Mirrors Android mKeyboardSwitcher.toggleShift().
+        // Only switch for layouts that have a _shift variant (abc, phonetic, etc.).
+        let wantShift = isShiftOn || mCapsLock
+        let base      = currentLayout.id.hasSuffix("_shift")
+                        ? String(currentLayout.id.dropLast(6))  // already shifted → get base
+                        : currentLayout.id
+        let targetId  = wantShift ? "\(base)_shift" : base
+        if targetId != currentLayout.id,
+           let newLayout = LayoutLoader.load(targetId) {
+            currentLayout = newLayout
+            keyboardView?.setLayout(currentLayout)
+            applyHeight()
         }
     }
 
     private func setShift(_ on: Bool) {
         isShiftOn = on
-        keyboardView.setShift(on)
+        applyShiftState()
     }
 
     private func handleClose() {
@@ -590,7 +747,10 @@ final class KeyboardViewController: UIInputViewController {
               capType == .sentences || capType == .allCharacters || capType == .words else { return }
         let before = textDocumentProxy.documentContextBeforeInput ?? ""
         let atStart = before.isEmpty || before.hasSuffix(". ") || before.hasSuffix("! ") || before.hasSuffix("? ")
-        if atStart { setShift(true) }
+        if atStart {
+            isShiftOn = true
+            applyShiftState()
+        }
     }
 
     // MARK: - iOS Composing Simulation (spec §12)
@@ -610,6 +770,7 @@ final class KeyboardViewController: UIInputViewController {
         hasChineseSymbolCandidatesShown = false
         candidateBar.setComposingCode("")
         candidateBar.setCandidates([])
+        hideComposingPopup()
     }
 
     /// Cancel composing without touching the document (cursor moved externally).
@@ -622,6 +783,7 @@ final class KeyboardViewController: UIInputViewController {
         hasChineseSymbolCandidatesShown = false
         candidateBar.setComposingCode("")
         candidateBar.setCandidates([])
+        hideComposingPopup()
     }
 
     /// Reset composing tracking after text has been committed or cleared.
@@ -630,6 +792,7 @@ final class KeyboardViewController: UIInputViewController {
         composingLength  = 0
         selectedCandidate = nil
         hasCandidatesShown = false
+        hideComposingPopup()
     }
 
     // MARK: - Candidate Flow (spec §6 updateCandidates)
@@ -638,6 +801,9 @@ final class KeyboardViewController: UIInputViewController {
         guard mPredictionOn, let ss = searchServer, !mComposing.isEmpty else {
             clearSuggestions(); return
         }
+        // Show composing popup IMMEDIATELY (don't wait for async DB query).
+        // Mirrors Android: the popup is based on keyToKeyname(mComposing), independent of candidate results.
+        showComposingPopup()
         // On composing restart (length == 1): clear runtime suggestion context (spec §6)
         if mComposing.count == 1 && smartChineseInput {
             ss.clearSuggestionContext()
@@ -669,6 +835,7 @@ final class KeyboardViewController: UIInputViewController {
     private func setSuggestions(_ list: [Mapping]) {
         mCandidateList     = list
         hasCandidatesShown = !list.isEmpty
+        isShowingRelatedPhrases = false
 
         // If index 1 is an exact match, select it (skips the composing echo at index 0)
         if list.count > 1 && list[1].isExactMatchToCodeRecord {
@@ -677,9 +844,12 @@ final class KeyboardViewController: UIInputViewController {
             selectedCandidate = list.first(where: { !$0.isComposingCodeRecord })
         }
 
-        // Display keyname in composing bar (spec §6 step 7)
-        candidateBar.setComposingCode(keyname(mComposing))
-        showCandidates(list.filter { !$0.isComposingCodeRecord })
+        // Mixed mode (spec §6, Android CandidateView.setComposingText):
+        // - Show keyname popup ABOVE the candidate bar (e.g. "日土" for Dayi "dj")
+        // - Keep the composing code record VISIBLE in the candidate bar at index 0
+        //   so the user can tap it to commit the raw English letters.
+        showComposingPopup()
+        showCandidates(list)                        // include composing code record
     }
 
     /// Show candidates in the bar, applying current selkey config (spec §6).
@@ -703,14 +873,57 @@ final class KeyboardViewController: UIInputViewController {
             }
         }
         hasChineseSymbolCandidatesShown = false
+        isShowingRelatedPhrases = false
         mCandidateList     = []
         hasCandidatesShown = false
         selectedCandidate  = nil
         candidateBar.setCandidates([])
+        // Keep the keyname popup visible while the user is still composing.
+        // clearSuggestions() runs both when composing is fully cleared AND when
+        // the DB returns zero matches during an ongoing composition — only the
+        // former should tear down the popup.
+        if mComposing.isEmpty {
+            hideComposingPopup()
+        }
     }
 
     private func keyname(_ code: String) -> String {
         searchServer?.keyToKeyname(code) ?? code
+    }
+
+    // MARK: - Composing Popup (mirrors Android mComposingTextPopup)
+
+    /// Show the IM keyname in the thin strip above the candidate bar.
+    /// Strip expands from 0 → composingPopupHeight only when we have a keyname,
+    /// so candidates get full horizontal width when idle.
+    private func showComposingPopup() {
+        let raw = mComposing
+        guard !raw.isEmpty, !mEnglishOnly else { hideComposingPopup(); return }
+
+        let name = keyname(raw)
+        // Only show when keyname actually differs from raw code (matches Android)
+        guard name.uppercased() != raw.uppercased(),
+              !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            hideComposingPopup()
+            return
+        }
+        composingPopupLabel.text = " \(name) "
+        composingPopupLabel.isHidden = false
+        if composingPopupHeightConstraint.constant != composingPopupHeight {
+            composingPopupHeightConstraint.constant = composingPopupHeight
+            view.layoutIfNeeded()
+            applyHeight()
+        }
+    }
+
+    private func hideComposingPopup() {
+        composingPopupLabel.text = nil
+        composingPopupLabel.isHidden = true
+        if composingPopupHeightConstraint.constant != 0 {
+            composingPopupHeightConstraint.constant = 0
+            view.layoutIfNeeded()
+            applyHeight()
+        }
     }
 
     // MARK: - Candidate Selection (spec §8)
@@ -724,9 +937,16 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func pickCandidateManually(_ candidate: Mapping) {
+        let wasComposingCodeCommit = candidate.isComposingCodeRecord
         selectedCandidate = candidate
         commitTyped()
-        updateRelatedPhrase()
+        if wasComposingCodeCommit {
+            // Mixed-mode raw-English commit: no related phrases; clear the bar
+            // (updateRelatedPhrase bails for composing-code records without clearing).
+            clearSuggestions()
+        } else {
+            updateRelatedPhrase()
+        }
     }
 
     // MARK: - Commit Flow (spec §8 commitTyped)
@@ -780,7 +1000,7 @@ final class KeyboardViewController: UIInputViewController {
                 textDocumentProxy.insertText(remaining)
                 isSelfUpdate = false
                 updateCandidates()
-                candidateBar.setComposingCode(keyname(remaining))
+                showComposingPopup()
                 // Buffer for LD learning (spec §5 Continuous Typing)
                 if learnPhrase { searchServer?.addLDPhrase(candidate, ending: false) }
                 // Track LD composing buffer (spec §5)
@@ -820,22 +1040,42 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Related Phrase Display (spec §8 updateRelatedPhrase)
 
-    private func updateRelatedPhrase() {
+    private func updateRelatedPhrase(getAllRecords: Bool = false) {
         guard let committed = committedCandidate,
               !committed.word.isEmpty,
               !committed.isEmojiRecord,
               !committed.isChinesePunctuationRecord,
+              !committed.isComposingCodeRecord,   // mixed-mode raw-code commit has no related phrases
               let ss = searchServer else { return }
+
+        // Clear stale composing candidates immediately so the bar doesn't linger.
+        // Only when no remaining composing; if commitTyped() left a partial buffer,
+        // updateCandidates() owns the bar.
+        if mComposing.isEmpty {
+            mCandidateList          = []
+            hasCandidatesShown      = false
+            isShowingRelatedPhrases = false
+            selectedCandidate       = nil
+            candidateBar.setCandidates([])
+            candidateBar.setComposingCode("")
+        }
 
         let word = committed.word
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-            let related = ss.getRelatedByWord(word)
+            let related = ss.getRelatedByWord(word, getAllRecords: getAllRecords)
             DispatchQueue.main.async { [weak self] in
-                guard let self = self, !related.isEmpty else { return }
-                self.mCandidateList    = related
-                self.hasCandidatesShown = true
-                self.selectedCandidate = related.first
-                self.showCandidates(related)
+                guard let self = self, self.mComposing.isEmpty else { return }
+                if related.isEmpty {
+                    // spec §8 step 6: no related results → nil committedCandidate, clear bar
+                    self.committedCandidate = nil
+                    self.clearSuggestions()
+                } else {
+                    self.mCandidateList         = related
+                    self.hasCandidatesShown     = true
+                    self.isShowingRelatedPhrases = true
+                    self.selectedCandidate      = related.first
+                    self.showCandidates(related)
+                }
             }
         }
     }
@@ -900,7 +1140,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         clearSuggestions()
         resetTempEnglishWord()
-        let layoutName = toEnglish ? "lime_abc" : "lime_phonetic"
+        let layoutName = toEnglish ? "lime_english" : "lime_phonetic"
         if let loaded = LayoutLoader.load(layoutName) { currentLayout = loaded }
         keyboardView.setLayout(currentLayout)
         applyHeight()
@@ -915,6 +1155,8 @@ final class KeyboardViewController: UIInputViewController {
             : (activeIMIndex - 1 + count) % count
         let im = activatedIMs[activeIMIndex]
         activeIM = im.tableNick.isEmpty ? "phonetic" : im.tableNick
+        // Persist last-used IM (mirrors Android mLIMEPref.setActiveIM(), key "keyboard_list")
+        sharedDefaults?.set(activeIM, forKey: "keyboard_list")
 
         // Clear composing and candidates before switching
         clearComposing(force: false)
@@ -1049,9 +1291,152 @@ extension KeyboardViewController: KeyboardViewDelegate {
         onKey(primaryCode: keyDef.code)
     }
 
+    // MARK: Key preview (iOS callout popup above pressed key)
+
+    func keyboardView(_ view: KeyboardView, showPreviewFor keyDef: KeyDef, keyRect: CGRect) {
+        keyPreviewView?.removeFromSuperview()
+
+        // At least label or sublabel must be non-empty
+        guard !keyDef.label.isEmpty || !keyDef.sublabel.isEmpty else { return }
+
+        // Convert key rect from KeyboardView → window coordinates so the preview
+        // can float above the keyboard top edge without being clipped by self.view.
+        guard let kbView = keyboardView,
+              let window = self.view.window else { return }
+        let keyInWindow = kbView.convert(keyRect, to: window)
+
+        // --- Layout mode: mirror key rendering (same isTall logic as KeyboardView) ---
+        let isTall = keyInWindow.height >= keyInWindow.width
+
+        // --- Bubble geometry -------------------------------------------------
+        let isLand  = view.isLandscape
+        let bubbleW = max(keyInWindow.width + 8, isLand ? 44.0 : 52.0)
+        let bubbleH = max(keyInWindow.height * 1.5, isLand ? 50.0 : 68.0)
+        let tipH    = 8.0
+        let totalH  = bubbleH + tipH
+        let r       = 10.0
+
+        // Centre bubble above the key; clamp to window edges
+        let bubbleX = max(4, min(keyInWindow.midX - bubbleW / 2,
+                                 window.bounds.width - bubbleW - 4))
+        let bubbleY = max(4, keyInWindow.minY - totalH)   // clamp so tip stays visible
+
+        let container = UIView(frame: CGRect(x: bubbleX, y: bubbleY,
+                                             width: bubbleW, height: totalH))
+        container.backgroundColor = .clear
+        container.isUserInteractionEnabled = false
+
+        // --- Callout shape ---------------------------------------------------
+        let tipCenterX = keyInWindow.midX - bubbleX
+        let tipX = max(r, min(tipCenterX, bubbleW - r))
+
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: 0, y: r))
+        path.addArc(withCenter: CGPoint(x: r, y: r),
+                    radius: r, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
+        path.addLine(to: CGPoint(x: bubbleW - r, y: 0))
+        path.addArc(withCenter: CGPoint(x: bubbleW - r, y: r),
+                    radius: r, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+        path.addLine(to: CGPoint(x: bubbleW, y: bubbleH - r))
+        path.addArc(withCenter: CGPoint(x: bubbleW - r, y: bubbleH - r),
+                    radius: r, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+        path.addLine(to: CGPoint(x: tipX + 6, y: bubbleH))
+        path.addLine(to: CGPoint(x: tipX,     y: bubbleH + tipH))
+        path.addLine(to: CGPoint(x: tipX - 6, y: bubbleH))
+        path.addLine(to: CGPoint(x: r, y: bubbleH))
+        path.addArc(withCenter: CGPoint(x: r, y: bubbleH - r),
+                    radius: r, startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+        path.close()
+
+        let shapeLayer = CAShapeLayer()
+        shapeLayer.path = path.cgPath
+        shapeLayer.fillColor = UIColor.white.cgColor
+        shapeLayer.shadowColor = UIColor.black.cgColor
+        shapeLayer.shadowOffset = CGSize(width: 0, height: 1)
+        shapeLayer.shadowOpacity = 0.22
+        shapeLayer.shadowRadius  = 3
+        container.layer.addSublayer(shapeLayer)
+
+        // --- Content: same layout as the key itself --------------------------
+        let contentView: UIView
+        let hasSublabel = !keyDef.sublabel.isEmpty
+
+        if hasSublabel {
+            // Dual-label layout — mirrors KeyboardView.makeDualLabelView
+            let stack = UIStackView()
+            stack.alignment = .center
+
+            let primaryLbl = UILabel()
+            primaryLbl.text = keyDef.label
+            primaryLbl.textColor = .secondaryLabel
+            primaryLbl.setContentHuggingPriority(.required, for: .horizontal)
+            primaryLbl.setContentHuggingPriority(.required, for: .vertical)
+
+            let subLbl = UILabel()
+            subLbl.text = keyDef.sublabel
+            subLbl.textColor = .label
+            subLbl.setContentHuggingPriority(.required, for: .horizontal)
+            subLbl.setContentHuggingPriority(.required, for: .vertical)
+
+            if isTall {
+                stack.axis    = .vertical
+                stack.spacing = 0
+                primaryLbl.font = UIFont.systemFont(ofSize: isLand ? 12 : 13, weight: .regular)
+                subLbl.font     = UIFont.systemFont(ofSize: isLand ? 22 : 28, weight: .regular)
+            } else {
+                stack.axis    = .horizontal
+                stack.spacing = 3
+                primaryLbl.font = UIFont.systemFont(ofSize: isLand ? 11 : 12, weight: .light)
+                subLbl.font     = UIFont.systemFont(ofSize: isLand ? 16 : 20, weight: .regular)
+            }
+            stack.addArrangedSubview(primaryLbl)
+            stack.addArrangedSubview(subLbl)
+            contentView = stack
+        } else {
+            // Single label
+            let lbl = UILabel()
+            lbl.text          = keyDef.label
+            lbl.font          = UIFont.systemFont(ofSize: isLand ? 20 : 26, weight: .regular)
+            lbl.textColor     = .label
+            lbl.textAlignment = .center
+            contentView = lbl
+        }
+
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(contentView)
+        NSLayoutConstraint.activate([
+            contentView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            contentView.centerYAnchor.constraint(equalTo: container.centerYAnchor,
+                                                  constant: -tipH / 2),
+            contentView.widthAnchor.constraint(lessThanOrEqualToConstant: bubbleW - 8),
+        ])
+
+        // --- Animate in -------------------------------------------------------
+        container.alpha = 0
+        container.transform = CGAffineTransform(scaleX: 0.88, y: 0.88)
+        window.addSubview(container)   // add to window so preview clears the candidate bar
+        UIView.animate(withDuration: 0.08, delay: 0,
+                       usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+            container.alpha = 1
+            container.transform = .identity
+        }
+        keyPreviewView = container
+    }
+
+    func keyboardViewDismissPreview(_ view: KeyboardView) {
+        guard let preview = keyPreviewView else { return }
+        keyPreviewView = nil
+        UIView.animate(withDuration: 0.08, animations: {
+            preview.alpha = 0
+        }, completion: { _ in preview.removeFromSuperview() })
+    }
+
     func keyboardView(_ view: KeyboardView, didLongPress keyDef: KeyDef) {
         // Keyboard key (code -3) and legacy globe key (code -200): show iOS+LIME options menu (spec §10).
+        // Per spec §10: briefly show globe icon preview to satisfy Apple's globe affordance requirement,
+        // then display the inline options menu.
         if keyDef.code == LimeKeyCode.done.rawValue || keyDef.code == LimeKeyCode.globe.rawValue {
+            showGlobeKeyPreview(for: keyDef, in: view)
             showGlobeMenu(from: view)
         }
         // Space key: show LIME-internal IM picker only (spec §10: NOT iOS keyboard switch)
@@ -1068,6 +1453,8 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let im = activatedIMs[i]
         activeIMIndex = i
         activeIM = im.tableNick.isEmpty ? "phonetic" : im.tableNick
+        // Persist last-used IM (mirrors Android mLIMEPref.setActiveIM(), key "keyboard_list")
+        sharedDefaults?.set(activeIM, forKey: "keyboard_list")
         clearComposing(force: false)
         if let db = self.db {
             let caps = imCapabilities(for: activeIM, db: db)
@@ -1084,47 +1471,232 @@ extension KeyboardViewController: KeyboardViewDelegate {
         }
     }
 
-    /// Long-press on keyboard key: options menu with iOS keyboard switch (spec §10).
-    private func showGlobeMenu(from sourceView: UIView) {
-        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        // iOS system keyboard switch (spec §10: keyboard key long-press → switch to other system keyboards)
-        alert.addAction(UIAlertAction(title: NSLocalizedString("切換輸入法", comment: "Switch Input Mode"),
-                                      style: .default) { [weak self] _ in
-            self?.advanceToNextInputMode()
-        })
-        // LIME-internal IMs
-        for (i, im) in activatedIMs.enumerated() {
-            let label = im.label.isEmpty ? im.tableNick : im.label
-            alert.addAction(UIAlertAction(title: label, style: .default) { [weak self] _ in
-                self?.switchIM(toIndex: i)
-            })
+    /// Show a globe-icon preview bubble above the keyboard key on long-press (spec §10).
+    /// The globe icon satisfies Apple's "clearly visible globe affordance" requirement.
+    private func showGlobeKeyPreview(for keyDef: KeyDef, in kbView: KeyboardView) {
+        guard let window = self.view.window,
+              let kbViewUnwrapped = keyboardView else { return }
+
+        // Find the done key button frame in window coordinates
+        // We look for the subview whose KeyDef code matches -3
+        var keyRect: CGRect = .zero
+        func findKeyRect(in view: UIView) -> CGRect? {
+            for sub in view.subviews {
+                if let btn = sub as? UIButton {
+                    // Use reflection-free approach: check tag or just use kbView bounds estimate
+                    // Since we can't directly access KeyButton.keyDef from here,
+                    // approximate: the done key is always the first key in the bottom row.
+                    _ = btn
+                }
+                if let found = findKeyRect(in: sub) { return found }
+            }
+            return nil
         }
-        alert.addAction(UIAlertAction(title: NSLocalizedString("取消", comment: "Cancel"),
-                                      style: .cancel))
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = sourceView
-            popover.sourceRect = sourceView.bounds
+
+        // Approximate position: done key is bottom-left of the keyboard
+        let kbInWindow = kbViewUnwrapped.convert(kbViewUnwrapped.bounds, to: window)
+        let isLand = kbView.isLandscape
+        let approxKeyW: CGFloat = kbInWindow.width * 0.15   // 15%p width
+        let approxKeyH: CGFloat = isLand ? 38 : 56
+        keyRect = CGRect(x: kbInWindow.minX,
+                         y: kbInWindow.maxY - approxKeyH,
+                         width: approxKeyW,
+                         height: approxKeyH)
+
+        // Build a simple globe preview bubble
+        let bubbleW: CGFloat = isLand ? 44 : 52
+        let bubbleH: CGFloat = isLand ? 50 : 64
+        let tipH: CGFloat = 8
+        let totalH = bubbleH + tipH
+        let r: CGFloat = 10
+        let bubbleX = max(4, keyRect.midX - bubbleW / 2)
+        let bubbleY = max(4, keyRect.minY - totalH)
+
+        let container = UIView(frame: CGRect(x: bubbleX, y: bubbleY,
+                                             width: bubbleW, height: totalH))
+        container.backgroundColor = .clear
+        container.isUserInteractionEnabled = false
+
+        // Shape
+        let tipX: CGFloat = min(bubbleW - r, max(r, keyRect.midX - bubbleX))
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: 0, y: r))
+        path.addArc(withCenter: CGPoint(x: r, y: r), radius: r,
+                    startAngle: .pi, endAngle: -.pi/2, clockwise: true)
+        path.addLine(to: CGPoint(x: bubbleW - r, y: 0))
+        path.addArc(withCenter: CGPoint(x: bubbleW - r, y: r), radius: r,
+                    startAngle: -.pi/2, endAngle: 0, clockwise: true)
+        path.addLine(to: CGPoint(x: bubbleW, y: bubbleH - r))
+        path.addArc(withCenter: CGPoint(x: bubbleW - r, y: bubbleH - r), radius: r,
+                    startAngle: 0, endAngle: .pi/2, clockwise: true)
+        path.addLine(to: CGPoint(x: tipX + 6, y: bubbleH))
+        path.addLine(to: CGPoint(x: tipX, y: bubbleH + tipH))
+        path.addLine(to: CGPoint(x: tipX - 6, y: bubbleH))
+        path.addLine(to: CGPoint(x: r, y: bubbleH))
+        path.addArc(withCenter: CGPoint(x: r, y: bubbleH - r), radius: r,
+                    startAngle: .pi/2, endAngle: .pi, clockwise: true)
+        path.close()
+        let sl = CAShapeLayer()
+        sl.path = path.cgPath; sl.fillColor = UIColor.white.cgColor
+        sl.shadowColor = UIColor.black.cgColor; sl.shadowOffset = CGSize(width: 0, height: 1)
+        sl.shadowOpacity = 0.22; sl.shadowRadius = 3
+        container.layer.addSublayer(sl)
+
+        // Globe SF symbol
+        let img = UIImageView(image: UIImage(systemName: "globe",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: isLand ? 22 : 28)))
+        img.tintColor = .label
+        img.contentMode = .center
+        img.frame = CGRect(x: 0, y: 0, width: bubbleW, height: bubbleH)
+        container.addSubview(img)
+
+        container.alpha = 0
+        window.addSubview(container)
+        UIView.animate(withDuration: 0.08) { container.alpha = 1 }
+
+        // Auto-dismiss after menu appears (brief flash)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            UIView.animate(withDuration: 0.1, animations: { container.alpha = 0 },
+                           completion: { _ in container.removeFromSuperview() })
         }
-        present(alert, animated: true)
     }
 
-    /// Long-press on space key: LIME-internal IM picker only (spec §10: no iOS keyboard switch).
-    private func showLimeIMPicker() {
-        guard !activatedIMs.isEmpty else { return }
-        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    // MARK: - Inline Menu Panel
+    // UIAlertController.present() in a keyboard extension causes the system to advance to the
+    // next input mode in some iOS versions. Use an inline UIView panel instead.
+
+    /// Dismiss any visible inline menu panel.
+    private func dismissInlineMenu() {
+        inlineMenuPanel?.removeFromSuperview()
+        inlineMenuPanel = nil
+    }
+
+    /// Build and show an inline menu panel overlaying the keyboard.
+    private func showInlineMenu(items: [(title: String, action: () -> Void)]) {
+        dismissInlineMenu()
+        guard let root = view else { return }
+
+        let panel = UIView()
+        panel.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.97)
+        panel.layer.cornerRadius = 12
+        panel.layer.shadowColor = UIColor.black.cgColor
+        panel.layer.shadowOpacity = 0.2
+        panel.layer.shadowRadius = 8
+        panel.layer.shadowOffset = CGSize(width: 0, height: -2)
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(panel)
+
+        // Stack of buttons
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(stack)
+
+        for (idx, item) in items.enumerated() {
+            let btn = UIButton(type: .system)
+            btn.setTitle(item.title, for: .normal)
+            btn.titleLabel?.font = UIFont.systemFont(ofSize: 17)
+            btn.contentHorizontalAlignment = .center
+            btn.heightAnchor.constraint(equalToConstant: 50).isActive = true
+            btn.tag = idx
+            // Separator line (except last)
+            if idx < items.count - 1 {
+                let sep = UIView()
+                sep.backgroundColor = UIColor.separator
+                sep.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
+                stack.addArrangedSubview(btn)
+                stack.addArrangedSubview(sep)
+            } else {
+                // Last item is Cancel — style differently
+                btn.setTitleColor(.systemBlue, for: .normal)
+                stack.addArrangedSubview(btn)
+            }
+            let capture = item.action
+            btn.addAction(UIAction { [weak self] _ in
+                self?.dismissInlineMenu()
+                capture()
+            }, for: .touchUpInside)
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 8),
+            stack.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8),
+            stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
+
+            panel.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 8),
+            panel.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -8),
+            panel.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -8),
+        ])
+
+        // Tap outside to dismiss
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissInlineMenuGesture))
+        tap.cancelsTouchesInView = false
+        root.addGestureRecognizer(tap)
+
+        inlineMenuPanel = panel
+
+        // Animate in
+        panel.alpha = 0
+        panel.transform = CGAffineTransform(translationX: 0, y: 20)
+        UIView.animate(withDuration: 0.2) {
+            panel.alpha = 1
+            panel.transform = .identity
+        }
+    }
+
+    @objc private func dismissInlineMenuGesture(_ gr: UITapGestureRecognizer) {
+        guard let panel = inlineMenuPanel else { return }
+        // Only dismiss if tap is outside the panel
+        let loc = gr.location(in: view)
+        if !panel.frame.contains(loc) {
+            dismissInlineMenu()
+        }
+        view?.removeGestureRecognizer(gr)
+    }
+
+    /// Long-press on keyboard key: inline options menu (spec §10).
+    private func showGlobeMenu(from sourceView: UIView) {
+        var items: [(title: String, action: () -> Void)] = []
+
+        // iOS system keyboard switch — only when needsInputModeSwitchKey (spec §10)
+        if needsInputModeSwitchKey {
+            items.append(("切換系統輸入法", { [weak self] in self?.advanceToNextInputMode() }))
+        }
+
+        // LIME-internal IM list
         for (i, im) in activatedIMs.enumerated() {
             let label = im.label.isEmpty ? im.tableNick : im.label
-            alert.addAction(UIAlertAction(title: label, style: .default) { [weak self] _ in
-                self?.switchIM(toIndex: i)
-            })
+            let display = (i == activeIMIndex) ? "✓ \(label)" : label
+            items.append((display, { [weak self] in self?.switchIM(toIndex: i) }))
         }
-        alert.addAction(UIAlertAction(title: NSLocalizedString("取消", comment: "Cancel"),
-                                      style: .cancel))
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = keyboardView
-            popover.sourceRect = keyboardView?.bounds ?? .zero
+
+        // Han conversion
+        let hanLabels = ["漢字轉換：關閉", "漢字轉換：繁→簡", "漢字轉換：簡→繁"]
+        for (opt, title) in hanLabels.enumerated() {
+            let display = (hanConvertOption == opt) ? "✓ \(title)" : title
+            items.append((display, { [weak self] in
+                self?.hanConvertOption = opt
+                self?.sharedDefaults?.set(opt, forKey: "hanConvertOption")
+            }))
         }
-        present(alert, animated: true)
+
+        items.append(("取消", {}))
+        showInlineMenu(items: items)
+    }
+
+    /// Long-press on space key: LIME-internal IM picker (spec §10).
+    private func showLimeIMPicker() {
+        guard !activatedIMs.isEmpty else { return }
+        var items: [(title: String, action: () -> Void)] = []
+        for (i, im) in activatedIMs.enumerated() {
+            let label = im.label.isEmpty ? im.tableNick : im.label
+            let display = (i == activeIMIndex) ? "✓ \(label)" : label
+            items.append((display, { [weak self] in self?.switchIM(toIndex: i) }))
+        }
+        items.append(("取消", {}))
+        showInlineMenu(items: items)
     }
 }
 
@@ -1135,17 +1707,20 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         if mapping.isEnglishSuggestionRecord {
             commitEnglishSuggestion(mapping.word)
         } else {
-            selectedCandidate = mapping
-            commitTyped()
-            updateRelatedPhrase()
+            pickCandidateManually(mapping)
         }
     }
 
     func candidateBarViewDidRequestMore(_ view: CandidateBarView) {
+        // spec §8: when showing related phrases, expand via related query not composing query
+        if isShowingRelatedPhrases {
+            updateRelatedPhrase(getAllRecords: true)
+            return
+        }
         guard let ss = searchServer, !mComposing.isEmpty else { return }
         let more = ss.getMappingByCode(mComposing, getAllRecords: true)
         mCandidateList = more
         hasCandidatesShown = !more.isEmpty
-        showCandidates(more.filter { !$0.isComposingCodeRecord })
+        showCandidates(more)   // include composing code record for mixed-mode commit
     }
 }

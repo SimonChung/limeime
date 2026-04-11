@@ -138,6 +138,15 @@ Items are grouped by priority. Check off each item when done.
 - [x] `hasVibration` / `hasSound` wired to `KeyboardView` feedback generators
 - [x] `smartChineseInput` gates runtime phrase suggestion — chain depth capped at 3 to bound memory
 
+### Related Phrase Display and Chaining (spec §8, §9)
+
+- [x] `updateRelatedPhrase()` called after `commitTyped()` when composing is finished (not from candidate tap handler)
+- [x] `hasMappingList` guard — related phrase query skipped if no DB mapping results were ever shown in current session
+- [x] Related phrase chaining — selecting from the related phrase list re-enters Path 2 commit (candidate `!isComposingCodeRecord && mComposing.isEmpty`), triggering another `updateRelatedPhrase()` call
+- [x] Empty-result path — when `getRelatedByWord()` returns empty: clear `committedCandidate` and call `clearSuggestions()`
+- [ ] `learnRelatedWord` (`candidate_suggestion`) preference gate — RP learning in `SearchServer.learnRelatedPhraseAndUpdateScore()` must be skipped when `candidate_suggestion` is `false`; currently runs unconditionally
+- [ ] RP learning pair record-type guard — spec §9 requires `unit` to be exact/partial/related record and `unit2` to be exact/partial/related/punctuation/emoji; current `isRealCandidate` check is broader (also allows English suggestions and runtimeBuiltPhrase as valid pair members)
+
 ### Runtime Phrase Suggestion (spec §6, §13)
 
 - [x] `makeRunTimeSuggestion()` in `SearchServer`: for each candidate in `currentList`, checks whether it forms a valid phrase pair with any previously-committed word via the `related` table; matching candidates promoted to top of list

@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 
 // Horizontal scrolling candidate bar above the keyboard.
 // Mirrors Android's CandidateView.java (horizontal ListView).
@@ -15,7 +15,6 @@ final class CandidateBarView: UIView {
     // MARK: - Subviews
     private let scrollView = UIScrollView()
     private let stackView  = UIStackView()
-    private let codeLabel  = UILabel()   // Shows current composing code on the left
 
     // MARK: - State
     private var candidates:  [Mapping] = []
@@ -23,9 +22,8 @@ final class CandidateBarView: UIView {
     private var selkeyOption: Int      = 0    // 0=none, 1=show number, 2=show number+space
 
     // MARK: - Layout constants
-    private let candidateFont   = UIFont.systemFont(ofSize: 18)
-    private let selkeyFont      = UIFont.systemFont(ofSize: 10, weight: .light)
-    private let codeLabelWidth:  CGFloat = 60
+    private let candidateFont   = UIFont.systemFont(ofSize: 23)
+    private let selkeyFont      = UIFont.systemFont(ofSize: 12, weight: .light)
     private let candidateHPad:   CGFloat = 14
     private let dividerWidth:    CGFloat = 1
 
@@ -40,20 +38,9 @@ final class CandidateBarView: UIView {
     private func setup() {
         backgroundColor = UIColor.systemGray6
 
-        // Composing-code label on the left edge
-        codeLabel.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        codeLabel.textColor = .secondaryLabel
-        codeLabel.textAlignment = .center
-        codeLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(codeLabel)
-
-        // Vertical divider between code label and candidates
-        let divider = UIView()
-        divider.backgroundColor = .separator
-        divider.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(divider)
-
-        // Horizontal scroll view
+        // Horizontal scroll view fills the whole bar; the composing code is
+        // rendered as the first candidate entry (distinctively styled), so no
+        // dedicated left-edge label is needed anymore.
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
@@ -65,25 +52,11 @@ final class CandidateBarView: UIView {
         scrollView.addSubview(stackView)
 
         NSLayoutConstraint.activate([
-            // Code label
-            codeLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
-            codeLabel.topAnchor.constraint(equalTo: topAnchor),
-            codeLabel.bottomAnchor.constraint(equalTo: bottomAnchor),
-            codeLabel.widthAnchor.constraint(equalToConstant: codeLabelWidth),
-
-            // Divider
-            divider.leadingAnchor.constraint(equalTo: codeLabel.trailingAnchor),
-            divider.topAnchor.constraint(equalTo: topAnchor, constant: 6),
-            divider.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
-            divider.widthAnchor.constraint(equalToConstant: dividerWidth),
-
-            // Scroll view fills remaining space
-            scrollView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            // Stack view fills scroll view content
             stackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
@@ -94,10 +67,10 @@ final class CandidateBarView: UIView {
 
     // MARK: - Public API
 
-    /// Update the composing code display on the left label.
-    func setComposingCode(_ code: String) {
-        codeLabel.text = code.isEmpty ? "" : code
-    }
+    /// Retained for API compatibility. The composing code is now rendered
+    /// as the first candidate entry in the bar, so there is no dedicated
+    /// left-edge label to update.
+    func setComposingCode(_ code: String) { _ = code }
 
     /// Replace the candidate list with new results.
     func setCandidates(_ mappings: [Mapping]) {
@@ -143,9 +116,14 @@ final class CandidateBarView: UIView {
         btn.contentEdgeInsets = UIEdgeInsets(top: 0, left: candidateHPad, bottom: 0, right: candidateHPad)
         btn.addTarget(self, action: #selector(candidateTapped(_:)), for: .touchUpInside)
 
+        // Composing-code record (mixed-mode raw-code entry): styled grey/monospace
+        // so the user can visually distinguish it as "commit the raw English letters".
+        // Mirrors Android mColorComposingCode.
+        let isComposingCode = mapping.isComposingCodeRecord
+
         // Build selkey prefix when selkeyOption > 0 and a key character exists for this index
         let selkeyPrefix: String
-        if selkeyOption > 0, !selkeys.isEmpty, index < selkeys.count {
+        if !isComposingCode, selkeyOption > 0, !selkeys.isEmpty, index < selkeys.count {
             let keyChar = String(selkeys[selkeys.index(selkeys.startIndex, offsetBy: index)])
             selkeyPrefix = selkeyOption >= 2 ? "\(keyChar) " : keyChar
         } else {
@@ -154,7 +132,16 @@ final class CandidateBarView: UIView {
 
         if selkeyPrefix.isEmpty {
             btn.setTitle(mapping.word, for: .normal)
-            btn.titleLabel?.font = candidateFont
+            if isComposingCode {
+                btn.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+                btn.setTitleColor(.secondaryLabel, for: .normal)
+            } else {
+                btn.titleLabel?.font = candidateFont
+                // UIButton(type: .system) tints labels with the window tint (blue).
+                // Force the dynamic label color so candidates read dark-on-light
+                // and light-on-dark.
+                btn.setTitleColor(.label, for: .normal)
+            }
         } else {
             // Two-line-style button: selkey (small, top) + word (large, bottom) in a stack
             let container = UIStackView()
@@ -171,7 +158,7 @@ final class CandidateBarView: UIView {
             let wordLabel = UILabel()
             wordLabel.text = mapping.word
             wordLabel.font = candidateFont
-            wordLabel.textColor = btn.tintColor
+            wordLabel.textColor = .label
 
             container.addArrangedSubview(skLabel)
             container.addArrangedSubview(wordLabel)

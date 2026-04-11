@@ -18,7 +18,7 @@
         },
         {
           "code": 64,
-          "label": "\\@",
+          "label": "@",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -29,7 +29,7 @@
         },
         {
           "code": 35,
-          "label": "\\#",
+          "label": "#",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -122,8 +122,8 @@
       "keys": [
         {
           "code": 81,
-          "label": "Q\\n1⇡",
-          "sublabel": "",
+          "label": "Q",
+          "sublabel": "1⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -133,8 +133,8 @@
         },
         {
           "code": 87,
-          "label": "W\\n2⇡",
-          "sublabel": "",
+          "label": "W",
+          "sublabel": "2⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -144,8 +144,8 @@
         },
         {
           "code": 69,
-          "label": "E\\n3⇡",
-          "sublabel": "",
+          "label": "E",
+          "sublabel": "3⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -155,8 +155,8 @@
         },
         {
           "code": 82,
-          "label": "R\\n4⇡",
-          "sublabel": "",
+          "label": "R",
+          "sublabel": "4⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -166,8 +166,8 @@
         },
         {
           "code": 84,
-          "label": "T\\n5⇡",
-          "sublabel": "",
+          "label": "T",
+          "sublabel": "5⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -177,8 +177,8 @@
         },
         {
           "code": 89,
-          "label": "Y\\n6⇡",
-          "sublabel": "",
+          "label": "Y",
+          "sublabel": "6⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -188,8 +188,8 @@
         },
         {
           "code": 85,
-          "label": "U\\n7⇡",
-          "sublabel": "",
+          "label": "U",
+          "sublabel": "7⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -199,8 +199,8 @@
         },
         {
           "code": 73,
-          "label": "I\\n8⇡",
-          "sublabel": "",
+          "label": "I",
+          "sublabel": "8⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -210,8 +210,8 @@
         },
         {
           "code": 79,
-          "label": "O\\n9⇡",
-          "sublabel": "",
+          "label": "O",
+          "sublabel": "9⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -221,8 +221,8 @@
         },
         {
           "code": 80,
-          "label": "P\\n0⇡",
-          "sublabel": "",
+          "label": "P",
+          "sublabel": "0⇡",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -237,8 +237,8 @@
       "keys": [
         {
           "code": 65,
-          "label": "A\\n1−",
-          "sublabel": "",
+          "label": "A",
+          "sublabel": "1−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -248,8 +248,8 @@
         },
         {
           "code": 83,
-          "label": "S\\n2−",
-          "sublabel": "",
+          "label": "S",
+          "sublabel": "2−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -259,8 +259,8 @@
         },
         {
           "code": 68,
-          "label": "D\\n3−",
-          "sublabel": "",
+          "label": "D",
+          "sublabel": "3−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -270,8 +270,8 @@
         },
         {
           "code": 70,
-          "label": "F\\n4−",
-          "sublabel": "",
+          "label": "F",
+          "sublabel": "4−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -281,8 +281,8 @@
         },
         {
           "code": 71,
-          "label": "G\\n5−",
-          "sublabel": "",
+          "label": "G",
+          "sublabel": "5−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -292,8 +292,8 @@
         },
         {
           "code": 72,
-          "label": "H\\n6−",
-          "sublabel": "",
+          "label": "H",
+          "sublabel": "6−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -303,8 +303,8 @@
         },
         {
           "code": 74,
-          "label": "J\\n7−",
-          "sublabel": "",
+          "label": "J",
+          "sublabel": "7−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -314,8 +314,8 @@
         },
         {
           "code": 75,
-          "label": "K\\n8−",
-          "sublabel": "",
+          "label": "K",
+          "sublabel": "8−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -325,8 +325,8 @@
         },
         {
           "code": 76,
-          "label": "L\\n9−",
-          "sublabel": "",
+          "label": "L",
+          "sublabel": "9−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -336,8 +336,8 @@
         },
         {
           "code": 58,
-          "label": ":\\n0−",
-          "sublabel": "",
+          "label": ":",
+          "sublabel": "0−",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -352,8 +352,8 @@
       "keys": [
         {
           "code": 90,
-          "label": "Z\\n1⇣",
-          "sublabel": "",
+          "label": "Z",
+          "sublabel": "1⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -363,8 +363,8 @@
         },
         {
           "code": 88,
-          "label": "X\\n2⇣",
-          "sublabel": "",
+          "label": "X",
+          "sublabel": "2⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -374,8 +374,8 @@
         },
         {
           "code": 67,
-          "label": "C\\n3⇣",
-          "sublabel": "",
+          "label": "C",
+          "sublabel": "3⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -385,8 +385,8 @@
         },
         {
           "code": 86,
-          "label": "V\\n4⇣",
-          "sublabel": "",
+          "label": "V",
+          "sublabel": "4⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -396,8 +396,8 @@
         },
         {
           "code": 66,
-          "label": "B\\n5⇣",
-          "sublabel": "",
+          "label": "B",
+          "sublabel": "5⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -407,8 +407,8 @@
         },
         {
           "code": 78,
-          "label": "N\\n6⇣",
-          "sublabel": "",
+          "label": "N",
+          "sublabel": "6⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -418,8 +418,8 @@
         },
         {
           "code": 77,
-          "label": "M\\n7⇣",
-          "sublabel": "",
+          "label": "M",
+          "sublabel": "7⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -429,8 +429,8 @@
         },
         {
           "code": 60,
-          "label": "<\\n8⇣",
-          "sublabel": "",
+          "label": "<",
+          "sublabel": "8⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -440,8 +440,8 @@
         },
         {
           "code": 62,
-          "label": ">\\n9⇣",
-          "sublabel": "",
+          "label": ">",
+          "sublabel": "9⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -451,8 +451,8 @@
         },
         {
           "code": 63,
-          "label": "\\?\\n0⇣",
-          "sublabel": "",
+          "label": "\\?",
+          "sublabel": "0⇣",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -474,8 +474,7 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "",
-          "longPressCode": -100
+          "popupKeyboard": ""
         },
         {
           "code": -1,
@@ -490,8 +489,8 @@
         },
         {
           "code": -9,
-          "label": "123\\nEN",
-          "sublabel": "",
+          "label": "123",
+          "sublabel": "EN",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": true,

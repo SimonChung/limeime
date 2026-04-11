@@ -106,7 +106,7 @@
         },
         {
           "code": 0,
-          "label": "\\@",
+          "label": "@",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -144,7 +144,7 @@
         },
         {
           "code": 0,
-          "label": "\\\\",
+          "label": "\\",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

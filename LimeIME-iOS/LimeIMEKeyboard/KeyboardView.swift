@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 
 // Full keyboard view: renders keys from a LimeKeyLayout.
 // Phase 2: UIButton-based; Phase 3 can switch to UICollectionView for more flexibility.
@@ -6,6 +6,11 @@
 protocol KeyboardViewDelegate: AnyObject {
     func keyboardView(_ view: KeyboardView, didPress keyDef: KeyDef)
     func keyboardView(_ view: KeyboardView, didLongPress keyDef: KeyDef)
+    /// Called on touchDown for non-modifier keys — host should show a key-preview popup.
+    /// `keyRect` is the key's frame in the KeyboardView's coordinate space.
+    func keyboardView(_ view: KeyboardView, showPreviewFor keyDef: KeyDef, keyRect: CGRect)
+    /// Called on touchUp/cancel — host should dismiss the key preview.
+    func keyboardViewDismissPreview(_ view: KeyboardView)
 }
 
 final class KeyboardView: UIView {
@@ -24,21 +29,48 @@ final class KeyboardView: UIView {
     var feedbackSound:     Bool = false
     private let impactFeedback = UIImpactFeedbackGenerator(style: .light)
 
-    // Layout constants.
-    // Android key_height = 46dip (portrait phone). iOS uses slightly taller rows to match
-    // the system keyboard proportions on modern iPhones (4 content rows × 54 ≈ 216pt plus
-    // a taller bottom modifier row at 56pt = ~270pt total, close to the system keyboard).
-    private let rowHeight: CGFloat       = 54
-    private let bottomRowHeight: CGFloat = 56
+    // Layout constants (portrait).
+    // Android key_height = 46dip portrait, 36dip landscape.
+    // iOS row heights are scaled slightly larger to match modern iPhone proportions.
+    private let rowHeightPortrait:       CGFloat = 52
+    private let bottomRowHeightPortrait: CGFloat = 54
+    private let rowHeightLandscape:      CGFloat = 36   // matches Android 36dip landscape
+    private let bottomRowHeightLandscape:CGFloat = 38
     private let keyCornerRadius: CGFloat = 6
     private let keyShadowOpacity: Float  = 0.3
+    // Gap between adjacent keys (horizontal) and between key and row edge (vertical).
+    // Used in both makeRow layout and styleKeyContent aspect-ratio check.
+    private let keyHGap: CGFloat = 5   // horizontal gap between keys
+    private let keyVGap: CGFloat = 2   // vertical inset top/bottom
 
-    // Key appearance
-    private let normalKeyColor   = UIColor.white
-    private let modifierKeyColor = UIColor.systemGray3
+    /// Set by KeyboardViewController in viewWillLayoutSubviews; triggers a full rebuild.
+    var isLandscape: Bool = false {
+        didSet {
+            guard isLandscape != oldValue else { return }
+            rowViews.forEach { $0.removeFromSuperview() }
+            rowViews.removeAll()
+            globeButton = nil
+            buildKeys()
+        }
+    }
+
+    private var rowHeight:       CGFloat { isLandscape ? rowHeightLandscape       : rowHeightPortrait }
+    private var bottomRowHeight: CGFloat { isLandscape ? bottomRowHeightLandscape  : bottomRowHeightPortrait }
+
+    // Key appearance — dynamic colors so the keyboard tracks light/dark mode.
+    private let normalKeyColor   = UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(white: 0.30, alpha: 1)
+                                      : UIColor.white
+    }
+    private let modifierKeyColor = UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(white: 0.18, alpha: 1)
+                                      : UIColor.systemGray3
+    }
     private let pressedKeyColor  = UIColor.systemGray5
-    private let keyLabelFont     = UIFont.systemFont(ofSize: 15, weight: .regular)
-    private let keySublabelFont  = UIFont.systemFont(ofSize: 11, weight: .light)
+    private let keyLabelFont     = UIFont.systemFont(ofSize: 22, weight: .regular)
+    private let keySublabelFont  = UIFont.systemFont(ofSize: 16, weight: .light)
+    private let keyLabelFontLand     = UIFont.systemFont(ofSize: 22, weight: .regular)
+    private let keySublabelFontLand  = UIFont.systemFont(ofSize: 16, weight: .light)
 
     // MARK: - Init
     init(layout: LimeKeyLayout) {
@@ -55,12 +87,52 @@ final class KeyboardView: UIView {
         rowViews.forEach { $0.removeFromSuperview() }
         rowViews.removeAll()
         globeButton = nil
+        shiftKeyButton = nil
         buildKeys()
+        // Restore shift icon after layout rebuild
+        updateShiftKeyIcon()
+    }
+
+    /// Sum of all row heights for the current layout.
+    /// Use this in KeyboardViewController.applyHeight() instead of a flat constant.
+    var preferredHeight: CGFloat {
+        layout.rows.reduce(0) { $0 + ($1.isBottomRow ? bottomRowHeight : rowHeight) }
+    }
+
+    // MARK: - Shift state
+
+    /// Three-state shift: off / one-shot / caps-lock (mirrors Android mCapsLock + isShifted).
+    enum ShiftState { case off, on, capsLock }
+
+    private(set) var shiftState: ShiftState = .off
+    /// Weak ref to the shift key button — stored during buildKeys for icon updates.
+    private weak var shiftKeyButton: UIButton?
+
+    /// Update shift state and refresh the shift key icon.
+    /// Call from KeyboardViewController.setShift(_:capsLock:).
+    func setShiftState(_ state: ShiftState) {
+        guard state != shiftState else { return }
+        shiftState = state
+        isShiftOn  = state != .off
+        updateShiftKeyIcon()
+    }
+
+    private func updateShiftKeyIcon() {
+        guard let btn = shiftKeyButton else { return }
+        let iconName: String
+        switch shiftState {
+        case .off:      iconName = "shift"
+        case .on:       iconName = "shift.fill"
+        case .capsLock: iconName = "capslock.fill"
+        }
+        let cfg = UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+        btn.setImage(UIImage(systemName: iconName, withConfiguration: cfg), for: .normal)
+        // Tint the shift key to show active state
+        btn.tintColor = shiftState == .off ? .label : .systemBlue
     }
 
     func setShift(_ on: Bool) {
         isShiftOn = on
-        // Update shift-sensitive key labels (future enhancement)
     }
 
     /// Show or hide the globe key based on needsInputModeSwitchKey (spec §10).
@@ -104,7 +176,6 @@ final class KeyboardView: UIView {
 
         // Total width percent in this row (should sum to 100 for regular rows)
         let totalPercent = row.keys.reduce(0) { $0 + $1.widthPercent }
-
         var prevButton: UIButton? = nil
 
         for (_, keyDef) in row.keys.enumerated() {
@@ -113,16 +184,19 @@ final class KeyboardView: UIView {
 
             btn.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                btn.topAnchor.constraint(equalTo: rowView.topAnchor, constant: 1),
-                btn.bottomAnchor.constraint(equalTo: rowView.bottomAnchor, constant: -1),
+                btn.topAnchor.constraint(equalTo: rowView.topAnchor, constant: keyVGap),
+                btn.bottomAnchor.constraint(equalTo: rowView.bottomAnchor, constant: -keyVGap),
+                // Each key spans its proportional share of the row width minus keyHGap,
+                // so adjacent keys are separated by keyHGap pt of background.
                 btn.widthAnchor.constraint(equalTo: rowView.widthAnchor,
-                                           multiplier: keyDef.widthPercent / totalPercent),
+                                           multiplier: keyDef.widthPercent / totalPercent,
+                                           constant: -keyHGap),
             ])
 
             if let prev = prevButton {
-                btn.leadingAnchor.constraint(equalTo: prev.trailingAnchor, constant: 0).isActive = true
+                btn.leadingAnchor.constraint(equalTo: prev.trailingAnchor, constant: keyHGap).isActive = true
             } else {
-                btn.leadingAnchor.constraint(equalTo: rowView.leadingAnchor).isActive = true
+                btn.leadingAnchor.constraint(equalTo: rowView.leadingAnchor, constant: keyHGap / 2).isActive = true
             }
             prevButton = btn
         }
@@ -149,6 +223,11 @@ final class KeyboardView: UIView {
             btn.addGestureRecognizer(lp)
         }
 
+        // Shift key: store reference for icon updates.
+        if keyDef.code == LimeKeyCode.shift.rawValue {
+            shiftKeyButton = btn
+        }
+
         // Legacy globe key (code -200): long-press also shows options menu.
         if keyDef.code == LimeKeyCode.globe.rawValue {
             globeButton = btn
@@ -161,8 +240,8 @@ final class KeyboardView: UIView {
 
         btn.addTarget(self, action: #selector(keyDown(_:event:)), for: .touchDown)
         btn.addTarget(self, action: #selector(keyUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
-        // Keyboard dismiss key fires didPress on touchUpInside (deferred so long-press can intercept)
-        if keyDef.code == LimeKeyCode.done.rawValue {
+        // Done and globe keys fire didPress on touchUpInside (deferred so long-press can intercept)
+        if keyDef.code == LimeKeyCode.done.rawValue || keyDef.code == LimeKeyCode.globe.rawValue {
             btn.addTarget(self, action: #selector(keyboardKeyTapped(_:)), for: .touchUpInside)
         }
 
@@ -223,10 +302,12 @@ final class KeyboardView: UIView {
             btn.setImage(img, for: .normal)
             btn.tintColor = .label
         } else if !keyDef.sublabel.isEmpty {
-            // Estimated pixel width of this key (usable button area, minus 2px insets)
-            let screenWidth = UIScreen.main.bounds.width
-            let estimatedWidth = screenWidth * (keyDef.widthPercent / totalPercent) - 2
-            let usableHeight   = rowHeight - 2     // minus top/bottom 1px insets
+            // Actual button dimensions matching makeRow constraints:
+            //   width  = screenWidth × (widthPct/totalPct) − keyHGap
+            //   height = rowHeight − 2×keyVGap
+            let screenWidth    = UIScreen.main.bounds.width
+            let estimatedWidth = screenWidth * (keyDef.widthPercent / totalPercent) - keyHGap
+            let usableHeight   = rowHeight - 2 * keyVGap
             // Tall: height ≥ width  →  vertical stack (primary top, sublabel bottom)
             // Wide: width > height  →  horizontal stack (primary left, sublabel right)
             let isTall = usableHeight >= estimatedWidth
@@ -257,14 +338,14 @@ final class KeyboardView: UIView {
         stack.alignment = .center
 
         let primaryLbl = UILabel()
-        primaryLbl.text = primary
-        primaryLbl.textColor = .secondaryLabel
+        primaryLbl.text = sub
+        primaryLbl.textColor = .label
         primaryLbl.setContentHuggingPriority(.required, for: .horizontal)
         primaryLbl.setContentHuggingPriority(.required, for: .vertical)
 
         let subLbl = UILabel()
-        subLbl.text = sub
-        subLbl.textColor = .label
+        subLbl.text = primary
+        subLbl.textColor = .secondaryLabel
         subLbl.setContentHuggingPriority(.required, for: .horizontal)
         subLbl.setContentHuggingPriority(.required, for: .vertical)
 
@@ -272,18 +353,20 @@ final class KeyboardView: UIView {
             // Vertical: primary (keyboard key char) small at top, sublabel (BPMF char) large below
             stack.axis = .vertical
             stack.spacing = 0
-            primaryLbl.font = UIFont.systemFont(ofSize: 10, weight: .light)
-            subLbl.font     = UIFont.systemFont(ofSize: 17, weight: .regular)
-            stack.addArrangedSubview(primaryLbl)
+            primaryLbl.font = keyLabelFont
+            subLbl.font     = keySublabelFont
+            
             stack.addArrangedSubview(subLbl)
+            stack.addArrangedSubview(primaryLbl)
         } else {
             // Horizontal: primary (keyboard key char) small on left, sublabel (BPMF char) on right
             stack.axis = .horizontal
             stack.spacing = 3
-            primaryLbl.font = UIFont.systemFont(ofSize: 11, weight: .light)
-            subLbl.font     = UIFont.systemFont(ofSize: 15, weight: .regular)
-            stack.addArrangedSubview(primaryLbl)
+            primaryLbl.font = keyLabelFontLand
+            subLbl.font     = keySublabelFontLand
+            
             stack.addArrangedSubview(subLbl)
+            stack.addArrangedSubview(primaryLbl)
         }
         return stack
     }
@@ -291,6 +374,7 @@ final class KeyboardView: UIView {
     // MARK: - Touch handling
     @objc private func keyDown(_ btn: UIButton, event: UIEvent) {
         guard let keyBtn = btn as? KeyButton else { return }
+        keyBtn.wasLongPressed = false   // reset each new touch cycle
         btn.backgroundColor = pressedKeyColor
 
         let keyDef = keyBtn.keyDef
@@ -299,9 +383,20 @@ final class KeyboardView: UIView {
         if feedbackVibration { impactFeedback.impactOccurred() }
         if feedbackSound     { UIDevice.current.playInputClick() }
 
-        // Keyboard dismiss key (code -3): defer didPress to touchUpInside so the long-press
-        // GR has a chance to fire before the keyboard is dismissed (spec §10).
-        if keyDef.code != LimeKeyCode.done.rawValue {
+        // Show key preview — delegate positions it in UIInputViewController.view (above keyboard)
+        if keyDef.icon.isEmpty && !keyDef.isModifier
+            && keyDef.code != LimeKeyCode.space.rawValue {
+            let keyRect = btn.convert(btn.bounds, to: self)
+            delegate?.keyboardView(self, showPreviewFor: keyDef, keyRect: keyRect)
+        }
+
+        // Keyboard dismiss key (code -3) and globe key (code -200): defer didPress to
+        // touchUpInside so the long-press GR can fire before the action runs (spec §10).
+        // Globe key must not fire advanceToNextInputMode() immediately on touchDown or the
+        // keyboard switches before the long-press menu can appear.
+        let deferToTouchUp = keyDef.code == LimeKeyCode.done.rawValue
+                          || keyDef.code == LimeKeyCode.globe.rawValue
+        if !deferToTouchUp {
             delegate?.keyboardView(self, didPress: keyDef)
         }
 
@@ -315,8 +410,10 @@ final class KeyboardView: UIView {
     }
 
     /// Fires `didPress` for the keyboard dismiss key on touchUpInside (see keyDown comment).
+    /// Suppressed if the key was long-pressed (wasLongPressed flag) to prevent dismissing
+    /// the keyboard immediately after the long-press options menu appears.
     @objc private func keyboardKeyTapped(_ btn: UIButton) {
-        guard let keyBtn = btn as? KeyButton else { return }
+        guard let keyBtn = btn as? KeyButton, !keyBtn.wasLongPressed else { return }
         delegate?.keyboardView(self, didPress: keyBtn.keyDef)
     }
 
@@ -324,6 +421,7 @@ final class KeyboardView: UIView {
         guard let keyBtn = btn as? KeyButton else { return }
         let isModifier = keyBtn.keyDef.isModifier
         btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor
+        delegate?.keyboardViewDismissPreview(self)
         stopRepeating()
     }
 
@@ -343,6 +441,8 @@ final class KeyboardView: UIView {
     /// Long-press handler for keyboard dismiss key and legacy globe key.
     @objc private func specialLongPressed(_ gr: UILongPressGestureRecognizer) {
         guard gr.state == .began, let keyBtn = gr.view as? KeyButton else { return }
+        // Mark so touchUpInside (keyboardKeyTapped) does NOT fire dismiss/action after long press.
+        keyBtn.wasLongPressed = true
         delegate?.keyboardView(self, didLongPress: keyBtn.keyDef)
     }
 }
@@ -404,12 +504,20 @@ private final class SpaceKeyButton: KeyButton {
         resetBg()
     }
 
-    private func resetBg() { backgroundColor = UIColor.white }
+    private func resetBg() {
+        backgroundColor = UIColor { t in
+            t.userInterfaceStyle == .dark ? UIColor(white: 0.30, alpha: 1)
+                                          : UIColor.white
+        }
+    }
 }
 
 // MARK: - KeyButton: stores its KeyDef
 private class KeyButton: UIButton {
     let keyDef: KeyDef
+    /// Set to true when a UILongPressGestureRecognizer fires on this button.
+    /// Used to suppress the subsequent touchUpInside (e.g. done key dismissing keyboard after long press).
+    var wasLongPressed = false
     init(keyDef: KeyDef) {
         self.keyDef = keyDef
         super.init(frame: .zero)

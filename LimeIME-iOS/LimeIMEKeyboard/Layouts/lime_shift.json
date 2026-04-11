@@ -337,8 +337,7 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "",
-          "longPressCode": -100
+          "popupKeyboard": ""
         },
         {
           "code": -9,

@@ -59,6 +59,20 @@ final class LayoutLoader {
 
     // MARK: - Private
 
+    /// Splits an Android-style label string on the literal two-character sequence `\n`
+    /// (backslash + n) that Android XML uses as a label/sublabel separator.
+    /// If `label` contains no `\n`, returns (label, fallbackSublabel) unchanged.
+    private static func splitLabel(_ label: String, fallbackSublabel: String) -> (String, String) {
+        // JSON "1\\nㄅ" → Swift string where index 1 is '\' and index 2 is 'n'
+        let sep = "\\" + "n"   // literal two chars: backslash + n
+        if let range = label.range(of: sep) {
+            let primary = String(label[label.startIndex..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+            let sub     = String(label[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            return (primary, sub)
+        }
+        return (label, fallbackSublabel)
+    }
+
     private static func parseFromBundle(id: String) -> LimeKeyLayout? {
         // XcodeGen copies the Layouts/ folder contents flat into the bundle root.
         guard let url = Bundle.main.url(forResource: id, withExtension: "json"),
@@ -70,10 +84,15 @@ final class LayoutLoader {
 
         let rows = json.rows.map { jr -> KeyRow in
             let keys = jr.keys.map { jk in
-                KeyDef(
+                // Android XML uses literal \n (backslash-n) as the label/sublabel separator,
+                // e.g. keyLabel="1\nㄅ". Python's ET parser treats it as two chars (\ + n),
+                // so the JSON stores "1\\nㄅ" → decoded Swift string "1\nㄅ" (backslash + n).
+                // Split here so KeyDef always has separate label and sublabel fields.
+                let (lbl, sub) = splitLabel(jk.label, fallbackSublabel: jk.sublabel)
+                return KeyDef(
                     code:          jk.code,
-                    label:         jk.label,
-                    sublabel:      jk.sublabel,
+                    label:         lbl,
+                    sublabel:      sub,
                     widthPercent:  CGFloat(jk.widthPercent),
                     icon:          jk.icon,
                     isRepeatable:  jk.isRepeatable,

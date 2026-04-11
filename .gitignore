@@ -230,3 +230,5 @@ LimeStudio/app/release/baselineProfiles
 #output-metadata.json
 LimeStudio/gradle/gradle-daemon-jvm.properties
 /.claude
+/.omc
+/LimeIME-iOS/.omc

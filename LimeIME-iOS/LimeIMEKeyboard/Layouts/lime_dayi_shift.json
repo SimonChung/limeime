@@ -18,7 +18,7 @@
         },
         {
           "code": 64,
-          "label": "\\@",
+          "label": "@",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -29,7 +29,7 @@
         },
         {
           "code": 35,
-          "label": "\\#",
+          "label": "#",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -463,13 +463,12 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "",
-          "longPressCode": -100
+          "popupKeyboard": ""
         },
         {
           "code": -9,
-          "label": "123\\nEN",
-          "sublabel": "",
+          "label": "123",
+          "sublabel": "EN",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": true,

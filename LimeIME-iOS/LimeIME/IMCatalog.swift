@@ -105,12 +105,36 @@ enum IMCatalog {
         .init(
             id: "array",
             chineseName: "行列",
-            englishName: "Array",
-            description: "行列輸入法，30鍵及10鍵版本",
+            englishName: "Array (行列30)",
+            description: "行列輸入法 30 鍵標準版",
             systemIcon: "table",
             variants: [
-                .init(id: "array",   name: "行列30", filename: "array.limedb",   tableName: "array",   imName: "array",   label: "行列30", keyboardId: "array", recordCount: 32_386, compressedKB: 524, isLimeDB: true),
-                .init(id: "array10", name: "行列10", filename: "array10.limedb", tableName: "array10", imName: "array10", label: "行列10", keyboardId: "array", recordCount: 32_120, compressedKB: 558, isLimeDB: true),
+                // Source: Android LIME.java DATABASE_CLOUD_IM_ARRAY.
+                // The Android URL uses array.limedb but that file wraps a long Android
+                // cache path (storage/emulated/0/Android/data/.../array.db) inside a zip.
+                // array.zip in the same Database/ folder is a cleaner zip wrapping a bare
+                // "array.db" — prefer that for the iOS unzip + attach pipeline.
+                .init(id: "array", name: "標準", filename: "array.zip",
+                      tableName: "array", imName: "array", label: "行列30",
+                      keyboardId: "array", recordCount: 32_386, compressedKB: 524,
+                      isLimeDB: false),
+            ]
+        ),
+        .init(
+            id: "array10",
+            chineseName: "行列10",
+            englishName: "Array 10 (行列10)",
+            description: "行列輸入法 10 鍵版本 (電話鍵盤)",
+            systemIcon: "table.badge.more",
+            variants: [
+                // Source: Android LIME.java DATABASE_CLOUD_IM_ARRAY10.
+                // Android uses array10.limedb which wraps a long cache path; we use
+                // array10.zip for the clean filename. Array and Array10 are separate
+                // IMs with different tableName / imName (matches Android IM_ARRAY10).
+                .init(id: "array10", name: "標準", filename: "array10.zip",
+                      tableName: "array10", imName: "array10", label: "行列10",
+                      keyboardId: "array", recordCount: 32_120, compressedKB: 558,
+                      isLimeDB: false),
             ]
         ),
         .init(
@@ -146,6 +170,15 @@ enum IMCatalog {
                 .init(id: "pinyin",   name: "標準",  filename: "pinyin.zip",   tableName: "pinyin", imName: "pinyin", label: "拼音",      keyboardId: "pinyin", recordCount: 34_753, compressedKB: 509, isLimeDB: false),
                 .init(id: "pinyingb", name: "國標",  filename: "pinyingb.zip", tableName: "pinyin", imName: "pinyin", label: "拼音 (GB)", keyboardId: "pinyin", recordCount: 34_753, compressedKB: 502, isLimeDB: false),
             ]
+        ),
+        // 自建輸入法 — no cloud download; local import only (§13.3)
+        .init(
+            id: "custom",
+            chineseName: "自建",
+            englishName: "Custom",
+            description: "使用者自建輸入法，匯入 .limedb 或 .cin/.lime 檔案",
+            systemIcon: "person.crop.rectangle",
+            variants: []
         ),
     ]
 

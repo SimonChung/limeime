@@ -69,9 +69,10 @@ final class SearchServer {
     func setCurrentIM(tableName: String) { setTableName(tableName) }
 
     /// True if current table is a phonetic (tone-based) IM — enables code3r fallback.
+    /// Note: Dayi is shape-based, not phonetic — excluded (L2 fix).
     var isPhoneticTable: Bool {
         currentTableName.hasPrefix("phonetic") || currentTableName.hasPrefix("eten") ||
-        currentTableName.hasPrefix("hsu")      || currentTableName.hasPrefix("dayi")
+        currentTableName.hasPrefix("hsu")
     }
 
     /// True if current table is Stroke5 / WB — enforces 5-character code limit (spec §5).
@@ -141,24 +142,18 @@ final class SearchServer {
             return list
         }
 
-        // Non-phonetic path: apply remap then exact-match query.
-        let rawCode = db.preProcessingRemappingCode(code)
-        let code = rawCode.lowercased()
-        let cacheKey = "\(currentTableName):\(code):\(effectiveLimit)"
+        // Non-phonetic path: delegate to db.getMappingByCode(softKeyboard:getAllRecords:),
+        // which handles remap + between-search prefix expansion internally (H2 fix).
+        let lowered = code.lowercased()
+        let cacheKey = "\(currentTableName):\(lowered):\(effectiveLimit)"
 
         cacheLock.lock()
         if blacklistCache.contains(cacheKey) { cacheLock.unlock(); return [] }
         if let cached = mappingCache[cacheKey] { cacheLock.unlock(); return cached }
         cacheLock.unlock()
 
-        var dbResults: [Mapping]
-        dbResults = (try? db.getMappingByCode(
-            code, tableName: currentTableName, limit: effectiveLimit)) ?? []
-
-        // Assign exactMatchToCode record type to all DB results
-        dbResults = dbResults.map { m in
-            var copy = m; copy.recordType = Mapping.RecordType.exactMatchToCode; return copy
-        }
+        var dbResults: [Mapping] = db.getMappingByCode(
+            code, softKeyboard: isSoftKeyboard, getAllRecords: getAllRecords) ?? []
 
         // Apply sortSuggestions: false → DB insertion order (by id) instead of score order (spec §15)
         if !sortSuggestions {
@@ -283,21 +278,21 @@ final class SearchServer {
         DispatchQueue.global(qos: .background).async { [weak self] in
             guard let self = self else { return }
 
-            // Update score for the committed candidate
+            // Update score for the committed candidate.
+            // H3 fix: increment by 1 (matches Java addScore/updateScoreCache),
+            // fall back to candidate's own score (not a fabricated threshold constant).
             if candidate.id > 0 {
-                let cacheKey = "\(tableName):\(candidate.code)"
+                let cacheKeyBase = "\(tableName):\(candidate.code.lowercased())"
                 self.cacheLock.lock()
-                let cached = self.mappingCache[cacheKey]
+                let cached = self.mappingCache[cacheKeyBase]
                 self.cacheLock.unlock()
                 let currentScore = cached?.first(where: { $0.id == candidate.id })?.score
-                    ?? self.minScoreThreshold
-                let newScore = min(currentScore + self.scoreAdjustmentIncrement, self.maxScoreThreshold)
+                    ?? candidate.score
+                let newScore = currentScore + 1
                 try? self.db.updateScore(id: candidate.id, score: newScore, tableName: tableName)
-                // Invalidate cache for this code
-                self.cacheLock.lock()
-                self.mappingCache.removeValue(forKey: cacheKey)
-                self.blacklistCache.remove(cacheKey)
-                self.cacheLock.unlock()
+                // Invalidate cache for this code and similar prefix codes
+                self.removeRemappedCodeCachedMappings(candidate.code.lowercased())
+                self.updateSimilarCodeCache(candidate.code.lowercased())
             }
 
             // Learn related phrase from consecutive pair (spec §9 RP Learning)
@@ -332,7 +327,8 @@ final class SearchServer {
     }
 
     /// Process accumulated LD phrases and write learned multi-character codes to DB.
-    private func learnLDPhrase() {
+    /// Called from KeyboardViewController on session end (postFinishInput equivalent, spec §9).
+    func learnLDPhrase() {
         learnLock.lock()
         let toLearn = ldPhraseListArray
         ldPhraseListArray = []
@@ -425,11 +421,14 @@ final class SearchServer {
     /// Background-thread prefetch for first-character keys — mirrors Android's prefetchCache().
     private func triggerPrefetch() {
         prefetchThread?.cancel()
-        let tableName = currentTableName
-        let t = Thread {
-            let keys = "abcdefghijklmnoprstuvwxyz1234567890"
+        let snapshotTable = currentTableName
+        let t = Thread { [weak self] in
+            let keys = "abcdefghijklmnopqrstuvwxyz1234567890"
             for ch in keys {
                 guard !Thread.current.isCancelled else { return }
+                guard let self = self else { return }
+                // Abort if the active table changed since prefetch started.
+                guard self.currentTableName == snapshotTable else { return }
                 _ = self.getMappingByCode(String(ch))
             }
         }
@@ -437,4 +436,350 @@ final class SearchServer {
         prefetchThread = t
         t.start()
     }
+
+    // MARK: - Additional Cache / State Fields (mirrors Java scorelist, coderemapcache, etc.)
+
+    private var scoreList: [Mapping] = []
+    private var coderemap: [String: [String]] = [:]
+    private var englishCache: [String: [Mapping]] = [:]
+    private var emojiCache: [String: [Mapping]] = [:]
+    private var keynameCache: [String: String] = [:]
+    private var lastEnglishWord: String? = nil
+    private var noSuggestionsForLastEnglishWord: Bool = false
+    private var abandonPhraseSuggestion: Bool = false
+    private var maxCodeLength: Int = 4
+    private let scoreListLock = NSLock()
+
+    // MARK: - Cache Initialisation (mirrors Java initialCache())
+
+    /// Reinitialise all caches — mirrors Java SearchServer.initialCache().
+    func initialCache() {
+        scoreListLock.lock()
+        scoreList.removeAll()
+        scoreListLock.unlock()
+        cacheLock.lock()
+        mappingCache.removeAll()
+        relatedCache.removeAll()
+        blacklistCache.removeAll()
+        cacheLock.unlock()
+        coderemap.removeAll()
+        englishCache.removeAll()
+        emojiCache.removeAll()
+        keynameCache.removeAll()
+        clearSuggestionContext()
+    }
+
+    // MARK: - Clear (mirrors Java clear())
+
+    /// Clear all runtime caches — mirrors Java SearchServer.clear().
+    func clear() {
+        scoreListLock.lock()
+        scoreList.removeAll()
+        scoreListLock.unlock()
+        cacheLock.lock()
+        mappingCache.removeAll()
+        relatedCache.removeAll()
+        blacklistCache.removeAll()
+        cacheLock.unlock()
+        englishCache.removeAll()
+        emojiCache.removeAll()
+        keynameCache.removeAll()
+        coderemap.removeAll()
+    }
+
+    // MARK: - Longest Common Substring (mirrors Java lcs())
+
+    /// Returns the longest common substring of two strings (recursive).
+    func lcs(_ a: String, _ b: String) -> String {
+        guard !a.isEmpty, !b.isEmpty else { return "" }
+        if a.last == b.last {
+            return lcs(String(a.dropLast()), String(b.dropLast())) + String(a.last!)
+        }
+        let x = lcs(a, String(b.dropLast()))
+        let y = lcs(String(a.dropLast()), b)
+        return x.count > y.count ? x : y
+    }
+
+    // MARK: - Cache Helpers (mirrors Java getMappingByCodeFromCacheOrDB / removeRemappedCodeCachedMappings / updateSimilarCodeCache)
+
+    private func getMappingByCodeFromCacheOrDB(_ queryCode: String, getAllRecords: Bool) -> [Mapping] {
+        // Cache key must match the format used by getMappingByCode (H7 fix):
+        // "<table>:<lowercased-code>:<effectiveLimit>"
+        let effectiveLimit = getAllRecords ? 210 : 50
+        let key = "\(currentTableName):\(queryCode.lowercased()):\(effectiveLimit)"
+        cacheLock.lock()
+        if let cached = mappingCache[key] { cacheLock.unlock(); return cached }
+        cacheLock.unlock()
+        let results = db.getMappingByCode(queryCode, softKeyboard: true, getAllRecords: getAllRecords) ?? []
+        cacheLock.lock()
+        evictIfNeeded()
+        if !results.isEmpty { mappingCache[key] = results }
+        cacheLock.unlock()
+        return results
+    }
+
+    /// Invalidates all cache entries that may hold mappings for `code`,
+    /// regardless of whether they were stored under the raw-limit or all-records key (H7 fix).
+    private func removeRemappedCodeCachedMappings(_ code: String) {
+        let lowered = code.lowercased()
+        let baseKey = "\(currentTableName):\(lowered)"
+        let removeKey: (String) -> Void = { [weak self] key in
+            guard let self = self else { return }
+            self.mappingCache.removeValue(forKey: key)
+            self.mappingCache.removeValue(forKey: "\(key):50")
+            self.mappingCache.removeValue(forKey: "\(key):210")
+        }
+        cacheLock.lock()
+        if let codelist = coderemap[baseKey] {
+            for entry in codelist {
+                removeKey("\(currentTableName):\(entry.lowercased())")
+            }
+        } else {
+            removeKey(baseKey)
+        }
+        cacheLock.unlock()
+    }
+
+    private func updateSimilarCodeCache(_ code: String) {
+        let len = min(code.count, 5)
+        guard len > 1 else { return }
+        for k in 1..<len {
+            let key = String(code.prefix(code.count - k))
+            let cacheKeyFull = "\(currentTableName):\(key.lowercased())"
+            cacheLock.lock()
+            if mappingCache[cacheKeyFull] != nil {
+                mappingCache.removeValue(forKey: cacheKeyFull)
+            }
+            cacheLock.unlock()
+            removeRemappedCodeCachedMappings(key)
+        }
+    }
+
+    // MARK: - English Suggestions (mirrors Java getEnglishSuggestions())
+
+    /// Returns English word suggestions for a given prefix, with caching.
+    /// All shared-state reads/writes are protected by cacheLock (H6 fix).
+    func getEnglishSuggestions(_ word: String) -> [Mapping] {
+        cacheLock.lock()
+        if word.count > 1, let last = lastEnglishWord,
+           word.hasPrefix(last), noSuggestionsForLastEnglishWord {
+            cacheLock.unlock()
+            return []
+        }
+        if let cached = englishCache[word] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let strings = db.getEnglishSuggestions(word) ?? []
+        let result = strings.map { s -> Mapping in
+            var m = Mapping(id: 0, code: "", word: s, score: 0, baseScore: 0)
+            m.recordType = Mapping.RecordType.englishSuggestion
+            return m
+        }
+
+        cacheLock.lock()
+        noSuggestionsForLastEnglishWord = result.isEmpty
+        lastEnglishWord = word
+        if !result.isEmpty { englishCache[word] = result }
+        cacheLock.unlock()
+        return result
+    }
+
+    // MARK: - Delegation Methods (UI components call SearchServer, not LimeDB directly)
+
+    func getAllImKeyboardConfigList() -> [LimeImConfigRow] {
+        return db.getImConfigList(nil, "keyboard")
+    }
+
+    func getImConfig(_ imCode: String, _ field: String) -> String {
+        return db.getImConfig(imCode, field) ?? ""
+    }
+
+    @discardableResult
+    func setImConfig(_ imCode: String, _ field: String, _ value: String) -> Bool {
+        db.setImConfig(imCode, field, value)
+        return true
+    }
+
+    func setIMKeyboard(_ im: String, _ value: String, _ keyboard: String) {
+        db.setIMConfigKeyboard(im, value, keyboard)
+    }
+
+    func setIMKeyboard(_ imCode: String, _ keyboard: KeyboardConfig) {
+        db.setImConfigKeyboard(imCode, keyboard)
+    }
+
+    func countRecordsByWordOrCode(_ table: String, _ curQuery: String?, searchByCode: Bool) -> Int {
+        var whereParts: [String] = []
+        var args: [String] = []
+        if let q = curQuery, !q.isEmpty {
+            if searchByCode {
+                whereParts.append("code LIKE ?")
+                args.append(q + "%")
+            } else {
+                whereParts.append("word LIKE ?")
+                args.append("%" + q + "%")
+            }
+        }
+        whereParts.append("ifnull(word, '') <> ''")
+        let whereClause = whereParts.joined(separator: " AND ")
+        return db.countRecords(table, whereClause, args.isEmpty ? nil : args)
+    }
+
+    func countRecords(_ table: String) -> Int {
+        let where_ = table == "related"
+            ? "ifnull(pword,'') <> '' AND ifnull(cword,'') <> ''"
+            : "ifnull(word,'') <> ''"
+        return db.countRecords(table, where_, nil)
+    }
+
+    func countRecordsRelated(_ pword: String?) -> Int {
+        var whereParts: [String] = []
+        var args: [String] = []
+        var searchPword = pword
+        var cwordFilter = ""
+        if let p = pword, p.count > 1 {
+            cwordFilter = String(p.dropFirst())
+            searchPword = String(p.prefix(1))
+        }
+        if let p = searchPword, !p.isEmpty { whereParts.append("pword = ?"); args.append(p) }
+        if !cwordFilter.isEmpty { whereParts.append("cword LIKE ?"); args.append(cwordFilter + "%") }
+        whereParts.append("ifnull(cword,'') <> ''")
+        return db.countRecords("related", whereParts.joined(separator: " AND "), args.isEmpty ? nil : args)
+    }
+
+    func hasRelated(_ pword: String?, _ cword: String?) -> Bool {
+        guard let p = pword, !p.isEmpty else { return false }
+        var whereParts = ["pword = ?"]
+        var args = [p]
+        if let c = cword, !c.isEmpty {
+            whereParts.append("cword = ?")
+            args.append(c)
+        } else {
+            whereParts.append("cword IS NULL")
+        }
+        return db.countRecords("related", whereParts.joined(separator: " AND "), args) > 0
+    }
+
+    func getRelatedByWord(_ pword: String?, maximum: Int, offset: Int) -> [Related] {
+        return db.getRelated(pword, maximum, offset)
+    }
+
+    func getImAllConfigList(_ code: String?) -> [LimeImConfigRow] {
+        return db.getImConfigList(code, nil)
+    }
+
+    func isValidTableName(_ tableName: String) -> Bool {
+        return db.isValidTableName(tableName)
+    }
+
+    func getKeyboard() -> [KeyboardConfig] {
+        return db.getKeyboardConfigList() ?? []
+    }
+
+    func getKeyboardConfig(_ keyboard: String) -> KeyboardConfig? {
+        return db.getKeyboardConfig(keyboard)
+    }
+
+    func getKeyboardInfo(_ keyboardCode: String, _ field: String) -> String? {
+        return db.getKeyboardInfo(keyboardCode, field)
+    }
+
+    func getRecords(_ code: String, _ query: String?, searchByCode: Bool,
+                    _ maximum: Int, _ offset: Int) -> [LimeRecord] {
+        return db.getRecordList(code, query, searchByCode: searchByCode, maximum, offset)
+    }
+
+    func getRecord(_ code: String, _ id: Int64) -> LimeRecord? {
+        return db.getRecord(code, id)
+    }
+
+    @discardableResult
+    func addRecord(_ table: String, _ values: [String: Any?]) -> Int64 {
+        return db.addRecord(table, values)
+    }
+
+    @discardableResult
+    func deleteRecord(_ table: String, _ whereClause: String?, _ whereArgs: [String]?) -> Int {
+        return db.deleteRecord(table, whereClause, whereArgs)
+    }
+
+    @discardableResult
+    func updateRecord(_ table: String, _ values: [String: Any?],
+                      _ whereClause: String?, _ whereArgs: [String]?) -> Int {
+        return db.updateRecord(table, values, whereClause, whereArgs)
+    }
+
+    func clearTable(_ table: String) {
+        db.clearTable(table)
+        clearAllCaches()
+    }
+
+    func resetCache() {
+        db.resetCache()
+        clearAllCaches()
+    }
+
+    func checkPhoneticKeyboardSetting() {
+        db.checkPhoneticKeyboardSetting()
+    }
+
+    func checkBackupTable(_ table: String) -> Bool {
+        return db.checkBackupTable(table)
+    }
+
+    func getBackupTableRecords(_ backupTableName: String) -> [[String: Any]]? {
+        return db.getBackupTableRecords(backupTableName)
+    }
+
+    func removeImInfo(_ im: String, _ field: String) {
+        db.removeImConfig(im, field)
+    }
+
+    func resetImConfig(_ imCode: String) {
+        db.resetImConfig(imCode)
+    }
+
+    func restoredToDefault() {
+        db.restoredToDefault()
+    }
+
+    func addOrUpdateMappingRecord(_ table: String, _ code: String, _ word: String, _ score: Int) {
+        db.addOrUpdateMappingRecord(table, code, word, score)
+    }
+
+    func getKeyboardConfigList() -> [KeyboardConfig] {
+        return db.getKeyboardConfigList() ?? []
+    }
+
+    // MARK: - Remaining delegation methods (mirrors Java SearchServer)
+
+    func backupUserRecords(_ table: String) {
+        db.backupUserRecords(table)
+    }
+
+    @discardableResult
+    func restoreUserRecords(_ table: String) -> Int {
+        return db.restoreUserRecords(table)
+    }
+
+    func getImConfigList(_ code: String?, _ configEntry: String?) -> [LimeImConfigRow] {
+        return db.getImConfigList(code, configEntry)
+    }
+
+    func hanConvert(_ input: String, _ hanOption: Int) -> String {
+        return db.hanConvert(input, hanOption)
+    }
+
+    func getTablename() -> String {
+        return currentTableName
+    }
+
+    // MARK: - Test Hooks (internal — do not use in production code)
+    internal var _testMappingCache:      [String: [Mapping]]                { mappingCache }
+    internal var _testRelatedCache:      [String: [Mapping]]                { relatedCache }
+    internal var _testBlacklistCache:    Set<String>                        { blacklistCache }
+    internal var _testSuggestionContext: [(mapping: Mapping, code: String)] { suggestionContext }
 }

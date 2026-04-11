@@ -1,0 +1,823 @@
+﻿import Foundation
+import ZIPFoundation
+
+// MARK: - DBServer
+// Port of DBServer.java — thin orchestration layer between callers and LimeDB.
+// Singleton. No Android Context, Uri, or SharedPreferences.
+
+final class DBServer {
+
+    // MARK: - Singleton
+    static let shared = DBServer()
+    // Internal (not private) so @testable import LimeIME tests can construct fresh
+    // instances for isolation. Production code should use DBServer.shared.
+    internal init() {}
+
+    /// Test hook: inject a pre-opened LimeDB so tests can use isolated temp databases
+    /// without touching the shared App Group container. Do not use in production code.
+    init(_testDatasource: LimeDB) {
+        self.datasource = _testDatasource
+    }
+
+    // MARK: - Constants
+    private static let appGroupID      = "group.net.toload.limeime"
+    static let databaseName            = "lime.db"
+    static let databaseJournal         = "lime.db-journal"
+    static let sharedPrefsBackupName   = "sharedprefs_backup.plist"
+    static let databaseBackupName      = "lime_backup.zip"
+    static let databaseExt             = ".db"
+    static let dbTableRelated          = "related"
+    static let bufferSize4KB: Int      = 4096
+
+    // MARK: - Security limits (zip bomb guard)
+    /// Maximum cumulative uncompressed size of any archive we extract (500 MB).
+    private static let maxExtractTotalBytes: UInt64 = 500 * 1024 * 1024
+    /// Maximum number of entries in any archive we extract.
+    private static let maxExtractEntries: Int = 10_000
+    /// Maximum compression ratio per entry (uncompressed / compressed).
+    private static let maxCompressionRatio: Double = 100.0
+    /// Maximum byte size of a plist we'll deserialize from user input.
+    private static let maxPlistBytes: Int = 1 * 1024 * 1024
+
+    // MARK: - UserDefaults restore allowlist (SEC fix)
+    /// Keys that are allowed to be written back from a restored plist backup.
+    /// Anything else is silently dropped to prevent tampering with license flags,
+    /// server URLs, feature toggles, etc. Add new preference keys here only after
+    /// explicit security review.
+    private static let restoreAllowedKeys: Set<String> = [
+        "phonetic_keyboard_type",
+        "smart_chinese_input",
+        "keyboard_theme",
+        "related_phrase",
+        "sort_suggestions",
+        "soft_keyboard_show_popup",
+        "phonetic_associate_phrase",
+        "haptic_feedback",
+        "double_space_period",
+        "last_im_code",
+        "keyboard_height_portrait",
+        "keyboard_height_landscape",
+        "current_im",
+        "select_keyboard_type"
+    ]
+
+    // MARK: - Data Directory
+    /// App Group container URL (mirrors Android's ContextCompat.getDataDir()).
+    private var dataDirURL: URL {
+        if let url = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: DBServer.appGroupID) {
+            return url
+        }
+        return FileManager.default.temporaryDirectory
+    }
+
+    // MARK: - LimeDB accessor
+    // DBServer creates its own LimeDB backed by the shared lime.db in the App Group container.
+    private lazy var datasource: LimeDB? = {
+        let dbURL = dataDirURL.appendingPathComponent(DBServer.databaseName)
+        return try? LimeDB(path: dbURL.path)
+    }()
+
+    // MARK: - Private helper: close / reopen database around backup-restore critical sections.
+    private func closeDatabase() {
+        // GRDB manages its own connection pool; on iOS we simply hold the connection
+        // by keeping databaseOnHold = true (set by the caller via holdDBConnection()).
+        // No explicit close is needed; this stub preserves the Java API shape.
+        print("[DBServer] closeDatabase() — connection held via holdDBConnection()")
+    }
+
+    // MARK: - 1. isDatabaseOnHold
+    func isDatabaseOnHold() -> Bool {
+        return datasource?.isDatabaseOnHold() ?? false
+    }
+
+    // MARK: - 2. importTxtTable
+    /// Imports a text mapping file (.lime / .cin / delimited) into the specified table.
+    /// - Parameters:
+    ///   - sourcefile: URL of the text file to import.
+    ///   - tablename: Target table name.
+    ///   - progress: Optional closure receiving (statusMessage, percentDone).
+    func importTxtTable(sourcefile: URL?, tablename: String, progress: ((_ message: String, _ percent: Int) -> Void)? = nil) {
+        guard let sourcefile = sourcefile else {
+            print("[DBServer] importTxtTable: sourcefile is nil")
+            return
+        }
+        guard FileManager.default.fileExists(atPath: sourcefile.path) else {
+            print("[DBServer] importTxtTable: file does not exist at \(sourcefile.path)")
+            return
+        }
+        guard let ds = datasource else {
+            print("[DBServer] importTxtTable: datasource is nil")
+            return
+        }
+
+        ds.setFinish(false)
+        ds.setFilename(sourcefile)
+        ds.importTxtFileAsync(at: sourcefile.path, tableName: tablename, progress: progress.map { cb in
+            { count in cb("Imported \(count) records", 0) }
+        }, completion: { [weak ds] _ in
+            ds?.resetCache()
+        })
+    }
+
+    // MARK: - 3 & 4. exportTxtTable
+    @discardableResult
+    func exportTxtTable(table: String, targetFile: URL, imConfigList: [LimeImConfigRow]?, progress: ((_ message: String, _ percent: Int) -> Void)? = nil) -> Bool {
+        guard let ds = datasource else {
+            print("[DBServer] exportTxtTable: datasource is nil")
+            return false
+        }
+        return ds.exportTxtTable(table, targetFile: targetFile, imConfig: imConfigList)
+    }
+
+    @discardableResult
+    func exportTxtTable(table: String, targetFile: URL, imConfigList: [LimeImConfigRow]?) -> Bool {
+        return exportTxtTable(table: table, targetFile: targetFile, imConfigList: imConfigList, progress: nil)
+    }
+
+    // MARK: - 5. importDbRelated
+    func importDbRelated(sourcedb: URL) {
+        guard let ds = datasource else { return }
+        ds.importDbRelated(sourcedb)
+    }
+
+    // MARK: - 6. importZippedDbRelated
+    func importZippedDbRelated(compressedSourceDB: URL) {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("limehd_\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        do {
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let unzippedURLs = try unzipReturningFiles(source: compressedSourceDB, targetDir: tempDir)
+            guard unzippedURLs.count == 1 else {
+                print("[DBServer] importZippedDbRelated: expected 1 file in zip, found \(unzippedURLs.count)")
+                return
+            }
+            importDbRelated(sourcedb: unzippedURLs[0])
+            // Mirror Android SearchServer.resetCache(true) — iOS has no static SearchServer,
+            // so invalidate the LimeDB-level caches directly.
+            datasource?.resetCache()
+        } catch {
+            print("[DBServer] importZippedDbRelated: error — \(error)")
+        }
+    }
+
+    // MARK: - 7. importDb
+    /// Imports a database file into the specified IM table.
+    /// Matches Java `DBServer.importDb(File, String)` which calls
+    /// `datasource.importDb(file, tables, overwriteRelated=false, overwriteExisting=true)`.
+    /// Note the LimeDB.swift signature uses `(overwriteExisting, includeRelated)`.
+    func importDb(sourceDbFile: URL, tableName: String) {
+        guard let ds = datasource else { return }
+        ds.importDb(sourceFile: sourceDbFile, tableNames: [tableName],
+                    overwriteExisting: true, includeRelated: false)
+    }
+
+    // MARK: - 8. importZippedDb
+    func importZippedDb(sourceDbFile: URL, tableName: String) {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("limehd_\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        do {
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let unzippedURLs = try unzipReturningFiles(source: sourceDbFile, targetDir: tempDir)
+            guard unzippedURLs.count == 1 else {
+                print("[DBServer] importZippedDb: expected 1 file in zip, found \(unzippedURLs.count)")
+                return
+            }
+            guard let ds = datasource else { return }
+            ds.importDb(sourceFile: unzippedURLs[0], tableNames: [tableName],
+                        overwriteExisting: true, includeRelated: false)
+            ds.resetCache()
+        } catch {
+            print("[DBServer] importZippedDb: error — \(error)")
+        }
+    }
+
+    // MARK: - 9. backupDatabase
+    /// Backs up the database + shared preferences to the specified file URL.
+    /// - Parameter uri: Destination file URL. For document-picker URLs the caller should
+    ///   have already started the security-scoped resource; we also start it defensively.
+    func backupDatabase(uri: URL) throws {
+        guard let ds = datasource else {
+            throw DBServerError.datasourceUnavailable
+        }
+
+        // Start security-scoped access on the destination URL for document-picker sources.
+        let startedScopedAccess = uri.startAccessingSecurityScopedResource()
+        defer { if startedScopedAccess { uri.stopAccessingSecurityScopedResource() } }
+
+        let dataDir = dataDirURL
+        let fileSharedPrefsBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
+        // Remove existing shared prefs backup
+        try? FileManager.default.removeItem(at: fileSharedPrefsBackup)
+        backupDefaultSharedPreference(file: fileSharedPrefsBackup)
+
+        // Hold DB and close before zipping
+        ds.holdDBConnection()
+        closeDatabase()
+
+        // Use a unique temp file to avoid TOCTOU / concurrent-invocation races.
+        let tempZip = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lime_backup_\(UUID().uuidString).zip")
+        try? FileManager.default.removeItem(at: tempZip)
+
+        defer {
+            // Mirror Java order: unHold first, then re-open the connection once.
+            ds.unHoldDBConnection()
+            ds.openDBConnection(true)
+            try? FileManager.default.removeItem(at: fileSharedPrefsBackup)
+            try? FileManager.default.removeItem(at: tempZip)
+        }
+
+        do {
+            let dbURL     = dataDir.appendingPathComponent(DBServer.databaseName)
+            let journalURL = dataDir.appendingPathComponent(DBServer.databaseJournal)
+
+            // Build file list
+            var filesToZip: [(URL, String)] = []
+            if FileManager.default.fileExists(atPath: dbURL.path) {
+                filesToZip.append((dbURL, DBServer.databaseName))
+            }
+            if FileManager.default.fileExists(atPath: journalURL.path) {
+                filesToZip.append((journalURL, DBServer.databaseJournal))
+            }
+            if FileManager.default.fileExists(atPath: fileSharedPrefsBackup.path) {
+                filesToZip.append((fileSharedPrefsBackup, DBServer.sharedPrefsBackupName))
+            }
+
+            // Create zip archive
+            guard let archive = Archive(url: tempZip, accessMode: .create) else {
+                throw DBServerError.archiveCreationFailed
+            }
+            for (fileURL, entryName) in filesToZip {
+                try archive.addEntry(with: entryName, fileURL: fileURL)
+            }
+
+            // Mark the temp zip with complete file protection (contains user dictionary data).
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete], ofItemAtPath: tempZip.path)
+
+            // Copy temp zip to destination URI, removing any existing file first
+            // (copyItem throws on collision — that would silently drop the backup).
+            try? FileManager.default.removeItem(at: uri)
+            try FileManager.default.copyItem(at: tempZip, to: uri)
+            // Apply protection on the destination too.
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete], ofItemAtPath: uri.path)
+        } catch {
+            print("[DBServer] backupDatabase: error — \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - 10. restoreDatabase (URL)
+    func restoreDatabase(uri: URL) {
+        // Start security-scoped access for document-picker URLs.
+        let startedScopedAccess = uri.startAccessingSecurityScopedResource()
+        defer { if startedScopedAccess { uri.stopAccessingSecurityScopedResource() } }
+
+        let tempZip = FileManager.default.temporaryDirectory
+            .appendingPathComponent(DBServer.databaseBackupName + "_restore_\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: tempZip) }
+
+        do {
+            try FileManager.default.copyItem(at: uri, to: tempZip)
+            restoreDatabase(srcFilePath: tempZip.path)
+        } catch {
+            print("[DBServer] restoreDatabase(url): error copying file — \(error)")
+        }
+    }
+
+    // MARK: - 11. restoreDatabase (path)
+    func restoreDatabase(srcFilePath: String?) {
+        guard let srcFilePath = srcFilePath, !srcFilePath.isEmpty else {
+            print("[DBServer] restoreDatabase: srcFilePath is nil or empty")
+            return
+        }
+        guard FileManager.default.fileExists(atPath: srcFilePath) else {
+            print("[DBServer] restoreDatabase: file not found at \(srcFilePath)")
+            return
+        }
+        guard let ds = datasource else { return }
+
+        let dataDir = dataDirURL
+        let sharedPrefBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
+
+        ds.holdDBConnection()
+        closeDatabase()
+
+        // Temp path: Android backup lands here during extraction, then swapped in after
+        // the old datasource closes (so GRDB checkpoints into the OLD lime.db, not the backup).
+        let tempDBPath = dataDir.appendingPathComponent(DBServer.databaseName + ".restore_tmp")
+        let dbURL = dataDir.appendingPathComponent(DBServer.databaseName)
+
+        var restoreSucceeded = false
+        defer {
+            ds.unHoldDBConnection()
+            // Step 1: release old datasource — GRDB checkpoints its WAL into the OLD lime.db.
+            // lime.db is still the pre-restore file at this point, so the checkpoint is safe.
+            datasource = nil
+            // Step 2: now that the old connection is closed, remove old lime.db + WAL/SHM.
+            if restoreSucceeded {
+                try? FileManager.default.removeItem(at: dbURL)
+                try? FileManager.default.removeItem(at: dataDir.appendingPathComponent("lime.db-wal"))
+                try? FileManager.default.removeItem(at: dataDir.appendingPathComponent("lime.db-shm"))
+                // Step 3: move the backup (held at temp) into place as the new lime.db.
+                if FileManager.default.fileExists(atPath: tempDBPath.path) {
+                    try? FileManager.default.moveItem(at: tempDBPath, to: dbURL)
+                }
+            }
+            // Step 4: open a fresh datasource on the restored (or original) file.
+            print("[DBServer] restore defer: reopening at \(dbURL.path), exists=\(FileManager.default.fileExists(atPath: dbURL.path)), restoreSucceeded=\(restoreSucceeded)")
+            datasource = try? LimeDB(path: dbURL.path)
+            if restoreSucceeded {
+                if FileManager.default.fileExists(atPath: sharedPrefBackup.path) {
+                    restoreDefaultSharedPreference(file: sharedPrefBackup)
+                    try? FileManager.default.removeItem(at: sharedPrefBackup)
+                }
+                datasource?.checkAndUpdateRelatedTable()
+            }
+        }
+
+        // Clean up any leftover temp file from a previous failed restore.
+        try? FileManager.default.removeItem(at: tempDBPath)
+
+        do {
+            guard let archive = Archive(url: URL(fileURLWithPath: srcFilePath), accessMode: .read) else {
+                print("[DBServer] restoreDatabase: cannot open archive at \(srcFilePath)")
+                return
+            }
+            // Extract only the DB file — skip directory entries and unknown files.
+            // We look for lime.db at any depth (handles both iOS layout "lime.db"
+            // and Android layout "databases/lime.db").
+            var dbExtracted = false
+            for entry in archive {
+                guard entry.type == .file else { continue }
+                guard URL(fileURLWithPath: entry.path).lastPathComponent == DBServer.databaseName else { continue }
+                try? FileManager.default.removeItem(at: tempDBPath)
+                _ = try archive.extract(entry, to: tempDBPath, skipCRC32: false)
+                try? FileManager.default.setAttributes(
+                    [.protectionKey: FileProtectionType.complete], ofItemAtPath: tempDBPath.path)
+                let size = ((try? FileManager.default.attributesOfItem(atPath: tempDBPath.path))?[.size] as? Int) ?? -1
+                print("[DBServer] restore: extracted '\(entry.path)' to temp, size=\(size)")
+                dbExtracted = true
+                break
+            }
+            guard dbExtracted else {
+                print("[DBServer] restoreDatabase: lime.db not found in archive")
+                return
+            }
+            restoreSucceeded = true
+        } catch {
+            print("[DBServer] restoreDatabase: extract failed — \(error)")
+            try? FileManager.default.removeItem(at: tempDBPath)
+        }
+    }
+
+    // MARK: - 12. backupDefaultSharedPreference
+    /// Serialises the restore-allowed subset of UserDefaults to a plist file.
+    /// Only keys in `restoreAllowedKeys` are persisted so an attacker-crafted
+    /// backup cannot smuggle arbitrary preferences back in on restore.
+    func backupDefaultSharedPreference(file: URL) {
+        try? FileManager.default.removeItem(at: file)
+
+        let defaults = UserDefaults(suiteName: DBServer.appGroupID) ?? UserDefaults.standard
+        let full = defaults.dictionaryRepresentation()
+        var filtered: [String: Any] = [:]
+        for (key, value) in full where DBServer.restoreAllowedKeys.contains(key) {
+            filtered[key] = value
+        }
+
+        do {
+            let data = try PropertyListSerialization.data(fromPropertyList: filtered,
+                                                          format: .binary, options: 0)
+            try writeProtected(data, to: file)
+        } catch {
+            print("[DBServer] backupDefaultSharedPreference: error — \(error)")
+        }
+    }
+
+    // MARK: - 13. restoreDefaultSharedPreference
+    /// Reads a plist file back into UserDefaults, applying an allowlist + size cap.
+    func restoreDefaultSharedPreference(file: URL) {
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            print("[DBServer] restoreDefaultSharedPreference: file not found")
+            return
+        }
+        // Cap file size to defeat DoS via absurdly large plists.
+        let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
+        if let size = (attrs?[.size] as? NSNumber)?.intValue, size > DBServer.maxPlistBytes {
+            print("[DBServer] restoreDefaultSharedPreference: plist exceeds size cap (\(size) bytes)")
+            return
+        }
+        do {
+            let data = try Data(contentsOf: file)
+            guard data.count <= DBServer.maxPlistBytes else {
+                print("[DBServer] restoreDefaultSharedPreference: in-memory size exceeds cap")
+                return
+            }
+            guard let dict = try PropertyListSerialization.propertyList(
+                    from: data, format: nil) as? [String: Any] else {
+                print("[DBServer] restoreDefaultSharedPreference: invalid plist format")
+                return
+            }
+            let defaults = UserDefaults(suiteName: DBServer.appGroupID) ?? UserDefaults.standard
+            // Apply only keys on the allowlist; drop everything else silently.
+            for (key, value) in dict where DBServer.restoreAllowedKeys.contains(key) {
+                defaults.set(value, forKey: key)
+            }
+            defaults.synchronize()
+        } catch {
+            print("[DBServer] restoreDefaultSharedPreference: error — \(error)")
+        }
+    }
+
+    // MARK: - 14. unzip
+    /// Java-compat wrapper that writes every archive entry to the single `targetFile`
+    /// path under `targetFolder` (last entry wins — mirrors the Java version).
+    /// The zip-bomb cap still applies to the archive as a whole.
+    func unzip(source: URL, targetFolder: String, targetFile: String, removeOriginal: Bool) {
+        guard FileManager.default.fileExists(atPath: source.path) else {
+            print("[DBServer] unzip: source file does not exist at \(source.path)")
+            return
+        }
+        let targetFolderURL = URL(fileURLWithPath: targetFolder)
+        // Validate that `targetFile` itself is a safe filename (no traversal).
+        guard let outputURL = safeDestination(forEntryPath: targetFile, in: targetFolderURL) else {
+            print("[DBServer] unzip: unsafe targetFile path rejected: \(targetFile)")
+            return
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: targetFolderURL, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: outputURL)
+
+            guard let archive = Archive(url: source, accessMode: .read) else {
+                print("[DBServer] unzip: cannot open archive")
+                return
+            }
+            // Enforce zip-bomb caps on the archive before extracting.
+            _ = try validatedEntries(of: archive, targetDir: targetFolderURL)
+
+            var extracted = false
+            for entry in archive {
+                _ = try archive.extract(entry, to: outputURL, skipCRC32: false)
+                extracted = true
+            }
+            if !extracted {
+                print("[DBServer] unzip: no entries found in archive")
+            } else {
+                try? FileManager.default.setAttributes(
+                    [.protectionKey: FileProtectionType.complete], ofItemAtPath: outputURL.path)
+            }
+            if removeOriginal {
+                try? FileManager.default.removeItem(at: source)
+            }
+        } catch {
+            print("[DBServer] unzip: error — \(error)")
+        }
+    }
+
+    // MARK: - 15. zip
+    func zip(source: URL, targetFolder: String, targetFile: String) {
+        guard FileManager.default.fileExists(atPath: source.path),
+              !source.hasDirectoryPath else {
+            print("[DBServer] zip: source file does not exist or is a directory: \(source.path)")
+            return
+        }
+        let targetFolderURL = URL(fileURLWithPath: targetFolder)
+        let outputURL = targetFolderURL.appendingPathComponent(targetFile)
+
+        do {
+            try FileManager.default.createDirectory(at: targetFolderURL, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: outputURL)
+
+            guard let archive = Archive(url: outputURL, accessMode: .create) else {
+                print("[DBServer] zip: cannot create archive at \(outputURL.path)")
+                return
+            }
+            // Use only the file name as the entry name (mirrors Java's ZipEntry(sourceFile.getName()))
+            try archive.addEntry(with: source.lastPathComponent, fileURL: source)
+        } catch {
+            print("[DBServer] zip: error — \(error)")
+        }
+    }
+
+    /// Returns the URL of a bundled blank template file, searching the main bundle
+    /// first then the keyboard extension bundle. Returns nil if not bundled.
+    /// Android ships these as `R.raw.blank` / `R.raw.blankrelated`; on iOS they
+    /// need to be added as resources to the app target.
+    private func bundledBlankTemplateURL(named name: String) -> URL? {
+        if let url = Bundle.main.url(forResource: name, withExtension: "db") {
+            return url
+        }
+        // Fall back to the keyboard extension's own bundle if we're running inside it.
+        for bundle in Bundle.allBundles {
+            if let url = bundle.url(forResource: name, withExtension: "db") {
+                return url
+            }
+        }
+        return nil
+    }
+
+    // MARK: - 16. exportZippedDb
+    /// Exports a single IM table to a zipped .db file.
+    /// Requires `blank.db` to be bundled as a resource; returns nil otherwise.
+    @discardableResult
+    func exportZippedDb(tableName: String?, targetDbFile: URL?, progressCallback: (() -> Void)? = nil) -> URL? {
+        guard let tableName = tableName, let targetDbFile = targetDbFile else {
+            print("[DBServer] exportZippedDb: invalid parameters")
+            return nil
+        }
+        guard let ds = datasource else {
+            print("[DBServer] exportZippedDb: datasource is nil")
+            return nil
+        }
+        guard let template = bundledBlankTemplateURL(named: "blank") else {
+            print("[DBServer] exportZippedDb: blank.db template not bundled; cannot export")
+            return nil
+        }
+
+        do {
+            let cacheDir = FileManager.default.temporaryDirectory
+            let dbFile = cacheDir.appendingPathComponent(tableName + DBServer.databaseExt)
+
+            try? FileManager.default.removeItem(at: dbFile)
+            try? FileManager.default.removeItem(at: targetDbFile)
+
+            progressCallback?()
+
+            // Copy the bundled blank SQLite template so prepareBackup has valid schema to attach.
+            try FileManager.default.copyItem(at: template, to: dbFile)
+
+            ds.prepareBackup(targetFile: dbFile, tableNames: [tableName], includeRelated: false)
+
+            guard let archive = Archive(url: targetDbFile, accessMode: .create) else {
+                print("[DBServer] exportZippedDb: cannot create archive")
+                return nil
+            }
+            try archive.addEntry(with: dbFile.lastPathComponent, fileURL: dbFile)
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete], ofItemAtPath: targetDbFile.path)
+
+            try? FileManager.default.removeItem(at: dbFile)
+            return targetDbFile
+        } catch {
+            print("[DBServer] exportZippedDb: error — \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - 17. exportZippedDbRelated
+    /// Exports the related-phrase table to a zipped .db file.
+    /// Requires `blankrelated.db` to be bundled as a resource; returns nil otherwise.
+    @discardableResult
+    func exportZippedDbRelated(targetFile: URL?, progressCallback: (() -> Void)? = nil) -> URL? {
+        guard let targetFile = targetFile else {
+            print("[DBServer] exportZippedDbRelated: invalid parameters")
+            return nil
+        }
+        guard let ds = datasource else {
+            print("[DBServer] exportZippedDbRelated: datasource is nil")
+            return nil
+        }
+        guard let template = bundledBlankTemplateURL(named: "blankrelated") else {
+            print("[DBServer] exportZippedDbRelated: blankrelated.db template not bundled; cannot export")
+            return nil
+        }
+
+        do {
+            let cacheDir = FileManager.default.temporaryDirectory
+            let dbFile = cacheDir.appendingPathComponent(DBServer.dbTableRelated + DBServer.databaseExt)
+
+            try? FileManager.default.removeItem(at: dbFile)
+            try? FileManager.default.removeItem(at: targetFile)
+
+            progressCallback?()
+
+            try FileManager.default.copyItem(at: template, to: dbFile)
+
+            ds.prepareBackup(targetFile: dbFile, tableNames: [], includeRelated: true)
+
+            guard let archive = Archive(url: targetFile, accessMode: .create) else {
+                print("[DBServer] exportZippedDbRelated: cannot create archive")
+                return nil
+            }
+            try archive.addEntry(with: dbFile.lastPathComponent, fileURL: dbFile)
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete], ofItemAtPath: targetFile.path)
+
+            try? FileManager.default.removeItem(at: dbFile)
+            return targetFile
+        } catch {
+            print("[DBServer] exportZippedDbRelated: error — \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Private zip helpers
+
+    /// Validates a zip entry path is safe to extract under `baseDir`.
+    /// Rejects absolute paths, paths containing `..`, and any path whose resolved
+    /// destination would escape the base directory (zip-slip defence, CWE-22).
+    private func safeDestination(forEntryPath entryPath: String, in baseDir: URL) -> URL? {
+        // Reject empty, absolute, or traversal paths up front.
+        if entryPath.isEmpty || entryPath.hasPrefix("/") { return nil }
+        let components = entryPath.split(separator: "/", omittingEmptySubsequences: true)
+        if components.contains("..") { return nil }
+        let candidate = baseDir.appendingPathComponent(entryPath).standardizedFileURL
+        let base = baseDir.standardizedFileURL
+        let basePath = base.path.hasSuffix("/") ? base.path : base.path + "/"
+        // The candidate must live strictly under the base directory.
+        guard candidate.path.hasPrefix(basePath) || candidate.path == base.path else { return nil }
+        return candidate
+    }
+
+    /// Sums uncompressed sizes and rejects archives that would explode past caps.
+    /// Returns the validated list of `(entry, destURL)` tuples ready for extraction,
+    /// or throws `DBServerError.zipBombDetected` on cap violation.
+    private func validatedEntries(of archive: Archive, targetDir: URL) throws -> [(Entry, URL)] {
+        var totalBytes: UInt64 = 0
+        var count = 0
+        var result: [(Entry, URL)] = []
+        for entry in archive {
+            // Skip directory entries — parent dirs are created during file extraction.
+            if entry.type == .directory { continue }
+            count += 1
+            if count > DBServer.maxExtractEntries { throw DBServerError.zipBombDetected }
+            totalBytes = totalBytes &+ UInt64(entry.uncompressedSize)
+            if totalBytes > DBServer.maxExtractTotalBytes { throw DBServerError.zipBombDetected }
+            if entry.compressedSize > 0 {
+                let ratio = Double(entry.uncompressedSize) / Double(entry.compressedSize)
+                if ratio > DBServer.maxCompressionRatio { throw DBServerError.zipBombDetected }
+            }
+            guard let destURL = safeDestination(forEntryPath: entry.path, in: targetDir) else {
+                throw DBServerError.unsafeZipEntry(entry.path)
+            }
+            result.append((entry, destURL))
+        }
+        return result
+    }
+
+    /// Writes `data` to `url` with iOS complete file protection when possible.
+    private func writeProtected(_ data: Data, to url: URL) throws {
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
+    }
+
+    /// Unzips all entries from source into targetDir and returns their URLs.
+    /// Safe: validates each entry against zip-slip and zip-bomb caps.
+    private func unzipReturningFiles(source: URL, targetDir: URL) throws -> [URL] {
+        guard let archive = Archive(url: source, accessMode: .read) else {
+            throw DBServerError.archiveCreationFailed
+        }
+        let validated = try validatedEntries(of: archive, targetDir: targetDir)
+        var results: [URL] = []
+        for (entry, destURL) in validated {
+            try? FileManager.default.createDirectory(
+                at: destURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
+            _ = try archive.extract(entry, to: destURL, skipCRC32: false)
+            // Apply complete file protection after extraction
+            // (ZIPFoundation does not set protection attributes itself).
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.complete], ofItemAtPath: destURL.path)
+            results.append(destURL)
+        }
+        return results
+    }
+
+    // MARK: - IM Config Proxies
+
+    func getAllImConfigs() throws -> [ImConfig] {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        return try ds.getAllImConfigs()
+    }
+
+    func updateIMEnabled(imName: String, enabled: Bool) {
+        datasource?.updateIMEnabled(imName: imName, enabled: enabled)
+    }
+
+    func updateIMSortOrder(id: Int64, sortOrder: Int) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.updateIMSortOrder(id: id, sortOrder: sortOrder)
+    }
+
+    func getKeyboardConfigList() -> [KeyboardConfig]? {
+        datasource?.getKeyboardConfigList()
+    }
+
+    func setImConfigKeyboard(_ imCode: String, _ keyboard: KeyboardConfig) {
+        datasource?.setImConfigKeyboard(imCode, keyboard)
+    }
+
+    // MARK: - Record CRUD Proxies
+
+    func getRecordList(_ table: String, _ query: String?, searchByCode: Bool,
+                       _ maxResult: Int, _ offset: Int) -> [LimeRecord] {
+        datasource?.getRecordList(table, query, searchByCode: searchByCode,
+                                  maxResult, offset) ?? []
+    }
+
+    func countRecords(_ table: String, _ whereClause: String?,
+                      _ whereArgs: [String]?) -> Int {
+        datasource?.countRecords(table, whereClause, whereArgs) ?? 0
+    }
+
+    @discardableResult
+    func addRecord(_ table: String, _ values: [String: Any?]) -> Int64 {
+        datasource?.addRecord(table, values) ?? -1
+    }
+
+    @discardableResult
+    func updateRecord(_ table: String, _ values: [String: Any?],
+                      _ whereClause: String?, _ whereArgs: [String]?) -> Int {
+        datasource?.updateRecord(table, values, whereClause, whereArgs) ?? 0
+    }
+
+    @discardableResult
+    func deleteRecord(_ table: String, _ whereClause: String?,
+                      _ whereArgs: [String]?) -> Int {
+        datasource?.deleteRecord(table, whereClause, whereArgs) ?? 0
+    }
+
+    // MARK: - SearchServer factory
+
+    /// Returns a SearchServer backed by the same LimeDB connection as this DBServer.
+    /// Multiple SearchServer instances sharing one LimeDB are safe — GRDB's DatabaseQueue
+    /// serialises all writes internally.
+    func makeSearchServer() -> SearchServer? {
+        guard let ds = datasource else { return nil }
+        return SearchServer(db: ds)
+    }
+
+    // MARK: - Related Proxies
+
+    func getRelated(_ pword: String?, _ maximum: Int, _ offset: Int) -> [Related] {
+        datasource?.getRelated(pword, maximum, offset) ?? []
+    }
+
+    // MARK: - Validation Proxy
+
+    func isValidTableName(_ name: String?) -> Bool {
+        datasource?.isValidTableName(name) ?? false
+    }
+
+    // MARK: - Import / Export Proxies
+
+    func importFromAttachedDB(sourcePath: String, tableName: String) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.importFromAttachedDB(sourcePath: sourcePath, tableName: tableName)
+    }
+
+    func importTxtFile(at path: String, tableName: String,
+                       progress: ((Int) -> Void)?) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.importTxtFile(at: path, tableName: tableName, progress: progress)
+    }
+
+    func exportDB(to destPath: String) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.exportDB(to: destPath)
+    }
+
+    func seedDefaultIMs() throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.seedDefaultIMs()
+    }
+
+    func tableHasData(_ name: String) -> Bool {
+        datasource?.tableHasData(name) ?? false
+    }
+
+    func importFromZip(at zipURL: URL, tableName: String) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.importFromZip(at: zipURL, tableName: tableName)
+    }
+
+    func registerIM(imName: String, tableName: String, label: String, keyboardId: String) throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.registerIM(imName: imName, tableName: tableName, label: label, keyboardId: keyboardId)
+    }
+
+    func seedCustomIM() throws {
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try ds.seedCustomIM()
+    }
+}
+
+// MARK: - DBServerError
+enum DBServerError: Error {
+    case datasourceUnavailable
+    case archiveCreationFailed
+    case fileNotFound(String)
+    case unsafeZipEntry(String)       // SEC: zip-slip rejected entry path
+    case zipBombDetected              // SEC: archive exceeded size/count/ratio cap
+    case securityScopedAccessDenied   // SEC: couldn't start security-scoped resource
+}
+
+// MARK: - Test hook
+extension DBServer {
+    // Test hook — do not use in production code
+    var _datasourceForTesting: LimeDB? { datasource }
+}
