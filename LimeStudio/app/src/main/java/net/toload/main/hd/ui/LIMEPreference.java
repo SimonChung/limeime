@@ -26,6 +26,7 @@ package net.toload.main.hd.ui;
 
 import android.app.backup.BackupManager;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
@@ -33,6 +34,7 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -49,6 +51,10 @@ import java.util.Objects;
 
 
 public class LIMEPreference extends AppCompatActivity {
+
+	static {
+		AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+	}
 
 	private SearchServer SearchSrv = null;
 
@@ -123,11 +129,11 @@ public class LIMEPreference extends AppCompatActivity {
 			@SuppressWarnings("deprecation")
 			WindowInsetsControllerCompat windowInsetsController = ViewCompat.getWindowInsetsController(decorView);
 			if (windowInsetsController != null) {
-				// Use dark status bar icons (black) for visibility on light backgrounds
-				// setAppearanceLightStatusBars(true) = light status bar appearance = dark icons
-				windowInsetsController.setAppearanceLightStatusBars(true);
-				// Use dark navigation bar icons for consistency
-				windowInsetsController.setAppearanceLightNavigationBars(true);
+				int uiMode = getResources().getConfiguration().uiMode
+						& Configuration.UI_MODE_NIGHT_MASK;
+				boolean isLight = (uiMode != Configuration.UI_MODE_NIGHT_YES);
+				windowInsetsController.setAppearanceLightStatusBars(isLight);
+				windowInsetsController.setAppearanceLightNavigationBars(isLight);
 			}
 		} else {
 			// API 21-22: SYSTEM_UI_FLAG_LIGHT_STATUS_BAR is not available (introduced in API 23)

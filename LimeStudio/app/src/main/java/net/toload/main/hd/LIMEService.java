@@ -248,6 +248,7 @@ public class LIMEService extends InputMethodService
     // Track last known good bottom padding for older APIs (21-25) where window insets
     // might incorrectly include keyboard height when keyboard is restored
     private final int mLastKnownBottomPadding = -1;
+    private int mLastUiNightMode = -1;
 
 
     /**
@@ -375,6 +376,13 @@ public class LIMEService extends InputMethodService
             mOrientation = conf.orientation;
             mHardkeyboardHidden = conf.hardKeyboardHidden;
         }
+        int newUiMode = conf.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        int oldUiMode = mLastUiNightMode;
+        mLastUiNightMode = newUiMode;
+        if (mKeyboardThemeIndex == 6 && newUiMode != oldUiMode) {
+            mThemeContext = null;   // force theme rebuild
+        }
+
         initialViewAndSwitcher(true);
         mKeyboardSwitcher.resetKeyboards(true);
         super.onConfigurationChanged(conf);
@@ -1971,7 +1979,7 @@ public class LIMEService extends InputMethodService
 
         AlertDialog.Builder builder;
 
-        builder = new AlertDialog.Builder(this);
+        builder = createDialogBuilder();
 
 
         builder.setCancelable(true);
@@ -2212,7 +2220,7 @@ public class LIMEService extends InputMethodService
     private void showHanConvertPicker() {
         AlertDialog.Builder builder;
 
-        builder = new AlertDialog.Builder(this);
+        builder = createDialogBuilder();
 
         builder.setCancelable(true);
         builder.setIcon(R.drawable.logo);
@@ -2257,7 +2265,7 @@ public class LIMEService extends InputMethodService
 
         AlertDialog.Builder builder;
 
-        builder = new AlertDialog.Builder(this);
+        builder = createDialogBuilder();
 
         builder.setCancelable(true);
         builder.setIcon(R.drawable.logo);
@@ -2949,9 +2957,8 @@ public class LIMEService extends InputMethodService
                 mCandidateList = (LinkedList<Mapping>) suggestions;
                 try {
 
-                    if (suggestions.size() > 1 && suggestions.get(1).isExactMatchToCodeRecord()) {
+                    if (suggestions.size() > 1 && ( !hasPhysicalKeyPressed || suggestions.get(1).isExactMatchToCodeRecord() || suggestions.get(1).isPartialMatchToCodeRecord())) {
                         selectedCandidate = suggestions.get(1);
-                        //selectedIndex = 1;
                         // this is for no exact match condition with code.  //do not set default suggestion for other record type like chinese punctuation symbols1 or related phrases. Jeremy '15,6,4
                     } else if (!suggestions.isEmpty()) {
                         selectedCandidate = suggestions.get(0);
@@ -4383,11 +4390,28 @@ public class LIMEService extends InputMethodService
 
     private int mKeyboardThemeIndex = -1;
 
-    private int getKeyboardTheme() {
-        if (mKeyboardThemeIndex < 0 || mKeyboardThemeIndex >= KEYBOARD_THEMES.length) {
-            return KEYBOARD_THEMES[0].mStyleId;
+    private AlertDialog.Builder createDialogBuilder() {
+        if (isEffectiveDarkTheme()) {
+            return new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
         }
-        return KEYBOARD_THEMES[mKeyboardThemeIndex].mStyleId;
+        return new AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog_Alert);
+    }
+
+    private boolean isEffectiveDarkTheme() {
+        if (mKeyboardThemeIndex == 1) return true;
+        if (mKeyboardThemeIndex == 6) {
+            int uiMode = getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK;
+            return uiMode == Configuration.UI_MODE_NIGHT_YES;
+        }
+        return false;
+    }
+
+    private int getKeyboardTheme() {
+        int idx = mKeyboardThemeIndex;
+        if (idx == 6) idx = isEffectiveDarkTheme() ? 1 : 0;
+        if (idx < 0 || idx >= KEYBOARD_THEMES.length) return KEYBOARD_THEMES[0].mStyleId;
+        return KEYBOARD_THEMES[idx].mStyleId;
     }
 
     /**
@@ -4436,6 +4460,11 @@ public class LIMEService extends InputMethodService
             case 3:  colorRes = R.color.keyboard_background_tech_blue;       break;
             case 4:  colorRes = R.color.keyboard_background_fashion_purple;  break;
             case 5:  colorRes = R.color.keyboard_background_relax_green;     break;
+            case 6:
+                colorRes = isEffectiveDarkTheme()
+                        ? R.color.keyboard_background_dark
+                        : R.color.keyboard_background_light;
+                break;
             case 0:
             default: colorRes = R.color.keyboard_background_light;           break;
         }

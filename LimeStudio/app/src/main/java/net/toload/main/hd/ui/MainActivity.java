@@ -2,6 +2,7 @@ package net.toload.main.hd.ui;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,6 +13,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.content.pm.PackageInfoCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -95,6 +98,10 @@ import net.toload.main.hd.ui.view.NavigationDrawerFragment;
  * @see ProgressManager
  */
 public class MainActivity extends AppCompatActivity implements MainActivityView {
+
+    static {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+    }
 
 
     private static final String TAG = "MainActivity";
@@ -542,27 +549,17 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
         window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
         window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
 
-        // Set status bar icon appearance to dark (black icons) for better visibility.
-        // Background is white/light, so we need dark icons to be legible.
-        // SYSTEM_UI_FLAG_LIGHT_STATUS_BAR (when SET) = dark icons on light background.
-        // SYSTEM_UI_FLAG_LIGHT_STATUS_BAR (when CLEARED) = light/white icons (invisible on white).
+        int uiMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        boolean isLight = (uiMode != Configuration.UI_MODE_NIGHT_YES);
         View decorView = getWindow().getDecorView();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // API 26+: request dark icons on both status bar and navigation bar
-            int flags = decorView.getSystemUiVisibility();
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            decorView.setSystemUiVisibility(flags);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // API 23-25: dark status bar icons available, but not navigation bar icons;
-            // use solid dark navigation bar so default white system icons remain visible
-            int flags = decorView.getSystemUiVisibility();
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            decorView.setSystemUiVisibility(flags);
-            getWindow().setNavigationBarColor(0xFF000000);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            WindowInsetsControllerCompat controller =
+                    new WindowInsetsControllerCompat(getWindow(), decorView);
+            controller.setAppearanceLightStatusBars(isLight);
+            controller.setAppearanceLightNavigationBars(isLight);
         } else {
-            // API 21-22: neither light status bar nor light navigation bar flags available;
-            // use solid dark bars so the default white system icons remain visible
+            // API 21-22: cannot toggle icon brightness; use solid dark bars so the
+            // default white icons remain visible regardless of theme.
             getWindow().setStatusBarColor(0xFF000000);
             getWindow().setNavigationBarColor(0xFF000000);
         }

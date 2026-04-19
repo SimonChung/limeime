@@ -125,7 +125,7 @@
         </activity>
         -->
         <activity
-            android:theme="@style/Theme.AppCompat.Light"
+            android:theme="@style/LIMESettingsTheme"
             android:name=".ui.LIMEPreference"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="@string/ime_setting" >

@@ -1179,7 +1179,7 @@ public class CandidateView extends View implements View.OnClickListener {
                     Log.i(TAG, "setSuggestions():mSuggestions.size():" + mSuggestions.size()
                             + " mCount=" + mCount);
 
-                if (mCount > 1 && mSuggestions.get(1).isExactMatchToCodeRecord()) {
+                if (mCount > 1 && (mSuggestions.get(1).isExactMatchToCodeRecord() || mSuggestions.get(1).isPartialMatchToCodeRecord())) {
                     mSelectedIndex = 1;
                 } else if (mCount > 0 && (mSuggestions.get(0).isComposingCodeRecord() || mSuggestions.get(0).isRuntimeBuiltPhraseRecord())) {
 /*

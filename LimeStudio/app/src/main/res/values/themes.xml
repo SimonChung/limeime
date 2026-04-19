@@ -22,14 +22,18 @@
   -->
 
 <resources>
-  <!-- Base application theme. -->
-  <style name="AppTheme" parent="Theme.AppCompat.Light">
-    <!-- White actionbar background -->
-    <item name="colorPrimary">#FFFFFF</item>
-    <item name="colorPrimaryDark">#FFFFFF</item>
-    <!-- Dark text/icons on white actionbar for visibility -->
-    <item name="android:textColorPrimary">#000000</item>
-    <item name="android:textColorSecondary">#666666</item>
+  <!--
+    Settings activity theme — follows system day/night via Theme.AppCompat.DayNight.
+    Explicit windowBackground to ?attr/colorBackground is required on API 35+ where
+    edge-to-edge + transparent system bars otherwise fall back to white.
+  -->
+  <style name="LIMESettingsTheme" parent="Theme.AppCompat.DayNight">
+    <item name="android:windowBackground">?android:attr/colorBackground</item>
+  </style>
+
+  <!-- Base application theme — follows system day/night. -->
+  <style name="AppTheme" parent="Theme.AppCompat.DayNight">
+    <item name="android:windowBackground">?android:attr/colorBackground</item>
   </style>
 
   <style name="LIMETheme" parent="Theme.AppCompat.Light">
