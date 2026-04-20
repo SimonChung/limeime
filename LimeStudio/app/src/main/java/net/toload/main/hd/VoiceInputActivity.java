@@ -83,7 +83,7 @@ public class VoiceInputActivity extends ComponentActivity {
         sPendingVoiceText = null;
         return text;
     }
-
+    @SuppressWarnings("deprecation")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

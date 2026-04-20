@@ -1133,11 +1133,17 @@ public class SearchServer {
 
 
     /**
-     * Updates the score of a cached mapping and re-sorts the cache if necessary.
+     * Updates the score of a cached mapping and evicts then re-warms affected
+     * cache entries from the database.
+     * <p>
+     * Mirrors the iOS evict-and-re-warm pattern: instead of mutating the in-memory
+     * {@code ArrayList} on a background thread (which caused a race and produced an
+     * approximated sort order), this evicts the exact-match entry and its prefixes,
+     * then re-queries the DB so the rewarmed cache reflects the true {@code ORDER BY}.
      *
      * @param cachedMapping The mapping with the updated score.
      */
-    private synchronized void  updateScoreCache(Mapping cachedMapping) {
+    private void updateScoreCache(Mapping cachedMapping) {
         if (DEBUG) Log.i(TAG, "updateScoreCache(): code=" + cachedMapping.getCode());
 
         dbadapter.addScore(cachedMapping);
@@ -1157,50 +1163,24 @@ public class SearchServer {
             } else if ((cachedMapping.getId() != null || cachedMapping.isExactMatchToCodeRecord()) //Jeremy '15,6,3 new record type to identify exact match
                     && cachedList != null && !cachedList.isEmpty()) {
 
-                boolean sort;
-                if (isPhysicalKeyboardPressed)
-                    sort = mLIMEPref.getPhysicalKeyboardSortSuggestions();
-                else
-                    sort = mLIMEPref.getSortSuggestions();
-
-                if (sort) { // Jeremy '12,5,22 do not update the order of exact match list if the sort option is off
-                    int size = cachedList.size();
-                    if (DEBUG) Log.i(TAG, "updateScoreCache(): cachedList.size:" + size);
-                    // update exact match cache
-                    for (int j = 0; j < size; j++) {
-                        Mapping cm = cachedList.get(j);
-                        if (DEBUG)
-                            Log.i(TAG, "updateScoreCache(): cachedList at :" + j + ". score=" + cm.getScore());
-                        if (cachedMapping.getId().equals(cm.getId())) {
-                            int score = cm.getScore() + 1;
-                            if (DEBUG)
-                                Log.i(TAG, "updateScoreCache(): cachedMapping found at :" + j + ". new score=" + score);
-                            cm.setScore(score);
-                            if (j > 0 && score > cachedList.get(j - 1).getScore()) {
-                                cachedList.remove(j);
-                                for (int k = 0; k < j; k++) {
-                                    if (cachedList.get(k).getScore() <= score) {
-                                        cachedList.add(k, cm);
-                                        break;
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    // When sorting is disabled, still record the score bump to keep cache accurate
-                    for (Mapping mapping : cachedList) {
-                        if (cachedMapping.getId().equals(mapping.getId())) {
-                            mapping.setScore(mapping.getScore() + 1);
-                            break;
-                        }
-                    }
+                // Evict exact-match entry; DB already has the updated score.
+                if (cache.remove(cachekey) == null) {
+                    removeRemappedCodeCachedMappings(code);
                 }
                 // Jeremy '11,7,31
-                // exact match score was changed, related list in similar codes should be rebuild
+                // exact match score was changed, related list in similar codes should be rebuilt
                 // (eg. d, de, and def for code, defg)
-                updateSimilarCodeCache(code);
+                List<String> evictedPrefixes = updateSimilarCodeCache(code);
+                // Re-warm DB on this background thread so the next lookup hits a fresh cache
+                // ordered by the authoritative DB ORDER BY.
+                try {
+                    getMappingByCode(code, !isPhysicalKeyboardPressed, false, true);
+                    for (String prefix : evictedPrefixes) {
+                        getMappingByCode(prefix, !isPhysicalKeyboardPressed, false, true);
+                    }
+                } catch (RemoteException e) {
+                    Log.e(TAG, "updateScoreCache(): re-warm failed", e);
+                }
 
 
             } else {//Jeremy '12,6,5 code not in cache do removeRemappedCodeCachedMappings and removed cached items of  ramped codes.
@@ -1516,10 +1496,13 @@ List<Mapping> scorelistSnapshot = null;
      * Updates the cache for codes similar to the modified code (e.g., prefix matches).
      *
      * @param code The modified code.
+     * @return The list of prefix codes that were actually evicted from the cache so
+     *         callers can re-warm them from the DB on the current thread.
      */
-    private void updateSimilarCodeCache(String code) {
+    private List<String> updateSimilarCodeCache(String code) {
         if (DEBUG)
             Log.i(TAG, "updateSimilarCodeCache(): code = '" + code + "'");
+        List<String> evictedPrefixes = new LinkedList<>();
         String cachekey;
         List<Mapping> cachedList;// = cache.get(cachekey);
         int len = code.length();
@@ -1532,6 +1515,7 @@ List<Mapping> scorelistSnapshot = null;
                 Log.i(TAG, "updateSimilarCodeCache(): cachekey = '" + cachekey + "' cachedList == null :" + (cachedList == null));
             if (cachedList != null) {
                 cache.remove(cachekey);
+                evictedPrefixes.add(key);
             } else {
                 if (DEBUG)
                     Log.i(TAG, "updateSimilarCodeCache(): code not in cache. update to db only on code = '" + key + "'");
@@ -1546,6 +1530,7 @@ List<Mapping> scorelistSnapshot = null;
                 Log.e(TAG, "Error in search operation", e);
             }
         }
+        return evictedPrefixes;
     }
 
 
