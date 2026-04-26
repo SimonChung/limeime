@@ -1,0 +1,71 @@
+{
+  "id": "popup_domains",
+  "defaultWidthPercent": 15.0,
+  "rows": [
+    {
+      "isBottomRow": true,
+      "keys": [
+        {
+          "code": 0,
+          "label": "@string/popular_domain_1",
+          "sublabel": "",
+          "widthPercent": 15.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        },
+        {
+          "code": 0,
+          "label": "@string/popular_domain_2",
+          "sublabel": "",
+          "widthPercent": 15.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        },
+        {
+          "code": 0,
+          "label": "@string/popular_domain_3",
+          "sublabel": "",
+          "widthPercent": 15.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        },
+        {
+          "code": 0,
+          "label": "@string/popular_domain_4",
+          "sublabel": "",
+          "widthPercent": 15.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        },
+        {
+          "code": 0,
+          "label": "@string/popular_domain_5",
+          "sublabel": "",
+          "widthPercent": 15.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        }
+      ]
+    }
+  ]
+}

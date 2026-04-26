@@ -1,0 +1,145 @@
+name: LimeIME
+
+options:
+  bundleIdPrefix: net.toload
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "6.0.0"
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: "0.9.19"
+
+targets:
+
+  LimeIME:
+    type: application
+    platform: iOS
+    sources:
+      - path: LimeIME
+      - path: Shared
+        excludes:
+          - "Database/lime.db"
+          - "Database/phonetic.db"
+          - "Database/emoji.db"
+    preBuildScripts:
+      - name: Copy lime.db to bundle
+        script: |
+          SRC="${SRCROOT}/../Database/lime.db"
+          DST="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/lime.db"
+          if [ -f "$SRC" ]; then
+            cp -f "$SRC" "$DST"
+          fi
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/lime.db
+    dependencies:
+      - package: GRDB
+      - package: ZIPFoundation
+      - target: LimeIMEKeyboard
+        embed: true
+    info:
+      path: LimeIME/Info.plist
+      properties:
+        CFBundleDisplayName: LimeIME
+        UILaunchScreen:
+          UIImageName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    entitlements:
+      path: LimeIME/LimeIME.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.net.toload.limeime
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.toload.limeime
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  LimeIMEKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LimeIMEKeyboard
+      - path: Shared
+        excludes:
+          - "Database/lime.db"
+          - "Database/phonetic.db"
+          - "Database/emoji.db"
+    resources:
+      - path: LimeIMEKeyboard/Layouts
+    preBuildScripts:
+      - name: Copy phonetic.db to bundle
+        script: |
+          SRC="${SRCROOT}/../Database/phonetic.db"
+          DST="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/phonetic.db"
+          if [ -f "$SRC" ]; then
+            cp -f "$SRC" "$DST"
+          fi
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/phonetic.db
+      - name: Copy emoji.db to bundle
+        script: |
+          SRC="${SRCROOT}/../Database/emoji.db"
+          DST="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/emoji.db"
+          if [ -f "$SRC" ]; then
+            cp -f "$SRC" "$DST"
+          fi
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/emoji.db
+    dependencies:
+      - package: GRDB
+      - package: ZIPFoundation
+    info:
+      path: LimeIMEKeyboard/Info.plist
+      properties:
+        CFBundleDisplayName: LimeIME Keyboard
+        NSExtension:
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: zh-Hant
+            RequestsOpenAccess: true
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+    entitlements:
+      path: LimeIMEKeyboard/LimeIMEKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.net.toload.limeime
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.toload.limeime.keyboard
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: ""
+
+  LimeIMETests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LimeIMETests
+      - path: Shared
+    dependencies:
+      - package: GRDB
+      - package: ZIPFoundation
+      - target: LimeIME
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.toload.limeime.tests
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: ""
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/LimeIME.app/LimeIME
+        GENERATE_INFOPLIST_FILE: YES

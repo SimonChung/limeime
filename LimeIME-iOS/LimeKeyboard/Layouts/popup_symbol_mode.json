@@ -1,0 +1,23 @@
+{
+  "id": "popup_symbol_mode",
+  "defaultWidthPercent": 10.0,
+  "rows": [
+    {
+      "isBottomRow": true,
+      "keys": [
+        {
+          "code": -2,
+          "label": "@string/label_symbol_key",
+          "sublabel": "",
+          "widthPercent": 10.0,
+          "icon": "",
+          "isModifier": true,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "phone_number",
+  "defaultWidthPercent": 20.0,
+  "rows": [
+    {
+      "isBottomRow": false,
+      "keys": [
+        { "code": 43,  "label": "+",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 49,  "label": "1",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 50,  "label": "2",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 51,  "label": "3",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": -5,  "label": "",    "sublabel": "", "widthPercent": 20.0, "icon": "delete.backward", "isModifier": true, "isRepeatable": true, "isSticky": false, "popupKeyboard": "" }
+      ]
+    },
+    {
+      "isBottomRow": false,
+      "keys": [
+        { "code": 45,  "label": "-",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 52,  "label": "4",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 53,  "label": "5",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 54,  "label": "6",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 47,  "label": "./",  "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "@xml/popup_template" }
+      ]
+    },
+    {
+      "isBottomRow": false,
+      "keys": [
+        { "code": 40,  "label": "(",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 55,  "label": "7",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 56,  "label": "8",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 57,  "label": "9",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 41,  "label": ")",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" }
+      ]
+    },
+    {
+      "isBottomRow": true,
+      "keys": [
+        { "code": -3,  "label": "",    "sublabel": "", "widthPercent": 20.0, "icon": "keyboard.chevron.compact.down", "isModifier": true, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 42,  "label": "*",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 48,  "label": "0",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 35,  "label": "#",   "sublabel": "", "widthPercent": 20.0, "icon": "", "isModifier": false, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" },
+        { "code": 10,  "label": "",    "sublabel": "", "widthPercent": 20.0, "icon": "return", "isModifier": true, "isRepeatable": false, "isSticky": false, "popupKeyboard": "" }
+      ]
+    }
+  ]
+}
