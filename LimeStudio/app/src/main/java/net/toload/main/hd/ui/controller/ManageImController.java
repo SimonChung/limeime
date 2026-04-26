@@ -337,6 +337,30 @@ public class ManageImController extends BaseController {
     }
 
     /**
+     * Returns the currently configured keyboard for an IM table, or null
+     * when the IM has no `keyboard` kv row or the referenced keyboard code
+     * is not registered. Used by the Settings UI to display the IM's actual
+     * current keyboard description (was previously showing the IM's full
+     * name by mistake).
+     *
+     * @param table the IM table / code (e.g. "pinyin", "dayi")
+     * @return the matching `Keyboard`, or null
+     */
+    public Keyboard getCurrentKeyboard(String table) {
+        if (searchServer == null || table == null || table.isEmpty()) return null;
+        // The im row that holds the keyboard mapping has title='keyboard'; the
+        // keyboard CODE is in the `keyboard` column (the `desc` column carries
+        // the human-readable name like "LIME+數字列鍵盤"). `getImConfig` returns
+        // the `desc` column, which would resolve to nothing — read the row
+        // directly via getImConfigList so we can pick up the `keyboard` column.
+        List<ImConfig> rows = searchServer.getImConfigList(table, LIME.DB_IM_COLUMN_KEYBOARD);
+        if (rows == null || rows.isEmpty()) return null;
+        String kbCode = rows.get(0).getKeyboard();
+        if (kbCode == null || kbCode.isEmpty()) return null;
+        return searchServer.getKeyboardConfig(kbCode);
+    }
+
+    /**
      * Sets the keyboard for an IM table.
      *
      * @param table the IM table name

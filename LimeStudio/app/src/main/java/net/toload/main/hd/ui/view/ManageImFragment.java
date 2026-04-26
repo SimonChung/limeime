@@ -240,11 +240,22 @@ public class ManageImFragment extends Fragment implements ManageImView {
         // initial imConfigFullNamelist via controller
         List<ImConfig> imConfigFullNamelist = (manageImController != null) ? manageImController.getImConfigFullNameList() : new ArrayList<>();
 
-        // UpdateKeyboard display
-        for(ImConfig imConfig : imConfigFullNamelist){
-            if(imConfig.getCode().equals(table)){
-                btnManageImKeyboard.setText(imConfig.getDesc());
-                break;
+        // UpdateKeyboard display — show the IM's currently configured keyboard
+        // description (e.g. "LIME+數字列鍵盤"), NOT the IM's full name.
+        // Previously this iterated `getImConfigFullNameList()` (title='name' rows)
+        // and surfaced the IM full name (e.g. "拼音輸入法", "大易輸入法") which was
+        // wrong for every IM on first open.
+        Keyboard currentKb = (manageImController != null) ? manageImController.getCurrentKeyboard(table) : null;
+        if (currentKb != null) {
+            btnManageImKeyboard.setText(currentKb.getDesc());
+        } else {
+            // Fallback: if no keyboard is configured for this IM, fall back to the
+            // IM full name to preserve a non-empty button label.
+            for (ImConfig imConfig : imConfigFullNamelist) {
+                if (imConfig.getCode().equals(table)) {
+                    btnManageImKeyboard.setText(imConfig.getDesc());
+                    break;
+                }
             }
         }
 
@@ -392,6 +403,14 @@ public class ManageImFragment extends Fragment implements ManageImView {
      */
     public List<Keyboard> getKeyboardList() {
         return (manageImController != null) ? manageImController.getKeyboardList() : new java.util.ArrayList<>();
+    }
+
+    /**
+     * Returns the IM's currently configured keyboard, or null if none is set.
+     * Exposed for dialogs that need to highlight the current selection.
+     */
+    public Keyboard getCurrentKeyboard() {
+        return (manageImController != null) ? manageImController.getCurrentKeyboard(table) : null;
     }
 
     /**

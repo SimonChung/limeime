@@ -132,11 +132,26 @@ public class ManageImKeyboardDialog extends DialogFragment implements
 				listitems[i] = keyboardlist.get(i).getDesc();
 			}
 
+		// Single-choice list with a visible "current selection" indicator —
+		// previously used `simple_list_item_1` so the user couldn't tell which
+		// keyboard was already configured for this IM.
 		ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
-                android.R.layout.simple_list_item_1, listitems);
+                android.R.layout.simple_list_item_single_choice, listitems);
 
 		listSelectKeyboard.setAdapter(adapter);
+		listSelectKeyboard.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 		listSelectKeyboard.setOnItemClickListener(this);
+
+		// Pre-select the IM's current keyboard, if any.
+		Keyboard current = fragment.getCurrentKeyboard();
+		if (current != null) {
+			for (int i = 0; i < keyboardlist.size(); i++) {
+				if (keyboardlist.get(i).getCode().equals(current.getCode())) {
+					listSelectKeyboard.setItemChecked(i, true);
+					break;
+				}
+			}
+		}
 
 	}
 

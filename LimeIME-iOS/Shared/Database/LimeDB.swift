@@ -1057,11 +1057,17 @@ final class LimeDB {
             let enabled = disableStr != "true"
             // Full name from title="name" config entry (mirrors Android LIME.IM_FULL_NAME / sidebar).
             let fullName = rows.first(where: { $0.title == "name" })?.desc ?? ""
+            // Display label: prefer the cloud DB's `name` kv row (e.g. "拼音輸入法"),
+            // because for cloud-installed IMs the seedRow.title is an arbitrary
+            // non-kv field (`source` / `amount` / `original` / `import`) — whichever
+            // row happens to be first. The synthetic legacy registerIM flow stores
+            // the friendly label in `seedRow.title`, so fall back to that.
+            let label = !fullName.isEmpty ? fullName : seedRow.title
             return ImConfig(
                 id:                  Int64(seedRow.id),
                 imName:              code,
                 tableNick:           code,
-                label:               seedRow.title,
+                label:               label,
                 fullName:            fullName,
                 keyboardId:          keyboardId,
                 keyboardLandscapeId: keyboardId,
@@ -2291,6 +2297,26 @@ final class LimeDB {
             """)
         }
 
+        // Also merge the cloud DB's `im` table kv rows for this IM, when present.
+        // This is the authoritative source of the IM↔keyboard mapping (e.g. Pinyin's
+        // `keyboard=limenum` row). Mirrors Android `LimeDB.importDb`'s
+        // `INSERT INTO im SELECT … FROM sourceDB.im` step. Skipped silently if the
+        // source DB doesn't ship an `im` table (e.g. user-supplied raw SQLite files).
+        let srcHasImTable = (try? srcQueue.read { db in
+            (try? Int.fetchOne(db,
+                sql: "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='im'")) ?? 0
+        }) ?? 0 > 0
+        var imRows: [Row] = []
+        if srcHasImTable {
+            imRows = (try? srcQueue.read { db in
+                try Row.fetchAll(db, sql: """
+                    SELECT code, title, desc, keyboard, disable, selkey, endkey, spacestyle
+                    FROM im
+                    WHERE code = ?
+                """, arguments: [tableName])
+            }) ?? []
+        }
+
         // Write into the main DB in a single transaction
         try dbQueue.write { db in
             try db.execute(sql: "DELETE FROM \(tableName)")
@@ -2305,6 +2331,26 @@ final class LimeDB {
                 if hasBasescore { args.append(row["basescore"] as Int? ?? 0) }
                 if hasCode3r   { args.append(row["code3r"] as String?) }
                 try db.execute(sql: insertSQL, arguments: StatementArguments(args))
+            }
+            // Merge im kv rows: DELETE-then-INSERT, omit `_id` so SQLite assigns fresh ids
+            // (matches the explicit-column form proposed for Android).
+            if !imRows.isEmpty {
+                try db.execute(sql: "DELETE FROM im WHERE code = ?", arguments: [tableName])
+                for row in imRows {
+                    try db.execute(sql: """
+                        INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, arguments: [
+                        row["code"]       as String?,
+                        row["title"]      as String?,
+                        row["desc"]       as String?,
+                        row["keyboard"]   as String?,
+                        row["disable"]    as Int? ?? 0,
+                        row["selkey"]     as String? ?? "",
+                        row["endkey"]     as String? ?? "",
+                        row["spacestyle"] as String? ?? "",
+                    ])
+                }
             }
         }
     }
@@ -2388,7 +2434,10 @@ final class LimeDB {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.lowercased().hasPrefix("%chardef begin") { inChardef = true;  continue }
             if trimmed.lowercased().hasPrefix("%chardef end")   { inChardef = false; continue }
-            if !inChardef || trimmed.hasPrefix("%") || trimmed.isEmpty { continue }
+            // Skip .cin comment lines starting with '#' (e.g. "# Begin" inside the
+            // %chardef begin/end block). Without this, comments would be imported
+            // as mappings where code="#" and word="Begin"/"End"/etc.
+            if !inChardef || trimmed.hasPrefix("%") || trimmed.hasPrefix("#") || trimmed.isEmpty { continue }
 
             // Detect delimiter from first data line
             if !delimiterDetected {
@@ -2463,7 +2512,14 @@ final class LimeDB {
 
     func registerIM(imName: String, tableName: String, label: String, keyboardId: String) throws {
         try dbQueue.write { db in
-            try db.execute(sql: "DELETE FROM im WHERE code = ?", arguments: [imName])
+            // If the cloud DB merge in `importFromAttachedDB` already produced kv rows
+            // for this IM, those rows are authoritative — preserve them and do nothing.
+            // Only synthesize a fallback row when the source DB carried no `im` table
+            // (e.g. user-supplied raw SQLite, or seed `.limedb` flows).
+            let existing = (try? Int.fetchOne(db,
+                sql: "SELECT COUNT(*) FROM im WHERE code = ?",
+                arguments: [imName])) ?? 0
+            if existing > 0 { return }
             try db.execute(sql: """
                 INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
                 VALUES (?, ?, '', ?, 0, '', '', '')

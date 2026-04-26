@@ -2666,6 +2666,7 @@ final class SpyLimeDB: LimeDBProtocol {
     func restoreUserRecords(_ table: String) -> Int { 0 }
     func checkBackupTable(_ table: String) -> Bool { false }
     func getBackupTableRecords(_ backupTableName: String) -> [[String: Any]]? { nil }
+    @discardableResult func dropBackupTable(_ table: String) -> Bool { false }
 
     // MARK: LimeDBProtocol — cache / misc
     func clearTable(_ table: String) {}

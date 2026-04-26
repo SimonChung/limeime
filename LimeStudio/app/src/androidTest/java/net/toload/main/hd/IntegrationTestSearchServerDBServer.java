@@ -67,6 +67,16 @@ public class IntegrationTestSearchServerDBServer {
             downloadCloudDbAndImport(LIME.IM_DAYI, LIME.DATABASE_CLOUD_IM_DAYI, tempController, staticDbServer);
         }
 
+        // Pinyin: needed for §5.4 IM↔keyboard resolution regression tests.
+        // The cloud pinyin.zip ships an `im` table row `keyboard=limenum` which the
+        // earlier importDb implementation could silently drop. Keep the install
+        // alongside phonetic/dayi so the post-import lookup tests have data.
+        int pinyinCount = tempController.countRecords(LIME.IM_PINYIN);
+        if (pinyinCount == 0) {
+            staticSetupController.clearTable(LIME.IM_PINYIN, false);
+            downloadCloudDbAndImport(LIME.IM_PINYIN, LIME.DATABASE_CLOUD_IM_PINYIN, tempController, staticDbServer);
+        }
+
         // Use real IM table for integration testing
         realImTable = LIME.IM_PHONETIC;
         
@@ -450,6 +460,67 @@ public class IntegrationTestSearchServerDBServer {
     // ============================================================
 
     // Removed custom table creation; using built-in 'custom' table
+
+    // ============================================================
+    // Phase 5.4: IM ↔ Keyboard resolution after cloud install
+    // (regression guards for docs/IM_KEYBOARD_ISSUE.md)
+    // ============================================================
+
+    /**
+     * Test 5.4.1: After importing pinyin.zip, the cloud DB's `im` row
+     * `(code='pinyin', title='keyboard', desc='LIME+數字列鍵盤', keyboard='limenum')`
+     * must have been merged into lime.db. Earlier the merge step was missing on
+     * iOS and could silently fail on Android with `INSERT … SELECT *`.
+     */
+    @Test
+    public void test_5_4_ImportDbMergesImKeyboardRow() {
+        net.toload.main.hd.SearchServer ss = new net.toload.main.hd.SearchServer(context);
+        java.util.List<net.toload.main.hd.data.ImConfig> rows =
+                ss.getImConfigList(LIME.IM_PINYIN, LIME.DB_IM_COLUMN_KEYBOARD);
+        assertNotNull("getImConfigList should not return null after pinyin install", rows);
+        assertFalse("pinyin im row with title='keyboard' must exist after import", rows.isEmpty());
+        net.toload.main.hd.data.ImConfig kbRow = rows.get(0);
+        assertEquals("im.keyboard column carries the keyboard CODE",
+                "limenum", kbRow.getKeyboard());
+        // The desc column carries the human-readable name (e.g. "LIME+數字列鍵盤").
+        assertNotNull("im.desc should not be null", kbRow.getDesc());
+        assertFalse("im.desc should not be empty", kbRow.getDesc().isEmpty());
+    }
+
+    /**
+     * Test 5.4.2: ManageImController.getCurrentKeyboard() must resolve to a
+     * non-null Keyboard whose code is `limenum`. Regression guard for the
+     * column-vs-row bug where the helper was reading `getImConfig(…, "keyboard")`
+     * (which returns the desc column) instead of the keyboard column.
+     */
+    @Test
+    public void test_5_4_GetCurrentKeyboardAfterCloudInstall() {
+        net.toload.main.hd.data.Keyboard kb = manageController.getCurrentKeyboard(LIME.IM_PINYIN);
+        assertNotNull("getCurrentKeyboard must resolve a Keyboard for pinyin after cloud install", kb);
+        assertEquals("Resolved keyboard code must be limenum", "limenum", kb.getCode());
+        assertNotNull("Keyboard.desc must not be null", kb.getDesc());
+        assertFalse("Keyboard.desc must not be empty", kb.getDesc().isEmpty());
+    }
+
+    /**
+     * Test 5.4.3: Pin down the documented column semantics of
+     * SearchServer.getImConfig(code, "keyboard") so future refactors don't
+     * silently flip which column it returns. Today it returns the `desc`
+     * column ("LIME+數字列鍵盤"), NOT the keyboard code.
+     *
+     * If this test fails because the API contract was intentionally changed,
+     * also update ManageImController.getCurrentKeyboard() and any other caller
+     * that relies on the existing behaviour.
+     */
+    @Test
+    public void test_5_4_GetImConfigKeyboardColumnSemantics() {
+        net.toload.main.hd.SearchServer ss = new net.toload.main.hd.SearchServer(context);
+        String value = ss.getImConfig(LIME.IM_PINYIN, LIME.DB_IM_COLUMN_KEYBOARD);
+        assertNotNull("getImConfig should not return null", value);
+        assertNotEquals("getImConfig returns the desc column, NOT the keyboard code",
+                "limenum", value);
+        assertFalse("getImConfig should return a non-empty desc value", value.isEmpty());
+    }
 
     /**
      * Adds a test record to the specified table

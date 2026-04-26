@@ -3233,7 +3233,14 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 }
                 // Remove existing IM rows for incoming codes to avoid PK conflicts
                 db.execSQL("delete from " + LIME.DB_TABLE_IM + " where " + LIME.DB_IM_COLUMN_CODE + " in (select " + LIME.DB_IM_COLUMN_CODE + " from sourceDB." + LIME.DB_TABLE_IM + ")");
-                db.execSQL("insert into " + LIME.DB_TABLE_IM + " select * from sourceDB." + LIME.DB_TABLE_IM);
+                // Enumerate columns explicitly and omit `_id` so SQLite assigns fresh
+                // AUTOINCREMENT ids; copying source `_id` values risks PK collisions on
+                // a heavily-used lime.db (caught silently by the outer try/catch).
+                // Mirrors the iOS importFromAttachedDB im-merge column list.
+                db.execSQL("insert into " + LIME.DB_TABLE_IM
+                    + " (code, title, desc, keyboard, disable, selkey, endkey, spacestyle) "
+                    + "select code, title, desc, keyboard, disable, selkey, endkey, spacestyle "
+                    + "from sourceDB." + LIME.DB_TABLE_IM);
             }
 
             // Import related table if requested
@@ -3692,6 +3699,13 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                             if (bChardef && bEnd
                                     ) {
                                 break;
+                            }
+                            // Skip .cin comment lines (lines starting with '#').
+                            // Without this, comment lines like "# Begin" inside the
+                            // %chardef begin/end block were imported as mappings
+                            // where code="#" and word="Begin"/"End"/etc.
+                            if (line.trim().startsWith("#")) {
+                                continue;
                             }
                         }
 

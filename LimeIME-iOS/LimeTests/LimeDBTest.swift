@@ -1818,4 +1818,94 @@ final class LimeDBTest: XCTestCase {
         XCTAssertEqual(db.getBaseScore(""), 0)
         XCTAssertEqual(db.getBaseScore(String(repeating: "測", count: 1000)), 0)
     }
+
+    // MARK: - 37. Cloud-IM install ↔ keyboard resolution
+    // (regression guards for docs/IM_KEYBOARD_ISSUE.md)
+
+    /// Lazily resolves the cloud `pinyin.zip` fixture. First tries the local
+    /// cache at `.claude/txt/pinyin.zip` (committed during investigation), then
+    /// falls back to downloading from the canonical upstream URL. Returns nil
+    /// when offline and no cache is available — caller should `XCTSkip`.
+    private func resolvePinyinZip() -> URL? {
+        // 1. Local cache used during the original RC investigation.
+        let cacheCandidates = [
+            "/Users/jeremy/Documents/GitHub/limeime/.claude/txt/pinyin.zip"
+        ]
+        for path in cacheCandidates where FileManager.default.fileExists(atPath: path) {
+            return URL(fileURLWithPath: path)
+        }
+        // 2. Network fallback so CI without the cache can still run.
+        guard let url = URL(string: "https://github.com/lime-ime/limeime/raw/master/Database/pinyin.zip") else {
+            return nil
+        }
+        let dest = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pinyin_test_\(UUID().uuidString).zip")
+        let sema = DispatchSemaphore(value: 0)
+        var resultURL: URL?
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 30
+        cfg.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: cfg)
+        let task = session.downloadTask(with: url) { tmp, _, _ in
+            defer { sema.signal() }
+            guard let tmp = tmp else { return }
+            do {
+                try FileManager.default.moveItem(at: tmp, to: dest)
+                resultURL = dest
+            } catch {
+                resultURL = nil
+            }
+        }
+        task.resume()
+        _ = sema.wait(timeout: .now() + 65)
+        return resultURL
+    }
+
+    /// §5.4.1 (iOS): After importing the cloud `pinyin.zip`, lime.db's `im`
+    /// table must contain the cloud DB's `keyboard=limenum` kv row. The
+    /// previous `importFromAttachedDB` only copied the data table and dropped
+    /// the `im` table entirely.
+    func testImportFromZipMergesImTable() throws {
+        guard let zipURL = resolvePinyinZip() else {
+            throw XCTSkip("pinyin.zip fixture unavailable (no cache, no network)")
+        }
+        let db = try makeLimeDB()
+        try db.importFromZip(at: zipURL, tableName: "pinyin")
+
+        let rows = db.getImConfigList("pinyin", nil)
+        XCTAssertFalse(rows.isEmpty, "im table should contain merged rows for pinyin after import")
+
+        let kbRow = rows.first(where: { $0.title == "keyboard" })
+        XCTAssertNotNil(kbRow, "im table must contain a title='keyboard' kv row after pinyin import")
+        XCTAssertEqual(kbRow?.keyboard, "limenum",
+                       "im.keyboard column must carry the keyboard CODE from the cloud DB")
+        XCTAssertFalse(kbRow?.desc.isEmpty ?? true,
+                       "im.desc column must carry the human-readable name (e.g. LIME+數字列鍵盤)")
+
+        let configs = try db.getAllImConfigs()
+        let pinyin = configs.first(where: { $0.tableNick == "pinyin" })
+        XCTAssertNotNil(pinyin, "getAllImConfigs must surface pinyin after import")
+        XCTAssertEqual(pinyin?.keyboardId, "limenum",
+                       "Resolved keyboardId must come from the cloud DB's keyboard kv row")
+    }
+
+    /// §5.4.2 (iOS): The displayed IM label must be the cloud DB's `name` kv
+    /// row value (e.g. "拼音輸入法"), not whichever non-kv title (`amount`,
+    /// `source`, …) happens to be the first row. Regression guard for the
+    /// "amount" label bug observed in IMDetailView 名稱 field.
+    func testGetAllImConfigsLabelPrefersNameRow() throws {
+        guard let zipURL = resolvePinyinZip() else {
+            throw XCTSkip("pinyin.zip fixture unavailable (no cache, no network)")
+        }
+        let db = try makeLimeDB()
+        try db.importFromZip(at: zipURL, tableName: "pinyin")
+
+        let configs = try db.getAllImConfigs()
+        let pinyin = configs.first(where: { $0.tableNick == "pinyin" })
+        XCTAssertNotNil(pinyin)
+        XCTAssertEqual(pinyin?.label, "拼音輸入法",
+                       "label must come from the title='name' kv row, not seedRow.title")
+        XCTAssertEqual(pinyin?.fullName, "拼音輸入法",
+                       "fullName must equal the title='name' kv row desc")
+    }
 }
