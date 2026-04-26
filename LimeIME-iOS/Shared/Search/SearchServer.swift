@@ -222,7 +222,7 @@ final class SearchServer {
         if let cached = mappingCache[cacheKey] { cacheLock.unlock(); return cached }
         cacheLock.unlock()
 
-        var dbResults: [Mapping] = db.getMappingByCode(
+        let dbResults: [Mapping] = db.getMappingByCode(
             code, softKeyboard: isSoftKeyboard, getAllRecords: getAllRecords) ?? []
 
         // Prepend composing-code echo (spec §6 — index 0 always = typed code)
@@ -329,7 +329,7 @@ final class SearchServer {
             var snapshot: [[(mapping: Mapping, code: String)]]? = nil
 
             while k < 5 && k < completeCodeResultList.count {
-                var em = completeCodeResultList[k]
+                let em = completeCodeResultList[k]
                 guard em.isExactMatchToCodeRecord else { break }
                 guard em.baseScore > 0 else { k += 1; continue }
 
@@ -788,6 +788,11 @@ final class SearchServer {
         db.getCodeListStringByWord(word, table: nil)
     }
 
+    /// Reverse lookup: returns codes for `word` using an explicit IM table (not the current one).
+    func getCodeListStringFromWord(_ word: String, usingTable table: String) -> String? {
+        db.getCodeListStringByWord(word, table: table)
+    }
+
     // MARK: - Finish Input (spec §13 postFinishInput)
 
     /// Flush all pending learning when the text field loses focus.
@@ -1211,6 +1216,11 @@ final class SearchServer {
     @discardableResult
     func restoreUserRecords(_ table: String) -> Int {
         return db.restoreUserRecords(table)
+    }
+
+    @discardableResult
+    func dropBackupTable(_ table: String) -> Bool {
+        return db.dropBackupTable(table)
     }
 
     func getImConfigList(_ code: String?, _ configEntry: String?) -> [LimeImConfigRow] {

@@ -2,10 +2,61 @@
 // LimeIME-iOS
 //
 // App Setup tab — keyboard activation guide, status detection, about.
-// Spec §4.
+// Spec §4.  Gboard-inspired layout: logo → status → step list → CTA → about.
 
 import SwiftUI
 import UIKit
+
+// MARK: - FormSectionGroupBoxStyle
+
+/// Makes a GroupBox look identical to a SwiftUI Form Section (grouped style):
+/// white secondarySystemGroupedBackground fill, 10-pt corner radius, standard row padding.
+private struct FormSectionGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(spacing: 0) {
+            configuration.content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+// MARK: - ToggleSwitchIcon
+
+/// Green ON-state toggle that matches the iOS Settings keyboard-enable toggle.
+private struct ToggleSwitchIcon: View {
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Capsule()
+                .fill(Color.green)
+                .frame(width: 30, height: 18)
+            Circle()
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.18), radius: 1, x: 0, y: 1)
+                .frame(width: 14, height: 14)
+                .padding(.trailing, 2)
+        }
+    }
+}
+
+// MARK: - SetupStepRow
+
+private struct SetupStepRow<Icon: View>: View {
+    let text: String
+    @ViewBuilder let icon: Icon
+
+    var body: some View {
+        HStack(spacing: 16) {
+            icon
+                .frame(width: 32, alignment: .center)
+            Text(text)
+                .font(.body)
+            Spacer()
+        }
+    }
+}
 
 // MARK: - SetupTabView
 
@@ -13,70 +64,171 @@ struct SetupTabView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
-    // Detection state:
-    // `keyboardSeenAt` is the heartbeat the keyboard writes on every load/appear.
-    // `sessionOpenedAt` is the moment this Settings app became active — we only
-    // trust heartbeats newer than this to avoid the one-way-latch bug where a
-    // keyboard the user has since disabled still reports "enabled forever".
-    @State private var keyboardSeenAt: TimeInterval = 0
+    // keyboardEnabled: checked via UITextInputMode.activeInputModes — this is the
+    // same system API iOS uses to build the keyboard switcher.  It updates the
+    // moment the user adds or removes a keyboard in Settings, no heartbeat needed.
+    @State private var keyboardEnabled   = false
+    // fullAccessEnabled: can only be known once the keyboard extension has run at
+    // least once and written the value to the shared App Group.
     @State private var fullAccessEnabled = false
-    @State private var sessionOpenedAt: TimeInterval = Date().timeIntervalSince1970
 
-    // Probe field: typing here with LimeIME selected triggers the heartbeat.
-    @State private var probeText: String = ""
-    @FocusState private var probeFocused: Bool
     @State private var pollTimer: Timer?
 
-    private let groupSuite = "group.net.toload.limeime"
+    // Invisible probe field: when the user taps it and types with the keyboard,
+    // the extension writes keyboard_has_full_access to the App Group so the Full
+    // Access state becomes accurate without leaving this screen.
+    @State private var probeText: String = ""
+    @FocusState private var probeFocused: Bool
+
+    // PrimaryLanguage from LimeKeyboard/Info.plist
+    private let groupSuite   = "group.net.toload.limeime"
+    private let githubURL        = URL(string: "https://github.com/lime-ime/limeime")!
 
     var body: some View {
-        NavigationView {
-            List {
-                // MARK: Status banner + probe
-                Section(header: Text("啟用狀態")) {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+
+                    // ── Brand block (logo + wordmark) ─────────────────────
+                    VStack(spacing: 8) {
+                        logoImage
+                        Text("萊姆輸入法")
+                            .font(.system(size: 28, weight: .semibold))
+                    }
+                    .padding(.top, 32)
+
+                    // ── Status banner ─────────────────────────────────────
                     statusBanner
-                    probeField
-                }
+                        .padding(.horizontal, 24)
 
-                // MARK: Step 1
-                Section(header: Text("步驟 1 — 新增鍵盤")) {
-                    Text("前往「設定 → 一般 → 鍵盤 → 鍵盤 → 新增鍵盤」，選擇 LimeIME。")
+                    // ── Title ─────────────────────────────────────────────
+                    Text("設定萊姆輸入法")
+                        .font(.title2).bold()
+
+                    // ── Step list ─────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 16) {
+                        SetupStepRow(text: "輕觸「鍵盤」") {
+                            Image(systemName: "keyboard")
+                                .font(.title3)
+                                .foregroundColor(.accentColor)
+                        }
+                        SetupStepRow(text: "開啟萊姆輸入法") {
+                            ToggleSwitchIcon()
+                        }
+                        SetupStepRow(text: "開啟「允許完整取用」") {
+                            ToggleSwitchIcon()
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    // ── Explanatory note ──────────────────────────────────
+                    Text("允許完整取用後，萊姆輸入法才能存取使用者詞庫並提供候選字建議。萊姆輸入法不會收集或傳送您的輸入內容。")
                         .font(.footnote)
                         .foregroundColor(.secondary)
-                }
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
 
-                // MARK: Step 2
-                Section(header: Text("步驟 2 — 允許完整取用")) {
-                    Text("點下方按鈕進入 LimeIME 的系統設定頁，選「鍵盤」，然後開啟「允許完整取用」。")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                    Button("開啟 LimeIME 設定") { openAppSettings() }
-                }
+                    // ── CTA button ────────────────────────────────────────
+                    Button("前往設定") {
+                        openLimeKeyboardSettings()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(.horizontal, 24)
 
-                // MARK: About
-                Section(header: Text("關於")) {
-                    LabeledContent("版本", value: appVersion())
-                    LabeledContent("授權", value: "GPL-3.0")
-                    Link("原始碼 (GitHub)",
-                         destination: URL(string: "https://github.com/lime-ime/limeime")!)
+                    // Invisible 1 × 1 probe — preserves heartbeat polling
+                    // without showing a text field in the new layout.
+                    TextField("", text: $probeText)
+                        .focused($probeFocused)
+                        .frame(width: 1, height: 1)
+                        .opacity(0.01)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .accessibilityHidden(true)
+
+                    // ── About section ─────────────────────────────────────
+                    GroupBox {
+                        LabeledContent("版本", value: appVersion())
+                            .padding(.vertical, 11)
+                        Divider()
+                        LabeledContent("授權", value: "GPL-3.0")
+                            .padding(.vertical, 11)
+                        Divider()
+                        Link("原始碼 (GitHub)", destination: githubURL)
+                            .padding(.vertical, 11)
+                    }
+                    .groupBoxStyle(FormSectionGroupBoxStyle())
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 32)
                 }
+                // iPad / wide-screen reading-width cap: keeps the form column
+                // at a comfortable width instead of stretching edge-to-edge in
+                // iPad portrait and (especially) landscape. On iPhone this cap
+                // never engages because the screen is narrower than 560pt.
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("LimeIME 設定")
+            .navigationBarHidden(true)
             .onAppear {
-                markSessionOpened()
                 refreshStatus()
+                startPolling()
+                // Auto-focus the invisible probe so the LimeIME extension's
+                // viewWillAppear fires (if LimeIME is the active keyboard)
+                // and writes fresh hasFullAccess to the App Group.
+                triggerProbeIfNeeded()
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
-                    markSessionOpened()
                     refreshStatus()
+                    startPolling()
+                    // Re-trigger each time app comes to foreground — covers the
+                    // common case: user grants Full Access in Settings, returns.
+                    triggerProbeIfNeeded()
+                } else if phase == .background {
+                    stopPolling()
                 }
             }
-            .onChange(of: probeFocused) { focused in
-                focused ? startPolling() : stopPolling()
+            .onChange(of: fullAccessEnabled) { enabled in
+                // Once Full Access is confirmed, dismiss the keyboard.
+                if enabled { probeFocused = false }
             }
             .onChange(of: probeText) { _ in refreshStatus() }
         }
+    }
+
+    // MARK: - Logo
+
+    @ViewBuilder
+    private var logoImage: some View {
+        if let uiImage = appIconUIImage() {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+        } else {
+            Image(systemName: "keyboard.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 60, height: 60)
+                .padding(10)
+                .foregroundColor(.accentColor)
+                .background(Color(.quaternarySystemFill))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+        }
+    }
+
+    /// Returns the app's primary icon from the bundle.
+    /// `UIImage(named: "AppIcon")` does not work for app-icon assets at runtime;
+    /// reading the file name from `CFBundleIcons` is the correct approach.
+    private func appIconUIImage() -> UIImage? {
+        guard
+            let icons   = Bundle.main.infoDictionary?["CFBundleIcons"]         as? [String: Any],
+            let primary = icons["CFBundlePrimaryIcon"]                          as? [String: Any],
+            let files   = primary["CFBundleIconFiles"]                          as? [String],
+            let name    = files.last
+        else { return nil }
+        return UIImage(named: name)
     }
 
     // MARK: - Status banner
@@ -85,68 +237,82 @@ struct SetupTabView: View {
         Group {
             switch detectionState {
             case .fullyEnabled:
-                Label("LimeIME 鍵盤已啟用（\(lastSeenText)）", systemImage: "checkmark.circle.fill")
+                Label("萊姆輸入法已啟用",
+                      systemImage: "checkmark.circle.fill")
                     .foregroundColor(.green)
             case .enabledNoFullAccess:
-                Label("鍵盤已啟用，但尚未允許完整取用（\(lastSeenText)）",
+                Label("鍵盤已啟用，但尚未允許完整取用",
                       systemImage: "exclamationmark.triangle.fill")
                     .foregroundColor(.orange)
-            case .unknown:
-                Label("尚未偵測到 LimeIME 鍵盤 — 請依下列步驟新增，並於下方欄位輸入以確認",
-                      systemImage: "questionmark.circle.fill")
-                    .foregroundColor(.gray)
+            case .notEnabled:
+                Label("尚未啟用萊姆輸入法鍵盤",
+                      systemImage: "xmark.circle.fill")
+                    .foregroundColor(.red)
             }
         }
-        .padding(.vertical, 4)
-    }
-
-    // MARK: - Probe field
-
-    private var probeField: some View {
-        TextField("在這裡輸入以偵測鍵盤", text: $probeText)
-            .focused($probeFocused)
-            .textInputAutocapitalization(.never)
-            .disableAutocorrection(true)
-            .font(.footnote)
+        .font(.subheadline)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Detection
 
     private enum DetectionState {
-        case fullyEnabled, enabledNoFullAccess, unknown
+        case fullyEnabled, enabledNoFullAccess, notEnabled
     }
 
     private var detectionState: DetectionState {
-        // Only trust heartbeats written after this Settings session became active.
-        // Anything older could be a stale latch from a previous install/session.
-        guard keyboardSeenAt >= sessionOpenedAt else { return .unknown }
+        guard keyboardEnabled else { return .notEnabled }
         return fullAccessEnabled ? .fullyEnabled : .enabledNoFullAccess
     }
 
-    private var lastSeenText: String {
-        guard keyboardSeenAt > 0 else { return "從未偵測" }
-        let delta = Date().timeIntervalSince1970 - keyboardSeenAt
-        if delta < 5 { return "最後偵測：剛剛" }
-        if delta < 60 { return "最後偵測：\(Int(delta)) 秒前" }
-        return "最後偵測：\(Int(delta / 60)) 分鐘前"
-    }
-
     private func refreshStatus() {
-        let suite = UserDefaults(suiteName: groupSuite)
-        keyboardSeenAt    = suite?.double(forKey: "keyboard_last_seen_at") ?? 0
-        fullAccessEnabled = suite?.bool(forKey: "keyboard_has_full_access") ?? false
+        // UITextInputMode.activeInputModes reflects the live system keyboard list.
+        // The public API only exposes `primaryLanguage`, which is "zh-Hant" for
+        // LimeIME — but also for Apple's built-in Traditional Chinese keyboards,
+        // causing false positives.
+        //
+        // The correct way to identify a specific extension is via the private
+        // `identifier` KVC key, which returns the extension's bundle ID
+        // (e.g. "net.toload.limeime.LimeKeyboard"). This pattern is used by
+        // Gboard, SwiftKey and other third-party keyboards.
+        // We guard with responds(to:) so if Apple ever removes this private
+        // property the code degrades gracefully to false rather than crashing.
+        let limeSelector = NSSelectorFromString("identifier")
+        keyboardEnabled = UITextInputMode.activeInputModes.contains { mode in
+            guard mode.responds(to: limeSelector),
+                  let id = mode.value(forKey: "identifier") as? String
+            else { return false }
+            return id.hasPrefix("net.toload.limeime")
+        }
+
+        if keyboardEnabled {
+            let suite = UserDefaults(suiteName: groupSuite)
+            suite?.synchronize()  // force cross-process refresh
+            // `bool(forKey:)` returns false for missing keys, which creates a
+            // false-positive orange banner when the extension has never run yet
+            // (e.g. keyboard just enabled + Full Access just granted).
+            // Instead: treat MISSING key as "unknown → assume enabled".
+            // The extension explicitly writes `false` when it finds Full Access
+            // denied, so orange only appears when we KNOW it is actually denied.
+            if let storedValue = suite?.object(forKey: "keyboard_has_full_access") as? Bool {
+                fullAccessEnabled = storedValue   // definitive value from extension
+            } else {
+                fullAccessEnabled = true          // never ran yet — assume granted
+            }
+        } else {
+            fullAccessEnabled = false
+        }
     }
 
-    private func markSessionOpened() {
-        sessionOpenedAt = Date().timeIntervalSince1970
-    }
-
-    // Poll every 0.5 s while the probe field is focused, so the banner flips as
-    // soon as the user long-presses the globe and LimeIME writes its heartbeat —
-    // even before they type a single character.
+    // Poll every 1 s while active so enabled state and Full Access both
+    // reflect changes made in Settings without requiring a manual refresh.
     private func startPolling() {
-        pollTimer?.invalidate()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+        guard pollTimer == nil else { return }
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             refreshStatus()
         }
     }
@@ -156,13 +322,30 @@ struct SetupTabView: View {
         pollTimer = nil
     }
 
+    /// Focuses the invisible probe field (with a short delay) when the keyboard
+    /// is enabled but Full Access hasn't been confirmed yet.  Focusing any text
+    /// field causes iOS to load whichever keyboard is currently active; if that
+    /// is LimeIME, its UIInputViewController.viewWillAppear fires and writes a
+    /// fresh `keyboard_has_full_access` value to the App Group — which the
+    /// 1-second poll then picks up automatically.
+    private func triggerProbeIfNeeded() {
+        guard keyboardEnabled && !fullAccessEnabled else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            probeFocused = true
+        }
+    }
+
     // MARK: - Navigation
 
-    /// Opens the app's own page in the system Settings app. This is the only
-    /// deep link Apple guarantees; `App-Prefs:` URLs are private and unreliable.
-    /// From the LimeIME settings page the user can tap "鍵盤" to reach the
-    /// per-app keyboard screen where Full Access can be toggled.
-    private func openAppSettings() {
+    /// Opens the 萊姆輸入法 app settings page in the system Settings app.
+    /// `openSettingsURLString` is the only Apple-guaranteed deep link; it always
+    /// opens the settings page for the calling app (i.e. LimeIME Settings).
+    /// From there the user taps "鍵盤" to reach the keyboard settings page where
+    /// the enable toggle and Allow Full Access toggle live.
+    /// `App-Prefs:` paths are intentionally avoided because `canOpenURL` returns
+    /// true for any whitelisted scheme regardless of path, causing silent
+    /// navigation to the wrong page.
+    private func openLimeKeyboardSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }

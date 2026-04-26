@@ -12,11 +12,18 @@ struct IMDetailView: View {
 
     let im: IMRow
     let onRefresh: (() -> Void)?
+    /// Called by the parent (`IMListView`) after a successful remove. The
+    /// parent owns the navigation selection and is responsible for dismissing
+    /// the detail pane (clearing selection on iPad reverts the detail column
+    /// to a placeholder; on iPhone it pops the stack).
+    /// We intentionally do NOT call `dismiss()` ourselves: on iPad the
+    /// `NavigationView` runs in column/split style and `dismiss()` /
+    /// `presentationMode.dismiss()` cannot pop a detail-column view.
+    let onDeleted: (() -> Void)?
 
     @EnvironmentObject private var manageImController: ManageImController
     @EnvironmentObject private var manageRelatedController: ManageRelatedController
     @EnvironmentObject private var setupController: SetupImController
-    @Environment(\.dismiss) private var dismiss
 
     private let sharedUD = UserDefaults(suiteName: "group.net.toload.limeime")
 
@@ -43,9 +50,10 @@ struct IMDetailView: View {
     @State private var shareURL: URL?
     @State private var showShareSheet = false
 
-    init(im: IMRow, onRefresh: (() -> Void)? = nil) {
+    init(im: IMRow, onRefresh: (() -> Void)? = nil, onDeleted: (() -> Void)? = nil) {
         self.im = im
         self.onRefresh = onRefresh
+        self.onDeleted = onDeleted
     }
 
     private var mappingVersion: String {
@@ -53,6 +61,15 @@ struct IMDetailView: View {
     }
 
     @State private var totalRecord: String = "—"
+
+    // Per-IM backup preference (dynamic key — can't use @AppStorage)
+    private var backupOnDelete: Bool {
+        get { UserDefaults.standard.object(forKey: "backup_on_delete_\(im.tableNick)") as? Bool ?? true }
+        nonmutating set { UserDefaults.standard.set(newValue, forKey: "backup_on_delete_\(im.tableNick)") }
+    }
+    private var backupOnDeleteBinding: Binding<Bool> {
+        Binding(get: { backupOnDelete }, set: { backupOnDelete = $0 })
+    }
 
     var body: some View {
         List {
@@ -152,6 +169,12 @@ struct IMDetailView: View {
             }
 
             if im.tableNick != "related" {
+                Section(header: Text("選項")) {
+                    Toggle("刪除時備份已學習記錄", isOn: backupOnDeleteBinding)
+                }
+            }
+
+            if im.tableNick != "related" {
                 Section {
                     Button(role: .destructive) {
                         showRemoveAlert = true
@@ -219,17 +242,13 @@ struct IMDetailView: View {
         }
         .alert("移除輸入法", isPresented: $showRemoveAlert) {
             Button("移除", role: .destructive) {
-                isRemoving = true
-                Task {
-                    _ = await manageImController.clearTable(tableNick: im.tableNick)
-                    isRemoving = false
-                    onRefresh?()
-                    dismiss()
-                }
+                performRemove()
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("此操作將清除「\(im.label)」的所有對應資料，無法還原。確定繼續？")
+            Text(backupOnDelete
+                ? "此操作將清除「\(im.label)」的所有對應資料。\n已學習記錄將先備份，可在重新匯入時還原。確定繼續？"
+                : "此操作將清除「\(im.label)」的所有對應資料，無法還原。確定繼續？")
         }
         .alert("清除聯想詞庫", isPresented: $showClearRelatedAlert) {
             Button("清除", role: .destructive) {
@@ -283,6 +302,34 @@ struct IMDetailView: View {
             await MainActor.run {
                 keyboardName = result.keyboards.first(where: { $0.code == result.selected })?.desc ?? result.selected
             }
+        }
+    }
+
+    // MARK: - Remove
+
+    /// Triggered from the "移除" alert action. We must dismiss the detail
+    /// pane through the parent (`onDeleted`) BEFORE awaiting the DB clear,
+    /// because on iPad the pane lives in the split-view detail column and
+    /// cannot be popped via `dismiss()` from inside this view. The parent
+    /// owns the navigation selection and clearing it reverts the detail
+    /// column (or pops the stack on iPhone).
+    private func performRemove() {
+        let backup = backupOnDelete
+        let tableNick = im.tableNick
+        // Persist the user's backup choice so IMInstallView can show the
+        // restore toggle even when the actual backup table ends up empty
+        // (e.g. user never built learned records → all rows had score=0).
+        if backup {
+            UserDefaults.standard.set(true, forKey: "user_backed_up_\(tableNick)")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "user_backed_up_\(tableNick)")
+        }
+        // Hand control back to the parent first — it will clear the
+        // selection that drives the NavigationLink, dismissing this pane.
+        onDeleted?()
+        Task {
+            _ = await manageImController.clearTable(tableNick: tableNick, backupLearning: backup)
+            onRefresh?()
         }
     }
 

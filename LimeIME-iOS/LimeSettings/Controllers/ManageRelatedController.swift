@@ -11,7 +11,7 @@ import Foundation
 @MainActor
 final class ManageRelatedController: BaseController {
 
-    static let pageSize = 100
+    nonisolated static let pageSize = 100
 
     /// Incrementing this causes RelatedListView to reload its data.
     /// Call after seeding or any external data change.

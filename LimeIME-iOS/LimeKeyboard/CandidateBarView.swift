@@ -13,10 +13,16 @@ final class CandidateBarView: UIView {
     weak var delegate: CandidateBarViewDelegate?
 
     // MARK: - Subviews
-    private let scrollView  = UIScrollView()
+    private let scrollView  = CandidateScrollView()
     private let stackView   = UIStackView()
     private let moreButton  = UIButton(type: .system)
     private let moreSep     = UIView()          // fixed separator left of chevron
+    /// Leading region that displays the composing keyname. iPad uses this
+    /// in lieu of the in-keyboard composingPopupLabel strip (which wastes
+    /// vertical space). iPhone keeps the strip and leaves this collapsed.
+    /// Width is 0 when `composingText` is nil/empty; intrinsic otherwise.
+    private let composingLabel = UILabel()
+    private var composingLabelWidth: NSLayoutConstraint!
 
     // MARK: - Theme
     var theme: Int = 0 {
@@ -54,7 +60,7 @@ final class CandidateBarView: UIView {
     var candidateCount: Int { candidates.count }
     /// Button for each entry in `candidates`, in order. Used by `setSelectedIndex` to re-style
     /// individual cells without rebuilding the whole stack (preserves scroll offset).
-    private var candidateButtons: [UIButton] = []
+    private var candidateButtons: [CandidateButton] = []
 
     /// Tags used to locate the two labels inside a selkey-prefixed button so
     /// `applyHighlightStyle` can update their colors on a selection change.
@@ -66,8 +72,14 @@ final class CandidateBarView: UIView {
     var fontScale: CGFloat = 1.1 {
         didSet { guard oldValue != fontScale else { return }; rebuildButtons() }
     }
-    private let baseCandidateFontSize: CGFloat = 22
-    private let baseComposingCodeFontSize: CGFloat = 16
+    /// True when running on iPad hardware. Captured once from `UIDevice` so the
+    /// candidate font scales up on real iPad. iPhone-only apps running on iPad
+    /// in scaled mode also get the larger font — the iPad screen is large enough
+    /// to read it comfortably and matching the bar height that was already sized
+    /// from `isOnPad` in the controller.
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    private var baseCandidateFontSize: CGFloat     { isPad ? 26 : 22 }
+    private var baseComposingCodeFontSize: CGFloat { isPad ? 22 : 16 }
     private var candidateFont: UIFont     { UIFont.systemFont(ofSize: baseCandidateFontSize * fontScale, weight: .regular) }
     private var composingCodeFont: UIFont { UIFont.monospacedSystemFont(ofSize: baseComposingCodeFontSize * fontScale, weight: .regular) }
     private let candidateHPad:   CGFloat = 10
@@ -80,23 +92,43 @@ final class CandidateBarView: UIView {
     }
     required init?(coder: NSCoder) { super.init(coder: coder); setup() }
 
+    /// Tracks current chevron direction (used by `setChevronExpanded`).
+    private var chevronExpanded: Bool = false
+
     // MARK: - Setup
     private func applyTheme() {
-        backgroundColor = palette.candiBackground
+        backgroundColor = .clear
         moreButton.tintColor = palette.candiText
         moreSep.backgroundColor = palette.candiText.withAlphaComponent(0.2)
+        composingLabel.textColor = palette.candiText
         rebuildButtons()
     }
 
     private func setup() {
-        backgroundColor = palette.candiBackground
+        // Bar itself stays .clear so it blends with the shared keyboard blur
+        // backdrop. The touch-trap fill lives on the candidate buttons only
+        // (see makeCandidateButton) — those fill the bar edge-to-edge when
+        // candidates are shown, so every visible bar pixel is a button
+        // pixel at 0.01-alpha grey. Empty bar = pure blur, matching the
+        // surrounding keys exactly.
+        backgroundColor = .clear
 
         // Fixed chevron pinned to the right edge of the bar
-        moreButton.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+        let chevronSize: CGFloat = 18
+        let chevronConfig = UIImage.SymbolConfiguration(pointSize: chevronSize, weight: .regular)
+        moreButton.setImage(UIImage(systemName: "chevron.down", withConfiguration: chevronConfig), for: .normal)
         moreButton.tintColor = palette.candiText
-        moreButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 10)
+        // KVC sets the same backing storage as `contentEdgeInsets` without
+        // tripping the iOS 15 deprecation warning. The non-Configuration
+        // button path is intentional — see makeCandidateButton for the
+        // reason (UIButton.Configuration.plain() inflates spacing).
+        moreButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 10)),
+                            forKey: "contentEdgeInsets")
         moreButton.isHidden = true
         moreButton.addTarget(self, action: #selector(moreTapped), for: .touchUpInside)
+        // 0.01-alpha touch trap so taps in the chevron's padding also fire —
+        // same rationale as the candidate buttons below.
+        moreButton.backgroundColor = UIColor(white: 0.5, alpha: 0.01)
         moreButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(moreButton)
 
@@ -105,13 +137,34 @@ final class CandidateBarView: UIView {
         moreSep.translatesAutoresizingMaskIntoConstraints = false
         addSubview(moreSep)
 
-        // Scroll view occupies the bar to the left of the fixed chevron
+        composingLabel.font = composingCodeFont
+        composingLabel.textColor = palette.candiText
+        composingLabel.textAlignment = .center
+        composingLabel.backgroundColor = .clear
+        composingLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(composingLabel)
+
+        // Scroll view occupies the bar to the left of the fixed chevron.
+        // delaysContentTouches=false routes taps to candidate buttons immediately;
+        // canCancelContentTouches=true lets the scroll view cancel button tracking
+        // when a drag gesture is detected, so horizontal scrolling still works.
+        // CandidateScrollView.touchesShouldCancel returns true for UIControl
+        // subclasses so drags are never blocked by the buttons.
+        // No additional UITapGestureRecognizer is needed: buttons are full bar
+        // height (alignment=.fill + explicit height constraint), so touchUpInside
+        // fires for any tap within the bar regardless of vertical position.
         scrollView.showsHorizontalScrollIndicator = false
+        scrollView.delaysContentTouches = false
+        scrollView.canCancelContentTouches = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
 
         stackView.axis = .horizontal
-        stackView.alignment = .center
+        // .fill makes each candidate button stretch to the full bar height so
+        // taps anywhere in the bar register, not just on the glyph itself.
+        // The highlight pill is drawn on an inner view sized to the text
+        // (see CandidateButton) so the visual pill stays glyph-sized.
+        stackView.alignment = .fill
         stackView.spacing = 0
         stackView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stackView)
@@ -149,8 +202,11 @@ final class CandidateBarView: UIView {
 
     /// Rotate the fixed chevron to indicate expanded (↑) or collapsed (↓) state.
     func setChevronExpanded(_ expanded: Bool) {
+        chevronExpanded = expanded
         let name = expanded ? "chevron.up" : "chevron.down"
-        moreButton.setImage(UIImage(systemName: name), for: .normal)
+        let chevronSize: CGFloat = 18
+        let chevronConfig = UIImage.SymbolConfiguration(pointSize: chevronSize, weight: .regular)
+        moreButton.setImage(UIImage(systemName: name, withConfiguration: chevronConfig), for: .normal)
     }
 
     /// Retained for API compatibility. The composing code is now rendered
@@ -290,6 +346,10 @@ final class CandidateBarView: UIView {
         for (index, mapping) in candidates.enumerated() {
             let btn = makeCandidateButton(mapping: mapping, index: index)
             stackView.addArrangedSubview(btn)
+            // Activate AFTER addArrangedSubview so btn and stackView share a
+            // common ancestor — activating before would crash with
+            // "no common ancestor" AutoLayout assertion.
+            btn.heightAnchor.constraint(equalTo: stackView.heightAnchor).isActive = true
             candidateButtons.append(btn)
             applyHighlightStyle(button: btn, index: index, mapping: mapping)
         }
@@ -300,11 +360,28 @@ final class CandidateBarView: UIView {
         moreSep.isHidden    = !hasCandidates
     }
 
-    private func makeCandidateButton(mapping: Mapping, index: Int) -> UIButton {
-        let btn = UIButton(type: .system)
+    private func makeCandidateButton(mapping: Mapping, index: Int) -> CandidateButton {
+        // .custom avoids UIKit's system-button tint overrides and ensures the
+        // touch area is exactly the button frame (no hidden restrictions).
+        let btn = CandidateButton(type: .custom)
         btn.tag = index
-        btn.contentEdgeInsets = UIEdgeInsets(top: 0, left: candidateHPad, bottom: 0, right: candidateHPad)
+        // Use contentEdgeInsets (not UIButton.Configuration) so the button has
+        // exactly `candidateHPad` on each side. UIButton.Configuration.plain()
+        // adds its own internal padding on top of contentInsets, which made
+        // the candi-bar spacing visibly larger than the expanded panel.
+        // KVC bypasses the iOS 15 deprecation warning while writing the same
+        // backing storage — the property is still functional, just deprecated
+        // for source code that opts into Configuration (we explicitly do not).
+        btn.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: 0, left: candidateHPad, bottom: 0, right: candidateHPad)),
+                     forKey: "contentEdgeInsets")
         btn.addTarget(self, action: #selector(candidateTapped(_:)), for: .touchUpInside)
+        // Same 0.01-alpha neutral fill as the bar — see setup() comment.
+        // Without this, taps in the vertical padding above/below the glyph
+        // land on clear pixels and are dropped by the keyboard-extension
+        // touch gate before touchUpInside can fire.
+        btn.backgroundColor = UIColor(white: 0.5, alpha: 0.01)
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        // Height constraint is added in rebuildButtons() after addArrangedSubview.
 
         // Composing-code record (mixed-mode raw-code entry): styled grey/monospace
         // so the user can visually distinguish it as "commit the raw English letters".
@@ -324,31 +401,22 @@ final class CandidateBarView: UIView {
 
     /// Paint selection-dependent background and text color on a single candidate button.
     /// Mirrors Android `CandidateView.doDraw` highlight branch + per-record-type color switch.
-    private func applyHighlightStyle(button: UIButton, index: Int, mapping: Mapping) {
+    private func applyHighlightStyle(button: CandidateButton, index: Int, mapping: Mapping) {
         let isSelected = (index == selectedIndex && selectedIndex >= 0)
         let isComposingCode = mapping.isComposingCodeRecord
-        // Themes 0 (Light) and 1 (Dark) use the iOS system keyboard key-cap style pill
-        // (white on light, elevated gray on dark) — matches native QuickType bar look.
-        // Coloured themes keep their Android palette highlight colour.
+        // Theme 1 (Dark) overrides to an elevated gray pill for Android parity;
+        // all other themes (including Light) use the palette's own highlight colour.
         let highlightColor: UIColor
-        if theme <= 1 {
-            highlightColor = UIColor(dynamicProvider: { t in
-                t.userInterfaceStyle == .dark
-                    ? UIColor(white: 0.23, alpha: 1)   // elevated on #141414 dark background
-                    : UIColor.white                    // white pill on #FAFAFA light background
-            })
+        if theme == 1 {
+            highlightColor = UIColor(white: 0.23, alpha: 1)
         } else {
             highlightColor = palette.candiHighlight
         }
 
-        if isSelected {
-            button.backgroundColor = highlightColor
-            button.layer.cornerRadius = 6
-            button.layer.masksToBounds = true
-        } else {
-            button.backgroundColor = .clear
-            button.layer.cornerRadius = 0
-        }
+        // The pill is drawn on an inner view sized to the text glyph only,
+        // so the highlight remains visually compact even though the button
+        // frame now spans the full bar height for a comfortable tap target.
+        button.pillView.backgroundColor = isSelected ? highlightColor : .clear
 
         if isComposingCode {
             // Selected composing-code gets full opacity (mirrors mColorComposingCodeHighlight).
@@ -384,5 +452,55 @@ final class CandidateBarView: UIView {
     @objc private func moreTapped() {
         if feedbackVibration { impactFeedback.impactOccurred() }
         delegate?.candidateBarViewDidRequestMore(self)
+    }
+}
+
+/// UIButton subclass that draws its selection "pill" on an inner subview
+/// sized to the text glyph, independent of the button's own frame. Combined
+/// with `UIStackView.alignment = .fill`, this lets the tappable area extend
+/// to the full bar height while keeping the highlight visually compact.
+final class CandidateButton: UIButton {
+    let pillView = UIView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupPillView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupPillView()
+    }
+
+    private func setupPillView() {
+        pillView.isUserInteractionEnabled = false
+        pillView.backgroundColor = .clear
+        pillView.layer.cornerRadius = 6
+        pillView.layer.masksToBounds = true
+        insertSubview(pillView, at: 0)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let label = titleLabel else {
+            pillView.frame = .zero
+            return
+        }
+        // Hug the title label with a small pad so the pill matches the
+        // glyph bounds rather than the full button frame.
+        let padX: CGFloat = 4
+        let padY: CGFloat = 2
+        pillView.frame = label.frame.insetBy(dx: -padX, dy: -padY)
+    }
+}
+
+/// UIScrollView subclass whose `touchesShouldCancel(in:)` returns `true` for
+/// every subview, including `UIControl` descendants. The default
+/// implementation returns `false` for UIControl, which would otherwise
+/// prevent the candidate list from scrolling once the candidate buttons
+/// stretch to the full bar height (UIStackView `alignment = .fill`).
+final class CandidateScrollView: UIScrollView {
+    override func touchesShouldCancel(in view: UIView) -> Bool {
+        return true
     }
 }

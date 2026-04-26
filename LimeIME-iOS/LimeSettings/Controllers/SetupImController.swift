@@ -54,7 +54,7 @@ final class SetupImController: BaseController {
 
     // MARK: - Import txt file (async, SwiftUI-friendly)
 
-    func importTxtFile(url: URL, tableName: String) async -> Result<Int, Error> {
+    func importTxtFile(url: URL, tableName: String, restoreLearning: Bool = false) async -> Result<Int, Error> {
         await MainActor.run { progress.show(status: "匯入中…") }
         let server = self.dbServer
         return await Task.detached(priority: .userInitiated) {
@@ -62,6 +62,12 @@ final class SetupImController: BaseController {
                 var lastCount = 0
                 try server.importTxtFile(at: url.path, tableName: tableName) { count in
                     lastCount = count
+                }
+                if restoreLearning {
+                    if let ss = server.makeSearchServer() {
+                        let restored = ss.restoreUserRecords(tableName)
+                        if restored > 0 { ss.dropBackupTable(tableName) }
+                    }
                 }
                 return .success(lastCount)
             } catch {
@@ -96,13 +102,19 @@ final class SetupImController: BaseController {
 
     // MARK: - Import DB file (async, SwiftUI-friendly)
 
-    func importDBFile(url: URL, tableName: String) async -> Result<String, Error> {
+    func importDBFile(url: URL, tableName: String, restoreLearning: Bool = false) async -> Result<String, Error> {
         await MainActor.run { progress.show(status: "匯入中…") }
         let server = self.dbServer
         let safeTable = server.isValidTableName(tableName) ? tableName : "custom"
         return await Task.detached(priority: .userInitiated) {
             do {
                 try server.importFromAttachedDB(sourcePath: url.path, tableName: safeTable)
+                if restoreLearning {
+                    if let ss = server.makeSearchServer() {
+                        let restored = ss.restoreUserRecords(safeTable)
+                        if restored > 0 { ss.dropBackupTable(safeTable) }
+                    }
+                }
                 return .success(safeTable)
             } catch {
                 return .failure(error)

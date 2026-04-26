@@ -782,7 +782,7 @@ final class LimeDB {
         var rsize = 0
         for row in rows {
             guard let cword = row.optString("cword"), !cword.isEmpty else { continue }
-            let rowPword = row.optString("pword") ?? pword ?? ""
+            let rowPword = row.optString("pword") ?? pword
             var m = Mapping(id:        (row.optInt64("_id") ?? 0),
                             code:      "",
                             word:      cword,
@@ -1055,11 +1055,14 @@ final class LimeDB {
             // Enabled state: from key-value row (title="disable", desc="true"/"false").
             let disableStr = rows.first(where: { $0.title == "disable" })?.desc ?? "false"
             let enabled = disableStr != "true"
+            // Full name from title="name" config entry (mirrors Android LIME.IM_FULL_NAME / sidebar).
+            let fullName = rows.first(where: { $0.title == "name" })?.desc ?? ""
             return ImConfig(
                 id:                  Int64(seedRow.id),
                 imName:              code,
                 tableNick:           code,
                 label:               seedRow.title,
+                fullName:            fullName,
                 keyboardId:          keyboardId,
                 keyboardLandscapeId: keyboardId,
                 enabled:             enabled,
@@ -2448,7 +2451,7 @@ final class LimeDB {
 
     func importFromZip(at zipURL: URL, tableName: String) throws {
         guard isValidTableName(tableName) else { throw LimeDBError.invalidTableName(tableName) }
-        guard let archive = Archive(url: zipURL, accessMode: .read) else { throw LimeDBError.fileNotFound(zipURL.path) }
+        let archive = try Archive(url: zipURL, accessMode: .read)
         guard let entry = archive.first(where: { $0.path.hasSuffix(".db") }) else { throw LimeDBError.fileNotFound("*.db inside zip") }
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".db")
         _ = try archive.extract(entry, to: tempURL)

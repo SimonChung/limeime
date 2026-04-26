@@ -184,21 +184,120 @@ The **Model and Controller layers must achieve the same testability goals** as t
 
 ### 4.1 Layout
 
+Inspired by Gboard's setup screen: a single scrollable screen with the LimeIME logo at top, a visual three-step instruction list, and **one CTA button** that opens the relevant iOS Settings page directly. The two-button (Step 1 / Step 2) layout is replaced by this unified design.
+
+**iPad / wide-screen layout cap.** The inner `VStack` is wrapped in `.frame(maxWidth: 560).frame(maxWidth: .infinity)` so on iPad (portrait and especially landscape) the content sits in a centered ~560pt column instead of stretching edge-to-edge. This fixes the uncomfortable far-left / far-right alignment of the status banner, step list, explanatory paragraph, and the `LabeledContent` rows in the About box (where `版本` and `6.0(1)` would otherwise sit at opposite edges of an 1100pt-wide row in iPad landscape). On iPhone the cap never engages because the screen is narrower than 560pt.
+
+**Brand block under logo.** A `Text("萊姆輸入法")` wordmark is placed directly under the logo (28pt semibold) to fill the visual gap between the logo and the version block at the bottom of the screen, and to give the screen a clear identity. No English subtitle / tagline.
+
 ```
 NavigationStack
-└── List
-    ├── Section "啟用狀態"
-    │   └── Status banner (colour-coded: green / yellow / red)
-    ├── Section "步驟 1 — 啟用鍵盤"
-    │   ├── Text "前往「設定 → 一般 → 鍵盤 → 鍵盤 → 新增鍵盤」，選擇 LimeIME。"
-    │   └── Button "前往系統設定"  → `App-Prefs:root=General&path=Keyboard` (falls back to `openSettingsURLString`)
-    ├── Section "步驟 2 — 允許完整取用"
-    │   ├── Text "在鍵盤設定頁面，點選 LimeIME 並開啟「允許完整取用」。"
-    │   └── Button "前往鍵盤設定"  → `App-Prefs:…/net.toload.limeime.LimeKeyboard` (LimeIME keyboard settings page); disabled when keyboard not yet added
-    └── Section "關於"
-        ├── LabeledContent "版本"   CFBundleShortVersionString + build number
-        ├── LabeledContent "授權"   "GPL-3.0"
-        └── Link "原始碼 (GitHub)"
+└── ScrollView
+    └── VStack(spacing: 24)
+        │
+        ├── // ── Brand block (logo + wordmark) ───────────────────────
+        │   VStack(spacing: 8) {
+        │       Image("LimeLogo")      // Assets.xcassets app icon / logo asset
+        │           .resizable().scaledToFit()
+        │           .frame(width: 80, height: 80)
+        │           .clipShape(RoundedRectangle(cornerRadius: 18))
+        │       Text("萊姆輸入法")      // wordmark — fills the visual gap below the logo
+        │           .font(.system(size: 28, weight: .semibold))
+        │   }
+        │   .padding(.top, 32)
+        │
+        ├── // ── Status banner ─────────────────────────────────────────
+        │   StatusBannerView()         // see §4.2 — colour-coded; re-checked on .onAppear + scenePhase
+        │
+        ├── // ── Title ────────────────────────────────────────────────
+        │   Text("設定 LimeIME")
+        │       .font(.title2).bold()
+        │
+        ├── // ── Step list ────────────────────────────────────────────
+        │   VStack(alignment: .leading, spacing: 16) {
+        │       SetupStepRow(text: "輕觸「鍵盤」")   { Image(systemName: "keyboard").font(.title3).foregroundColor(.accentColor) }
+        │       SetupStepRow(text: "開啟萊姆輸入法") { ToggleSwitchIcon() }   // green ON-state toggle
+        │       SetupStepRow(text: "開啟「允許完整取用」") { ToggleSwitchIcon() }
+        │   }
+        │   .padding(.horizontal, 24)
+        │   // SetupStepRow is generic (@ViewBuilder icon:); ToggleSwitchIcon is a
+        │   // green Capsule + white thumb (ON state) matching the iOS Settings toggle.
+        │
+        ├── // ── Explanatory note ─────────────────────────────────────
+        │   Text("允許完整取用後，萊姆輸入法才能存取使用者詞庫並提供候選字建議。萊姆輸入法不會收集或傳送您的輸入內容。")
+        │       .font(.footnote).foregroundColor(.secondary)
+        │       .multilineTextAlignment(.center)
+        │       .padding(.horizontal, 24)
+        │
+        ├── // ── CTA button ───────────────────────────────────────────
+        │   Button("前往設定") {
+        │       openLimeKeyboardSettings()   // see §4.1.1
+        │   }
+        │   .buttonStyle(.borderedProminent)
+        │   .controlSize(.large)
+        │   .padding(.horizontal, 24)
+        │
+        └── // ── About section ────────────────────────────────────────
+            GroupBox {
+                LabeledContent("版本", value: appVersion())  // CFBundleShortVersionString + build
+                    .padding(.vertical, 11)
+                Divider()
+                LabeledContent("授權", value: "GPL-3.0")
+                    .padding(.vertical, 11)
+                Divider()
+                Link("原始碼 (GitHub)", destination: githubURL)
+                    .padding(.vertical, 11)
+            }
+            .groupBoxStyle(FormSectionGroupBoxStyle())  // white fill, cornerRadius 10 — matches Form Section
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        // VStack modifiers (applied to the outer VStack(spacing: 24)):
+        //   .frame(maxWidth: 560)        // iPad reading-width cap
+        //   .frame(maxWidth: .infinity)  // center the column horizontally
+```
+
+#### 4.1.1 SetupStepRow
+
+A reusable helper view — icon on the left, label on the right:
+
+```swift
+struct SetupStepRow: View {
+    let icon: String
+    let text: String
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.accentColor)
+                .frame(width: 32)
+            Text(text)
+                .font(.body)
+            Spacer()
+        }
+    }
+}
+```
+
+#### 4.1.2 openLimeKeyboardSettings()
+
+The CTA button always opens the **LimeIME keyboard settings page** directly (where both the enable toggle and the Allow Full Access toggle live):
+
+```swift
+func openLimeKeyboardSettings() {
+    // Direct link to LimeIME's keyboard settings page (iOS 14+).
+    // Falls back to the Keyboards list, then to the generic Settings app.
+    let urls: [String] = [
+        "App-Prefs:root=General&path=Keyboard/net.toload.limeime.LimeKeyboard",
+        "App-Prefs:root=General&path=Keyboard",
+        UIApplication.openSettingsURLString
+    ]
+    for raw in urls {
+        if let url = URL(string: raw), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+            return
+        }
+    }
+}
 ```
 
 ### 4.2 Status Banner
@@ -230,7 +329,9 @@ NavigationStack
     ├── Section "已安裝的輸入法"
     │   └── ForEach IMRow  (sorted by im.sortOrder)
     │       ├── HStack
-    │       │   ├── VStack { Text(im.label).bold, Text(im.tableNick).secondary.caption }
+    │       │   ├── Text(im.label).bold  // single line — matches Android sidebar (one line per IM)
+    │       │   │   // ImConfig.fullName holds title="name" config entry (Android LIME.IM_FULL_NAME)
+    │       │   │   // but iOS importTxtFile never parses @version@ so it is always empty; no subtitle shown
     │       │   └── Toggle("", isOn: $row.enabled)
     │       │       .onChange → db.updateIMEnabled(id:enabled:)
     │       └── NavigationLink → IMDetailView(im: row)
@@ -273,10 +374,17 @@ NavigationStack (continued)
         ├── Section "字根資料表"  (header = "聯想詞庫" when im.tableNick == "related")
         │   ├── [tableNick != "related"] NavigationLink "瀏覽 / 編輯資料表" → RecordListView(table: im.tableNick)
         │   └── [tableNick == "related"] NavigationLink "瀏覽 / 編輯聯想詞庫" → RelatedListView(isEmbedded: true)
+        ├── Section "選項"  (hidden when im.tableNick == "related")
+        │   └── Toggle "刪除時備份已學習記錄"
+        │       pref key: backup_on_delete_{tableNick}  (UserDefaults.standard, per-IM)
+        │       default: true
         └── Section (no header)  (hidden when im.tableNick == "related")
             └── Button "移除輸入法" role: .destructive
-                → confirmAlert("此操作將清除「…」的所有對應資料，無法還原。確定繼續？")
-                → manageImController.clearTable(tableNick:)
+                → confirmAlert(message varies by toggle state:
+                   true:  "此操作將清除「…」的所有對應資料。\n已學習記錄將先備份，可在重新匯入時還原。確定繼續？"
+                   false: "此操作將清除「…」的所有對應資料，無法還原。確定繼續？")
+                → manageImController.clearTable(tableNick:, backupLearning: backupOnDelete)
+                   ├── [if backupLearning] SearchServer.backupUserRecords(tableNick)
                    ├── SearchServer.clearTable → LimeDB.clearTable (DELETE records + resetImConfig)
                    ├── LIMEPreferenceManager.syncIMActivatedState (rebuilds keyboard_state)
                    ├── markKeyboardCacheDirty
@@ -356,17 +464,24 @@ NavigationStack (continued)
 └── IMInstallView
     └── List
         ├── DisclosureGroup "注音 (phonetic)"
-        │   ├── Button "☁ 標準版"         → downloadIM(CLOUD_PHONETIC,          table: "phonetic")
-        │   ├── Button "☁ 完整版"         → downloadIM(CLOUD_PHONETIC_COMPLETE,  table: "phonetic")
-        │   ├── Button "☁ BIG5 字集"       → downloadIM(CLOUD_PHONETIC_BIG5,      table: "phonetic")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "phonetic")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "phonetic")
+        │   ├── [if checkBackupTable("phonetic")]
+        │   │   Toggle "還原已學習記錄"
+        │   │   pref key: restore_on_import_phonetic  (UserDefaults.standard)
+        │   │   default: true (when first shown)
+        │   ├── Button "☁ 標準版"         → downloadIM(CLOUD_PHONETIC,          table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 完整版"         → downloadIM(CLOUD_PHONETIC_COMPLETE,  table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ BIG5 字集"       → downloadIM(CLOUD_PHONETIC_BIG5,      table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "phonetic", restoreLearning: restoreOnImport)
+        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "phonetic", restoreLearning: restoreOnImport)
+        │   (同上模式適用於以下所有 built-in IM DisclosureGroup，各 IM 獨立使用 restore_on_import_{tableNick} key；
+        │    checkBackupTable 返回 false 時 Toggle 不顯示；聯想詞庫 group 除外)
         ├── DisclosureGroup "倉頡 (cj)"
-        │   ├── Button "☁ 標準"            → downloadIM(CLOUD_CJ,      table: "cj")
-        │   ├── Button "☁ BIG5"             → downloadIM(CLOUD_CJ_BIG5, table: "cj")
-        │   ├── Button "☁ 香港字"          → downloadIM(CLOUD_CJHK,    table: "cj")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "cj")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "cj")
+        │   ├── [if checkBackupTable("cj")] Toggle "還原已學習記錄"  pref: restore_on_import_cj  default: true
+        │   ├── Button "☁ 標準"            → downloadIM(CLOUD_CJ,      table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ BIG5"             → downloadIM(CLOUD_CJ_BIG5, table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 香港字"          → downloadIM(CLOUD_CJHK,    table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "cj", restoreLearning: restoreOnImport)
+        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "cj", restoreLearning: restoreOnImport)
         ├── DisclosureGroup "快倉 (scj)"
         │   ├── Button "☁ 下載"            → downloadIM(CLOUD_SCJ, table: "scj")
         │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "scj")
@@ -813,6 +928,13 @@ All stored in `UserDefaults(suiteName: "group.net.toload.limeime")`.
 | `keyboard_state` | `keyboard_state` | String | "0;1;2;3;…;12" |
 | `keyboard_list` (active IM) | `keyboard_list` | String | "phonetic" |
 
+**Per-IM backup/restore preference keys** (stored in `UserDefaults.standard`, NOT the App Group — keyboard extension does not read them):
+
+| Pref Key | Android Key | Type | Default | Notes |
+|---|---|---|---|---|
+| `backup_on_delete_{tableNick}` | *(new)* | Bool | `true` | Per-IM. Controls whether learned records are backed up before `clearTable`. Shown in IMDetailView §5.2. |
+| `restore_on_import_{tableNick}` | *(new)* | Bool | `true` | Per-IM. Controls whether backed-up records are restored after import/download. Shown in IMInstallView §5.3. |
+
 ---
 
 ## 10. iOS Adaptation Notes
@@ -844,6 +966,8 @@ All stored in `UserDefaults(suiteName: "group.net.toload.limeime")`.
 - **Always** use `UserDefaults(suiteName: "group.net.toload.limeime")` — never `UserDefaults.standard`.
 - **Never** use `@AppStorage` without the explicit `store:` parameter.
 - Preferences are **not** synced via iCloud (`NSUbiquitousKeyValueStore`); that is a future opt-in.
+
+**Exception — LimeSettings-only keys**: `backup_on_delete_{tableNick}` and `restore_on_import_{tableNick}` intentionally use `UserDefaults.standard` (not the App Group suite). These are UI-only preferences read exclusively by LimeSettings; the keyboard extension never reads them. Using `UserDefaults.standard` avoids polluting the shared App Group namespace with host-app-only state.
 
 ### 10.4 `keyboard_state` Synchronisation
 

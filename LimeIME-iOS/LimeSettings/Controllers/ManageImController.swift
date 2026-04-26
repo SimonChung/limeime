@@ -21,7 +21,7 @@ final class ManageImController: BaseController {
         UserDefaults(suiteName: appGroupID)?.set(true, forKey: cacheResetKey)
     }
 
-    static let pageSize = 100
+    nonisolated static let pageSize = 100
 
     /// Incrementing this causes IMListView to reload its IM list.
     /// Call after any external IM registration change.
@@ -281,11 +281,14 @@ final class ManageImController: BaseController {
     /// Mirrors Android: searchServer.clearTable(tableName) → LimeDB.clearTable() + resetImConfig()
     /// followed by syncIMActivatedState() to rebuild keyboard_state.
     /// keyboard_list (active IM) is intentionally left unchanged — matches Android behaviour.
-    func clearTable(tableNick: String) async -> Result<Void, Error> {
+    func clearTable(tableNick: String, backupLearning: Bool = false) async -> Result<Void, Error> {
         let ss = searchServer
         let server = self.dbServer
         let localPrefs = self.prefs
         await Task.detached(priority: .userInitiated) {
+            if backupLearning {
+                ss?.backupUserRecords(tableNick)
+            }
             ss?.clearTable(tableNick)
             await MainActor.run { localPrefs.syncIMActivatedState(dbServer: server) }
         }.value

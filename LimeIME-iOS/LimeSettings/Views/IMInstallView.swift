@@ -139,6 +139,12 @@ struct IMInstallView: View {
         .onAppear {
             refreshInstallStates()
         }
+        .onChange(of: downloadManager.installedTables) { newTables in
+            // Expand groups for tables that just became uninstalled
+            for family in IMCatalog.families where !newTables.contains(family.id) {
+                expandedFamilies.insert(family.id)
+            }
+        }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: allowedTypes(),
@@ -158,6 +164,9 @@ struct IMInstallView: View {
                 }
             }
         }
+        .onChange(of: downloadManager.installedTables) { _ in
+            onRefresh?()
+        }
     }
 
     // MARK: - Helpers
@@ -171,9 +180,8 @@ struct IMInstallView: View {
 
     private func refreshInstallStates() {
         downloadManager.refreshInstalledTables()
-        expandedFamilies = Set(IMCatalog.families.compactMap { family in
-            downloadManager.installedTables.contains(family.id) ? nil : family.id
-        }).union(["related"])
+        // All families start expanded; isExpanded binding getter collapses installed ones.
+        expandedFamilies = Set(IMCatalog.families.map { $0.id }).union(["related"])
         Task.detached(priority: .background) {
             let hasData = DBServer.shared.tableHasData("related")
             await MainActor.run {
@@ -209,21 +217,29 @@ struct IMInstallView: View {
                 statusMessage = "聯想詞庫匯入完成"
                 manageRelatedController.invalidate()
             } else if ext == "db" || ext == "limedb" {
-                let r = await setupController.importDBFile(url: url, tableName: tableName)
+                let restoreLearning = UserDefaults.standard.object(
+                    forKey: "restore_on_import_\(tableName)") as? Bool ?? true
+                let r = await setupController.importDBFile(url: url, tableName: tableName,
+                                                           restoreLearning: restoreLearning)
                 switch r {
                 case .success(let table):
                     if seedCustomAfter { try? DBServer.shared.seedCustomIM() }
                     statusMessage = "已成功匯入 \(table)"
+                    downloadManager.refreshInstalledTables()
                     onRefresh?()
                 case .failure(let error):
                     statusMessage = "匯入失敗：\(error.localizedDescription)"
                 }
             } else {
-                let r = await setupController.importTxtFile(url: url, tableName: tableName)
+                let restoreLearning = UserDefaults.standard.object(
+                    forKey: "restore_on_import_\(tableName)") as? Bool ?? true
+                let r = await setupController.importTxtFile(url: url, tableName: tableName,
+                                                            restoreLearning: restoreLearning)
                 switch r {
                 case .success(let count):
                     if seedCustomAfter { try? DBServer.shared.seedCustomIM() }
                     statusMessage = "文字檔匯入完成，共 \(count) 筆"
+                    downloadManager.refreshInstalledTables()
                     onRefresh?()
                 case .failure(let error):
                     statusMessage = "匯入失敗：\(error.localizedDescription)"
@@ -245,10 +261,27 @@ private struct FamilyInstallGroup: View {
     let onImportDB: () -> Void
     let onImportTxt: () -> Void
 
+    @State private var hasBackup: Bool = false
+
+    private var restoreOnImport: Bool {
+        get { UserDefaults.standard.object(forKey: "restore_on_import_\(family.id)") as? Bool ?? true }
+        nonmutating set { UserDefaults.standard.set(newValue, forKey: "restore_on_import_\(family.id)") }
+    }
+    private var restoreOnImportBinding: Binding<Bool> {
+        Binding(get: { restoreOnImport }, set: { restoreOnImport = $0 })
+    }
+
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
+            if hasBackup {
+                Toggle("還原已學習記錄", isOn: restoreOnImportBinding)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
             ForEach(family.variants) { variant in
-                VariantRow(variant: variant, manager: downloadManager)
+                VariantRow(variant: variant, manager: downloadManager, installOverride: { v in
+                    downloadManager.install(v, restoreLearning: restoreOnImport)
+                })
             }
             Button(action: onImportDB) {
                 Label("匯入 .limedb", systemImage: "archivebox")
@@ -268,6 +301,29 @@ private struct FamilyInstallGroup: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+            }
+        }
+        .task(id: isInstalled) {
+            // Backup tables are keyed by the variant's `tableName` (set when the IM was
+            // imported), which is NOT always equal to `family.id` — e.g. cangjie family
+            // has variants with tableNames "cj", "cj5", "scj", "ecj". Check every
+            // distinct tableName the family covers, plus family.id as fallback.
+            //
+            // Also honour the `user_backed_up_<tableNick>` flag set by IMDetailView
+            // when the user removed the IM with backup enabled. checkBackupTable
+            // returns false when the backup table has 0 rows (no learned records
+            // existed at delete time, since backup only includes score>0). The
+            // toggle should still appear so the user's intent is preserved.
+            let candidates: Set<String> = Set(family.variants.map { $0.tableName }).union([family.id])
+            let ud = UserDefaults.standard
+            let userOpted = candidates.contains { ud.bool(forKey: "user_backed_up_\($0)") }
+            let backup = await Task.detached(priority: .background) {
+                let ss = DBServer.shared.makeSearchServer()
+                return candidates.contains { ss?.checkBackupTable($0) ?? false }
+            }.value
+            hasBackup = backup || userOpted
+            if hasBackup && !isInstalled {
+                isExpanded = true
             }
         }
     }

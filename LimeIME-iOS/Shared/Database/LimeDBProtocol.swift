@@ -76,6 +76,7 @@ protocol LimeDBProtocol: AnyObject {
     func restoreUserRecords(_ table: String) -> Int
     func checkBackupTable(_ table: String) -> Bool
     func getBackupTableRecords(_ backupTableName: String) -> [[String: Any]]?
+    @discardableResult func dropBackupTable(_ table: String) -> Bool
 
     // MARK: Cache / misc
     func clearTable(_ table: String)

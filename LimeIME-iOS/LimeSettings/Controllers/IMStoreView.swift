@@ -28,6 +28,7 @@ final class IMDownloadManager: ObservableObject {
 
     private var tasks: [String: URLSessionDownloadTask] = [:]
     private var progressObservers: [String: NSKeyValueObservation] = [:]
+    private var restoreLearningFlags: [String: Bool] = [:]
 
     init() { refreshInstalledTables() }
 
@@ -38,8 +39,9 @@ final class IMDownloadManager: ObservableObject {
         return installedTables.contains(variant.tableName) ? .installed : .notInstalled
     }
 
-    func install(_ variant: IMVariant) {
+    func install(_ variant: IMVariant, restoreLearning: Bool = false) {
         guard !state(for: variant).isActive else { return }
+        restoreLearningFlags[variant.id] = restoreLearning
         states[variant.id] = .downloading(progress: 0)
         download(variant: variant)
     }
@@ -47,6 +49,7 @@ final class IMDownloadManager: ObservableObject {
     func cancel(_ variant: IMVariant) {
         tasks[variant.id]?.cancel()
         tasks.removeValue(forKey: variant.id)
+        restoreLearningFlags.removeValue(forKey: variant.id)
         states[variant.id] = .notInstalled
     }
 
@@ -92,7 +95,8 @@ final class IMDownloadManager: ObservableObject {
             }
 
             Task { await MainActor.run { self.states[variantID] = .importing } }
-            self.importDownloaded(tempURL: tempURL, variant: variant)
+            let restore = self.restoreLearningFlags[variant.id] ?? false
+            self.importDownloaded(tempURL: tempURL, variant: variant, restoreLearning: restore)
         }
 
         // Observe download progress
@@ -107,7 +111,7 @@ final class IMDownloadManager: ObservableObject {
         task.resume()
     }
 
-    private func importDownloaded(tempURL: URL, variant: IMVariant) {
+    private func importDownloaded(tempURL: URL, variant: IMVariant, restoreLearning: Bool = false) {
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             let server = DBServer.shared
@@ -119,6 +123,13 @@ final class IMDownloadManager: ObservableObject {
                 } else {
                     // .zip — extract the .db inside, then ATTACH
                     try server.importFromZip(at: tempURL, tableName: variant.tableName)
+                }
+
+                if restoreLearning {
+                    if let ss = server.makeSearchServer() {
+                        let restored = ss.restoreUserRecords(variant.tableName)
+                        if restored > 0 { ss.dropBackupTable(variant.tableName) }
+                    }
                 }
 
                 // Register in im table so the keyboard can see it
@@ -133,10 +144,12 @@ final class IMDownloadManager: ObservableObject {
                     self.installedTables.insert(variant.tableName)
                     self.tasks.removeValue(forKey: variant.id)
                     self.progressObservers.removeValue(forKey: variant.id)
+                    self.restoreLearningFlags.removeValue(forKey: variant.id)
                 }
             } catch {
                 await MainActor.run {
                     self.states[variant.id] = .error(error.localizedDescription)
+                    self.restoreLearningFlags.removeValue(forKey: variant.id)
                 }
             }
         }
@@ -267,6 +280,7 @@ struct FamilyHeader: View {
 struct VariantRow: View {
     let variant: IMVariant
     @ObservedObject var manager: IMDownloadManager
+    var installOverride: ((IMVariant) -> Void)? = nil
 
     var state: IMInstallState { manager.state(for: variant) }
 
@@ -291,6 +305,8 @@ struct VariantRow: View {
             InstallButton(state: state) {
                 if state.isActive {
                     manager.cancel(variant)
+                } else if let override = installOverride {
+                    override(variant)
                 } else {
                     manager.install(variant)
                 }

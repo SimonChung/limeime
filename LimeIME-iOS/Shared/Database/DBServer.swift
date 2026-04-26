@@ -247,9 +247,7 @@ final class DBServer {
             }
 
             // Create zip archive
-            guard let archive = Archive(url: tempZip, accessMode: .create) else {
-                throw DBServerError.archiveCreationFailed
-            }
+            let archive = try Archive(url: tempZip, accessMode: .create)
             for (fileURL, entryName) in filesToZip {
                 try archive.addEntry(with: entryName, fileURL: fileURL)
             }
@@ -344,8 +342,11 @@ final class DBServer {
         try? FileManager.default.removeItem(at: tempDBPath)
 
         do {
-            guard let archive = Archive(url: URL(fileURLWithPath: srcFilePath), accessMode: .read) else {
-                print("[DBServer] restoreDatabase: cannot open archive at \(srcFilePath)")
+            let archive: Archive
+            do {
+                archive = try Archive(url: URL(fileURLWithPath: srcFilePath), accessMode: .read)
+            } catch {
+                print("[DBServer] restoreDatabase: cannot open archive at \(srcFilePath): \(error)")
                 return
             }
             // Extract only the DB file — skip directory entries and unknown files.
@@ -500,10 +501,7 @@ final class DBServer {
             try FileManager.default.createDirectory(at: targetFolderURL, withIntermediateDirectories: true)
             try? FileManager.default.removeItem(at: outputURL)
 
-            guard let archive = Archive(url: source, accessMode: .read) else {
-                print("[DBServer] unzip: cannot open archive")
-                return
-            }
+            let archive = try Archive(url: source, accessMode: .read)
             // Enforce zip-bomb caps on the archive before extracting.
             _ = try validatedEntries(of: archive, targetDir: targetFolderURL)
 
@@ -540,10 +538,7 @@ final class DBServer {
             try FileManager.default.createDirectory(at: targetFolderURL, withIntermediateDirectories: true)
             try? FileManager.default.removeItem(at: outputURL)
 
-            guard let archive = Archive(url: outputURL, accessMode: .create) else {
-                print("[DBServer] zip: cannot create archive at \(outputURL.path)")
-                return
-            }
+            let archive = try Archive(url: outputURL, accessMode: .create)
             // Use only the file name as the entry name (mirrors Java's ZipEntry(sourceFile.getName()))
             try archive.addEntry(with: source.lastPathComponent, fileURL: source)
         } catch {
@@ -600,10 +595,7 @@ final class DBServer {
 
             ds.prepareBackup(targetFile: dbFile, tableNames: [tableName], includeRelated: false)
 
-            guard let archive = Archive(url: targetDbFile, accessMode: .create) else {
-                print("[DBServer] exportZippedDb: cannot create archive")
-                return nil
-            }
+            let archive = try Archive(url: targetDbFile, accessMode: .create)
             try archive.addEntry(with: dbFile.lastPathComponent, fileURL: dbFile)
             try? FileManager.default.setAttributes(
                 [.protectionKey: FileProtectionType.complete], ofItemAtPath: targetDbFile.path)
@@ -647,10 +639,7 @@ final class DBServer {
 
             ds.prepareBackup(targetFile: dbFile, tableNames: [], includeRelated: true)
 
-            guard let archive = Archive(url: targetFile, accessMode: .create) else {
-                print("[DBServer] exportZippedDbRelated: cannot create archive")
-                return nil
-            }
+            let archive = try Archive(url: targetFile, accessMode: .create)
             try archive.addEntry(with: dbFile.lastPathComponent, fileURL: dbFile)
             try? FileManager.default.setAttributes(
                 [.protectionKey: FileProtectionType.complete], ofItemAtPath: targetFile.path)
@@ -715,9 +704,7 @@ final class DBServer {
     /// Unzips all entries from source into targetDir and returns their URLs.
     /// Safe: validates each entry against zip-slip and zip-bomb caps.
     private func unzipReturningFiles(source: URL, targetDir: URL) throws -> [URL] {
-        guard let archive = Archive(url: source, accessMode: .read) else {
-            throw DBServerError.archiveCreationFailed
-        }
+        let archive = try Archive(url: source, accessMode: .read)
         let validated = try validatedEntries(of: archive, targetDir: targetDir)
         var results: [URL] = []
         for (entry, destURL) in validated {
