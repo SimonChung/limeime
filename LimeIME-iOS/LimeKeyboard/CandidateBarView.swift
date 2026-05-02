@@ -1,4 +1,4 @@
-import UIKit
+﻿import UIKit
 
 // Horizontal scrolling candidate bar above the keyboard.
 // Mirrors Android's CandidateView.java (horizontal ListView).
@@ -32,7 +32,7 @@ final class CandidateBarView: UIView {
     /// Sized to comfortably contain a Bopomofo tone glyph from STHeiti TC at
     /// `composingStripFont`'s point size (see that property's comment for
     /// font choice rationale).
-    var composingStripHeight: CGFloat { isPad ? 28 : 22 }
+    var composingStripHeight: CGFloat { LayoutMetrics.ComposingPopup.stripHeight(isPad: isPad) }
     /// Font for the small top-strip keyname overlay. Deliberately smaller
     /// than the main composing/candidate font so it stays a subtle hint.
     /// Public for the same reason as `composingStripHeight`.
@@ -48,7 +48,7 @@ final class CandidateBarView: UIView {
     /// Bopomofo tone marks render at a glance-readable size without any
     /// per-character scaling tricks.
     var composingStripFont: UIFont {
-        let size = (isPad ? 18 : 14) * fontScale
+        let size = LayoutMetrics.ComposingPopup.stripFontSize(isPad: isPad) * fontScale
         return UIFont(name: "STHeitiTC-Light", size: size)
             ?? UIFont(name: "PingFangTC-Regular", size: size)
             ?? UIFont.systemFont(ofSize: size, weight: .regular)
@@ -115,8 +115,8 @@ final class CandidateBarView: UIView {
     /// to read it comfortably and matching the bar height that was already sized
     /// from `isOnPad` in the controller.
     private let isPad = UIDevice.current.userInterfaceIdiom == .pad
-    private var baseCandidateFontSize: CGFloat     { isPad ? 26 : 22 }
-    private var baseComposingCodeFontSize: CGFloat { isPad ? 22 : 16 }
+    private var baseCandidateFontSize: CGFloat     { LayoutMetrics.ComposingPopup.candidateFontSize(isPad: isPad) }
+    private var baseComposingCodeFontSize: CGFloat { LayoutMetrics.ComposingPopup.composingCodeFontSize(isPad: isPad) }
     private var candidateFont: UIFont     { UIFont.systemFont(ofSize: baseCandidateFontSize * fontScale, weight: .regular) }
     // Per-candidate composing-code label font.
     // Uses PingFang TC for the same reason documented on `composingStripFont`
@@ -127,8 +127,8 @@ final class CandidateBarView: UIView {
         return UIFont(name: "PingFangTC-Regular", size: size)
             ?? UIFont.systemFont(ofSize: size, weight: .regular)
     }
-    private let candidateHPad:   CGFloat = 10
-    private let dividerWidth:    CGFloat = 1
+    private let candidateHPad: CGFloat = LayoutMetrics.CandidateBar.candidateHPad
+    private let dividerWidth:  CGFloat = LayoutMetrics.CandidateBar.dividerWidth
 
     // MARK: - Init
     override init(frame: CGRect) {
@@ -144,9 +144,9 @@ final class CandidateBarView: UIView {
     private func applyTheme() {
         backgroundColor = .clear
         moreButton.tintColor = palette.candiText
-        moreSep.backgroundColor = palette.candiText.withAlphaComponent(0.2)
+        moreSep.backgroundColor = palette.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
         composingLabel.font = composingStripFont
-        composingLabel.textColor = palette.candiText.withAlphaComponent(0.75)
+        composingLabel.textColor = palette.candiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         applyComposingText()
         rebuildButtons()
     }
@@ -161,8 +161,8 @@ final class CandidateBarView: UIView {
         backgroundColor = .clear
 
         // Fixed chevron pinned to the right edge of the bar
-        let chevronSize: CGFloat = 18
-        let chevronConfig = UIImage.SymbolConfiguration(pointSize: chevronSize, weight: .regular)
+        let chevronConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad), weight: .regular)
         moreButton.setImage(UIImage(systemName: "chevron.down", withConfiguration: chevronConfig), for: .normal)
         moreButton.tintColor = palette.candiText
         // KVC sets the same backing storage as `contentEdgeInsets` without
@@ -171,24 +171,27 @@ final class CandidateBarView: UIView {
         // reason (UIButton.Configuration.plain() inflates spacing).
         // Match candidate buttons: bias down by half the strip height so the
         // chevron icon sits at the same vertical center as the glyphs.
+        // Symmetric horizontal insets are unnecessary because the icon is
+        // centered in the (now narrower) frame; only the vertical bias matters.
         let chevronBias = composingStripHeight / 2
-        moreButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: chevronBias, left: 10, bottom: -chevronBias, right: 10)),
+        moreButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: chevronBias, left: 0,
+                                                               bottom: -chevronBias, right: 0)),
                             forKey: "contentEdgeInsets")
         moreButton.isHidden = true
         moreButton.addTarget(self, action: #selector(moreTapped), for: .touchUpInside)
         // 0.01-alpha touch trap so taps in the chevron's padding also fire —
         // same rationale as the candidate buttons below.
-        moreButton.backgroundColor = UIColor(white: 0.5, alpha: 0.01)
+        moreButton.backgroundColor = LayoutMetrics.TouchTrap.fill
         moreButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(moreButton)
 
-        moreSep.backgroundColor = palette.candiText.withAlphaComponent(0.2)
+        moreSep.backgroundColor = palette.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
         moreSep.isHidden = true
         moreSep.translatesAutoresizingMaskIntoConstraints = false
         addSubview(moreSep)
 
         composingLabel.font = composingStripFont
-        composingLabel.textColor = palette.candiText.withAlphaComponent(0.75)
+        composingLabel.textColor = palette.candiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         composingLabel.textAlignment = .left
         composingLabel.backgroundColor = .clear
         composingLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -225,13 +228,14 @@ final class CandidateBarView: UIView {
         scrollView.addSubview(stackView)
 
         NSLayoutConstraint.activate([
-            // chevron flush to trailing edge — square so its width matches the bar
-            // height exactly. Keeps the reserved zone consistent with the expanded
-            // panel's collapse chevron (candidateBarHeight × candidateBarHeight).
+            // chevron flush to trailing edge. Width is an explicit constant
+            // (chevronButtonWidth) — independent of bar height — so the
+            // chevron's left/right padding stays sensible across font scales
+            // and idioms. The expanded panel mirrors the same width.
             moreButton.trailingAnchor.constraint(equalTo: trailingAnchor),
             moreButton.topAnchor.constraint(equalTo: topAnchor),
             moreButton.bottomAnchor.constraint(equalTo: bottomAnchor),
-            moreButton.widthAnchor.constraint(equalTo: moreButton.heightAnchor),
+            moreButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isPad)),
 
             // thin separator just left of the chevron, biased down by the
             // same amount as the candidate glyphs so it stays centered with
@@ -239,7 +243,7 @@ final class CandidateBarView: UIView {
             moreSep.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor),
             moreSep.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
             moreSep.widthAnchor.constraint(equalToConstant: dividerWidth),
-            moreSep.heightAnchor.constraint(equalToConstant: 20),
+            moreSep.heightAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.dividerHeight),
 
             // composing keyname strip pinned to the top edge, full width up to
             // the chevron separator. Sits on top of the candidate scroll view
@@ -256,10 +260,10 @@ final class CandidateBarView: UIView {
             //     frame is large enough that no glyph is clipped by the
             //     label even though composingStripHeight (which drives the
             //     candidate `bias` inset) stays tight to save vertical space.
-            composingLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            composingLabel.trailingAnchor.constraint(equalTo: moreSep.leadingAnchor, constant: -4),
-            composingLabel.topAnchor.constraint(equalTo: topAnchor, constant: 0),
-            composingLabel.heightAnchor.constraint(equalToConstant: ceil(composingStripFont.lineHeight) + 2),
+            composingLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: LayoutMetrics.ComposingPopup.labelLeading),
+            composingLabel.trailingAnchor.constraint(equalTo: moreSep.leadingAnchor, constant: LayoutMetrics.ComposingPopup.labelTrailingInset),
+            composingLabel.topAnchor.constraint(equalTo: topAnchor, constant: LayoutMetrics.ComposingPopup.labelTopInset),
+            composingLabel.heightAnchor.constraint(equalToConstant: ceil(composingStripFont.lineHeight) + LayoutMetrics.ComposingPopup.labelHeightPad),
 
             // scroll view fills the bar (composing label overlays its top region)
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -281,8 +285,8 @@ final class CandidateBarView: UIView {
     func setChevronExpanded(_ expanded: Bool) {
         chevronExpanded = expanded
         let name = expanded ? "chevron.up" : "chevron.down"
-        let chevronSize: CGFloat = 18
-        let chevronConfig = UIImage.SymbolConfiguration(pointSize: chevronSize, weight: .regular)
+        let chevronConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad), weight: .regular)
         moreButton.setImage(UIImage(systemName: name, withConfiguration: chevronConfig), for: .normal)
     }
 
@@ -407,7 +411,7 @@ final class CandidateBarView: UIView {
         case .ended, .cancelled:
             let dx = gr.translation(in: scrollView).x
             // Ignore tiny drags — tap/select will handle them.
-            guard abs(dx) > 20 else { return }
+            guard abs(dx) > LayoutMetrics.CandidateBar.pagingDragThreshold else { return }
             if dx < 0 { scrollNextPage() } else { scrollPrevPage() }
         default:
             break
@@ -495,7 +499,7 @@ final class CandidateBarView: UIView {
         // Without this, taps in the vertical padding above/below the glyph
         // land on clear pixels and are dropped by the keyboard-extension
         // touch gate before touchUpInside can fire.
-        btn.backgroundColor = UIColor(white: 0.5, alpha: 0.01)
+        btn.backgroundColor = LayoutMetrics.TouchTrap.fill
         btn.translatesAutoresizingMaskIntoConstraints = false
         // Height constraint is added in rebuildButtons() after addArrangedSubview.
 
@@ -507,7 +511,7 @@ final class CandidateBarView: UIView {
         btn.setTitle(mapping.word, for: .normal)
         if isComposingCode {
             btn.titleLabel?.font = composingCodeFont
-            btn.setTitleColor(palette.candiText.withAlphaComponent(0.5), for: .normal)
+            btn.setTitleColor(palette.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.composingCodeDimAlpha), for: .normal)
         } else {
             btn.titleLabel?.font = candidateFont
             btn.setTitleColor(palette.candiText, for: .normal)
@@ -524,7 +528,7 @@ final class CandidateBarView: UIView {
         // all other themes (including Light) use the palette's own highlight colour.
         let highlightColor: UIColor
         if theme == 1 {
-            highlightColor = UIColor(white: 0.23, alpha: 1)
+            highlightColor = LayoutMetrics.CandidateBar.darkThemePill
         } else {
             highlightColor = palette.candiHighlight
         }
@@ -536,7 +540,9 @@ final class CandidateBarView: UIView {
 
         if isComposingCode {
             // Selected composing-code gets full opacity (mirrors mColorComposingCodeHighlight).
-            let color = isSelected ? palette.candiText : palette.candiText.withAlphaComponent(0.5)
+            let color = isSelected
+                ? palette.candiText
+                : palette.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.composingCodeDimAlpha)
             button.setTitleColor(color, for: .normal)
         } else {
             button.setTitleColor(palette.candiText, for: .normal)
@@ -567,6 +573,13 @@ final class CandidateBarView: UIView {
 
     @objc private func moreTapped() {
         if feedbackVibration { impactFeedback.impactOccurred() }
+        // Reset scroll on expand so when the expanded panel dismisses the
+        // user lands back on the first row instead of wherever they had
+        // scrolled. Skip on collapse — chevronExpanded reflects the *current*
+        // state, so `false` means this tap is about to expand.
+        if !chevronExpanded && scrollView.contentOffset.x > 0 {
+            scrollView.setContentOffset(.zero, animated: true)
+        }
         delegate?.candidateBarViewDidRequestMore(self)
     }
 }
@@ -591,7 +604,7 @@ final class CandidateButton: UIButton {
     private func setupPillView() {
         pillView.isUserInteractionEnabled = false
         pillView.backgroundColor = .clear
-        pillView.layer.cornerRadius = 6
+        pillView.layer.cornerRadius = LayoutMetrics.CandidateBar.pillCornerRadius
         pillView.layer.masksToBounds = true
         insertSubview(pillView, at: 0)
     }
@@ -604,9 +617,8 @@ final class CandidateButton: UIButton {
         }
         // Hug the title label with a small pad so the pill matches the
         // glyph bounds rather than the full button frame.
-        let padX: CGFloat = 4
-        let padY: CGFloat = 2
-        pillView.frame = label.frame.insetBy(dx: -padX, dy: -padY)
+        pillView.frame = label.frame.insetBy(dx: -LayoutMetrics.CandidateBar.pillPadX,
+                                             dy: -LayoutMetrics.CandidateBar.pillPadY)
     }
 }
 

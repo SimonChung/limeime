@@ -1,0 +1,469 @@
+﻿import UIKit
+
+// Single source of truth for keyboard-extension layout constants.
+//
+// Every magic number that affects geometry, font size, spacing, special-case
+// colors, or animation timing lives here. The keyboard-extension code reads
+// these values and never inlines a literal of its own.
+//
+// See `docs/LAYOUT_PARAM.md` for an explanation of each constant, the screen
+// region it controls, and the trade-offs behind its current value.
+//
+// Convention:
+//   - iPad-vs-iPhone variants are exposed as `func foo(isPad: Bool) -> CGFloat`.
+//     Callers pass their own `isPad` / `isOnPad` flag (which is captured from
+//     `UIDevice.current` for the keyboard view and from
+//     `traitCollection.userInterfaceIdiom` for the controller — see the
+//     respective files for why each path uses the source it does).
+//   - Theme palette colors are NOT in this file — they are already
+//     centralized in `KeyboardPalette` (KeyboardView.swift). Only the
+//     palette-independent overlay/effect colors (touch-trap fill, dark-pill
+//     override) live here.
+enum LayoutMetrics {
+
+    // MARK: - Touch trap (custom-keyboard hit gate)
+
+    enum TouchTrap {
+        // Custom keyboard extensions drop touches that land on fully
+        // transparent pixels — see docs/IOS_CANDI_TOUCH.md §Resolution.
+        // A near-invisible neutral grey fill defeats this gate without
+        // tinting the shared blur backdrop.
+        static let fill = UIColor(white: 0.5, alpha: 0.01)
+    }
+
+    // MARK: - Candidate bar chrome
+    //
+    // Idiom-agnostic structural pieces of the candidate bar (chevron,
+    // selection pill, divider, paging, theme overrides). Sizing of the
+    // composing-keyname strip and the candidate cells themselves lives
+    // under `ComposingPopup` below — that section holds the per-idiom
+    // values together.
+    enum CandidateBar {
+        // Per-cell horizontal padding inside each candidate button.
+        static let candidateHPad: CGFloat = 10
+
+        // Width of the thin moreSep divider just left of the chevron.
+        static let dividerWidth: CGFloat = 1
+        // Visible height of the moreSep divider.
+        static let dividerHeight: CGFloat = 20
+
+        // Chevron (more) button.
+        //
+        // The button frame width is set independently of the bar height —
+        // the previous "width == height" rule made the chevron a square
+        // sized to the bar, which left ~20pt of empty space on each side
+        // of the glyph and grew/shrank with font scale for no good reason.
+        //
+        // Per-idiom values live in `Phone` / `Pad` sub-enums. The visible
+        // padding around the glyph is `(chevronButtonWidth - chevronIconSize) / 2`,
+        // so iPad gets a wider button (and bigger glyph) so the chevron
+        // doesn't look cramped against the larger candidate text.
+        enum Chevron {
+            /// Sizes used on iPhone hardware / phone-class host.
+            enum Phone {
+                static let iconSize: CGFloat = 18
+                static let buttonWidth: CGFloat = 40   // padding ≈ 11pt each side
+            }
+            /// Sizes used on iPad hardware / pad-class host.
+            enum Pad {
+                static let iconSize: CGFloat = 22
+                static let buttonWidth: CGFloat = 52   // padding ≈ 15pt each side
+            }
+            // Per-idiom selectors used by the bar view and the controller.
+            static func iconSize(isPad: Bool) -> CGFloat {
+                isPad ? Pad.iconSize : Phone.iconSize
+            }
+            static func buttonWidth(isPad: Bool) -> CGFloat {
+                isPad ? Pad.buttonWidth : Phone.buttonWidth
+            }
+        }
+
+        // Selection pill (drawn inside CandidateButton).
+        static let pillCornerRadius: CGFloat = 6
+        static let pillPadX: CGFloat = 4
+        static let pillPadY: CGFloat = 2
+
+        // Minimum pan translation that counts as a paged scroll gesture
+        // (smaller drags are treated as taps).
+        static let pagingDragThreshold: CGFloat = 20
+
+        // Dark theme (theme 1) overrides the palette's candiHighlight with
+        // an elevated grey pill for Android parity.
+        static let darkThemePill = UIColor(white: 0.23, alpha: 1)
+
+        // Subtle alphas applied on top of palette colours.
+        static let composingCodeDimAlpha: CGFloat = 0.5
+        static let separatorAlpha: CGFloat = 0.2
+    }
+
+    // MARK: - Composing popup (keyname overlay inside the candidate bar)
+    //
+    // The single active composing-popup surface on BOTH iPhone and iPad —
+    // a keyname strip overlaid on the leading region of the candidate bar
+    // (RC3 Option A, see docs/IPAD_ASSIST_BAR.md §8). Per-idiom values are
+    // separated into `Phone` and `Pad` sub-enums so equivalent parameters
+    // sit next to their counterpart. Layout values that happen to be the
+    // same on both idioms live directly under `ComposingPopup`.
+    //
+    // Two earlier surfaces (the in-keyboard `composingPopupLabel` strip
+    // and the iPad `assistBarComposingLabel`) are retired — see
+    // `Vestigial` below.
+    enum ComposingPopup {
+
+        /// Sizes used on iPhone hardware / phone-class host.
+        enum Phone {
+            /// Reserved height of the keyname strip overlay.
+            static let stripHeight: CGFloat = 22
+            /// Strip-label font size (× candidateFontScale at use-site).
+            static let stripFontSize: CGFloat = 14
+            /// Candidate-cell font size (× candidateFontScale at use-site).
+            static let candidateFontSize: CGFloat = 22
+            /// Composing-code (raw English letters) cell font size.
+            static let composingCodeFontSize: CGFloat = 16
+            /// Candidate-bar resting height before fontScale is applied.
+            static let barBaseHeight: CGFloat = 58
+        }
+
+        /// Sizes used on iPad hardware / pad-class host.
+        enum Pad {
+            static let stripHeight: CGFloat = 28
+            static let stripFontSize: CGFloat = 18
+            static let candidateFontSize: CGFloat = 26
+            static let composingCodeFontSize: CGFloat = 22
+            static let barBaseHeight: CGFloat = 74
+        }
+
+        // Shared layout (identical on iPhone and iPad).
+        static let labelLeading: CGFloat = 8
+        static let labelTrailingInset: CGFloat = -4
+        static let labelTopInset: CGFloat = 0
+        // Padding added to the strip's height beyond ceil(font.lineHeight)
+        // so STHeiti tone glyphs (ˇ ˋ ˊ ˙) don't clip against the label box.
+        static let labelHeightPad: CGFloat = 2
+        // Alpha applied to the keyname text on top of palette.candiText.
+        static let textAlpha: CGFloat = 0.75
+
+        // Per-idiom selectors used by the controller and the bar view.
+        static func stripHeight(isPad: Bool) -> CGFloat {
+            isPad ? Pad.stripHeight : Phone.stripHeight
+        }
+        static func stripFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.stripFontSize : Phone.stripFontSize
+        }
+        static func candidateFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.candidateFontSize : Phone.candidateFontSize
+        }
+        static func composingCodeFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.composingCodeFontSize : Phone.composingCodeFontSize
+        }
+        static func barBaseHeight(isPad: Bool) -> CGFloat {
+            isPad ? Pad.barBaseHeight : Phone.barBaseHeight
+        }
+    }
+
+    // MARK: - Vestigial composing surfaces
+    //
+    // These two surfaces were tried before the RC3 candidate-bar overlay
+    // (above). Both are retired but their constants are kept because the
+    // controller still instantiates the underlying labels for API
+    // compatibility (toast / showComposingPopup paths).
+    //
+    // (1) In-keyboard `composingPopupLabel` strip — the original iPhone
+    //     composing strip above the candidate bar.
+    //     `effectiveComposingPopupHeight` is hardcoded to 0; the label is
+    //     always hidden. The constants here only size the legacy label.
+    //
+    // (2) iPad `assistBarComposingLabel` — `UIInputViewController.inputAssistantItem`
+    //     is silently ignored on the on-screen iPad shortcut bar. See
+    //     docs/IPAD_ASSIST_BAR.md §8 for the architectural reset. The label
+    //     is never visible.
+    enum Vestigial {
+
+        /// Original iPhone composing strip (in-keyboard, above the
+        /// candidate bar). Height is forced to 0 at runtime; do not rely
+        /// on these for any visible behavior.
+        enum InKeyboardComposingPopup {
+            static let baseHeight: CGFloat = 22
+            static let labelFontSize: CGFloat = 15
+            static let leadingInset: CGFloat = 6
+        }
+
+        /// iPad assist-bar composing label. The bar itself never renders
+        /// for keyboard extensions; the label sizes are inert. Kept only
+        /// because `setupAssistBar()` still instantiates the label for
+        /// API compatibility with the toast/showComposingPopup paths.
+        enum AssistBarLabel {
+            static let composingLabelFontSize: CGFloat = 14
+            static let composingLabelWidth: CGFloat = 220
+            static let composingLabelHeight: CGFloat = 32
+        }
+    }
+
+    // MARK: - Keyboard rows
+    //
+    // Row heights and per-key geometry. Per-idiom values live under
+    // `Phone` and `Pad` sub-enums so equivalent parameters sit together,
+    // mirroring the `ComposingPopup` layout. Idiom-agnostic constants
+    // (split-keyboard gap fraction, applyHeight fallback) live directly
+    // under this enum.
+    enum KeyboardRow {
+
+        /// Sizes used on iPhone hardware / phone-class host.
+        enum Phone {
+            // Row heights (× keySizeScale at use-site).
+            static let portraitRow: CGFloat = 50
+            static let portraitBottomRow: CGFloat = 54
+            static let landscapeRow: CGFloat = 36   // matches Android 36 dip
+            static let landscapeBottomRow: CGFloat = 38
+            // Per-key gaps / shape.
+            static let keyHGap: CGFloat = 5
+            static let keyVGap: CGFloat = 2
+            static let keyCornerRadius: CGFloat = 6
+        }
+
+        /// Sizes used on iPad hardware / pad-class host.
+        enum Pad {
+            static let portraitRow: CGFloat = 64
+            static let portraitBottomRow: CGFloat = 68
+            static let landscapeRow: CGFloat = 60
+            static let landscapeBottomRow: CGFloat = 64
+            static let keyHGap: CGFloat = 7
+            static let keyVGap: CGFloat = 4
+            static let keyCornerRadius: CGFloat = 8
+        }
+
+        // Idiom-agnostic.
+        /// Width fraction of the central gap in iPad split-keyboard mode.
+        static let splitGapFraction: CGFloat = 0.06
+        /// Default per-row height assumed when a layout hasn't been measured
+        /// yet (used as the fallback inside applyHeight).
+        static let fallbackRowHeight: CGFloat = 54
+
+        // Per-idiom selectors used by the keyboard view.
+        static func keyHGap(isPad: Bool) -> CGFloat {
+            isPad ? Pad.keyHGap : Phone.keyHGap
+        }
+        static func keyVGap(isPad: Bool) -> CGFloat {
+            isPad ? Pad.keyVGap : Phone.keyVGap
+        }
+        static func keyCornerRadius(isPad: Bool) -> CGFloat {
+            isPad ? Pad.keyCornerRadius : Phone.keyCornerRadius
+        }
+    }
+
+    // MARK: - Key content (labels, icons, shadow)
+    //
+    // Per-key chrome (label fonts, icon sizes, shadow). Per-idiom values
+    // are grouped under `Phone` and `Pad`; chrome that doesn't differ by
+    // idiom (shadow, popup indicator, shift icon) lives directly under
+    // `Key`.
+    enum Key {
+
+        /// Sizes used on iPhone hardware / phone-class host.
+        enum Phone {
+            static let singleLabelFontSize: CGFloat = 22
+            /// Small primary label in dual-label keys (the letter sitting
+            /// above the bopomofo sublabel).
+            static let primaryLabelFontSize: CGFloat = 16
+            static let sublabelFontSize: CGFloat = 22
+            /// SF Symbol point size for icon keys (excluding the dismiss key).
+            static let iconSize: CGFloat = 20
+        }
+
+        /// Sizes used on iPad hardware / pad-class host.
+        enum Pad {
+            static let singleLabelFontSize: CGFloat = 24
+            static let primaryLabelFontSize: CGFloat = 20
+            static let sublabelFontSize: CGFloat = 24
+            static let iconSize: CGFloat = 26
+        }
+
+        // Idiom-agnostic chrome.
+        static let shadowOpacity: Float = 0.3
+        static let shadowOffsetY: CGFloat = 1
+        /// SF Symbol point size for the keyboard-dismiss key (deliberately
+        /// larger than other icons for legibility).
+        static let dismissIconSize: CGFloat = 28
+        static let shiftIconSize: CGFloat = 20
+        // Popup ("…") indicator pinned to bottom-right of a key.
+        static let popupIndicatorFontSize: CGFloat = 11
+        static let popupIndicatorTrailingInset: CGFloat = -3
+        static let popupIndicatorBottomInset: CGFloat = -2
+        /// Negative inset applied to a dual-label container so it never
+        /// touches the button's edges.
+        static let dualLabelWidthMargin: CGFloat = -4
+
+        // Per-idiom selectors used by the keyboard view.
+        static func singleLabelFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.singleLabelFontSize : Phone.singleLabelFontSize
+        }
+        static func primaryLabelFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.primaryLabelFontSize : Phone.primaryLabelFontSize
+        }
+        static func sublabelFontSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.sublabelFontSize : Phone.sublabelFontSize
+        }
+        static func iconSize(isPad: Bool) -> CGFloat {
+            isPad ? Pad.iconSize : Phone.iconSize
+        }
+    }
+
+    // MARK: - Gestures and timings
+
+    enum Gesture {
+        // Long-press hold thresholds.
+        static let popupKeyboardHoldDuration: TimeInterval = 0.4
+        static let dualRowHoldDuration: TimeInterval = 0.4
+        static let specialKeyHoldDuration: TimeInterval = 0.5
+        static let spaceLongPressDuration: TimeInterval = 0.5
+
+        // Space-key horizontal slide: pixels per caret step; initial movement dead zone.
+        static let spaceCaretStepPx: CGFloat = 8
+        static let spaceSwipeThreshold: CGFloat = 12
+
+        // iPad dual-row top-key downward slide that commits the secondary
+        // glyph instead of the primary.
+        static func dualRowSwipeThreshold(landscape: Bool) -> CGFloat {
+            landscape ? 16 : 24
+        }
+
+        // Repeating-key (backspace etc.) cadence.
+        static let repeatStartDelay: TimeInterval = 0.4
+        static let repeatInterval: TimeInterval = 0.1
+
+        // T9-style multi-tap window — same key within this window cycles
+        // through `codes[]` instead of starting a new selection.
+        static let multiTapTimeout: TimeInterval = 0.8
+    }
+
+    // MARK: - Long-press popup keyboard (mini keyboard above a key)
+
+    enum PopupKeyboard {
+        static let keyHeight: CGFloat = 44
+        static let keyMinWidth: CGFloat = 40
+        static let hPad: CGFloat = 8
+        static let vPad: CGFloat = 8
+        static let spacing: CGFloat = 4
+        static let panelCornerRadius: CGFloat = 12
+        static let panelShadowOpacity: Float = 0.28
+        static let panelShadowOffsetY: CGFloat = 3
+        static let panelShadowRadius: CGFloat = 8
+        static let keyCornerRadius: CGFloat = 6
+        static let keyFontSize: CGFloat = 22
+        static let keyShadowOpacity: Float = 0.22
+        static let keyShadowOffsetY: CGFloat = 1
+        static let keyShadowRadius: CGFloat = 1
+        // Extra width added to a popup key's text width to size the button.
+        static let keyExtraWidth: CGFloat = 20
+        // Edge margin from the keyboard view when positioning the popup.
+        static let edgeMargin: CGFloat = 4
+        // Vertical gap between popup and source key.
+        static let yOffsetFromKey: CGFloat = 6
+    }
+
+    // MARK: - Key preview callout (iOS-native bubble above pressed key)
+
+    enum KeyPreview {
+        static let widthFactor: CGFloat = 1.45
+        static let heightFactor: CGFloat = 1.4
+        static let minWidthLandscape: CGFloat = 56
+        static let minWidthPortrait: CGFloat = 64
+        static let minHeightLandscape: CGFloat = 50
+        static let minHeightPortrait: CGFloat = 64
+        static let neckHeight: CGFloat = 12
+        static let cornerRadius: CGFloat = 10
+        static let edgeMargin: CGFloat = 4
+        static let shadowOpacity: Float = 0.22
+        static let shadowOffsetY: CGFloat = 1
+        static let shadowRadius: CGFloat = 3
+
+        // Animation
+        static let initialScale: CGFloat = 0.88
+        static let appearDuration: TimeInterval = 0.08
+        static let disappearDuration: TimeInterval = 0.08
+        static let springDamping: CGFloat = 0.7
+        static let springInitialVelocity: CGFloat = 0.5
+
+        // Inset from container width applied to the centred content.
+        static let contentWidthInset: CGFloat = -8
+
+        // S-curve neck control-point factors (relative to neckHeight).
+        static let neckCurveFar: CGFloat = 0.55
+        static let neckCurveNear: CGFloat = 0.45
+
+        // Dual-label fonts inside the preview bubble.
+        static func primaryFontSize(isTall: Bool, isLandscape: Bool) -> CGFloat {
+            isTall ? (isLandscape ? 12 : 13) : (isLandscape ? 11 : 12)
+        }
+        static func sublabelFontSize(isTall: Bool, isLandscape: Bool) -> CGFloat {
+            isTall ? (isLandscape ? 22 : 28) : (isLandscape ? 16 : 20)
+        }
+        static func singleFontSize(isLandscape: Bool) -> CGFloat { isLandscape ? 20 : 26 }
+
+        // Spacing between primary and sublabel in the horizontal preview.
+        static let horizontalDualSpacing: CGFloat = 3
+    }
+
+    // MARK: - Globe / dismiss key preview
+
+    enum GlobePreview {
+        // Done-key position estimate (we can't read the actual button frame
+        // from the controller without poking through KeyButton).
+        static let approxKeyWidthFactor: CGFloat = 0.15
+        static let approxKeyHeightLandscape: CGFloat = 38
+        static let approxKeyHeightPortrait: CGFloat = 56
+
+        static let bubbleWidthLandscape: CGFloat = 44
+        static let bubbleWidthPortrait: CGFloat = 52
+        static let bubbleHeightLandscape: CGFloat = 50
+        static let bubbleHeightPortrait: CGFloat = 64
+
+        static let tipHeight: CGFloat = 8
+        // Half-width of the triangular tip at the bubble bottom.
+        static let tipHorizontalRadius: CGFloat = 6
+        static let cornerRadius: CGFloat = 10
+        static let edgeMargin: CGFloat = 4
+
+        static let iconSizeLandscape: CGFloat = 22
+        static let iconSizePortrait: CGFloat = 28
+
+        static let shadowOpacity: Float = 0.22
+        static let shadowOffsetY: CGFloat = 1
+        static let shadowRadius: CGFloat = 3
+
+        static let appearDuration: TimeInterval = 0.08
+        // How long the brief globe flash stays visible before fading out.
+        static let dismissDelay: TimeInterval = 0.4
+        static let dismissDuration: TimeInterval = 0.1
+    }
+
+    // MARK: - Inline menu panel (replaces UIAlertController in the extension)
+
+    enum InlineMenu {
+        static let cornerRadius: CGFloat = 12
+        static let backgroundAlpha: CGFloat = 0.97
+        static let shadowOpacity: Float = 0.2
+        static let shadowRadius: CGFloat = 8
+        static let shadowOffsetY: CGFloat = -2
+        static let buttonHeight: CGFloat = 50
+        static let buttonFontSize: CGFloat = 17
+        static let separatorHeight: CGFloat = 0.5
+        static let edgeInset: CGFloat = 8
+        static let appearDuration: TimeInterval = 0.2
+        // Translation offset applied at start of the slide-in animation.
+        static let appearTranslationY: CGFloat = 20
+    }
+
+    // MARK: - Toast (transient reverse-lookup notification)
+
+    enum Toast {
+        static let displayDuration: TimeInterval = 2.0
+    }
+
+    // The expanded candidates panel (rendered by the controller) reuses
+    // every metric from `CandidateBar` and `ComposingPopup` directly so
+    // its first row stays pixel-identical to the collapsed bar
+    // ("expand-in-place"). No `ExpandedPanel` enum exists — that would
+    // invite drift. See KeyboardViewController.setupKeyboardUI() for
+    // the exact mapping.
+}

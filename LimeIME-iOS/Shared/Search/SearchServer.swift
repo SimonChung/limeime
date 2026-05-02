@@ -186,17 +186,19 @@ final class SearchServer {
     /// `isSoftKeyboard`: affects ordering (soft keyboard gets more results).
     /// `getAllRecords`: use a larger limit.
     func getMappingByCode(_ code: String, isSoftKeyboard: Bool = true,
-                          getAllRecords: Bool = false, limit: Int = 50) -> [Mapping] {
+                          getAllRecords: Bool = false, limit: Int = 50,
+                          isPrefetch: Bool = false) -> [Mapping] {
         let effectiveLimit = getAllRecords ? 210 : limit
 
         if isPhoneticTable {
-            // For phonetic IMs, delegate entirely to db.getMappingByCode(softKeyboard:getAllRecords:).
-            // That method handles: preProcessingRemappingCode, tone detection, and between-search
-            // (expandBetweenSearchClause). Doing the remap here too would double-remap for ETEN26/HSU.
-            // Cache key uses the raw lowercased input (remap is deterministic, so this is stable).
             let cacheKey = "\(currentTableName):\(code.lowercased()):\(effectiveLimit)"
             cacheLock.lock()
             if let cached = mappingCache[cacheKey] { cacheLock.unlock(); return cached }
+            // Fallback: if Stage 1 misses but Stage 2 (full) result is already cached
+            // (e.g. populated by prefetch), use it — no hasMoreMark means Stage 2 never fires.
+            if !getAllRecords, let fullCached = mappingCache["\(currentTableName):\(code.lowercased()):210"] {
+                cacheLock.unlock(); return fullCached
+            }
             cacheLock.unlock()
 
             let dbResults = db.getMappingByCode(code, softKeyboard: isSoftKeyboard,
@@ -204,8 +206,7 @@ final class SearchServer {
             let echo = Mapping(id: 0, code: code.lowercased(), word: code.lowercased(),
                                score: 0, baseScore: 0, recordType: Mapping.RecordType.composingCode)
             if dbResults.isEmpty { return [] }
-            // Run runtime suggestion (only when smart_chinese_input enabled — spec §15)
-            if smartChineseInput {
+            if smartChineseInput && !isPrefetch {
                 makeRunTimeSuggestion(code: code, completeCodeResultList: dbResults)
             }
             let finalList = assembleResultList(echo: echo, dbResults: dbResults)
@@ -213,24 +214,28 @@ final class SearchServer {
             return finalList
         }
 
-        // Non-phonetic path: delegate to db.getMappingByCode(softKeyboard:getAllRecords:),
-        // which handles remap + between-search prefix expansion internally (H2 fix).
+        // Non-phonetic path
         let lowered = code.lowercased()
         let cacheKey = "\(currentTableName):\(lowered):\(effectiveLimit)"
 
         cacheLock.lock()
         if let cached = mappingCache[cacheKey] { cacheLock.unlock(); return cached }
+        // Fallback: if Stage 1 misses but the full (Stage 2) result is already cached
+        // (populated by prefetch with getAllRecords:true), return it directly.
+        // The full result has no hasMoreMark sentinel, so wasTruncated=false in
+        // KeyboardViewController and Stage 2 never fires for this code.
+        if !getAllRecords, let fullCached = mappingCache["\(currentTableName):\(lowered):210"] {
+            cacheLock.unlock(); return fullCached
+        }
         cacheLock.unlock()
 
         let dbResults: [Mapping] = db.getMappingByCode(
             code, softKeyboard: isSoftKeyboard, getAllRecords: getAllRecords) ?? []
 
-        // Prepend composing-code echo (spec §6 — index 0 always = typed code)
         let echo = Mapping(id: 0, code: code, word: code,
                            score: 0, baseScore: 0, recordType: Mapping.RecordType.composingCode)
         if dbResults.isEmpty { return [] }
-        // Run runtime suggestion (only when smart_chinese_input enabled — spec §15)
-        if smartChineseInput {
+        if smartChineseInput && !isPrefetch {
             makeRunTimeSuggestion(code: code, completeCodeResultList: dbResults)
         }
         let finalList = assembleResultList(echo: echo, dbResults: dbResults)
@@ -842,19 +847,20 @@ final class SearchServer {
     // MARK: - Prefetch
 
     /// Background-thread prefetch for first-character keys — mirrors Android's prefetchCache().
+    /// Fetches with getAllRecords:true (LIMIT 210) so the full result is cached.
+    /// When the user types their first stroke, getMappingByCode falls back to the :210 cache entry,
+    /// returns the full result with no hasMoreMark sentinel → Stage 2 never fires for first strokes.
     private func triggerPrefetch() {
         prefetchThread?.cancel()
         let snapshotTable = currentTableName
         let t = Thread { [weak self] in
-            var keys = "abcdefghijklmnoprstuvwxyz"  // NOTE: no 'q' — mirrors Android
+            var keys = "abcdefghijklmnopqrstuvwxyz"
             if self?.hasNumberMapping == true { keys += "01234567890" }
             if self?.hasSymbolMapping == true { keys += ",./;" }
             for ch in keys {
                 guard !Thread.current.isCancelled else { return }
-                guard let self = self else { return }
-                // Abort if the active table changed since prefetch started.
-                guard self.currentTableName == snapshotTable else { return }
-                _ = self.getMappingByCode(String(ch))
+                guard let self = self, self.currentTableName == snapshotTable else { return }
+                _ = self.getMappingByCode(String(ch), getAllRecords: true, isPrefetch: true)
             }
         }
         t.qualityOfService = .background

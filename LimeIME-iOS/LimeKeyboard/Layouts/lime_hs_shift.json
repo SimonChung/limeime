@@ -590,8 +590,8 @@
           "popupCharacters": ""
         },
         {
-          "code": 39,
-          "label": "\\'",
+          "code": 92,
+          "label": "\\",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

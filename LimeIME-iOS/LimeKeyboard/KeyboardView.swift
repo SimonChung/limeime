@@ -1,4 +1,4 @@
-import UIKit
+﻿import UIKit
 
 // Full keyboard view: renders keys from a LimeKeyLayout.
 // Phase 2: UIButton-based; Phase 3 can switch to UICollectionView for more flexibility.
@@ -133,6 +133,9 @@ protocol KeyboardViewDelegate: AnyObject {
     func keyboardView(_ view: KeyboardView, showPreviewFor keyDef: KeyDef, keyRect: CGRect)
     /// Called on touchUp/cancel — host should dismiss the key preview.
     func keyboardViewDismissPreview(_ view: KeyboardView)
+    /// Called continuously while the user slides horizontally on the space bar.
+    /// `steps` is the signed number of caret positions to move (negative = left).
+    func keyboardView(_ view: KeyboardView, didMoveCaretBy steps: Int)
 }
 
 final class KeyboardView: UIView, UIInputViewAudioFeedback {
@@ -167,28 +170,23 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         return UIImpactFeedbackGenerator(style: style)
     }
 
-    // Layout constants (portrait).
-    // Android key_height = 46dip portrait, 36dip landscape.
-    // iOS row heights are scaled slightly larger to match modern iPhone proportions.
-    private let rowHeightPortrait:       CGFloat = 50
-    private let bottomRowHeightPortrait: CGFloat = 54
-    private let rowHeightLandscape:      CGFloat = 36   // matches Android 36dip landscape
-    private let bottomRowHeightLandscape:CGFloat = 38
-    private let keyShadowOpacity: Float  = 0.3
-
-    // iPad-specific dimension set — replaces the old idiomMultiplier approach so
-    // key heights and fonts scale independently.
+    // Layout constants — sourced from LayoutMetrics.KeyboardRow / LayoutMetrics.Key.
     // Captured once at view init via UIDevice (matches the pre-session behavior;
     // do NOT switch to traitCollection or a controller-pushed flag — that
     // changes the iPad keyboard height).
     private let isPad = UIDevice.current.userInterfaceIdiom == .pad
-    private let rowHeightPortraitIPad:        CGFloat = 64
-    private let bottomRowHeightPortraitIPad:  CGFloat = 68
-    private let rowHeightLandscapeIPad:       CGFloat = 60
-    private let bottomRowHeightLandscapeIPad: CGFloat = 64
-    private var keyHGap:         CGFloat { isPad ? 7 : 5 }
-    private var keyVGap:         CGFloat { isPad ? 4 : 2 }
-    private var keyCornerRadius: CGFloat { isPad ? 8 : 6 }
+    private let rowHeightPortrait:            CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitRow
+    private let bottomRowHeightPortrait:      CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitBottomRow
+    private let rowHeightLandscape:           CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeRow
+    private let bottomRowHeightLandscape:     CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeBottomRow
+    private let rowHeightPortraitIPad:        CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitRow
+    private let bottomRowHeightPortraitIPad:  CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitBottomRow
+    private let rowHeightLandscapeIPad:       CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeRow
+    private let bottomRowHeightLandscapeIPad: CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeBottomRow
+    private let keyShadowOpacity: Float = LayoutMetrics.Key.shadowOpacity
+    private var keyHGap:         CGFloat { LayoutMetrics.KeyboardRow.keyHGap(isPad: isPad) }
+    private var keyVGap:         CGFloat { LayoutMetrics.KeyboardRow.keyVGap(isPad: isPad) }
+    private var keyCornerRadius: CGFloat { LayoutMetrics.KeyboardRow.keyCornerRadius(isPad: isPad) }
 
     /// Set by KeyboardViewController in viewWillLayoutSubviews; triggers a full rebuild.
     var isLandscape: Bool = false {
@@ -266,11 +264,32 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private var modifierKeyColor: UIColor { palette.modifierKey }
     private var pressedKeyColor:  UIColor { palette.pressedKey }
 
-    private var keySingleLabelFont: UIFont { UIFont.systemFont(ofSize: isPad ? 24 : 22, weight: .regular) }
-    private var keyLabelFont:       UIFont { UIFont.systemFont(ofSize: isPad ? 20 : 16, weight: .light) }
-    private var keySublabelFont:    UIFont { UIFont.systemFont(ofSize: isPad ? 24 : 22, weight: .regular) }
-    private var keyLabelFontLand:   UIFont { UIFont.systemFont(ofSize: isPad ? 20 : 16, weight: .light) }
-    private var keySublabelFontLand:UIFont { UIFont.systemFont(ofSize: isPad ? 24 : 22, weight: .regular) }
+    private var keySingleLabelFont: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.singleLabelFontSize(isPad: isPad), weight: .regular)
+    }
+    // True when the current layout is a Chinese IM (has IM sublabel keys with longPressCode==0).
+    // English layouts only have sublabels on sliding keys, which always have longPressCode != 0.
+    private lazy var isIMKeyboard: Bool = {
+        layout.rows.contains { row in
+            row.keys.contains { key in !key.sublabel.isEmpty && key.longPressCode == 0 }
+        }
+    }()
+
+    private var keyLabelFont: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .light)
+    }
+    private var keySublabelFont: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad), weight: .regular)
+    }
+    private var keyDualSlidingFont: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .regular)
+    }
+    private var keyLabelFontLand: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .light)
+    }
+    private var keySublabelFontLand: UIFont {
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad), weight: .regular)
+    }
 
     // MARK: - Init
     init(layout: LimeKeyLayout) {
@@ -336,7 +355,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         case .on:       iconName = "shift.fill"
         case .capsLock: iconName = "capslock.fill"
         }
-        let cfg = UIImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+        let cfg = UIImage.SymbolConfiguration(pointSize: LayoutMetrics.Key.shiftIconSize, weight: .regular)
         let tint = shiftState == .off ? palette.modifierLabel : UIColor.systemBlue
         for btn in shiftKeyButtons {
             btn.setImage(UIImage(systemName: iconName, withConfiguration: cfg), for: .normal)
@@ -429,7 +448,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
         let leftKeys  = Array(keys[..<splitIndex])
         let rightKeys = Array(keys[splitIndex...])
-        let splitGapFraction: CGFloat = 0.06  // 6% gap in the middle
+        let splitGapFraction = LayoutMetrics.KeyboardRow.splitGapFraction
 
         func addHalf(_ halfKeys: [KeyDef], leading: Bool) {
             guard !halfKeys.isEmpty else { return }
@@ -548,7 +567,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         // MUST use touchUpInside so the long-press GR can fire before the keyboard is dismissed.
         if keyDef.code == LimeKeyCode.done.rawValue {
             let lp = UILongPressGestureRecognizer(target: self, action: #selector(specialLongPressed(_:)))
-            lp.minimumPressDuration = 0.5
+            lp.minimumPressDuration = LayoutMetrics.Gesture.specialKeyHoldDuration
             btn.addGestureRecognizer(lp)
         }
 
@@ -566,7 +585,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
                               for: .allTouchEvents)
             } else {
                 let lp = UILongPressGestureRecognizer(target: self, action: #selector(specialLongPressed(_:)))
-                lp.minimumPressDuration = 0.5
+                lp.minimumPressDuration = LayoutMetrics.Gesture.specialKeyHoldDuration
                 btn.addGestureRecognizer(lp)
             }
         }
@@ -574,7 +593,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         // Popup keyboard: long-press shows a mini keyboard panel (e.g. accent variants, punctuation)
         if !keyDef.popupKeyboard.isEmpty {
             let lp = UILongPressGestureRecognizer(target: self, action: #selector(popupKeyLongPressed(_:)))
-            lp.minimumPressDuration = 0.4
+            lp.minimumPressDuration = LayoutMetrics.Gesture.popupKeyboardHoldDuration
             btn.addGestureRecognizer(lp)
         }
 
@@ -599,7 +618,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             btn.addGestureRecognizer(pan)
 
             let lp = UILongPressGestureRecognizer(target: self, action: #selector(dualRowLongPressed(_:)))
-            lp.minimumPressDuration = 0.4
+            lp.minimumPressDuration = LayoutMetrics.Gesture.dualRowHoldDuration
             // Don't cancel the underlying touch — otherwise UIKit fires touchCancel
             // on the button when the long-press begins, which dismisses the preview
             // immediately. We need keyUp to fire only on actual finger release.
@@ -634,15 +653,9 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             guard let self else { return }
             self.delegate?.keyboardView(self, didLongPress: keyDef)
         }
-        btn.onSwipeLeft = { [weak self] in
+        btn.onCaretMove = { [weak self] steps in
             guard let self else { return }
-            let kd = KeyDef(code: LimeKeyCode.prevIM.rawValue, isModifier: true)
-            self.delegate?.keyboardView(self, didPress: kd)
-        }
-        btn.onSwipeRight = { [weak self] in
-            guard let self else { return }
-            let kd = KeyDef(code: LimeKeyCode.nextIM.rawValue, isModifier: true)
-            self.delegate?.keyboardView(self, didPress: kd)
+            self.delegate?.keyboardView(self, didMoveCaretBy: steps)
         }
         return btn
     }
@@ -654,7 +667,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         btn.layer.cornerRadius = keyCornerRadius
         btn.layer.masksToBounds = false
         btn.layer.shadowColor = UIColor.black.cgColor
-        btn.layer.shadowOffset = CGSize(width: 0, height: 1)
+        btn.layer.shadowOffset = CGSize(width: 0, height: LayoutMetrics.Key.shadowOffsetY)
         btn.layer.shadowOpacity = keyShadowOpacity
         btn.layer.shadowRadius = 0
         styleKeyContent(btn: btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: totalPercent)
@@ -665,8 +678,10 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     /// Mirrors Android LIMEKeyboardBaseView.adjustCase(): uppercase the label when shift is active,
     /// but only for short labels (≤3 chars) that start with a lowercase letter.
     /// Long modifier labels like "ABC", "中文", "Done" are left unchanged.
+    /// Never uppercases on Chinese IM keyboards — IM key labels represent input method keys,
+    /// not typed characters, so their case must not change with shift state.
     private func adjustCase(_ label: String) -> String {
-        guard isShiftOn, label.count <= 3,
+        guard isShiftOn, !isIMKeyboard, label.count <= 3,
               let first = label.unicodeScalars.first,
               CharacterSet.lowercaseLetters.contains(first) else { return label }
         return label.uppercased()
@@ -679,28 +694,37 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         let keyLabel = keyDef.isModifier ? palette.modifierLabel : palette.label
         if !keyDef.icon.isEmpty {
             // SF Symbol icon key — dismiss key uses a larger point size for legibility
-            let iconSize: CGFloat = keyDef.icon == "keyboard.chevron.compact.down" ? 28 : (isPad ? 26 : 20)
+            let iconSize: CGFloat = keyDef.icon == "keyboard.chevron.compact.down"
+                ? LayoutMetrics.Key.dismissIconSize
+                : LayoutMetrics.Key.iconSize(isPad: isPad)
             let config = UIImage.SymbolConfiguration(pointSize: iconSize, weight: .regular)
             let img = UIImage(systemName: keyDef.icon, withConfiguration: config)
             btn.setImage(img, for: .normal)
             btn.tintColor = keyLabel
         } else if !keyDef.sublabel.isEmpty {
-            // Phonetic/CJK dual-label: primary (letter) small top, sublabel (bopomofo/CJK) large bottom.
-            let screenWidth    = UIScreen.main.bounds.width
-            let estimatedWidth = screenWidth * (keyDef.widthPercent / totalPercent) - keyHGap
-            let usableHeight   = rowHeight - 2 * keyVGap
-            let isTall = usableHeight >= estimatedWidth
-
             let displayLabel = adjustCase(keyDef.label)
-            let container = makeDualLabelView(primary: displayLabel, sub: keyDef.sublabel,
+            let container: UIView
+            if keyDef.longPressCode != 0 {
+                // Sliding key: label=hint (top), sublabel=tap-primary (bottom) — equal size+color.
+                container = makeDualSlidingLabelView(top: displayLabel, bottom: keyDef.sublabel,
+                                                     labelColor: keyLabel)
+            } else {
+                // Phonetic/CJK dual-label: primary letter small/dimmed top, IM sublabel large bottom.
+                let screenWidth    = UIScreen.main.bounds.width
+                let estimatedWidth = screenWidth * (keyDef.widthPercent / totalPercent) - keyHGap
+                let usableHeight   = rowHeight - 2 * keyVGap
+                let isTall = usableHeight >= estimatedWidth
+                container = makeDualLabelView(primary: displayLabel, sub: keyDef.sublabel,
                                               isTall: isTall, labelColor: keyLabel)
+            }
             container.isUserInteractionEnabled = false
             container.translatesAutoresizingMaskIntoConstraints = false
             btn.addSubview(container)
             NSLayoutConstraint.activate([
                 container.centerXAnchor.constraint(equalTo: btn.centerXAnchor),
                 container.centerYAnchor.constraint(equalTo: btn.centerYAnchor),
-                container.widthAnchor.constraint(lessThanOrEqualTo: btn.widthAnchor, constant: -4),
+                container.widthAnchor.constraint(lessThanOrEqualTo: btn.widthAnchor,
+                                                 constant: LayoutMetrics.Key.dualLabelWidthMargin),
             ])
         } else {
             // Single label key
@@ -713,14 +737,16 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         if !keyDef.popupKeyboard.isEmpty {
             let dot = UILabel()
             dot.text = "…"
-            dot.font = UIFont.systemFont(ofSize: 11, weight: .medium)
+            dot.font = UIFont.systemFont(ofSize: LayoutMetrics.Key.popupIndicatorFontSize, weight: .medium)
             dot.textColor = palette.secondaryLabel
             dot.isUserInteractionEnabled = false
             dot.translatesAutoresizingMaskIntoConstraints = false
             btn.addSubview(dot)
             NSLayoutConstraint.activate([
-                dot.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -3),
-                dot.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -2),
+                dot.trailingAnchor.constraint(equalTo: btn.trailingAnchor,
+                                              constant: LayoutMetrics.Key.popupIndicatorTrailingInset),
+                dot.bottomAnchor.constraint(equalTo: btn.bottomAnchor,
+                                            constant: LayoutMetrics.Key.popupIndicatorBottomInset),
             ])
         }
     }
@@ -751,6 +777,35 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
         stack.addArrangedSubview(primaryLbl)
         stack.addArrangedSubview(subLbl)
+        return stack
+    }
+
+    /// Builds a two-part label view for dual-sliding keys (hint\nprimary).
+    /// Both labels use primary color — distinguishes from sublabel keys where the
+    /// primary letter is rendered in secondary color.
+    private func makeDualSlidingLabelView(top: String, bottom: String,
+                                          labelColor: UIColor) -> UIView {
+        let stack = UIStackView()
+        stack.alignment = .center
+        stack.axis = .vertical
+        stack.spacing = 0
+
+        let topLbl = UILabel()
+        topLbl.text = top
+        topLbl.font = keyDualSlidingFont
+        topLbl.textColor = labelColor
+        topLbl.setContentHuggingPriority(.required, for: .horizontal)
+        topLbl.setContentHuggingPriority(.required, for: .vertical)
+
+        let bottomLbl = UILabel()
+        bottomLbl.text = bottom
+        bottomLbl.font = keyDualSlidingFont
+        bottomLbl.textColor = labelColor
+        bottomLbl.setContentHuggingPriority(.required, for: .horizontal)
+        bottomLbl.setContentHuggingPriority(.required, for: .vertical)
+
+        stack.addArrangedSubview(topLbl)
+        stack.addArrangedSubview(bottomLbl)
         return stack
     }
 
@@ -796,7 +851,8 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         // Start repeat timer for repeatable keys
         if keyDef.isRepeatable {
             repeatKeyDef = keyDef
-            repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
+            repeatTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.Gesture.repeatStartDelay,
+                                               repeats: false) { [weak self] _ in
                 self?.startRepeating()
             }
         }
@@ -822,7 +878,8 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     }
 
     private func startRepeating() {
-        repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        repeatTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.Gesture.repeatInterval,
+                                           repeats: true) { [weak self] _ in
             guard let self = self, let keyDef = self.repeatKeyDef else { return }
             self.delegate?.keyboardView(self, didPress: keyDef)
         }
@@ -878,7 +935,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         guard keyDef.longPressCode != 0, keyDef.popupKeyboard.isEmpty else { return }
 
         let translation = gr.translation(in: self)
-        let threshold: CGFloat = isLandscape ? 16 : 24
+        let threshold = LayoutMetrics.Gesture.dualRowSwipeThreshold(landscape: isLandscape)
 
         switch gr.state {
         case .changed:
@@ -911,7 +968,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
     /// Morphs a dual-row key's label to show only the secondary glyph (or restores original).
     private func setDualRowLabelSecondaryOnly(_ keyBtn: KeyButton, secondaryOnly: Bool) {
-        // Find the UIStackView added by makeDualLabelView inside the button.
+        // Find the UIStackView added by makeDualLabelView or makeDualSlidingLabelView.
         guard let stack = keyBtn.subviews.first(where: { $0 is UIStackView }) as? UIStackView,
               stack.arrangedSubviews.count == 2,
               let primaryLbl = stack.arrangedSubviews[0] as? UILabel,
@@ -922,63 +979,83 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             primaryLbl.font = keySingleLabelFont
         } else {
             secondaryLbl.isHidden = false
-            primaryLbl.font = keyLabelFont
+            let kd = keyBtn.keyDef
+            primaryLbl.font = (kd.longPressCode != 0 && !kd.sublabel.isEmpty)
+                ? keyDualSlidingFont : keyLabelFont
         }
     }
 }
 
 // MARK: - SpaceKeyButton
-// Handles tap / swipe-left / swipe-right / long-press internally using raw touch tracking.
+// Handles tap / slide / long-press internally using raw touch tracking.
 // This avoids the UISwipeGestureRecognizer + UIButton.touchDown conflict where a space
 // character fires on touchDown before UIKit has a chance to recognise the swipe direction.
+// Horizontal sliding moves the text cursor one step per spaceCaretStepPx pixels; the initial
+// dead zone is spaceSwipeThreshold so accidental micro-drags don't move the cursor.
 private final class SpaceKeyButton: KeyButton {
-    var onTap:        (() -> Void)?
-    var onLongPress:  (() -> Void)?
-    var onSwipeLeft:  (() -> Void)?
-    var onSwipeRight: (() -> Void)?
+    var onTap:       (() -> Void)?
+    var onLongPress: (() -> Void)?
+    /// Called with a signed step count each time the finger crosses a caret step boundary.
+    var onCaretMove: ((Int) -> Void)?
     /// Normal (unpressed) background color — set from the active palette when the button is created.
     var restoreColor: UIColor = .white
 
     private var touchBeganPoint: CGPoint = .zero
     private var longPressTimer:  Timer?
-    private var actionFired = false  // swipe or long-press already handled for this touch
+    private var caretFired = false   // true once cursor movement has started
+    private var tapSuppressed = false // true once any action (long-press or caret) fired
+    private var lastCaretStep = 0    // last discrete step emitted
 
-    private static let swipeThreshold:    CGFloat       = 30
-    private static let longPressDuration: TimeInterval  = 0.5
+    private static let stepPx:           CGFloat      = LayoutMetrics.Gesture.spaceCaretStepPx
+    private static let deadZone:         CGFloat      = LayoutMetrics.Gesture.spaceSwipeThreshold
+    private static let longPressDuration: TimeInterval = LayoutMetrics.Gesture.spaceLongPressDuration
 
     // Override all four touch methods WITHOUT calling super so that UIKit never sends
     // the .touchDown / .touchUpInside control events → keyDown/keyUp never fire for space.
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         touchBeganPoint = touch.location(in: self)
-        actionFired = false
+        caretFired    = false
+        tapSuppressed = false
+        lastCaretStep = 0
         backgroundColor = UIColor.systemGray5
         longPressTimer?.invalidate()
         longPressTimer = Timer.scheduledTimer(
             withTimeInterval: SpaceKeyButton.longPressDuration, repeats: false
         ) { [weak self] _ in
-            guard let self, !self.actionFired else { return }
-            self.actionFired = true
+            guard let self, !self.tapSuppressed else { return }
+            self.tapSuppressed = true
             self.resetBg()
             self.onLongPress?()
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first, !actionFired else { return }
+        guard let touch = touches.first, !tapSuppressed else { return }
         let dx = touch.location(in: self).x - touchBeganPoint.x
-        if abs(dx) >= SpaceKeyButton.swipeThreshold {
-            actionFired = true
+        guard abs(dx) >= SpaceKeyButton.deadZone else { return }
+
+        // First crossing: cancel long-press and start caret tracking
+        if !caretFired {
+            caretFired = true
             longPressTimer?.invalidate(); longPressTimer = nil
             resetBg()
-            dx > 0 ? onSwipeRight?() : onSwipeLeft?()
+        }
+        // Emit delta steps since last move event
+        let step = Int((dx - (dx < 0 ? -SpaceKeyButton.deadZone : SpaceKeyButton.deadZone))
+                       / SpaceKeyButton.stepPx)
+        let delta = step - lastCaretStep
+        if delta != 0 {
+            lastCaretStep = step
+            tapSuppressed = true
+            onCaretMove?(delta)
         }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         longPressTimer?.invalidate(); longPressTimer = nil
         resetBg()
-        if !actionFired { onTap?() }
+        if !tapSuppressed { onTap?() }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {

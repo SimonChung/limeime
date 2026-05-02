@@ -40,6 +40,17 @@
                ReferencedContainer = "container:LimeIME.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F96A2D7F2FA5A904004124A7"
+               BuildableName = "LimeUITests.xctest"
+               BlueprintName = "LimeUITests"
+               ReferencedContainer = "container:LimeIME.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

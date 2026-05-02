@@ -4,9 +4,58 @@ Status: PARTIALLY IMPLEMENTED — see §12 for session implementation log
 
 ## §12 Implementation log (session LimeIME-IOS branch)
 
+### Row key count invariant (all non-wb IM iPad layouts)
+
+Every content row must match the following key counts.  "Keys" counts all
+keys including modifiers; backspace (⌫) counts as a key.
+
+| Row | Structure | Total |
+|---|---|---|
+| Digit | 13 normal + ⌫ | **14** |
+| QWERTY | Tab + 13 normal | **14** |
+| ASDF | abc + 11 normal + Enter | **13** |
+| ZXCV | Shift + 10 normal + Shift | **12** |
+| Bottom | fixed 6-key template | 6 |
+
+No-digit layouts (lime_array, lime_cj) have no digit row.  Their qwerty and
+asdf rows follow the same 14 / 13 targets; their zxcv row follows the same
+12 target.
+
+### Shift mirroring rule
+
+A dual-sliding key (`hint\nprimary`) on the unshifted row becomes a **fixed
+key locked to the slide output** (the top/hint character) on the shifted row.
+The shifted row always has the same key count as the unshifted row.
+
+Examples:
+| Unshifted | Shifted |
+|---|---|
+| `~\`` (96, lp 126) | `~` (126) |
+| `!\\n1` (49, lp 33) | `!` (33) — already in source |
+| `_\\n-` (45, lp 95) | `_` (95) |
+| `+\\n=` (61, lp 43) | `+` (43) |
+| `{\\n[` (91, lp 123) | `{` (123) |
+| `;\n：` (65306, lp 65307) | `：` (65307) |
+| `。\\n，` (65292, lp 12290) | `，` (12290) |
+| `<\\n,` (44, lp 60) | `<` (60) — already in source shift |
+
 ### Implemented ✅
 
-#### Layout generation (`scripts/generate_ipad_layouts.py`)
+#### Layout generation (`scripts/build_ipad_layouts.py`)
+
+- **Dual-sliding key rendering**: keys whose `label` contains `\n` but have no `sublabel` now render both lines in primary color (`makeDualSlidingLabelView`), distinguishing them from phonetic/CJK sublabel keys where the primary letter is dimmed (`makeDualLabelView`).
+- **`；\n：` on asdf row**: moved off the bottom row; placed right of `l` / in place of source `;` (upgraded if no sublabel, appended as fallback). `append_semicolon_key` runs before `append_fullshape_period`.
+- **wb bottom row**: `-2` in wb content row replaced with `abc (-9)`; standard 6-key `IPAD_BOTTOM_ROW` used for all layouts.
+- **`,./` → `<\n,` `>\n.` `?\n/` dual-slide on zxcv row**: `apply_zxcv_punct_sliding` upgrades present keys without sublabel; also inserts fallback keys for any of `,` `.` `/` entirely absent from the row, inserted left of trailing terminators (`-1`, `65292`, `10`). Shift-equivalent guard: if `<` (60) / `>` (62) / `?` (63) already occupy those positions, the corresponding fallback is suppressed to avoid overcrowding. Applied to both 4-row and 3-row (no-digit) paths.
+- **Row key count invariant enforcement** — all violations resolved, 92 row checks pass:
+  - **ASDF detection for `:` (58)**: `prepend_abc_modifier`, `append_semicolon_key`, `append_fullshape_period` now detect asdf rows ending in `:` (58) in addition to `;` (59) / `l` (108) / `L` (76). Fixes `phonetic_shift` and `et_41_shift` asdf rows (previously untransformed).
+  - **Extended bottom-row exclusion list**: codes 58 (`:`), 59 (`;`), 95 (`_`), 43 (`+`) added to `exclude_codes` in `harvest_bottom_row_symbols`. Prevents IM colon/semicolon (asdf row keys) and shift-of-dash/equals from being promoted to zxcv. Fixes `cj_number_shift`, `et26_shift`, `hsu_shift` (zxcv 14→12) and `et_41_shift` (zxcv 15→12 together with the strip below).
+  - **Non-QWERTY key strip in `ensure_zxcv_shifts`**: after removing the trailing delete, any printable key whose code is not in the standard QWERTY zxcv set (`_ZXCV_QWERTY_CODES`) is stripped. Removes native IM extras such as `_` (95/ㄦ) in `phonetic_shift` and `'` (39/ㄘ) in `et_41` that pushed the row to 13.
+  - **Dedup filter when promoting extra_keys**: `,./` (44/46/47) from the source bottom row are skipped when their shift-layer equivalents `<>?` (60/62/63) are already in the zxcv row. Prevents double-counting for phonetic_shift (which has `<>?` as native IM keys).
+  - **No-digit qwerty restructured** (`lime_array`, `lime_cj`): `transform_no_digit_im_rows` row 0 changed from `q-p + ⌫(30%)` to `Tab + q-p + 『\n「 + 』\n」 + ⌫` = 14. The `|\n、` CJK backslash key is removed from both qwerty and asdf; bracket pair moves to qwerty.
+  - **No-digit asdf restructured**: row 1 changed from `Tab + letters + ；\n：+ {CJK brackets}` to `abc + letters + ；\n：(or IM key) + 。\n，+ ↩` = 13. Also handles `:` (58) as last asdf key (same logic as `;`/59 — leave unchanged if IM sublabel present).
+  - **No-digit zxcv restructured**: row 2 `。\n，` removed; row ends with `abc + letters + ↩` = 12 (plus any `<\n,`/`>\n.`/`?\n/` fallbacks inserted by `apply_zxcv_punct_sliding`).
+
 - **Sliding key label convention locked**: `'sliding\\ndirect'` format throughout — sliding char BEFORE `\n` = TOP (small/dim, 20pt light), direct char AFTER `\n` = BOTTOM (large/prominent, 24pt regular).
 - **CJK number-row leftmost key**: direct input `` ` `` (backtick, code 96), sliding `~` (lp 126). Label `'~\\n\`'`. Shifted state shows `~` only.
 - **Phonetic r1 shifted**: shift symbol on TOP (small), BPMF character on BOTTOM (large). `mk(sc, label=_SHIFT_CHAR[sc], sublabel=bpmf_char)`.

@@ -225,7 +225,7 @@ public class SearchServer {
         if(DEBUG)
             Log.i(TAG, "prefetchCache() on table :" + tablename);
 
-        StringBuilder keysBuilder = new StringBuilder("abcdefghijklmnoprstuvwxyz");
+        StringBuilder keysBuilder = new StringBuilder("abcdefghijklmnopqrstuvwxyz");
         if (numberMapping)
             keysBuilder.append("01234567890");
         if (symbolMapping)

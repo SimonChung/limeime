@@ -1,4 +1,4 @@
-import UIKit
+﻿import UIKit
 
 // Floating mini-keyboard that appears above a key when the user long-presses.
 // Mirrors Android's MiniKeyboardPopup / PopupKeyboardView behaviour.
@@ -14,12 +14,12 @@ final class PopupKeyboardView: UIView {
     private let layout:   LimeKeyLayout
     private let palette:  KeyboardPalette
 
-    // Layout constants
-    private let keyH:     CGFloat = 44
-    private let keyMinW:  CGFloat = 40
-    private let hPad:     CGFloat = 8
-    private let vPad:     CGFloat = 8
-    private let spacing:  CGFloat = 4
+    // Layout constants — sourced from LayoutMetrics.PopupKeyboard
+    private let keyH:    CGFloat = LayoutMetrics.PopupKeyboard.keyHeight
+    private let keyMinW: CGFloat = LayoutMetrics.PopupKeyboard.keyMinWidth
+    private let hPad:    CGFloat = LayoutMetrics.PopupKeyboard.hPad
+    private let vPad:    CGFloat = LayoutMetrics.PopupKeyboard.vPad
+    private let spacing: CGFloat = LayoutMetrics.PopupKeyboard.spacing
 
     // MARK: - Init
 
@@ -36,12 +36,12 @@ final class PopupKeyboardView: UIView {
 
     private func buildUI() {
         backgroundColor = palette.background
-        layer.cornerRadius  = 12
+        layer.cornerRadius  = LayoutMetrics.PopupKeyboard.panelCornerRadius
         layer.masksToBounds = false
         layer.shadowColor   = UIColor.black.cgColor
-        layer.shadowOpacity = 0.28
-        layer.shadowOffset  = CGSize(width: 0, height: 3)
-        layer.shadowRadius  = 8
+        layer.shadowOpacity = LayoutMetrics.PopupKeyboard.panelShadowOpacity
+        layer.shadowOffset  = CGSize(width: 0, height: LayoutMetrics.PopupKeyboard.panelShadowOffsetY)
+        layer.shadowRadius  = LayoutMetrics.PopupKeyboard.panelShadowRadius
 
         var yOff: CGFloat = vPad
         for (ri, row) in layout.rows.enumerated() {
@@ -66,8 +66,9 @@ final class PopupKeyboardView: UIView {
 
     private func keyWidth(for kd: KeyDef) -> CGFloat {
         let text = cleanLabel(kd.label.isEmpty ? kd.sublabel : kd.label)
-        let w    = (text as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 22)]).width
-        return max(keyMinW, ceil(w) + 20)
+        let font = UIFont.systemFont(ofSize: LayoutMetrics.PopupKeyboard.keyFontSize)
+        let w    = (text as NSString).size(withAttributes: [.font: font]).width
+        return max(keyMinW, ceil(w) + LayoutMetrics.PopupKeyboard.keyExtraWidth)
     }
 
     private func contentWidth(of row: KeyRow) -> CGFloat {
@@ -80,15 +81,15 @@ final class PopupKeyboardView: UIView {
         let btn = UIButton(type: .system)
         let text = cleanLabel(kd.label.isEmpty ? kd.sublabel : kd.label)
         btn.setTitle(text, for: .normal)
-        btn.titleLabel?.font = UIFont.systemFont(ofSize: 22)
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: LayoutMetrics.PopupKeyboard.keyFontSize)
         btn.setTitleColor(palette.label, for: .normal)
         btn.backgroundColor = palette.normalKey
-        btn.layer.cornerRadius  = 6
+        btn.layer.cornerRadius  = LayoutMetrics.PopupKeyboard.keyCornerRadius
         btn.layer.masksToBounds = false
         btn.layer.shadowColor   = UIColor.black.cgColor
-        btn.layer.shadowOpacity = 0.22
-        btn.layer.shadowOffset  = CGSize(width: 0, height: 1)
-        btn.layer.shadowRadius  = 1
+        btn.layer.shadowOpacity = LayoutMetrics.PopupKeyboard.keyShadowOpacity
+        btn.layer.shadowOffset  = CGSize(width: 0, height: LayoutMetrics.PopupKeyboard.keyShadowOffsetY)
+        btn.layer.shadowRadius  = LayoutMetrics.PopupKeyboard.keyShadowRadius
 
         // Tag encodes row/col so we can recover the KeyDef on tap
         btn.tag = row * 1000 + col

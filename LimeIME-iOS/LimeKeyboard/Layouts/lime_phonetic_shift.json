@@ -132,7 +132,7 @@
       "keys": [
         {
           "code": 81,
-          "label": "Q",
+          "label": "q",
           "sublabel": "ㄆ",
           "widthPercent": 10.0,
           "icon": "",
@@ -144,7 +144,7 @@
         },
         {
           "code": 87,
-          "label": "W",
+          "label": "w",
           "sublabel": "ㄊ",
           "widthPercent": 10.0,
           "icon": "",
@@ -156,7 +156,7 @@
         },
         {
           "code": 69,
-          "label": "E",
+          "label": "e",
           "sublabel": "ㄍ",
           "widthPercent": 10.0,
           "icon": "",
@@ -168,7 +168,7 @@
         },
         {
           "code": 82,
-          "label": "R",
+          "label": "r",
           "sublabel": "ㄐ",
           "widthPercent": 10.0,
           "icon": "",
@@ -180,7 +180,7 @@
         },
         {
           "code": 84,
-          "label": "T",
+          "label": "t",
           "sublabel": "ㄔ",
           "widthPercent": 10.0,
           "icon": "",
@@ -192,7 +192,7 @@
         },
         {
           "code": 89,
-          "label": "Y",
+          "label": "y",
           "sublabel": "ㄗ",
           "widthPercent": 10.0,
           "icon": "",
@@ -204,7 +204,7 @@
         },
         {
           "code": 85,
-          "label": "U",
+          "label": "u",
           "sublabel": "一",
           "widthPercent": 10.0,
           "icon": "",
@@ -216,7 +216,7 @@
         },
         {
           "code": 73,
-          "label": "I",
+          "label": "i",
           "sublabel": "ㄛ",
           "widthPercent": 10.0,
           "icon": "",
@@ -228,7 +228,7 @@
         },
         {
           "code": 79,
-          "label": "O",
+          "label": "o",
           "sublabel": "ㄟ",
           "widthPercent": 10.0,
           "icon": "",
@@ -240,7 +240,7 @@
         },
         {
           "code": 80,
-          "label": "P",
+          "label": "p",
           "sublabel": "ㄣ",
           "widthPercent": 10.0,
           "icon": "",
@@ -257,7 +257,7 @@
       "keys": [
         {
           "code": 65,
-          "label": "A",
+          "label": "a",
           "sublabel": "ㄇ",
           "widthPercent": 10.0,
           "icon": "",
@@ -269,7 +269,7 @@
         },
         {
           "code": 83,
-          "label": "S",
+          "label": "s",
           "sublabel": "ㄋ",
           "widthPercent": 10.0,
           "icon": "",
@@ -281,7 +281,7 @@
         },
         {
           "code": 68,
-          "label": "D",
+          "label": "d",
           "sublabel": "ㄎ",
           "widthPercent": 10.0,
           "icon": "",
@@ -293,7 +293,7 @@
         },
         {
           "code": 70,
-          "label": "F",
+          "label": "f",
           "sublabel": "ㄑ",
           "widthPercent": 10.0,
           "icon": "",
@@ -305,7 +305,7 @@
         },
         {
           "code": 71,
-          "label": "G",
+          "label": "g",
           "sublabel": "ㄕ",
           "widthPercent": 10.0,
           "icon": "",
@@ -317,7 +317,7 @@
         },
         {
           "code": 72,
-          "label": "H",
+          "label": "h",
           "sublabel": "ㄘ",
           "widthPercent": 10.0,
           "icon": "",
@@ -329,7 +329,7 @@
         },
         {
           "code": 74,
-          "label": "J",
+          "label": "j",
           "sublabel": "ㄨ",
           "widthPercent": 10.0,
           "icon": "",
@@ -341,7 +341,7 @@
         },
         {
           "code": 75,
-          "label": "K",
+          "label": "k",
           "sublabel": "ㄜ",
           "widthPercent": 10.0,
           "icon": "",
@@ -353,7 +353,7 @@
         },
         {
           "code": 76,
-          "label": "L",
+          "label": "l",
           "sublabel": "ㄠ",
           "widthPercent": 10.0,
           "icon": "",
@@ -382,7 +382,7 @@
       "keys": [
         {
           "code": 90,
-          "label": "Z",
+          "label": "z",
           "sublabel": "ㄈ",
           "widthPercent": 10.0,
           "icon": "",
@@ -394,7 +394,7 @@
         },
         {
           "code": 88,
-          "label": "X",
+          "label": "x",
           "sublabel": "ㄌ",
           "widthPercent": 10.0,
           "icon": "",
@@ -406,7 +406,7 @@
         },
         {
           "code": 67,
-          "label": "C",
+          "label": "c",
           "sublabel": "ㄏ",
           "widthPercent": 10.0,
           "icon": "",
@@ -418,7 +418,7 @@
         },
         {
           "code": 86,
-          "label": "V",
+          "label": "v",
           "sublabel": "ㄒ",
           "widthPercent": 10.0,
           "icon": "",
@@ -430,7 +430,7 @@
         },
         {
           "code": 66,
-          "label": "B",
+          "label": "b",
           "sublabel": "ㄖ",
           "widthPercent": 10.0,
           "icon": "",
@@ -442,7 +442,7 @@
         },
         {
           "code": 78,
-          "label": "N",
+          "label": "n",
           "sublabel": "ㄙ",
           "widthPercent": 10.0,
           "icon": "",
@@ -454,7 +454,7 @@
         },
         {
           "code": 77,
-          "label": "M",
+          "label": "m",
           "sublabel": "ㄩ",
           "widthPercent": 10.0,
           "icon": "",

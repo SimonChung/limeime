@@ -129,7 +129,8 @@ final class LimeDB {
         var config = Configuration()
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA journal_mode = WAL")
-            try db.execute(sql: "PRAGMA cache_size = -4096")
+            try db.execute(sql: "PRAGMA cache_size = -4096")   // 4 MB page cache
+            try db.execute(sql: "PRAGMA mmap_size = 8388608")  // 8 MB mmap — skips pread() for cold page reads
         }
         dbQueue = try DatabaseQueue(path: path, configuration: config)
         try migrate()
@@ -513,10 +514,11 @@ final class LimeDB {
         // Jeremy '15, 6, 1 between search clause without using related column for better sorting order.
         var sortClause = "( exactmatch = 1 and ( score > 0 or  basescore >0) and length(word)=1) desc, exactmatch desc,"
                        + " (length(\(codeCol)) >= \(codeLen) ) desc, "
-                       + "(length(\(codeCol)) <= \(min(codeLen, 5)) )*length(\(codeCol)) desc, "
         // Jeremy '11,6,11 separated suggestions sorting option for physical keyboard
         // iOS is always soft keyboard — mirrors Android softKeyboard=true path
+        // NOTE: score sort must come BEFORE the length tiebreaker (mirrors Android LimeDB.java order)
         if sortSuggestions { sortClause += " score desc, basescore desc, " }
+        sortClause += "(length(\(codeCol)) <= \(min(codeLen, 5)) )*length(\(codeCol)) desc, "
         sortClause += "_id asc"
 
         // Mirrors Android: "where word is not null and " + selectClause  (no outer parens — AND/OR precedence intentional)

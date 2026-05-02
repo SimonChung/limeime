@@ -136,7 +136,9 @@ struct PreferencesTabView: View {
                             Text(sizeLabels[i]).tag(sizeOptions[i])
                         }
                     }
-                    Toggle(isOn: $numberRowInEnglish) { prefRow("數字列英文鍵盤", "在英文鍵盤顯示數字列(5列鍵盤)") }
+                    if UIDevice.current.userInterfaceIdiom != .pad {
+                        Toggle(isOn: $numberRowInEnglish) { prefRow("數字列英文鍵盤", "在英文鍵盤顯示數字列(5列鍵盤)") }
+                    }
                 }
 
                 // MARK: §8.4
