@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 
 // Single source of truth for keyboard-extension layout constants.
 //
@@ -221,7 +221,7 @@ enum LayoutMetrics {
             static let keyCornerRadius: CGFloat = 6
         }
 
-        /// Sizes used on iPad hardware / pad-class host.
+        /// Sizes used on iPad hardware / pad-class host (native iPad app).
         enum Pad {
             static let portraitRow: CGFloat = 64
             static let portraitBottomRow: CGFloat = 68
@@ -230,6 +230,17 @@ enum LayoutMetrics {
             static let keyHGap: CGFloat = 7
             static let keyVGap: CGFloat = 4
             static let keyCornerRadius: CGFloat = 8
+        }
+
+        /// Row heights for iPad hardware running an iPhone app in compatibility
+        /// mode (hostIsPad=false but UIDevice==.pad). Keys use iPad-scale heights
+        /// for ergonomics; fonts, gaps, and corner radius stay phone-sized because
+        /// the phone layout JSON is loaded (see KeyboardView.isPadHardware vs isPad).
+        enum PadCompat {
+            static let portraitRow: CGFloat = 54
+            static let portraitBottomRow: CGFloat = 58
+            static let landscapeRow: CGFloat = 40
+            static let landscapeBottomRow: CGFloat = 44
         }
 
         // Idiom-agnostic.
@@ -270,12 +281,23 @@ enum LayoutMetrics {
             static let iconSize: CGFloat = 20
         }
 
-        /// Sizes used on iPad hardware / pad-class host.
+        /// Sizes used on iPad hardware / pad-class host (native iPad app).
         enum Pad {
             static let singleLabelFontSize: CGFloat = 24
             static let primaryLabelFontSize: CGFloat = 20
             static let sublabelFontSize: CGFloat = 24
             static let iconSize: CGFloat = 26
+        }
+
+        /// Sizes used on iPad hardware running an iPhone app in compatibility
+        /// mode. Keys are iPad-height but phone-width, so fonts are between
+        /// phone and iPad — slightly larger than phone to fill the taller key,
+        /// but not as wide as iPad since the key columns stay phone-narrow.
+        enum PadCompat {
+            static let singleLabelFontSize: CGFloat = 20
+            static let primaryLabelFontSize: CGFloat = 16
+            static let sublabelFontSize: CGFloat = 20
+            static let iconSize: CGFloat = 20
         }
 
         // Idiom-agnostic chrome.
@@ -294,17 +316,18 @@ enum LayoutMetrics {
         static let dualLabelWidthMargin: CGFloat = -4
 
         // Per-idiom selectors used by the keyboard view.
-        static func singleLabelFontSize(isPad: Bool) -> CGFloat {
-            isPad ? Pad.singleLabelFontSize : Phone.singleLabelFontSize
+        // isPadCompat takes priority over isPad when both are provided.
+        static func singleLabelFontSize(isPad: Bool, isPadCompat: Bool = false) -> CGFloat {
+            isPad ? Pad.singleLabelFontSize : isPadCompat ? PadCompat.singleLabelFontSize : Phone.singleLabelFontSize
         }
-        static func primaryLabelFontSize(isPad: Bool) -> CGFloat {
-            isPad ? Pad.primaryLabelFontSize : Phone.primaryLabelFontSize
+        static func primaryLabelFontSize(isPad: Bool, isPadCompat: Bool = false) -> CGFloat {
+            isPad ? Pad.primaryLabelFontSize : isPadCompat ? PadCompat.primaryLabelFontSize : Phone.primaryLabelFontSize
         }
-        static func sublabelFontSize(isPad: Bool) -> CGFloat {
-            isPad ? Pad.sublabelFontSize : Phone.sublabelFontSize
+        static func sublabelFontSize(isPad: Bool, isPadCompat: Bool = false) -> CGFloat {
+            isPad ? Pad.sublabelFontSize : isPadCompat ? PadCompat.sublabelFontSize : Phone.sublabelFontSize
         }
-        static func iconSize(isPad: Bool) -> CGFloat {
-            isPad ? Pad.iconSize : Phone.iconSize
+        static func iconSize(isPad: Bool, isPadCompat: Bool = false) -> CGFloat {
+            isPad ? Pad.iconSize : isPadCompat ? PadCompat.iconSize : Phone.iconSize
         }
     }
 

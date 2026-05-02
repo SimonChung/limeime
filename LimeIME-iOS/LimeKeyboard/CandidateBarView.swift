@@ -6,6 +6,7 @@
 protocol CandidateBarViewDelegate: AnyObject {
     func candidateBarView(_ view: CandidateBarView, didSelect mapping: Mapping)
     func candidateBarViewDidRequestMore(_ view: CandidateBarView)
+    func candidateBarViewDidRequestDismiss(_ view: CandidateBarView)
 }
 
 final class CandidateBarView: UIView {
@@ -13,10 +14,11 @@ final class CandidateBarView: UIView {
     weak var delegate: CandidateBarViewDelegate?
 
     // MARK: - Subviews
-    private let scrollView  = CandidateScrollView()
-    private let stackView   = UIStackView()
-    private let moreButton  = UIButton(type: .system)
-    private let moreSep     = UIView()          // fixed separator left of chevron
+    private let scrollView    = CandidateScrollView()
+    private let stackView     = UIStackView()
+    private let moreButton    = UIButton(type: .system)
+    private let moreSep       = UIView()          // fixed separator left of chevron
+    private let dismissButton = UIButton(type: .system)
     /// Leading region that displays the composing keyname. iPad uses this
     /// in lieu of the in-keyboard composingPopupLabel strip (which wastes
     /// vertical space). iPhone keeps the strip and leaves this collapsed.
@@ -109,12 +111,9 @@ final class CandidateBarView: UIView {
     var fontScale: CGFloat = 1.1 {
         didSet { guard oldValue != fontScale else { return }; rebuildButtons() }
     }
-    /// True when running on iPad hardware. Captured once from `UIDevice` so the
-    /// candidate font scales up on real iPad. iPhone-only apps running on iPad
-    /// in scaled mode also get the larger font — the iPad screen is large enough
-    /// to read it comfortably and matching the bar height that was already sized
-    /// from `isOnPad` in the controller.
-    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    /// Mirrors LayoutLoader.hostIsPad (set from traitCollection by the controller)
+    /// so compatibility-mode iPhone apps on iPad use phone metrics consistently.
+    private var isPad: Bool { LayoutLoader.hostIsPad }
     private var baseCandidateFontSize: CGFloat     { LayoutMetrics.ComposingPopup.candidateFontSize(isPad: isPad) }
     private var baseComposingCodeFontSize: CGFloat { LayoutMetrics.ComposingPopup.composingCodeFontSize(isPad: isPad) }
     private var candidateFont: UIFont     { UIFont.systemFont(ofSize: baseCandidateFontSize * fontScale, weight: .regular) }
@@ -145,6 +144,8 @@ final class CandidateBarView: UIView {
         backgroundColor = .clear
         moreButton.tintColor = palette.candiText
         moreSep.backgroundColor = palette.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
+        dismissButton.tintColor = palette.candiText
+        dismissButton.backgroundColor = palette.candiText.withAlphaComponent(0.1)
         composingLabel.font = composingStripFont
         composingLabel.textColor = palette.candiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         applyComposingText()
@@ -190,6 +191,21 @@ final class CandidateBarView: UIView {
         moreSep.translatesAutoresizingMaskIntoConstraints = false
         addSubview(moreSep)
 
+        // Dismiss button pinned to the leading edge — mirror of the trailing chevron.
+        let dismissConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad), weight: .regular)
+        dismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
+        dismissButton.tintColor = palette.candiText
+        dismissButton.isHidden = true
+        dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
+        // Visible rounded background so the full button extent (restRowH) is apparent.
+        // Colour is applied in applyTheme(); corner radius is permanent.
+        dismissButton.layer.cornerRadius = 6
+        dismissButton.layer.masksToBounds = true
+        dismissButton.backgroundColor = palette.candiText.withAlphaComponent(0.1)
+        dismissButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(dismissButton)
+
         composingLabel.font = composingStripFont
         composingLabel.textColor = palette.candiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         composingLabel.textAlignment = .left
@@ -228,6 +244,14 @@ final class CandidateBarView: UIView {
         scrollView.addSubview(stackView)
 
         NSLayoutConstraint.activate([
+            // dismiss button: half chevron width, height = barHeight − stripHeight,
+            // centered on the glyph axis (biased down by stripHeight/2 from bar center).
+            // No contentEdgeInsets bias needed — the frame itself sits at glyph center.
+            dismissButton.leadingAnchor.constraint(equalTo: leadingAnchor),
+            dismissButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
+            dismissButton.heightAnchor.constraint(equalTo: heightAnchor, constant: -composingStripHeight),
+            dismissButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isPad) / 2),
+
             // chevron flush to trailing edge. Width is an explicit constant
             // (chevronButtonWidth) — independent of bar height — so the
             // chevron's left/right padding stays sensible across font scales
@@ -245,8 +269,8 @@ final class CandidateBarView: UIView {
             moreSep.widthAnchor.constraint(equalToConstant: dividerWidth),
             moreSep.heightAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.dividerHeight),
 
-            // composing keyname strip pinned to the top edge, full width up to
-            // the chevron separator. Sits on top of the candidate scroll view
+            // composing keyname strip pinned to the top edge, starts after the
+            // dismiss button. Sits on top of the candidate scroll view
             // (added later in subview order); does not affect scrollView frame.
             //
             // CLIP NOTE: The bar's topAnchor is the input view's top edge,
@@ -260,13 +284,14 @@ final class CandidateBarView: UIView {
             //     frame is large enough that no glyph is clipped by the
             //     label even though composingStripHeight (which drives the
             //     candidate `bias` inset) stays tight to save vertical space.
-            composingLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: LayoutMetrics.ComposingPopup.labelLeading),
+            composingLabel.leadingAnchor.constraint(equalTo: dismissButton.trailingAnchor, constant: LayoutMetrics.ComposingPopup.labelLeading),
             composingLabel.trailingAnchor.constraint(equalTo: moreSep.leadingAnchor, constant: LayoutMetrics.ComposingPopup.labelTrailingInset),
             composingLabel.topAnchor.constraint(equalTo: topAnchor, constant: LayoutMetrics.ComposingPopup.labelTopInset),
             composingLabel.heightAnchor.constraint(equalToConstant: ceil(composingStripFont.lineHeight) + LayoutMetrics.ComposingPopup.labelHeightPad),
 
-            // scroll view fills the bar (composing label overlays its top region)
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            // scroll view fills the bar between dismiss button and moreSep
+            // (composing label overlays its top region)
+            scrollView.leadingAnchor.constraint(equalTo: dismissButton.trailingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: moreSep.leadingAnchor),
             scrollView.topAnchor.constraint(equalTo: topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -466,10 +491,11 @@ final class CandidateBarView: UIView {
             applyHighlightStyle(button: btn, index: index, mapping: mapping)
         }
 
-        // Show/hide the fixed chevron depending on whether there are candidates
+        // Show/hide the fixed chevron and dismiss button with the candidate list.
         let hasCandidates = !candidates.isEmpty
-        moreButton.isHidden = !hasCandidates
-        moreSep.isHidden    = !hasCandidates
+        moreButton.isHidden    = !hasCandidates
+        moreSep.isHidden       = !hasCandidates
+        dismissButton.isHidden = !hasCandidates
     }
 
     private func makeCandidateButton(mapping: Mapping, index: Int) -> CandidateButton {
@@ -569,6 +595,11 @@ final class CandidateBarView: UIView {
         // Flash the highlight on the tapped cell before the commit animates.
         setSelectedIndex(index)
         delegate?.candidateBarView(self, didSelect: candidates[index])
+    }
+
+    @objc private func dismissTapped() {
+        if feedbackVibration { impactFeedback.impactOccurred() }
+        delegate?.candidateBarViewDidRequestDismiss(self)
     }
 
     @objc private func moreTapped() {

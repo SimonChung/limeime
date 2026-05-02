@@ -170,19 +170,29 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         return UIImpactFeedbackGenerator(style: style)
     }
 
-    // Layout constants — sourced from LayoutMetrics.KeyboardRow / LayoutMetrics.Key.
-    // Captured once at view init via UIDevice (matches the pre-session behavior;
-    // do NOT switch to traitCollection or a controller-pushed flag — that
-    // changes the iPad keyboard height).
-    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
-    private let rowHeightPortrait:            CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitRow
-    private let bottomRowHeightPortrait:      CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitBottomRow
-    private let rowHeightLandscape:           CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeRow
-    private let bottomRowHeightLandscape:     CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeBottomRow
-    private let rowHeightPortraitIPad:        CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitRow
-    private let bottomRowHeightPortraitIPad:  CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitBottomRow
-    private let rowHeightLandscapeIPad:       CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeRow
-    private let bottomRowHeightLandscapeIPad: CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeBottomRow
+    // isPad: trait-collection-based (false in iPhone compat mode on iPad).
+    // Controls layout JSON selection, fonts, gaps, corner radius, and 1/3-split logic.
+    private var isPad: Bool { LayoutLoader.hostIsPad }
+    // isPadHardware: UIDevice-based (true on any iPad hardware, including compat mode).
+    // Controls row heights only — compat mode gets iPad-sized rows for ergonomics
+    // even though it loads the phone layout JSON with phone fonts/gaps.
+    private let isPadHardware = UIDevice.current.userInterfaceIdiom == .pad
+    // isPadCompat: true when running an iPhone app on iPad hardware (compat mode).
+    // Controls the PadCompat font tier — taller than phone to fill the extra row
+    // height, but not as wide as iPad since key columns stay phone-narrow.
+    private var isPadCompat: Bool { isPadHardware && !isPad }
+    private let rowHeightPortrait:              CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitRow
+    private let bottomRowHeightPortrait:        CGFloat = LayoutMetrics.KeyboardRow.Phone.portraitBottomRow
+    private let rowHeightLandscape:             CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeRow
+    private let bottomRowHeightLandscape:       CGFloat = LayoutMetrics.KeyboardRow.Phone.landscapeBottomRow
+    private let rowHeightPortraitIPad:          CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitRow
+    private let bottomRowHeightPortraitIPad:    CGFloat = LayoutMetrics.KeyboardRow.Pad.portraitBottomRow
+    private let rowHeightLandscapeIPad:         CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeRow
+    private let bottomRowHeightLandscapeIPad:   CGFloat = LayoutMetrics.KeyboardRow.Pad.landscapeBottomRow
+    private let rowHeightPortraitCompat:        CGFloat = LayoutMetrics.KeyboardRow.PadCompat.portraitRow
+    private let bottomRowHeightPortraitCompat:  CGFloat = LayoutMetrics.KeyboardRow.PadCompat.portraitBottomRow
+    private let rowHeightLandscapeCompat:       CGFloat = LayoutMetrics.KeyboardRow.PadCompat.landscapeRow
+    private let bottomRowHeightLandscapeCompat: CGFloat = LayoutMetrics.KeyboardRow.PadCompat.landscapeBottomRow
     private let keyShadowOpacity: Float = LayoutMetrics.Key.shadowOpacity
     private var keyHGap:         CGFloat { LayoutMetrics.KeyboardRow.keyHGap(isPad: isPad) }
     private var keyVGap:         CGFloat { LayoutMetrics.KeyboardRow.keyVGap(isPad: isPad) }
@@ -240,15 +250,21 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     }
 
     private var rowHeight: CGFloat {
-        let base = isLandscape
-            ? (isPad ? rowHeightLandscapeIPad : rowHeightLandscape)
-            : (isPad ? rowHeightPortraitIPad  : rowHeightPortrait)
+        let base: CGFloat
+        switch (isPadHardware, isPad) {
+        case (true, false): base = isLandscape ? rowHeightLandscapeCompat : rowHeightPortraitCompat
+        case (true, true):  base = isLandscape ? rowHeightLandscapeIPad   : rowHeightPortraitIPad
+        default:            base = isLandscape ? rowHeightLandscape        : rowHeightPortrait
+        }
         return base * keySizeScale
     }
     private var bottomRowHeight: CGFloat {
-        let base = isLandscape
-            ? (isPad ? bottomRowHeightLandscapeIPad : bottomRowHeightLandscape)
-            : (isPad ? bottomRowHeightPortraitIPad  : bottomRowHeightPortrait)
+        let base: CGFloat
+        switch (isPadHardware, isPad) {
+        case (true, false): base = isLandscape ? bottomRowHeightLandscapeCompat : bottomRowHeightPortraitCompat
+        case (true, true):  base = isLandscape ? bottomRowHeightLandscapeIPad   : bottomRowHeightPortraitIPad
+        default:            base = isLandscape ? bottomRowHeightLandscape        : bottomRowHeightPortrait
+        }
         return base * keySizeScale
     }
 
@@ -265,30 +281,23 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private var pressedKeyColor:  UIColor { palette.pressedKey }
 
     private var keySingleLabelFont: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.singleLabelFontSize(isPad: isPad), weight: .regular)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.singleLabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .regular)
     }
-    // True when the current layout is a Chinese IM (has IM sublabel keys with longPressCode==0).
-    // English layouts only have sublabels on sliding keys, which always have longPressCode != 0.
-    private lazy var isIMKeyboard: Bool = {
-        layout.rows.contains { row in
-            row.keys.contains { key in !key.sublabel.isEmpty && key.longPressCode == 0 }
-        }
-    }()
 
     private var keyLabelFont: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .light)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .light)
     }
     private var keySublabelFont: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad), weight: .regular)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .regular)
     }
     private var keyDualSlidingFont: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .regular)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .regular)
     }
     private var keyLabelFontLand: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad), weight: .light)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.primaryLabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .light)
     }
     private var keySublabelFontLand: UIFont {
-        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad), weight: .regular)
+        UIFont.systemFont(ofSize: LayoutMetrics.Key.sublabelFontSize(isPad: isPad, isPadCompat: isPadCompat), weight: .regular)
     }
 
     // MARK: - Init
@@ -673,20 +682,6 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         styleKeyContent(btn: btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: totalPercent)
     }
 
-    /// Renders key content.
-    /// Layout rule (mirrors Android keyLabel \n rendering):
-    /// Mirrors Android LIMEKeyboardBaseView.adjustCase(): uppercase the label when shift is active,
-    /// but only for short labels (≤3 chars) that start with a lowercase letter.
-    /// Long modifier labels like "ABC", "中文", "Done" are left unchanged.
-    /// Never uppercases on Chinese IM keyboards — IM key labels represent input method keys,
-    /// not typed characters, so their case must not change with shift state.
-    private func adjustCase(_ label: String) -> String {
-        guard isShiftOn, !isIMKeyboard, label.count <= 3,
-              let first = label.unicodeScalars.first,
-              CharacterSet.lowercaseLetters.contains(first) else { return label }
-        return label.uppercased()
-    }
-
     ///   • Tall key  (height ≥ width): label small top,  sublabel large bottom — vertical stack
     ///   • Wide key  (width  > height): label small left, sublabel large right  — horizontal stack
     private func styleKeyContent(btn: UIButton, keyDef: KeyDef,
@@ -696,39 +691,56 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             // SF Symbol icon key — dismiss key uses a larger point size for legibility
             let iconSize: CGFloat = keyDef.icon == "keyboard.chevron.compact.down"
                 ? LayoutMetrics.Key.dismissIconSize
-                : LayoutMetrics.Key.iconSize(isPad: isPad)
+                : LayoutMetrics.Key.iconSize(isPad: isPad, isPadCompat: isPadCompat)
             let config = UIImage.SymbolConfiguration(pointSize: iconSize, weight: .regular)
             let img = UIImage(systemName: keyDef.icon, withConfiguration: config)
             btn.setImage(img, for: .normal)
             btn.tintColor = keyLabel
         } else if !keyDef.sublabel.isEmpty {
-            let displayLabel = adjustCase(keyDef.label)
+            let displayLabel = keyDef.label
             let container: UIView
             if keyDef.longPressCode != 0 {
                 // Sliding key: label=hint (top), sublabel=tap-primary (bottom) — equal size+color.
                 container = makeDualSlidingLabelView(top: displayLabel, bottom: keyDef.sublabel,
                                                      labelColor: keyLabel)
             } else {
-                // Phonetic/CJK dual-label: primary letter small/dimmed top, IM sublabel large bottom.
-                let screenWidth    = UIScreen.main.bounds.width
-                let estimatedWidth = screenWidth * (keyDef.widthPercent / totalPercent) - keyHGap
-                let usableHeight   = rowHeight - 2 * keyVGap
-                let isTall = usableHeight >= estimatedWidth
+                // iPad native: always vertical (primary small top, sublabel large bottom).
+                // Phone / compat: vertical when key height ≥ width (portrait),
+                // horizontal 1/3–2/3 split when key width > height (landscape or compat-on-iPad).
+                let isTall: Bool
+                if isPadHardware {
+                    // Any iPad hardware (native or compat): always vertical.
+                    // UIScreen.main.bounds.width returns full iPad width even in compat
+                    // mode, making estimatedWidth > usableHeight and incorrectly
+                    // triggering horizontal layout — so skip the dimension check entirely.
+                    isTall = true
+                } else {
+                    let estimatedWidth = UIScreen.main.bounds.width
+                        * (keyDef.widthPercent / totalPercent) - keyHGap
+                    let usableHeight = rowHeight - 2 * keyVGap
+                    isTall = usableHeight >= estimatedWidth
+                }
                 container = makeDualLabelView(primary: displayLabel, sub: keyDef.sublabel,
                                               isTall: isTall, labelColor: keyLabel)
             }
             container.isUserInteractionEnabled = false
             container.translatesAutoresizingMaskIntoConstraints = false
+            container.clipsToBounds = true
             btn.addSubview(container)
+            let wConstraint = isPad
+                ? container.widthAnchor.constraint(lessThanOrEqualTo: btn.widthAnchor,
+                                                    constant: LayoutMetrics.Key.dualLabelWidthMargin)
+                : container.widthAnchor.constraint(equalTo: btn.widthAnchor,
+                                                    constant: LayoutMetrics.Key.dualLabelWidthMargin)
             NSLayoutConstraint.activate([
                 container.centerXAnchor.constraint(equalTo: btn.centerXAnchor),
                 container.centerYAnchor.constraint(equalTo: btn.centerYAnchor),
-                container.widthAnchor.constraint(lessThanOrEqualTo: btn.widthAnchor,
-                                                 constant: LayoutMetrics.Key.dualLabelWidthMargin),
+                wConstraint,
+                container.heightAnchor.constraint(lessThanOrEqualTo: btn.heightAnchor),
             ])
         } else {
             // Single label key
-            btn.setTitle(adjustCase(keyDef.label), for: .normal)
+            btn.setTitle(keyDef.label, for: .normal)
             btn.titleLabel?.font = keySingleLabelFont
             btn.setTitleColor(keyLabel, for: .normal)
         }
@@ -752,32 +764,74 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     }
 
     /// Builds a two-part label view for keys that have both a primary label and a sublabel.
-    /// - `isTall`: true → vertical (primary small top, sublabel large bottom)
-    ///             false → horizontal (primary small left, sublabel large right)
+    /// - `isTall` (iPad): vertical stack — primary small top, sublabel large bottom.
+    /// - `!isTall` (phone/compat): horizontal 1/3–2/3 split — letter left, code right.
     private func makeDualLabelView(primary: String, sub: String,
                                    isTall: Bool, labelColor: UIColor) -> UIView {
-        let stack = UIStackView()
-        stack.alignment = .center
-        stack.axis = .vertical
-        stack.spacing = 0
+        if isTall {
+            let stack = UIStackView()
+            stack.alignment = .fill   // labels fill stack width so adjustsFontSizeToFitWidth works
+            stack.axis = .vertical
+            stack.spacing = 0
 
-        let primaryLbl = UILabel()
-        primaryLbl.text = primary
-        primaryLbl.font = keyLabelFont
-        primaryLbl.textColor = palette.secondaryLabel
-        primaryLbl.setContentHuggingPriority(.required, for: .horizontal)
-        primaryLbl.setContentHuggingPriority(.required, for: .vertical)
+            let primaryLbl = UILabel()
+            primaryLbl.text = primary
+            primaryLbl.font = keyLabelFont
+            primaryLbl.textColor = palette.secondaryLabel
+            primaryLbl.textAlignment = .center
+            primaryLbl.adjustsFontSizeToFitWidth = true
+            primaryLbl.minimumScaleFactor = 0.6
+            primaryLbl.setContentHuggingPriority(.required, for: .vertical)
 
-        let subLbl = UILabel()
-        subLbl.text = sub
-        subLbl.font = keySublabelFont
-        subLbl.textColor = labelColor
-        subLbl.setContentHuggingPriority(.required, for: .horizontal)
-        subLbl.setContentHuggingPriority(.required, for: .vertical)
+            let subLbl = UILabel()
+            subLbl.text = sub
+            subLbl.font = keySublabelFont
+            subLbl.textColor = labelColor
+            subLbl.textAlignment = .center
+            subLbl.adjustsFontSizeToFitWidth = true
+            subLbl.minimumScaleFactor = 0.6
+            subLbl.setContentHuggingPriority(.required, for: .vertical)
 
-        stack.addArrangedSubview(primaryLbl)
-        stack.addArrangedSubview(subLbl)
-        return stack
+            stack.addArrangedSubview(primaryLbl)
+            stack.addArrangedSubview(subLbl)
+            return stack
+        } else {
+            let container = UIView()
+
+            let primaryLbl = UILabel()
+            primaryLbl.text = primary
+            primaryLbl.font = keyLabelFont
+            primaryLbl.textColor = palette.secondaryLabel
+            primaryLbl.textAlignment = .center
+            primaryLbl.adjustsFontSizeToFitWidth = true
+            primaryLbl.minimumScaleFactor = 0.6
+            primaryLbl.translatesAutoresizingMaskIntoConstraints = false
+
+            let subLbl = UILabel()
+            subLbl.text = sub
+            subLbl.font = keySublabelFont
+            subLbl.textColor = labelColor
+            subLbl.textAlignment = .center
+            subLbl.adjustsFontSizeToFitWidth = true
+            subLbl.minimumScaleFactor = 0.6
+            subLbl.translatesAutoresizingMaskIntoConstraints = false
+
+            container.addSubview(primaryLbl)
+            container.addSubview(subLbl)
+
+            NSLayoutConstraint.activate([
+                primaryLbl.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                primaryLbl.widthAnchor.constraint(equalTo: container.widthAnchor, multiplier: 1.0/3.0),
+                primaryLbl.topAnchor.constraint(equalTo: container.topAnchor),
+                primaryLbl.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+                subLbl.leadingAnchor.constraint(equalTo: primaryLbl.trailingAnchor),
+                subLbl.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                subLbl.topAnchor.constraint(equalTo: container.topAnchor),
+                subLbl.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            ])
+            return container
+        }
     }
 
     /// Builds a two-part label view for dual-sliding keys (hint\nprimary).

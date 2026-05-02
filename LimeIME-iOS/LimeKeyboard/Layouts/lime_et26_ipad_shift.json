@@ -1,15 +1,12 @@
 {
   "id": "lime_et26_ipad_shift",
-  "defaultWidthPercent": 7.15,
+  "defaultWidthPercent": 7.0,
   "rows": [
     {
       "isBottomRow": false,
       "keys": [
         {
           "code": 126,
-          "codes": [
-            126
-          ],
           "label": "~",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -17,15 +14,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 33,
-          "codes": [
-            33
-          ],
           "label": "!",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -33,15 +27,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 64,
-          "codes": [
-            64
-          ],
           "label": "@",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -49,15 +40,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 35,
-          "codes": [
-            35
-          ],
           "label": "#",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -65,15 +53,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 36,
-          "codes": [
-            36
-          ],
           "label": "$",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -81,15 +66,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 37,
-          "codes": [
-            37
-          ],
           "label": "%",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -97,15 +79,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 94,
-          "codes": [
-            94
-          ],
           "label": "^",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -113,15 +92,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 38,
-          "codes": [
-            38
-          ],
           "label": "&",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -129,15 +105,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 42,
-          "codes": [
-            42
-          ],
           "label": "*",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -145,15 +118,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 40,
-          "codes": [
-            40
-          ],
           "label": "(",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -161,15 +131,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 41,
-          "codes": [
-            41
-          ],
           "label": ")",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -177,15 +144,12 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 8230,
-          "codes": [
-            8230
-          ],
           "label": "…",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -193,25 +157,35 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
+        },
+        {
+          "code": 43,
+          "label": "+",
+          "sublabel": "",
+          "widthPercent": 7.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": -5,
-          "codes": [
-            -5
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 16.0,
+          "widthPercent": 9.0,
           "icon": "delete.backward",
           "isModifier": true,
           "isRepeatable": true,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         }
       ]
     },
@@ -220,9 +194,6 @@
       "keys": [
         {
           "code": 9,
-          "codes": [
-            9
-          ],
           "label": "",
           "sublabel": "",
           "widthPercent": 9.0,
@@ -230,217 +201,178 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 81,
-          "codes": [
-            81
-          ],
-          "label": "Q\\Tㄗ",
+          "label": "Q\\tㄗ",
           "sublabel": "ㄟ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 87,
-          "codes": [
-            87
-          ],
-          "label": "W\\Tㄘ",
+          "label": "W\\tㄘ",
           "sublabel": "ㄝ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 69,
-          "codes": [
-            69
-          ],
-          "label": "e",
+          "label": "E",
           "sublabel": "ㄧ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 82,
-          "codes": [
-            82
-          ],
-          "label": "r",
+          "label": "R",
           "sublabel": "ㄜ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 84,
-          "codes": [
-            84
-          ],
-          "label": "T\\Tㄊ",
+          "label": "T\\tㄊ",
           "sublabel": "ㄤ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 89,
-          "codes": [
-            89
-          ],
-          "label": "y",
+          "label": "Y",
           "sublabel": "ㄔ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 85,
-          "codes": [
-            85
-          ],
-          "label": "u",
+          "label": "U",
           "sublabel": "ㄩ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 73,
-          "codes": [
-            73
-          ],
-          "label": "i",
+          "label": "I",
           "sublabel": "ㄞ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 79,
-          "codes": [
-            79
-          ],
-          "label": "o",
+          "label": "O",
           "sublabel": "ㄛ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 80,
-          "codes": [
-            80
-          ],
-          "label": "P\\Tㄆ",
+          "label": "P\\tㄆ",
           "sublabel": "ㄡ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
-          "code": 12302,
-          "codes": [
-            12302
-          ],
-          "label": "『",
+          "code": 12300,
+          "label": "『\\n「",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 12302
         },
         {
-          "code": 12303,
-          "codes": [
-            12303
-          ],
-          "label": "』",
+          "code": 12301,
+          "label": "』\\n」",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 12303
         },
         {
-          "code": 124,
-          "codes": [
-            124
-          ],
-          "label": "|",
+          "code": 12289,
+          "label": "|\\n、",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 124
         }
       ]
     },
@@ -449,195 +381,172 @@
       "keys": [
         {
           "code": -9,
-          "codes": [
-            -9
-          ],
           "label": "abc",
           "sublabel": "",
-          "widthPercent": 15.0,
+          "widthPercent": 11.5,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 65,
-          "codes": [
-            65
-          ],
-          "label": "a",
+          "label": "A",
           "sublabel": "ㄚ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 83,
-          "codes": [
-            83
-          ],
-          "label": "s",
+          "label": "S",
           "sublabel": "ㄙ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 68,
-          "codes": [
-            68
-          ],
-          "label": "D\\T˙",
+          "label": "D\\t˙",
           "sublabel": "ㄉ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 70,
-          "codes": [
-            70
-          ],
-          "label": "F\\Tˊ",
+          "label": "F\\tˊ",
           "sublabel": "ㄈ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 71,
-          "codes": [
-            71
-          ],
-          "label": "G\\Tㄓ",
+          "label": "G\\tㄓ",
           "sublabel": "ㄐ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 72,
-          "codes": [
-            72
-          ],
-          "label": "H\\Tㄏ",
+          "label": "H\\tㄏ",
           "sublabel": "ㄦ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 74,
-          "codes": [
-            74
-          ],
-          "label": "J\\Tˇ",
+          "label": "J\\tˇ",
           "sublabel": "ㄖ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 75,
-          "codes": [
-            75
-          ],
-          "label": "K\\Tˋ",
+          "label": "K\\tˋ",
           "sublabel": "ㄎ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 76,
-          "codes": [
-            76
-          ],
-          "label": "L\\Tㄌ",
+          "label": "L\\tㄌ",
           "sublabel": "ㄥ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
-          "code": 65307,
-          "codes": [
-            65307
-          ],
-          "label": "；",
+          "code": 65306,
+          "label": "；\\n：",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 65307
+        },
+        {
+          "code": 65292,
+          "label": "。\\n，",
+          "sublabel": "",
+          "widthPercent": 7.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": "",
+          "longPressCode": 12290
         },
         {
           "code": 10,
-          "codes": [
-            10
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 15.0,
+          "widthPercent": 11.5,
           "icon": "return",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         }
       ]
     },
@@ -646,179 +555,159 @@
       "keys": [
         {
           "code": -1,
-          "codes": [
-            -1
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 18.5,
-          "icon": "shift.fill",
+          "widthPercent": 15.0,
+          "icon": "sym_keyboard_shift_shifted",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": true,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 90,
-          "codes": [
-            90
-          ],
-          "label": "z",
+          "label": "Z",
           "sublabel": "ㄠ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 88,
-          "codes": [
-            88
-          ],
-          "label": "x",
+          "label": "X",
           "sublabel": "ㄨ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 67,
-          "codes": [
-            67
-          ],
-          "label": "C\\Tㄒ",
+          "label": "C\\tㄒ",
           "sublabel": "ㄕ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 86,
-          "codes": [
-            86
-          ],
-          "label": "V\\Tㄑ",
+          "label": "V\\tㄑ",
           "sublabel": "ㄍ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 66,
-          "codes": [
-            66
-          ],
-          "label": "b",
+          "label": "B",
           "sublabel": "ㄅ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 78,
-          "codes": [
-            78
-          ],
-          "label": "N\\Tㄋ",
+          "label": "N\\tㄋ",
           "sublabel": "ㄣ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 77,
-          "codes": [
-            77
-          ],
-          "label": "M\\Tㄇ",
+          "label": "M\\tㄇ",
           "sublabel": "ㄢ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 44,
-          "codes": [
-            44
-          ],
-          "label": ",",
+          "label": "<\\n,",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 60
         },
         {
           "code": 46,
-          "codes": [
-            46
-          ],
-          "label": ".",
+          "label": ">\\n.",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 62
+        },
+        {
+          "code": 47,
+          "label": "?\\n/",
+          "sublabel": "",
+          "widthPercent": 7.0,
+          "icon": "",
+          "isModifier": false,
+          "isRepeatable": false,
+          "isSticky": false,
+          "popupKeyboard": "",
+          "popupCharacters": "",
+          "longPressCode": 63
         },
         {
           "code": -1,
-          "codes": [
-            -1
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 18.5,
-          "icon": "shift.fill",
+          "widthPercent": 15.0,
+          "icon": "shift",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": true,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         }
       ]
     },
@@ -827,41 +716,32 @@
       "keys": [
         {
           "code": -200,
-          "codes": [
-            -200
-          ],
-          "label": "",
+          "label": "globe",
           "sublabel": "",
           "widthPercent": 8.0,
           "icon": "globe",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": -100,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": -100
         },
         {
           "code": -2,
-          "codes": [
-            -2
-          ],
-          "label": ".?123",
+          "label": "@string/label_symbol_key",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": -99,
-          "codes": [
-            -99
-          ],
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -869,63 +749,38 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 32,
-          "codes": [
-            32
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 50.0,
+          "widthPercent": 57.0,
           "icon": "space.bar",
           "isModifier": false,
-          "isRepeatable": false,
+          "isRepeatable": true,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
-        },
-        {
-          "code": 12290,
-          "codes": [
-            12290
-          ],
-          "label": "。",
-          "sublabel": "",
-          "widthPercent": 7.0,
-          "icon": "",
-          "isModifier": false,
-          "isRepeatable": false,
-          "isSticky": false,
-          "longPressCode": 0,
-          "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": -2,
-          "codes": [
-            -2
-          ],
-          "label": ".?123",
+          "label": "@string/label_symbol_key",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": -3,
-          "codes": [
-            -3
-          ],
           "label": "",
           "sublabel": "",
           "widthPercent": 8.0,
@@ -933,9 +788,9 @@
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": -100,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": -100
         }
       ]
     }

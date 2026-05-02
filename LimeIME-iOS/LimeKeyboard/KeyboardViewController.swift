@@ -100,6 +100,8 @@ final class KeyboardViewController: UIInputViewController {
     /// 1-pt vertical divider sitting just left of the expanded panel's collapse chevron,
     /// mirroring CandidateBarView.moreSep so the reserved zone matches the bar exactly.
     private var expandedMoreSep: UIView?
+    /// Dismiss (✕) button at the panel's top-left — mirrors CandidateBarView.dismissButton.
+    private var expandedDismissButton: UIButton?
     private let expandedSepWidth: CGFloat = LayoutMetrics.CandidateBar.dividerWidth
     /// Mirror of the candidate bar's keyname strip overlay. Pinned to the
     /// top of the expanded panel so when the user expands the candidate
@@ -712,8 +714,9 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar?.fontScale         = candidateFontScale
         candidateBar?.candidateSwitch   = candidateSwitch
         candidateBarHeightConstraint?.constant = candidateBarHeight
-        // Keep the expanded panel's collapse-chevron height in lockstep
-        // with the bar height. Width is a static constant.
+        // Keep the expanded panel's collapse chevron height in lockstep with
+        // the bar height. The dismiss button height is derived automatically
+        // via a relative constraint off collapseBtn, so no separate update needed.
         expandedCollapseHeightConstraint?.constant = candidateBarHeight
         let t = resolvedKeyboardTheme
         keyboardView?.theme  = t
@@ -735,6 +738,7 @@ final class KeyboardViewController: UIInputViewController {
         expandedCandidatesPanel?.backgroundColor = .clear
         expandedCollapseButton?.tintColor = pal.candiText
         expandedMoreSep?.backgroundColor = pal.candiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
+        expandedDismissButton?.tintColor = pal.candiText
         expandedComposingLabel?.font = candidateBar.composingStripFont
         expandedComposingLabel?.textColor = pal.candiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         if isExpandedCandidatesVisible { reloadExpandedCandidates() }
@@ -945,6 +949,30 @@ final class KeyboardViewController: UIInputViewController {
         expandedCollapseButton = collapseBtn
         expandedMoreSep = sep
 
+        // Dismiss button (✕) at the panel's top-left — mirrors CandidateBarView.dismissButton.
+        let dismissBtn = UIButton(type: .system)
+        let xmarkConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isOnPad), weight: .regular)
+        dismissBtn.setImage(UIImage(systemName: "xmark", withConfiguration: xmarkConfig), for: .normal)
+        dismissBtn.tintColor = pal.candiText
+        dismissBtn.backgroundColor = LayoutMetrics.TouchTrap.fill
+        dismissBtn.translatesAutoresizingMaskIntoConstraints = false
+        dismissBtn.addTarget(self, action: #selector(dismissExpandedAndComposing), for: .touchUpInside)
+        panel.addSubview(dismissBtn)
+
+        // Dismiss button: half chevron width, height = barHeight − stripHeight (tracks
+        // collapseBtn automatically), centered on glyph axis.  No contentEdgeInsets
+        // bias — the frame is already positioned at the glyph center.
+        NSLayoutConstraint.activate([
+            dismissBtn.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            dismissBtn.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor,
+                                                 constant: candidateBar.composingStripHeight / 2),
+            dismissBtn.heightAnchor.constraint(equalTo: collapseBtn.heightAnchor,
+                                                constant: -candidateBar.composingStripHeight),
+            dismissBtn.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad) / 2),
+        ])
+        expandedDismissButton = dismissBtn
+
         // Mirror the candidate bar's keyname strip overlay so the user
         // perceives the expanded panel as the bar growing in place — first
         // row stays pixel-identical (same composing keyname above, same
@@ -962,7 +990,7 @@ final class KeyboardViewController: UIInputViewController {
         stripLabel.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(stripLabel)
         NSLayoutConstraint.activate([
-            stripLabel.leadingAnchor.constraint(equalTo: panel.leadingAnchor,
+            stripLabel.leadingAnchor.constraint(equalTo: dismissBtn.trailingAnchor,
                                                 constant: LayoutMetrics.ComposingPopup.labelLeading),
             stripLabel.trailingAnchor.constraint(equalTo: sep.leadingAnchor,
                                                  constant: LayoutMetrics.ComposingPopup.labelTrailingInset),
@@ -1581,19 +1609,21 @@ final class KeyboardViewController: UIInputViewController {
         var rowH:         CGFloat = firstRowH
         var rowBias:      CGFloat = stripH / 2
         // Match CandidateBarView font sizing exactly: iPad = 26/22, iPhone = 22/16.
-        // Bar uses `UIDevice` (real iPad hardware); mirror the same source here so
-        // the expanded panel has identical glyph size to the unexpanded bar.
+        // Use isOnPad (traitCollection-based) so compatibility-mode iPhone apps on iPad
+        // use phone metrics consistently with CandidateBarView and KeyboardView.
         // IMPORTANT: composing-code records use PingFangTC-Regular (NOT monospaced
         // system) — same font as CandidateBarView.composingCodeFont — otherwise the
         // first item's glyph width differs and shifts the whole row horizontally.
-        let onPad         = UIDevice.current.userInterfaceIdiom == .pad
+        let onPad         = isOnPad
         let baseCandSize  = LayoutMetrics.ComposingPopup.candidateFontSize(isPad: onPad)
         let baseCompSize  = LayoutMetrics.ComposingPopup.composingCodeFontSize(isPad: onPad)
         let font          = UIFont.systemFont(ofSize: baseCandSize * candidateFontScale, weight: .regular)
         let composingFont = UIFont(name: "PingFangTC-Regular", size: baseCompSize * candidateFontScale)
             ?? UIFont.systemFont(ofSize: baseCompSize * candidateFontScale, weight: .regular)
 
-        var x: CGFloat = hPad
+        // Reserve the same leading zone as the collapsed bar's dismiss button on every row.
+        let dismissZone = LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad) / 2
+        var x: CGFloat = dismissZone + hPad
         var y: CGFloat = vPad
         var isFirstInRow = true
 
@@ -1630,7 +1660,7 @@ final class KeyboardViewController: UIInputViewController {
                     // Wrap to next row. Advance by the OLD row's height,
                     // then switch to the shorter rows-2+ height with no
                     // strip-bias.
-                    x = hPad
+                    x = dismissZone + hPad
                     y += rowH
                     rowH = restRowH
                     rowBias = 0
@@ -1704,6 +1734,12 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func collapseExpandedCandidates() {
         fireHapticIfEnabled()
         hideExpandedCandidates()
+    }
+
+    @objc private func dismissExpandedAndComposing() {
+        fireHapticIfEnabled()
+        hideExpandedCandidates()
+        cancelComposing()
     }
 
     /// Fires an impact haptic matching the current vibrateLevel, when vibrate preference
@@ -2877,6 +2913,11 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         } else {
             pickCandidateManually(mapping)
         }
+    }
+
+    func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
+        if isExpandedCandidatesVisible { hideExpandedCandidates() }
+        cancelComposing()
     }
 
     func candidateBarViewDidRequestMore(_ view: CandidateBarView) {

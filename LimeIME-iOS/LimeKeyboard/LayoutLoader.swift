@@ -72,7 +72,7 @@ final class LayoutLoader {
         // On iPad, try the "_ipad" variant first; fall back to the phone layout.
         // Use the host app's idiom (set by the controller), not UIDevice — an
         // iPhone-only app running on iPad must use the iPhone layout.
-        if hostIsPad, !id.hasSuffix("_ipad") {
+        if hostIsPad, !id.contains("_ipad") {
             if let padLayout = parseFromBundle(id: id + "_ipad") {
                 lock.lock()
                 cache[id] = padLayout

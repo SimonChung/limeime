@@ -350,3 +350,165 @@ will visibly judder. Test by:
 3. Change `font_size` in Settings while the panel is open. Row 1 should
    resize in step with the bar; rows 2+ should resize proportionally.
 4. Collapse the panel. The bar should be where it was before expansion.
+
+---
+
+## 7. Dismiss button — left-end clear control
+
+### Purpose
+
+A dismiss (✕) button at the **leading edge** of the candidate bar lets
+the user cancel the current composing session in one tap — clearing
+`mComposing` without modifying the document and hiding the candidate
+list. The same button appears on the expanded panel's top-left corner.
+
+### Bar layout
+
+```
+ ┌──┬───────────────────────────────────────────────────────┬─┬─────┐
+ │  │ ㄉㄚˊ                                                │ │     │   ← keyname strip (top)
+ │✕ │ ──────────────────────────────────────────────────── │ │  ▾  │
+ │  │   答    打    搭    達    大    ...                   │ │     │
+ └──┴───────────────────────────────────────────────────────┴─┴─────┘
+   ↑                                                        ↑ ↑     ↑
+dismiss btn                                            moreSep │  trailing
+(no sep after)                                          chevron btn
+```
+
+The dismiss button is **narrower** than the chevron and does **not**
+span the full bar height — it sits in the glyph zone only. There is no
+separator between the dismiss button and the scroll view.
+
+### Geometry
+
+| Property | Value | Rationale |
+|---|---|---|
+| Width | `Chevron.buttonWidth(isPad:) / 2` (20pt iPhone, 26pt iPad) | Compact; less horizontal space consumed |
+| Height | `barHeight − stripHeight = restRowH` (36pt iPhone, 46pt iPad) | Covers glyph + top/bottom padding; excludes strip zone |
+| Center Y | `barCenterY + stripHeight / 2` | Aligned with the candidate glyph axis |
+| Icon | `xmark` SF Symbol, `iconSize` = same as chevron | Reuses existing constant |
+| `contentEdgeInsets` bias | **none** | Frame is already positioned at glyph center; no shift needed |
+| Background | `candiText` at 10 % alpha, `cornerRadius` 6, `masksToBounds` | Makes button extent visible; no separator needed |
+
+#### Where the dismiss button sits (iPhone, fontScale 1.0)
+
+```
+y =  0  ┬── bar.top / strip.top
+        │   ㄉㄚˊ  (keyname strip, 22pt)
+y = 22  ┼── strip.bottom    ← dismissButton.top
+        │   7pt top padding   │
+y = 29  ┼── glyph.top         │  height = restRowH = 36pt
+        │   答  (~22pt)        │
+y = 51  ┼── glyph.bottom      │
+        │   7pt bot padding   │
+y = 58  ┴── bar.bottom      ← dismissButton.bottom
+```
+
+The button is symmetric around the glyph center (y = 40), covering
+both padding bands but stopping at the strip boundary above.
+
+### Constraints in `CandidateBarView`
+
+```swift
+dismissButton.leadingAnchor.constraint(equalTo: leadingAnchor)
+dismissButton.centerYAnchor.constraint(equalTo: centerYAnchor,
+    constant: composingStripHeight / 2)
+dismissButton.heightAnchor.constraint(equalTo: heightAnchor,
+    constant: -composingStripHeight)
+dismissButton.widthAnchor.constraint(equalToConstant:
+    Chevron.buttonWidth(isPad:) / 2)
+```
+
+Downstream anchors that moved:
+
+| Anchor | Old value | New value |
+|---|---|---|
+| `scrollView.leadingAnchor` | `bar.leadingAnchor` | `dismissButton.trailingAnchor` |
+| `composingLabel.leadingAnchor` | `bar.leadingAnchor + labelLeading` | `dismissButton.trailingAnchor + labelLeading` |
+
+### Visibility lifecycle
+
+`dismissButton.isHidden` is toggled with `moreButton` / `moreSep` in
+`rebuildButtons()` — hidden when there are no candidates.
+
+### Delegate
+
+```swift
+protocol CandidateBarViewDelegate: AnyObject {
+    func candidateBarView(_ view: CandidateBarView, didSelect mapping: Mapping)
+    func candidateBarViewDidRequestMore(_ view: CandidateBarView)
+    func candidateBarViewDidRequestDismiss(_ view: CandidateBarView)
+}
+```
+
+`dismissTapped()` fires `delegate?.candidateBarViewDidRequestDismiss(self)`.
+
+### Action in `KeyboardViewController`
+
+```swift
+func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
+    if isExpandedCandidatesVisible { hideExpandedCandidates() }
+    cancelComposing()
+}
+```
+
+`cancelComposing()` clears `mComposing`, empties the candidate list,
+and hides the composing popup — no new clearing logic needed.
+
+### Expanded panel — dismiss button at top-left
+
+The panel's dismiss button uses **relative constraints off `collapseBtn`**
+so it tracks font-scale changes automatically without a live constraint ref:
+
+```swift
+dismissBtn.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor,
+    constant: candidateBar.composingStripHeight / 2)
+dismissBtn.heightAnchor.constraint(equalTo: collapseBtn.heightAnchor,
+    constant: -candidateBar.composingStripHeight)
+dismissBtn.widthAnchor.constraint(equalToConstant:
+    Chevron.buttonWidth(isPad:) / 2)
+```
+
+When `expandedCollapseHeightConstraint.constant` is updated (font-scale
+change), the dismiss button height and center follow automatically —
+no separate `expandedDismissHeightConstraint` is needed.
+
+### Row lead offset
+
+The `dismissZone` uses half the chevron width (matching the actual
+button) so panel row 1 starts at the same X as the collapsed bar:
+
+```swift
+let dismissZone = Chevron.buttonWidth(isPad: isOnPad) / 2   // = actual button width
+var x: CGFloat  = dismissZone + hPad   // every row, including wraps
+let rowMaxX     = panelWidth - chevronZone - expandedSepWidth  // unchanged
+```
+
+### Invariants preserved
+
++ **Row 1 pixel-identical to bar**: `dismissZone` = dismiss button width (no sep),
+  matching the bar's leading region exactly.
++ **Rows 2+ no wasted strip space**: `restRowH` unchanged; only `rowLeadX`
+  shifts the start X.
++ **Font-scale live**: dismiss button height auto-derives from
+  `collapseBtn` via relative constraints; no additional update call needed.
+
+### Files modified
+
+| File | Change summary |
+| --- | --- |
+| `LimeIME-iOS/LimeKeyboard/CandidateBarView.swift` | Add `dismissButton`; new delegate method; updated leading constraints; visibility toggled with `moreButton` |
+| `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift` | Implement `candidateBarViewDidRequestDismiss`; add dismiss btn to panel with relative constraints off `collapseBtn`; `dismissZone` in `reloadExpandedCandidates` |
+
+No new `LayoutMetrics` constants — `Chevron.buttonWidth`, `Chevron.iconSize`,
+`CandidateBar.dividerWidth`, and `CandidateBar.dividerHeight` are reused.
+
+### Verification
+
+1. Start composing → bar shows dismiss (✕) at left, chevron (▾) at right.
+2. Tap ✕ → composing cleared, candidate bar empties.
+3. Tap ▾ to expand → panel row 1 pixel-identical to bar (same leading zone).
+4. Tap ✕ in expanded panel → panel collapses AND composing clears.
+5. Change `font_size` in Settings while panel open → dismiss button height
+   tracks bar height with no layout drift.
+6. iPhone 20 × 36 pt; iPad 26 × 46 pt (at fontScale 1.0).

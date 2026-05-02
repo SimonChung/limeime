@@ -387,7 +387,7 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
     return row
 
 
-def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None):
+def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None, has_digit_row=True):
     """Detect the qwerty row (last primary code = p/112 or P/80).
 
     Leftmost position:  source \\ (92) if present, else |\\n、 fallback (12289→124).
@@ -445,20 +445,29 @@ def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None):
             "longPressCode": 12303,
         })
 
-    # Rightmost: \ (source) or |\n、 fallback.
-    if backslash is not None:
-        bs = normalise_key(copy.deepcopy(backslash))
-        bs["widthPercent"] = W
-        if not bs.get("sublabel", ""):
-            bs["label"] = "|\\n\\"
-            bs["longPressCode"] = 124
-        keys.append(bs)
+    # Rightmost: \ (source) or |\n、 fallback when digit row exists;
+    # ⌫ when no digit row (qwerty row carries delete instead of \).
+    if has_digit_row:
+        if backslash is not None:
+            bs = normalise_key(copy.deepcopy(backslash))
+            bs["widthPercent"] = W
+            if not bs.get("sublabel", ""):
+                bs["label"] = "|\\n\\"
+                bs["longPressCode"] = 124
+            keys.append(bs)
+        else:
+            keys.append({
+                "code": 12289, "label": "|\\n、", "sublabel": "", "widthPercent": W,
+                "icon": "", "isModifier": False, "isRepeatable": False,
+                "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
+                "longPressCode": 124,
+            })
     else:
         keys.append({
-            "code": 12289, "label": "|\\n、", "sublabel": "", "widthPercent": W,
-            "icon": "", "isModifier": False, "isRepeatable": False,
+            "code": -5, "label": "", "sublabel": "", "widthPercent": W,
+            "icon": "delete.backward", "isModifier": True, "isRepeatable": True,
             "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
-            "longPressCode": 124,
+            "longPressCode": 0,
         })
 
     return row
@@ -675,147 +684,6 @@ def ensure_zxcv_shifts(row, extra_keys=None):
     return row
 
 
-# -------------------------------------------------------------------------
-# Special transform for 3-content-row IM layouts that have no digit/symbol
-# top row: lime_array, lime_array_shift, lime_cj, lime_cj_shift.
-#
-# Source structure → iPad output:
-#   Row 0  qwerty (q–p/Q–P)    →  qwerty + ⌫ appended (width 30 %)
-#   Row 1  asdf   (a–;/l/L)    →  Tab + asdf letters + CJK bracket sliders
-#   Row 2  zxcv   (z–m, ±shift →  abc + zxcv letters + ；\n：+ ↩
-#                  ±delete)       (leading shift and trailing delete removed)
-#   [optional] Row 3 : shift / spacer / shift — generated when the source
-#              zxcv had no leading shift(-1), to give users a shift tap-target.
-#   Row 4  IPAD_BOTTOM_ROW  (appended by the caller)
-#
-# All added keys use 7 % width; scale_row_to_100 normalises each row.
-# -------------------------------------------------------------------------
-def transform_no_digit_im_rows(content_rows):
-    """Transform 3 content rows from a no-digit-row IM layout into iPad rows.
-
-    Returns a list of 3–4 row dicts; the caller appends IPAD_BOTTOM_ROW.
-    """
-    if len(content_rows) < 3:
-        return [copy.deepcopy(r) for r in content_rows]
-
-    qwerty = copy.deepcopy(content_rows[0])
-    asdf   = copy.deepcopy(content_rows[1])
-    zxcv   = copy.deepcopy(content_rows[2])
-
-    for r in (qwerty, asdf, zxcv):
-        r["keys"] = [normalise_key(k) for k in r["keys"]]
-
-    had_native_shift = bool(zxcv["keys"]) and zxcv["keys"][0].get("code") == -1
-
-    # Row 0: Tab + q-p + 『\n「 + 』\n」 + ⌫  (total = 14)
-    qk = qwerty["keys"]
-    qk.insert(0, {
-        "code": 9, "label": "", "sublabel": "", "widthPercent": 7.0,
-        "icon": "arrow.forward.to.line", "isModifier": True, "isRepeatable": False,
-        "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
-        "longPressCode": 0,
-    })
-    qk.append({
-        "code": 12300, "label": "『\\n「", "sublabel": "", "widthPercent": 7.0,
-        "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 12302,
-    })
-    qk.append({
-        "code": 12301, "label": "』\\n」", "sublabel": "", "widthPercent": 7.0,
-        "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 12303,
-    })
-    qk.append({
-        "code": -5, "label": "", "sublabel": "", "widthPercent": 7.0,
-        "icon": "delete.backward", "isModifier": True, "isRepeatable": True,
-        "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
-        "longPressCode": 0,
-    })
-
-    # Row 1: abc + asdf letters + ；\n：(replace/append) + 。\n，+ ↩  (total = 13)
-    # `;`(59) or `:`(58) with IM sublabel: left unchanged (acts as last letter key).
-    # `;`/`:` without sublabel: upgraded to ；\n：in-place.
-    # Neither present: ；\n：appended.
-    ak = asdf["keys"]
-    ak.insert(0, {
-        "code": -9, "label": "abc", "sublabel": "", "widthPercent": 7.0,
-        "icon": "", "isModifier": True, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
-    })
-    last_code = ak[-1].get("code") if ak else None
-    if last_code in (58, 59):
-        lk = ak[-1]
-        if not lk.get("sublabel", ""):
-            lk["code"]          = 65306
-            lk["label"]         = "；\\n："
-            lk["longPressCode"] = 65307
-        # else: IM component (e.g. array 0−) — leave unchanged
-    else:
-        ak.append({
-            "code": 65306, "label": "；\\n：", "sublabel": "", "widthPercent": 7.0,
-            "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
-            "popupKeyboard": "", "popupCharacters": "", "longPressCode": 65307,
-        })
-    ak.append({
-        "code": 65292, "label": "。\\n，", "sublabel": "", "widthPercent": 7.0,
-        "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 12290,
-    })
-    ak.append({
-        "code": 10, "label": "", "sublabel": "", "widthPercent": 7.0,
-        "icon": "return", "isModifier": True, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
-    })
-
-    # Row 2: abc + zxcv letters (leading shift / trailing delete removed) + ↩  (total = 12)
-    # apply_zxcv_punct_sliding (called below) inserts <\n, >\n. ?\n/ if ,. / are missing
-    # and their shift-layer equivalents (<>?) are not already present.
-    zk = zxcv["keys"]
-    if zk and zk[0].get("code") == -1:
-        zk.pop(0)   # remove leading shift
-    if zk and zk[-1].get("code") == -5:
-        zk.pop()    # remove trailing delete
-    zk.insert(0, {
-        "code": -9, "label": "abc", "sublabel": "", "widthPercent": 7.0,
-        "icon": "", "isModifier": True, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
-    })
-    zk.append({
-        "code": 10, "label": "", "sublabel": "", "widthPercent": 7.0,
-        "icon": "return", "isModifier": True, "isRepeatable": False, "isSticky": False,
-        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
-    })
-
-    zxcv = apply_zxcv_punct_sliding(zxcv)
-
-    result = [
-        normalize_im_row_widths(qwerty),
-        normalize_im_row_widths(asdf),
-        normalize_im_row_widths(zxcv),
-    ]
-
-    if not had_native_shift:
-        # Source zxcv had no shift key (e.g. lime_array whose shift lived in
-        # the phone bottom row).  Generate a shift / spacer / shift row.
-        result.append({
-            "isBottomRow": False,
-            "keys": [
-                {"code": -1, "label": "", "sublabel": "", "widthPercent": 46.5,
-                 "icon": "shift", "isModifier": True, "isRepeatable": False,
-                 "isSticky": True, "popupKeyboard": "", "popupCharacters": "",
-                 "longPressCode": 0},
-                {"code":  0, "label": "", "sublabel": "", "widthPercent":  7.0,
-                 "icon": "", "isModifier": False, "isRepeatable": False,
-                 "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
-                 "longPressCode": 0},
-                {"code": -1, "label": "", "sublabel": "", "widthPercent": 46.5,
-                 "icon": "shift", "isModifier": True, "isRepeatable": False,
-                 "isSticky": True, "popupKeyboard": "", "popupCharacters": "",
-                 "longPressCode": 0},
-            ]
-        })
-    return result
-
 
 # -------------------------------------------------------------------------
 # Helper: scale widths in a row proportionally so they sum to 100.0.
@@ -904,7 +772,10 @@ def _make_bottom_row(is_wb=False):
 # -------------------------------------------------------------------------
 def make_ipad_layout(phone, source_id):
     ipad = {}
-    ipad["id"] = source_id + "_ipad"
+    if source_id.endswith("_shift"):
+        ipad["id"] = source_id[:-6] + "_ipad_shift"
+    else:
+        ipad["id"] = source_id + "_ipad"
     ipad["defaultWidthPercent"] = 7.0
 
     rows_in  = phone.get("rows", [])
@@ -919,66 +790,60 @@ def make_ipad_layout(phone, source_id):
 
     content_rows = [r for r in rows_in if not r.get("isBottomRow", False)]
 
-    # has_standard_top_row: True when the layout opens with a 1–0 digit
-    # row or a !@#… symbol-shift row — the canonical 4-row IM structure.
-    has_standard_top_row = any(
+    # has_digit_row: True for layouts with a 1–0 or !@#… top row (standard IM).
+    # False for 3-row layouts without a digit row (lime_array, lime_cj family).
+    # The only behavioural difference is the qwerty row rightmost key:
+    #   has_digit_row=True  → \ / |\n、 fallback
+    #   has_digit_row=False → ⌫
+    has_digit_row = any(
         is_number_top_row(r) or is_symbol_top_row(r)
         for r in content_rows
     )
 
-    if not has_standard_top_row and len(content_rows) == 3:
-        # 3-row no-digit IM layout (lime_array, lime_cj, and shifts).
-        transformed = transform_no_digit_im_rows(content_rows)
-        rows_out.extend(transformed)
+    # Excluded from zxcv promotion:
+    #   45(-) 61(=)         → digit row
+    #   91([) 92(\) 93(])   → qwerty row
+    #   58(:) 59(;)         → belong in asdf row; shift-layer IM components
+    #   95(_) 43(+)         → shift of -/=, belong in digit row shift layer
+    bottom_syms = harvest_bottom_row_symbols(phone, exclude_codes=(45, 61, 91, 92, 93, 58, 59, 95, 43))
+    digit_dash  = dash_key
+
+    had_bottom_row = False
+    for row in rows_in:
+        row = copy.deepcopy(row)
+        if row.get("isBottomRow", False):
+            rows_out.append(_make_bottom_row(is_wb))
+            had_bottom_row = True
+            continue
+
+        row = strip_promoted_keys(row)
+        if is_wb:
+            # wb source has a -2 (123) shortcut in its content row.
+            # On iPad that slot becomes abc(-9) — the content row gives
+            # users a direct return to alphabetic mode, and the standard
+            # bottom row supplies 123 for symbol access.
+            for k in row["keys"]:
+                if k.get("code") == -2:
+                    k["code"]  = -9
+                    k["label"] = "abc"
+                    k["icon"]  = ""
+                    break
+        row["keys"] = [normalise_key(k) for k in row["keys"]]
+
+        row = augment_im_digit_row(row, digit_dash, layout_dash_key=dash_key, eq_key=eq_key)
+        row = transform_qwerty_row(row, lbracket=lbracket, backslash=backslash, rbracket=rbracket, has_digit_row=has_digit_row)
+        row = prepend_abc_modifier(row)
+        row = append_semicolon_key(row)
+        row = append_fullshape_period(row)
+        row = append_enter_key(row)
+        row = ensure_zxcv_shifts(row, extra_keys=bottom_syms)
+        row = apply_zxcv_punct_sliding(row)
+
+        rows_out.append(normalise_row(row))
+
+    # No-digit layouts (lime_array, lime_cj family) have no isBottomRow source row.
+    if not had_bottom_row:
         rows_out.append(_make_bottom_row(is_wb))
-
-    else:
-        # 4-row standard IM layout — apply per-row pipeline.
-        #
-        # Determine where bottom-row symbols go:
-        #   zxcv_deletes=True  → all bottom symbols → zxcv row (hs style)
-        #   zxcv_deletes=False → dash → digit row; other extras → zxcv
-        zxcv_deletes = source_zxcv_ends_with_delete(rows_in)
-        # -, =, [, \, ] are all moved to fixed iPad rows; strip from zxcv promotion.
-        # Excluded from zxcv promotion:
-        #   45(-) 61(=)         → digit row
-        #   91([) 92(\) 93(])   → qwerty row
-        #   58(:) 59(;)         → belong in asdf row; shift-layer IM components
-        #   95(_) 43(+)         → shift of -/=, belong in digit row shift layer
-        bottom_syms = harvest_bottom_row_symbols(phone, exclude_codes=(45, 61, 91, 92, 93, 58, 59, 95, 43))
-        digit_dash  = dash_key
-
-        for row in rows_in:
-            row = copy.deepcopy(row)
-            if row.get("isBottomRow", False):
-                rows_out.append(_make_bottom_row(is_wb))
-                continue
-
-            row = strip_promoted_keys(row)
-            if is_wb:
-                # wb source has a -2 (123) shortcut in its content row.
-                # On iPad that slot becomes abc(-9) — the content row gives
-                # users a direct return to alphabetic mode, and the standard
-                # bottom row supplies 123 for symbol access.
-                for k in row["keys"]:
-                    if k.get("code") == -2:
-                        k["code"]  = -9
-                        k["label"] = "abc"
-                        k["icon"]  = ""
-                        break
-            row["keys"] = [normalise_key(k) for k in row["keys"]]
-
-            if has_standard_top_row:
-                row = augment_im_digit_row(row, digit_dash, layout_dash_key=dash_key, eq_key=eq_key)
-                row = transform_qwerty_row(row, lbracket=lbracket, backslash=backslash, rbracket=rbracket)
-                row = prepend_abc_modifier(row)
-                row = append_semicolon_key(row)
-                row = append_fullshape_period(row)
-                row = append_enter_key(row)
-                row = ensure_zxcv_shifts(row, extra_keys=bottom_syms)
-                row = apply_zxcv_punct_sliding(row)
-
-            rows_out.append(normalise_row(row))
 
     ipad["rows"] = rows_out
     return ipad
@@ -990,43 +855,43 @@ def make_ipad_layout(phone, source_id):
 JOBS = [
     # lime_phonetic
     ("lime_phonetic",         "lime_phonetic_ipad"),
-    ("lime_phonetic_shift",   "lime_phonetic_shift_ipad"),
+    ("lime_phonetic_shift",   "lime_phonetic_ipad_shift"),
     # lime_array
     ("lime_array",            "lime_array_ipad"),
-    ("lime_array_shift",      "lime_array_shift_ipad"),
+    ("lime_array_shift",      "lime_array_ipad_shift"),
     # lime_array_number
     ("lime_array_number",     "lime_array_number_ipad"),
-    ("lime_array_number_shift","lime_array_number_shift_ipad"),
+    ("lime_array_number_shift","lime_array_number_ipad_shift"),
     # lime_cj
     ("lime_cj",               "lime_cj_ipad"),
-    ("lime_cj_shift",         "lime_cj_shift_ipad"),
+    ("lime_cj_shift",         "lime_cj_ipad_shift"),
     # lime_cj_number
     ("lime_cj_number",        "lime_cj_number_ipad"),
-    ("lime_cj_number_shift",  "lime_cj_number_shift_ipad"),
+    ("lime_cj_number_shift",  "lime_cj_number_ipad_shift"),
     # lime_dayi
     ("lime_dayi",             "lime_dayi_ipad"),
-    ("lime_dayi_shift",       "lime_dayi_shift_ipad"),
+    ("lime_dayi_shift",       "lime_dayi_ipad_shift"),
     # lime_dayi_sym
     ("lime_dayi_sym",         "lime_dayi_sym_ipad"),
-    ("lime_dayi_sym_shift",   "lime_dayi_sym_shift_ipad"),
+    ("lime_dayi_sym_shift",   "lime_dayi_sym_ipad_shift"),
     # lime_et26
     ("lime_et26",             "lime_et26_ipad"),
-    ("lime_et26_shift",       "lime_et26_shift_ipad"),
+    ("lime_et26_shift",       "lime_et26_ipad_shift"),
     # lime_et_41
     ("lime_et_41",            "lime_et_41_ipad"),
-    ("lime_et_41_shift",      "lime_et_41_shift_ipad"),
+    ("lime_et_41_shift",      "lime_et_41_ipad_shift"),
     # lime_ez
     ("lime_ez",               "lime_ez_ipad"),
-    ("lime_ez_shift",         "lime_ez_shift_ipad"),
+    ("lime_ez_shift",         "lime_ez_ipad_shift"),
     # lime_hs
     ("lime_hs",               "lime_hs_ipad"),
-    ("lime_hs_shift",         "lime_hs_shift_ipad"),
+    ("lime_hs_shift",         "lime_hs_ipad_shift"),
     # lime_hsu
     ("lime_hsu",              "lime_hsu_ipad"),
-    ("lime_hsu_shift",        "lime_hsu_shift_ipad"),
+    ("lime_hsu_shift",        "lime_hsu_ipad_shift"),
     # lime_wb
     ("lime_wb",               "lime_wb_ipad"),
-    ("lime_wb_shift",         "lime_wb_shift_ipad"),
+    ("lime_wb_shift",         "lime_wb_ipad_shift"),
 ]
 
 

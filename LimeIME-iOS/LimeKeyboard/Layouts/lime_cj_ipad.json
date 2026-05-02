@@ -367,14 +367,14 @@
       "isBottomRow": false,
       "keys": [
         {
-          "code": -9,
-          "label": "abc",
+          "code": -1,
+          "label": "",
           "sublabel": "",
           "widthPercent": 15.0,
-          "icon": "",
+          "icon": "shift",
           "isModifier": true,
           "isRepeatable": false,
-          "isSticky": false,
+          "isSticky": true,
           "popupKeyboard": "",
           "popupCharacters": "",
           "longPressCode": 0
@@ -492,7 +492,7 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "",
+          "popupKeyboard": "@xml/popup_c_punctuation",
           "popupCharacters": "",
           "longPressCode": 62
         },
@@ -510,14 +510,14 @@
           "longPressCode": 63
         },
         {
-          "code": 10,
+          "code": -1,
           "label": "",
           "sublabel": "",
           "widthPercent": 15.0,
-          "icon": "return",
+          "icon": "shift",
           "isModifier": true,
           "isRepeatable": false,
-          "isSticky": false,
+          "isSticky": true,
           "popupKeyboard": "",
           "popupCharacters": "",
           "longPressCode": 0

@@ -251,9 +251,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 113,
+          "code": 81,
           "codes": [
-            113
+            81
           ],
           "label": "Q",
           "sublabel": "",
@@ -267,9 +267,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 119,
+          "code": 87,
           "codes": [
-            119
+            87
           ],
           "label": "W",
           "sublabel": "",
@@ -283,9 +283,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 101,
+          "code": 69,
           "codes": [
-            101
+            69
           ],
           "label": "E",
           "sublabel": "",
@@ -299,9 +299,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 114,
+          "code": 82,
           "codes": [
-            114
+            82
           ],
           "label": "R",
           "sublabel": "",
@@ -315,9 +315,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 116,
+          "code": 84,
           "codes": [
-            116
+            84
           ],
           "label": "T",
           "sublabel": "",
@@ -331,9 +331,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 121,
+          "code": 89,
           "codes": [
-            121
+            89
           ],
           "label": "Y",
           "sublabel": "",
@@ -347,9 +347,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 117,
+          "code": 85,
           "codes": [
-            117
+            85
           ],
           "label": "U",
           "sublabel": "",
@@ -363,9 +363,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 105,
+          "code": 73,
           "codes": [
-            105
+            73
           ],
           "label": "I",
           "sublabel": "",
@@ -379,9 +379,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 111,
+          "code": 79,
           "codes": [
-            111
+            79
           ],
           "label": "O",
           "sublabel": "",
@@ -395,9 +395,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 112,
+          "code": 80,
           "codes": [
-            112
+            80
           ],
           "label": "P",
           "sublabel": "",
@@ -480,9 +480,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 97,
+          "code": 65,
           "codes": [
-            97
+            65
           ],
           "label": "A",
           "sublabel": "",
@@ -496,9 +496,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 115,
+          "code": 83,
           "codes": [
-            115
+            83
           ],
           "label": "S",
           "sublabel": "",
@@ -512,9 +512,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 100,
+          "code": 68,
           "codes": [
-            100
+            68
           ],
           "label": "D",
           "sublabel": "",
@@ -528,9 +528,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 102,
+          "code": 70,
           "codes": [
-            102
+            70
           ],
           "label": "F",
           "sublabel": "",
@@ -544,9 +544,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 103,
+          "code": 71,
           "codes": [
-            103
+            71
           ],
           "label": "G",
           "sublabel": "",
@@ -560,9 +560,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 104,
+          "code": 72,
           "codes": [
-            104
+            72
           ],
           "label": "H",
           "sublabel": "",
@@ -576,9 +576,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 106,
+          "code": 74,
           "codes": [
-            106
+            74
           ],
           "label": "J",
           "sublabel": "",
@@ -592,9 +592,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 107,
+          "code": 75,
           "codes": [
-            107
+            75
           ],
           "label": "K",
           "sublabel": "",
@@ -608,9 +608,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 108,
+          "code": 76,
           "codes": [
-            108
+            76
           ],
           "label": "L",
           "sublabel": "",
@@ -693,9 +693,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 122,
+          "code": 90,
           "codes": [
-            122
+            90
           ],
           "label": "Z",
           "sublabel": "",
@@ -709,9 +709,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 120,
+          "code": 88,
           "codes": [
-            120
+            88
           ],
           "label": "X",
           "sublabel": "",
@@ -725,9 +725,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 99,
+          "code": 67,
           "codes": [
-            99
+            67
           ],
           "label": "C",
           "sublabel": "",
@@ -741,9 +741,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 118,
+          "code": 86,
           "codes": [
-            118
+            86
           ],
           "label": "V",
           "sublabel": "",
@@ -757,9 +757,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 98,
+          "code": 66,
           "codes": [
-            98
+            66
           ],
           "label": "B",
           "sublabel": "",
@@ -773,9 +773,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 110,
+          "code": 78,
           "codes": [
-            110
+            78
           ],
           "label": "N",
           "sublabel": "",
@@ -789,9 +789,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 109,
+          "code": 77,
           "codes": [
-            109
+            77
           ],
           "label": "M",
           "sublabel": "",

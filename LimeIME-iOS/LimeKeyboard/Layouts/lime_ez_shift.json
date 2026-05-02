@@ -132,7 +132,7 @@
       "keys": [
         {
           "code": 81,
-          "label": "q",
+          "label": "Q",
           "sublabel": "石",
           "widthPercent": 10.0,
           "icon": "",
@@ -144,7 +144,7 @@
         },
         {
           "code": 97,
-          "label": "w",
+          "label": "W",
           "sublabel": "山",
           "widthPercent": 10.0,
           "icon": "",
@@ -156,7 +156,7 @@
         },
         {
           "code": 69,
-          "label": "e",
+          "label": "E",
           "sublabel": "一",
           "widthPercent": 10.0,
           "icon": "",
@@ -168,7 +168,7 @@
         },
         {
           "code": 82,
-          "label": "r",
+          "label": "R",
           "sublabel": "工",
           "widthPercent": 10.0,
           "icon": "",
@@ -180,7 +180,7 @@
         },
         {
           "code": 84,
-          "label": "t",
+          "label": "T",
           "sublabel": "糸",
           "widthPercent": 10.0,
           "icon": "",
@@ -192,7 +192,7 @@
         },
         {
           "code": 89,
-          "label": "y",
+          "label": "Y",
           "sublabel": "火",
           "widthPercent": 10.0,
           "icon": "",
@@ -204,7 +204,7 @@
         },
         {
           "code": 85,
-          "label": "u",
+          "label": "U",
           "sublabel": "艸",
           "widthPercent": 10.0,
           "icon": "",
@@ -216,7 +216,7 @@
         },
         {
           "code": 73,
-          "label": "i",
+          "label": "I",
           "sublabel": "木",
           "widthPercent": 10.0,
           "icon": "",
@@ -228,7 +228,7 @@
         },
         {
           "code": 79,
-          "label": "o",
+          "label": "O",
           "sublabel": "口",
           "widthPercent": 10.0,
           "icon": "",
@@ -240,7 +240,7 @@
         },
         {
           "code": 80,
-          "label": "p",
+          "label": "P",
           "sublabel": "耳",
           "widthPercent": 10.0,
           "icon": "",
@@ -257,7 +257,7 @@
       "keys": [
         {
           "code": 65,
-          "label": "a",
+          "label": "A",
           "sublabel": "日",
           "widthPercent": 10.0,
           "icon": "",
@@ -269,7 +269,7 @@
         },
         {
           "code": 83,
-          "label": "s",
+          "label": "S",
           "sublabel": "尸",
           "widthPercent": 10.0,
           "icon": "",
@@ -281,7 +281,7 @@
         },
         {
           "code": 68,
-          "label": "d",
+          "label": "D",
           "sublabel": "木",
           "widthPercent": 10.0,
           "icon": "",
@@ -293,7 +293,7 @@
         },
         {
           "code": 70,
-          "label": "f",
+          "label": "F",
           "sublabel": "火",
           "widthPercent": 10.0,
           "icon": "",
@@ -305,7 +305,7 @@
         },
         {
           "code": 71,
-          "label": "g",
+          "label": "G",
           "sublabel": "土",
           "widthPercent": 10.0,
           "icon": "",
@@ -317,7 +317,7 @@
         },
         {
           "code": 72,
-          "label": "h",
+          "label": "H",
           "sublabel": "竹",
           "widthPercent": 10.0,
           "icon": "",
@@ -329,7 +329,7 @@
         },
         {
           "code": 74,
-          "label": "j",
+          "label": "J",
           "sublabel": "十",
           "widthPercent": 10.0,
           "icon": "",
@@ -341,7 +341,7 @@
         },
         {
           "code": 75,
-          "label": "k",
+          "label": "K",
           "sublabel": "大",
           "widthPercent": 10.0,
           "icon": "",
@@ -353,7 +353,7 @@
         },
         {
           "code": 76,
-          "label": "l",
+          "label": "L",
           "sublabel": "中",
           "widthPercent": 10.0,
           "icon": "",
@@ -394,7 +394,7 @@
         },
         {
           "code": 90,
-          "label": "z",
+          "label": "Z",
           "sublabel": "Ｚ",
           "widthPercent": 10.0,
           "icon": "",
@@ -406,7 +406,7 @@
         },
         {
           "code": 88,
-          "label": "x",
+          "label": "X",
           "sublabel": "又",
           "widthPercent": 10.0,
           "icon": "",
@@ -418,7 +418,7 @@
         },
         {
           "code": 67,
-          "label": "c",
+          "label": "C",
           "sublabel": "金",
           "widthPercent": 10.0,
           "icon": "",
@@ -430,7 +430,7 @@
         },
         {
           "code": 86,
-          "label": "v",
+          "label": "V",
           "sublabel": "女",
           "widthPercent": 10.0,
           "icon": "",
@@ -442,7 +442,7 @@
         },
         {
           "code": 66,
-          "label": "b",
+          "label": "B",
           "sublabel": "月",
           "widthPercent": 10.0,
           "icon": "",
@@ -454,7 +454,7 @@
         },
         {
           "code": 78,
-          "label": "n",
+          "label": "N",
           "sublabel": "弓",
           "widthPercent": 10.0,
           "icon": "",
@@ -466,7 +466,7 @@
         },
         {
           "code": 77,
-          "label": "m",
+          "label": "M",
           "sublabel": "一",
           "widthPercent": 10.0,
           "icon": "",

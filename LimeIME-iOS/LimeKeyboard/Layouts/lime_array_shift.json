@@ -7,7 +7,7 @@
       "keys": [
         {
           "code": 81,
-          "label": "q",
+          "label": "Q",
           "sublabel": "1⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -19,7 +19,7 @@
         },
         {
           "code": 87,
-          "label": "w",
+          "label": "W",
           "sublabel": "2⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -31,7 +31,7 @@
         },
         {
           "code": 69,
-          "label": "e",
+          "label": "E",
           "sublabel": "3⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -43,7 +43,7 @@
         },
         {
           "code": 82,
-          "label": "r",
+          "label": "R",
           "sublabel": "4⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -55,7 +55,7 @@
         },
         {
           "code": 84,
-          "label": "t",
+          "label": "T",
           "sublabel": "5⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -67,7 +67,7 @@
         },
         {
           "code": 89,
-          "label": "y",
+          "label": "Y",
           "sublabel": "6⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -79,7 +79,7 @@
         },
         {
           "code": 85,
-          "label": "u",
+          "label": "U",
           "sublabel": "7⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -91,7 +91,7 @@
         },
         {
           "code": 73,
-          "label": "i",
+          "label": "I",
           "sublabel": "8⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -103,7 +103,7 @@
         },
         {
           "code": 79,
-          "label": "o",
+          "label": "O",
           "sublabel": "9⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -115,7 +115,7 @@
         },
         {
           "code": 80,
-          "label": "p",
+          "label": "P",
           "sublabel": "0⇡",
           "widthPercent": 10.0,
           "icon": "",
@@ -132,7 +132,7 @@
       "keys": [
         {
           "code": 65,
-          "label": "a",
+          "label": "A",
           "sublabel": "1−",
           "widthPercent": 10.0,
           "icon": "",
@@ -144,7 +144,7 @@
         },
         {
           "code": 83,
-          "label": "s",
+          "label": "S",
           "sublabel": "2−",
           "widthPercent": 10.0,
           "icon": "",
@@ -156,7 +156,7 @@
         },
         {
           "code": 68,
-          "label": "d",
+          "label": "D",
           "sublabel": "3−",
           "widthPercent": 10.0,
           "icon": "",
@@ -168,7 +168,7 @@
         },
         {
           "code": 70,
-          "label": "f",
+          "label": "F",
           "sublabel": "4−",
           "widthPercent": 10.0,
           "icon": "",
@@ -180,7 +180,7 @@
         },
         {
           "code": 71,
-          "label": "g",
+          "label": "G",
           "sublabel": "5−",
           "widthPercent": 10.0,
           "icon": "",
@@ -192,7 +192,7 @@
         },
         {
           "code": 72,
-          "label": "h",
+          "label": "H",
           "sublabel": "6−",
           "widthPercent": 10.0,
           "icon": "",
@@ -204,7 +204,7 @@
         },
         {
           "code": 74,
-          "label": "j",
+          "label": "J",
           "sublabel": "7−",
           "widthPercent": 10.0,
           "icon": "",
@@ -216,7 +216,7 @@
         },
         {
           "code": 75,
-          "label": "k",
+          "label": "K",
           "sublabel": "8−",
           "widthPercent": 10.0,
           "icon": "",
@@ -228,7 +228,7 @@
         },
         {
           "code": 76,
-          "label": "l",
+          "label": "L",
           "sublabel": "9−",
           "widthPercent": 10.0,
           "icon": "",
@@ -257,7 +257,7 @@
       "keys": [
         {
           "code": 90,
-          "label": "z",
+          "label": "Z",
           "sublabel": "1⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -269,7 +269,7 @@
         },
         {
           "code": 88,
-          "label": "x",
+          "label": "X",
           "sublabel": "2⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -281,7 +281,7 @@
         },
         {
           "code": 67,
-          "label": "c",
+          "label": "C",
           "sublabel": "3⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -293,7 +293,7 @@
         },
         {
           "code": 86,
-          "label": "v",
+          "label": "V",
           "sublabel": "4⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -305,7 +305,7 @@
         },
         {
           "code": 66,
-          "label": "b",
+          "label": "B",
           "sublabel": "5⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -317,7 +317,7 @@
         },
         {
           "code": 78,
-          "label": "n",
+          "label": "N",
           "sublabel": "6⇣",
           "widthPercent": 10.0,
           "icon": "",
@@ -329,7 +329,7 @@
         },
         {
           "code": 77,
-          "label": "m",
+          "label": "M",
           "sublabel": "7⇣",
           "widthPercent": 10.0,
           "icon": "",

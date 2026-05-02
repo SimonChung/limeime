@@ -86,24 +86,25 @@ users can return to alphabetic mode directly. The bottom row stays standard.
 
 ---
 
-## 4. IM layout transforms (Path A)
+## 4. IM layout transforms
 
-IM layouts are further split into two structural sub-types detected at
-runtime from the source row content.
-
-### 4a. 4-row IM layouts (have a digit or symbol-shift top row)
-
-**Detection**: any content row matches `is_number_top_row` (codes 49–48)
-or `is_symbol_top_row` (codes 33, 64, 35, 36, 37, 94, 38, 42, 40, 41).
-
-These layouts have:
+All IM layouts run through the same per-row pipeline. The `has_digit_row`
+flag (derived at runtime from whether any content row is a 1–0 digit row
+or !@#… symbol-shift row) controls only the qwerty row rightmost key.
 
 | Source row | iPad transform applied |
 |---|---|
 | Digit row (1–0) | `augment_im_digit_row` |
 | Qwerty row (ends with p/P) | `transform_qwerty_row` |
-| Asdf row (ends with ;/l/L) | `prepend_abc_modifier` → `append_semicolon_key` → `append_fullshape_period` → `append_enter_key` |
+| Asdf row (ends with ;/:/l/L) | `prepend_abc_modifier` → `append_semicolon_key` → `append_fullshape_period` → `append_enter_key` |
 | Zxcv row (contains z/Z) | `ensure_zxcv_shifts` → `apply_zxcv_punct_sliding` |
+
+Each transform is **self-gating** — it detects its target row by code
+pattern and is a no-op on all other rows. All rows then pass through
+`normalize_im_row_widths`.
+
+No-digit layouts (lime_array, lime_cj family) have no `isBottomRow` source
+row; `IPAD_BOTTOM_ROW` is appended unconditionally after the loop.
 
 Each transform is **self-gating** — it detects its target row by code
 pattern and is a no-op on all other rows. All rows then pass through
@@ -159,12 +160,14 @@ Left of ⌫ — one of:
 Source keys `[` (91), `\` (92), `]` (93) are **moved** here if present in the layout
 (stripped from other rows by `strip_promoted_keys`); CJK sliders are used as fallbacks.
 
-| Position | Source key present | Fallback (no source key) |
+The rightmost key depends on `has_digit_row`:
+
+| Position | `has_digit_row=True` (source key / fallback) | `has_digit_row=False` |
 |---|---|---|
 | Leftmost (position 0) | Tab (9, always) | Tab (9, always) |
-| Right of p | `[` (91) → dual-slide `{\\n[` (longPress 123) if no sublabel | `『\\n「` (12300, longPress 12302) |
-| Right of `[` | `]` (93) → dual-slide `}\\n]` (longPress 125) if no sublabel | `』\\n」` (12301, longPress 12303) |
-| Rightmost | `\` (92) → dual-slide `\|\\n\` (longPress 124) if no sublabel | `\|\\n、` (12289, longPress 124) |
+| Right of p | `[` (91) → `{\\n[` (longPress 123) if no sublabel, else `『\\n「` (12300, longPress 12302) | same |
+| Right of `[` | `]` (93) → `}\\n]` (longPress 125) if no sublabel, else `』\\n」` (12301, longPress 12303) | same |
+| Rightmost | `\` (92) → `\|\\n\` (longPress 124) if no sublabel, else `\|\\n、` (12289, longPress 124) | ⌫ (delete, code -5) |
 
 ---
 
@@ -227,31 +230,6 @@ When the source zxcv row does NOT end with delete (-5):
 
 ---
 
-### 4b. 3-row IM layouts without a digit row
-
-**Detection**: `has_standard_top_row = False` AND `len(content_rows) == 3`.
-
-Affected layouts: `lime_array`, `lime_array_shift`, `lime_cj`, `lime_cj_shift`.
-
-The phone source has: qwerty row (q–p / Q–P), asdf row (a–;/l), zxcv row (±shift ±delete).
-All three are transformed by `transform_no_digit_im_rows` as a single unit:
-
-| Source row | iPad output row |
-|---|---|
-| qwerty (q–p / Q–P) | qwerty + ⌫ (delete code -5) appended at 30 % |
-| asdf (a–; or a–l) | Tab prepended + `;` upgraded/appended as `；\n：`(see below) + 3 × CJK bracket sliders appended |
-| zxcv (±shift, z–m, ±delete) | abc(-9) prepended (shift removed) + zxcv letters + 。\\n，+ ↩ appended (delete removed) |
-| — | Optional shift/spacer/shift row (code -1, code 0, code -1) added when the source zxcv had no leading shift — so users still have a shift tap-target |
-
-Semicolon handling in the no-digit asdf row (same rules as the 4-row path):
-
-- Source `;` (59) without sublabel → upgraded in-place to `；\n：` (65306, longPress 65307).
-- Source `;` (59) with sublabel (IM component, e.g. lime_array `0−`) → left unchanged.
-- No `;` in the row → `；\n：` appended before the CJK bracket sliders.
-
-All added keys use `widthPercent: 7.0`; `normalize_im_row_widths` finalises
-each row (see §5).
-
 ---
 
 ## 5. Per-key normalisation
@@ -291,33 +269,30 @@ has very few keys per row and fixed 7% produces disproportionate results.
 For each source layout in JOBS:
 
     content_rows = non-bottom rows
-    has_standard_top_row = any row matches digit or symbol-shift detection
+    has_digit_row = any row matches digit (1–0) or symbol-shift (!@#…) detection
 
-    If NOT has_standard_top_row AND len(content_rows) == 3:
-        # 3-row no-digit path (lime_array, lime_cj)
-        rows = transform_no_digit_im_rows(content_rows)
-        append IPAD_BOTTOM_ROW
-    Else:
-        # 4-row standard path
-        zxcv_deletes = source_zxcv_ends_with_delete(rows)
-        bottom_syms = harvest_bottom_row_symbols(...)
-        For each row:
-            If isBottomRow: replace with IPAD_BOTTOM_ROW
-            Else:
-                strip_promoted_keys
-                normalise_key each key
-                If has_standard_top_row:
-                    augment_im_digit_row        (digit row only)
-                    transform_qwerty_row        (qwerty row only)
-                    prepend_abc_modifier        (asdf row only)
-                    append_semicolon_key        (asdf row only)
-                    append_fullshape_period     (asdf row only)
-                    append_enter_key            (asdf row only)
-                    ensure_zxcv_shifts          (zxcv row only)
-                    apply_zxcv_punct_sliding    (zxcv row only)
-                normalize_im_row_widths  (scale_row_to_100 for lime_wb)
+    bottom_syms = harvest_bottom_row_symbols(...)
+    had_bottom_row = False
 
-    Write id = source_id + "_ipad", defaultWidthPercent = 7.0
+    For each row:
+        If isBottomRow: replace with IPAD_BOTTOM_ROW; had_bottom_row = True
+        Else:
+            strip_promoted_keys
+            normalise_key each key
+            augment_im_digit_row        (digit row only — no-op when has_digit_row=False)
+            transform_qwerty_row        (qwerty row only; rightmost = ⌫ when has_digit_row=False)
+            prepend_abc_modifier        (asdf row only)
+            append_semicolon_key        (asdf row only)
+            append_fullshape_period     (asdf row only)
+            append_enter_key            (asdf row only)
+            ensure_zxcv_shifts          (zxcv row only)
+            apply_zxcv_punct_sliding    (zxcv row only)
+            normalize_im_row_widths  (scale_row_to_100 for lime_wb)
+
+    If not had_bottom_row: append IPAD_BOTTOM_ROW
+
+    id = source_id[:-6] + "_ipad_shift"  if source ends with "_shift"
+       = source_id + "_ipad"             otherwise
 ```
 
 ---
@@ -345,11 +320,10 @@ To add a new IM phone layout:
 1. Every output row sums to exactly 100% (after rounding fix-up).
 2. Every key has every field the runtime decoder expects.
 3. Every layout's bottom row is exactly `IPAD_BOTTOM_ROW` — globe / .?123 / mic / space(57%) / .?123 / dismiss. No per-layout customization.
-4. 4-row IM layouts always have Tab at position 0 of the qwerty row, and `[`/`『\n「` + `]`/`』\n」` + `\`/`|\n、` at the right.
-5. 4-row IM layouts always have abc modifier, `；\n：` (or source `;` with IM sublabel), `。\n，`, and Enter on the asdf row.
-6. 4-row IM layouts always have shifts on both sides of the zxcv row.
-7. 3-row no-digit IM layouts get delete on the qwerty row; Tab + `；\n：` + CJK brackets on the asdf row; abc + `。\n，` + Enter on the zxcv row.
-8. `,` `.` `/` keys in the zxcv row without IM sublabels get dual-slide labels `<\n,` `>\n.` `?\n/`.
-9. Printable keys are exactly 7% wide; function keys share the remaining width (lime_wb uses proportional scaling instead).
-10. Output `id` always ends in `_ipad`, matching the runtime's "try `_ipad` first" loader path.
-11. English, symbol, and number `_ipad.json` files are never written by this script.
+4. All IM layouts have Tab at position 0 of the qwerty row; `[`/`『\n「` + `]`/`』\n」` at positions −3/−2; rightmost is `\`/`|\n、` when `has_digit_row=True`, or ⌫ when `has_digit_row=False`.
+5. All IM layouts have abc modifier, `；\n：` (or source `;` with IM sublabel), `。\n，`, and Enter on the asdf row.
+6. All IM layouts have shifts on both sides of the zxcv row.
+7. `,` `.` `/` keys in the zxcv row without IM sublabels get dual-slide labels `<\n,` `>\n.` `?\n/`.
+8. Printable keys are exactly 7% wide; function keys share the remaining width (lime_wb uses proportional scaling instead).
+9. Output `id` is `source_id + "_ipad"` for base layouts, `base + "_ipad_shift"` for shift variants.
+10. English, symbol, and number `_ipad.json` files are never written by this script.

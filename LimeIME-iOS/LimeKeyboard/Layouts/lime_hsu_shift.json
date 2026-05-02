@@ -132,7 +132,7 @@
       "keys": [
         {
           "code": 81,
-          "label": "q",
+          "label": "Q",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -144,7 +144,7 @@
         },
         {
           "code": 87,
-          "label": "w",
+          "label": "W",
           "sublabel": "ㄠ",
           "widthPercent": 10.0,
           "icon": "",
@@ -180,7 +180,7 @@
         },
         {
           "code": 84,
-          "label": "t",
+          "label": "T",
           "sublabel": "ㄊ",
           "widthPercent": 10.0,
           "icon": "",
@@ -192,7 +192,7 @@
         },
         {
           "code": 89,
-          "label": "y",
+          "label": "Y",
           "sublabel": "ㄚ",
           "widthPercent": 10.0,
           "icon": "",
@@ -204,7 +204,7 @@
         },
         {
           "code": 85,
-          "label": "u",
+          "label": "U",
           "sublabel": "ㄩ",
           "widthPercent": 10.0,
           "icon": "",
@@ -216,7 +216,7 @@
         },
         {
           "code": 73,
-          "label": "i",
+          "label": "I",
           "sublabel": "ㄞ",
           "widthPercent": 10.0,
           "icon": "",
@@ -228,7 +228,7 @@
         },
         {
           "code": 79,
-          "label": "o",
+          "label": "O",
           "sublabel": "ㄡ",
           "widthPercent": 10.0,
           "icon": "",
@@ -240,7 +240,7 @@
         },
         {
           "code": 80,
-          "label": "p",
+          "label": "P",
           "sublabel": "ㄆ",
           "widthPercent": 10.0,
           "icon": "",
@@ -382,7 +382,7 @@
         },
         {
           "code": 90,
-          "label": "z",
+          "label": "Z",
           "sublabel": "ㄗ",
           "widthPercent": 10.0,
           "icon": "",
@@ -394,7 +394,7 @@
         },
         {
           "code": 88,
-          "label": "x",
+          "label": "X",
           "sublabel": "ㄨ",
           "widthPercent": 10.0,
           "icon": "",
@@ -430,7 +430,7 @@
         },
         {
           "code": 66,
-          "label": "b",
+          "label": "B",
           "sublabel": "ㄅ",
           "widthPercent": 10.0,
           "icon": "",
