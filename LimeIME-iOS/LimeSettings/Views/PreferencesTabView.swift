@@ -81,7 +81,7 @@ struct PreferencesTabView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationSplitView {
             Form {
                 // MARK: §8.1
                 Section(header: Text("鍵盤外觀")) {
@@ -202,6 +202,11 @@ struct PreferencesTabView: View {
                 }
             }
             .navigationTitle("喜好設定")
+            .navigationBarTitleDisplayMode(.large)
+        } detail: {
+            Text("選擇設定項目")
+                .font(.title3)
+                .foregroundColor(.secondary)
         }
     }
 

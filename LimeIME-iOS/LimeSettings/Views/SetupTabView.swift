@@ -11,14 +11,14 @@ import UIKit
 
 /// Makes a GroupBox look identical to a SwiftUI Form Section (grouped style):
 /// white secondarySystemGroupedBackground fill, 10-pt corner radius, standard row padding.
-private struct FormSectionGroupBoxStyle: GroupBoxStyle {
+struct FormSectionGroupBoxStyle: GroupBoxStyle {
     func makeBody(configuration: Configuration) -> some View {
         VStack(spacing: 0) {
             configuration.content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(Color(UIColor.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
@@ -93,7 +93,7 @@ struct SetupTabView: View {
                     VStack(spacing: 8) {
                         logoImage
                         Text("萊姆輸入法")
-                            .font(.system(size: 28, weight: .semibold))
+                            .font(.largeTitle).bold()
                     }
                     .padding(.top, 32)
 
@@ -103,7 +103,9 @@ struct SetupTabView: View {
 
                     // ── Title ─────────────────────────────────────────────
                     Text("設定萊姆輸入法")
-                        .font(.title2).bold()
+                        .font(.largeTitle).bold()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
 
                     // ── Step list ─────────────────────────────────────────
                     VStack(alignment: .leading, spacing: 16) {

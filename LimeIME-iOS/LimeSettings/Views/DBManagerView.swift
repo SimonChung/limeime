@@ -22,60 +22,68 @@ struct DBManagerView: View {
     @State private var showFilePicker = false
     @State private var backupURL: URL?
     @State private var showShareSheet = false
+    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
-        NavigationView {
-            List {
-                // MARK: Backup
-                Section(
-                    header: Text("備份"),
-                    footer: Text("備份包含所有字根、關聯字及偏好設定。")
-                        .font(.footnote)
-                ) {
-                    Button {
-                        performBackup()
-                    } label: {
-                        Label("備份資料庫", systemImage: "square.and.arrow.up")
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if hSize == .regular {
+                        Text("資料庫管理")
+                            .font(.largeTitle).bold()
+                            .padding(.top, 120)
+                            .padding(.bottom, 8)
                     }
-                    .disabled(isWorking)
-                }
+                    formSection(
+                        header: "備份",
+                        footer: "備份包含所有字根、關聯字及偏好設定。"
+                    ) {
+                        Button { performBackup() } label: {
+                            Label("備份資料庫", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(isWorking)
+                        .padding(.vertical, 11)
+                    }
 
-                // MARK: Restore
-                Section(
-                    header: Text("還原"),
-                    footer: Text("還原後鍵盤將重新載入資料庫。")
-                        .font(.footnote)
-                ) {
-                    Button {
-                        showRestoreConfirm = true
-                    } label: {
-                        Label("還原資料庫", systemImage: "arrow.down.circle")
+                    formSection(
+                        header: "還原",
+                        footer: "還原後鍵盤將重新載入資料庫。"
+                    ) {
+                        Button { showRestoreConfirm = true } label: {
+                            Label("還原資料庫", systemImage: "arrow.down.circle")
+                        }
+                        .disabled(isWorking)
+                        .foregroundColor(.red)
+                        .padding(.vertical, 11)
                     }
-                    .disabled(isWorking)
-                    .foregroundColor(.red)
-                }
 
-                // MARK: Init DB
-                Section(header: Text("初始資料庫")) {
-                    Button {
-                        showInitConfirm = true
-                    } label: {
-                        Label("還原預設資料庫", systemImage: "arrow.counterclockwise.circle")
+                    formSection(header: "初始資料庫") {
+                        Button { showInitConfirm = true } label: {
+                            Label("還原預設資料庫", systemImage: "arrow.counterclockwise.circle")
+                        }
+                        .disabled(isWorking)
+                        .foregroundColor(.red)
+                        .padding(.vertical, 11)
                     }
-                    .disabled(isWorking)
-                    .foregroundColor(.red)
-                }
 
-                // MARK: Status
-                if !statusMessage.isEmpty {
-                    Section(header: Text("狀態")) {
-                        Text(statusMessage)
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                    if !statusMessage.isEmpty {
+                        formSection(header: "狀態") {
+                            Text(statusMessage)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 11)
+                        }
                     }
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("資料庫管理")
+            .background(Color(UIColor.systemBackground).ignoresSafeArea())
+            .navigationTitle(hSize == .regular ? "" : "資料庫管理")
+            .navigationBarTitleDisplayMode(hSize == .regular ? .inline : .large)
+            .toolbarBackground(hSize == .regular ? .hidden : .automatic, for: .navigationBar)
             .alert("確認還原", isPresented: $showInitConfirm) {
                 Button("還原", role: .destructive) { restoreBundledDatabase() }
                 Button("取消", role: .cancel) {}
@@ -83,9 +91,7 @@ struct DBManagerView: View {
                 Text("還原後目前所有資料將被取代，確定繼續？")
             }
             .alert("確認還原", isPresented: $showRestoreConfirm) {
-                Button("還原", role: .destructive) {
-                    showFilePicker = true
-                }
+                Button("還原", role: .destructive) { showFilePicker = true }
                 Button("取消", role: .cancel) {}
             } message: {
                 Text("還原後目前所有資料將被取代，確定繼續？")
@@ -100,9 +106,7 @@ struct DBManagerView: View {
                 }
             }
             .sheet(isPresented: $showShareSheet, onDismiss: cleanupBackup) {
-                if let url = backupURL {
-                    ShareSheet(activityItems: [url])
-                }
+                if let url = backupURL { ShareSheet(activityItems: [url]) }
             }
             .overlay {
                 if isWorking {
@@ -115,6 +119,30 @@ struct DBManagerView: View {
                                 .shadow(radius: 8))
                     }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func formSection<Content: View>(
+        header: String,
+        footer: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(header)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .padding(.leading, 4)
+                .padding(.top, 20)
+            GroupBox { content() }
+                .groupBoxStyle(FormSectionGroupBoxStyle())
+            if let footer {
+                Text(footer)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 4)
             }
         }
     }

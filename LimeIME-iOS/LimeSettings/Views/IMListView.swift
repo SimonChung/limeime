@@ -51,6 +51,7 @@ struct IMListView: View {
         NavigationSplitView {
             sidebar
                 .navigationTitle("管理輸入法")
+                .navigationBarTitleDisplayMode(.large)
                 .onAppear { loadIMs() }
                 .onChange(of: manageImController.refreshToken) { _ in loadIMs() }
         } detail: {
@@ -131,6 +132,7 @@ struct IMListView: View {
                     }
                     .padding([.bottom, .trailing], 20)
                 }
+                .listStyle(.sidebar)
             }
         }
     }
