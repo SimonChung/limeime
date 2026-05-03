@@ -172,7 +172,7 @@ enum LayoutMetrics {
             // Row heights (× keySizeScale at use-site).
             static let portraitRow: CGFloat = 50
             static let portraitBottomRow: CGFloat = 54
-            static let landscapeRow: CGFloat = 36   // matches Android 36 dip
+            static let landscapeRow: CGFloat = 34   // matches Android 36 dip
             static let landscapeBottomRow: CGFloat = 38
             // Per-key gaps / shape.
             static let keyHGap: CGFloat = 5
@@ -198,8 +198,8 @@ enum LayoutMetrics {
         enum PadCompat {
             static let portraitRow: CGFloat = 54
             static let portraitBottomRow: CGFloat = 58
-            static let landscapeRow: CGFloat = 40
-            static let landscapeBottomRow: CGFloat = 44
+            static let landscapeRow: CGFloat = 34
+            static let landscapeBottomRow: CGFloat = 38
         }
 
         // Idiom-agnostic.
@@ -234,7 +234,7 @@ enum LayoutMetrics {
             static let singleLabelFontSize: CGFloat = 22
             /// Small primary label in dual-label keys (the letter sitting
             /// above the bopomofo sublabel).
-            static let primaryLabelFontSize: CGFloat = 16
+            static let primaryLabelFontSize: CGFloat = 18
             static let sublabelFontSize: CGFloat = 22
             /// SF Symbol point size for icon keys (excluding the dismiss key).
             static let iconSize: CGFloat = 20
@@ -253,9 +253,9 @@ enum LayoutMetrics {
         /// phone and iPad — slightly larger than phone to fill the taller key,
         /// but not as wide as iPad since the key columns stay phone-narrow.
         enum PadCompat {
-            static let singleLabelFontSize: CGFloat = 20
-            static let primaryLabelFontSize: CGFloat = 16
-            static let sublabelFontSize: CGFloat = 20
+            static let singleLabelFontSize: CGFloat = 22
+            static let primaryLabelFontSize: CGFloat = 18
+            static let sublabelFontSize: CGFloat = 22
             static let iconSize: CGFloat = 20
         }
 

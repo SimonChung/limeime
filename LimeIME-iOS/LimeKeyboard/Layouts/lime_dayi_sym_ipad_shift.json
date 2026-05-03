@@ -19,8 +19,8 @@
           "longPressCode": 0
         },
         {
-          "code": 33,
-          "label": "!",
+          "code": 49,
+          "label": "1",
           "sublabel": "言",
           "widthPercent": 7.0,
           "icon": "",
@@ -32,8 +32,8 @@
           "longPressCode": 0
         },
         {
-          "code": 64,
-          "label": "@",
+          "code": 50,
+          "label": "2",
           "sublabel": "牛",
           "widthPercent": 7.0,
           "icon": "",
@@ -45,8 +45,8 @@
           "longPressCode": 0
         },
         {
-          "code": 35,
-          "label": "#",
+          "code": 51,
+          "label": "3",
           "sublabel": "目",
           "widthPercent": 7.0,
           "icon": "",
@@ -58,8 +58,8 @@
           "longPressCode": 0
         },
         {
-          "code": 36,
-          "label": "$",
+          "code": 52,
+          "label": "4",
           "sublabel": "四",
           "widthPercent": 7.0,
           "icon": "",
@@ -71,8 +71,8 @@
           "longPressCode": 0
         },
         {
-          "code": 37,
-          "label": "%",
+          "code": 53,
+          "label": "5",
           "sublabel": "王",
           "widthPercent": 7.0,
           "icon": "",
@@ -84,8 +84,8 @@
           "longPressCode": 0
         },
         {
-          "code": 94,
-          "label": "^",
+          "code": 54,
+          "label": "6",
           "sublabel": "門",
           "widthPercent": 7.0,
           "icon": "",
@@ -97,8 +97,8 @@
           "longPressCode": 0
         },
         {
-          "code": 38,
-          "label": "&",
+          "code": 55,
+          "label": "7",
           "sublabel": "田",
           "widthPercent": 7.0,
           "icon": "",
@@ -110,8 +110,8 @@
           "longPressCode": 0
         },
         {
-          "code": 42,
-          "label": "*",
+          "code": 56,
+          "label": "8",
           "sublabel": "米",
           "widthPercent": 7.0,
           "icon": "",
@@ -123,8 +123,8 @@
           "longPressCode": 0
         },
         {
-          "code": 40,
-          "label": "(",
+          "code": 57,
+          "label": "9",
           "sublabel": "足",
           "widthPercent": 7.0,
           "icon": "",
@@ -136,8 +136,8 @@
           "longPressCode": 0
         },
         {
-          "code": 41,
-          "label": ")",
+          "code": 48,
+          "label": "0",
           "sublabel": "金",
           "widthPercent": 7.0,
           "icon": "",
@@ -336,8 +336,8 @@
           "longPressCode": 0
         },
         {
-          "code": 12300,
-          "label": "『\\n「",
+          "code": 12302,
+          "label": "『",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -346,11 +346,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12302
+          "longPressCode": 0
         },
         {
-          "code": 12301,
-          "label": "』\\n」",
+          "code": 12303,
+          "label": "』",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -359,11 +359,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12303
+          "longPressCode": 0
         },
         {
-          "code": 12289,
-          "label": "|\\n、",
+          "code": 124,
+          "label": "|",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -372,7 +372,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 124
+          "longPressCode": 0
         }
       ]
     },
@@ -510,8 +510,8 @@
           "longPressCode": 0
         },
         {
-          "code": 58,
-          "label": ":",
+          "code": 59,
+          "label": ";",
           "sublabel": "虫",
           "widthPercent": 7.0,
           "icon": "",
@@ -523,8 +523,8 @@
           "longPressCode": 0
         },
         {
-          "code": 65292,
-          "label": "。\\n，",
+          "code": 12290,
+          "label": "。",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -533,7 +533,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12290
+          "longPressCode": 0
         },
         {
           "code": 10,
@@ -658,8 +658,8 @@
           "longPressCode": 0
         },
         {
-          "code": 60,
-          "label": "<",
+          "code": 44,
+          "label": ",",
           "sublabel": "力",
           "widthPercent": 7.0,
           "icon": "",
@@ -671,21 +671,21 @@
           "longPressCode": 0
         },
         {
-          "code": 62,
-          "label": ">",
+          "code": 46,
+          "label": ".",
           "sublabel": "舟",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_punctuation",
+          "popupKeyboard": "",
           "popupCharacters": "",
           "longPressCode": 0
         },
         {
-          "code": 63,
-          "label": "\\?",
+          "code": 47,
+          "label": "/",
           "sublabel": "竹",
           "widthPercent": 7.0,
           "icon": "",

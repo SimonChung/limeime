@@ -336,8 +336,8 @@
           "longPressCode": 0
         },
         {
-          "code": 12300,
-          "label": "『\\n「",
+          "code": 12302,
+          "label": "『",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -346,11 +346,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12302
+          "longPressCode": 0
         },
         {
-          "code": 12301,
-          "label": "』\\n」",
+          "code": 12303,
+          "label": "』",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -359,11 +359,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12303
+          "longPressCode": 0
         },
         {
-          "code": 12289,
-          "label": "|\\n、",
+          "code": 124,
+          "label": "|",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -372,7 +372,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 124
+          "longPressCode": 0
         }
       ]
     },
@@ -510,8 +510,8 @@
           "longPressCode": 0
         },
         {
-          "code": 65306,
-          "label": "；\\n：",
+          "code": 65307,
+          "label": "；",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -520,11 +520,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 65307
+          "longPressCode": 0
         },
         {
-          "code": 65292,
-          "label": "。\\n，",
+          "code": 12290,
+          "label": "。",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -533,7 +533,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12290
+          "longPressCode": 0
         },
         {
           "code": 10,
@@ -658,8 +658,8 @@
           "longPressCode": 0
         },
         {
-          "code": 44,
-          "label": "<\\n,",
+          "code": 60,
+          "label": "<",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -668,11 +668,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 60
+          "longPressCode": 0
         },
         {
-          "code": 46,
-          "label": ">\\n.",
+          "code": 62,
+          "label": ">",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -681,11 +681,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 62
+          "longPressCode": 0
         },
         {
-          "code": 47,
-          "label": "?\\n/",
+          "code": 63,
+          "label": "?",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -694,7 +694,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 63
+          "longPressCode": 0
         },
         {
           "code": -1,

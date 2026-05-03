@@ -20,80 +20,80 @@
         },
         {
           "code": 49,
-          "label": "1\\t儿",
+          "label": "1",
           "sublabel": "|",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "-\\n儿",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
           "code": 50,
-          "label": "2\\t母",
+          "label": "2",
           "sublabel": "車",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "=\\n母",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
           "code": 51,
-          "label": "3\\t匚",
+          "label": "3",
           "sublabel": "糸",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "[\\n匚",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
           "code": 52,
-          "label": "4\\t]",
+          "label": "4",
           "sublabel": "言",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "]\\n]",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
           "code": 53,
-          "label": "5\\tＬ",
+          "label": "5",
           "sublabel": "貝",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "'\\nＬ",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
           "code": 54,
-          "label": "6\\tㄏ",
+          "label": "6",
           "sublabel": "雨",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_template",
-          "popupCharacters": "\\\\\\nㄏ",
+          "popupKeyboard": "",
+          "popupCharacters": "",
           "longPressCode": 0
         },
         {
@@ -149,9 +149,9 @@
           "longPressCode": 0
         },
         {
-          "code": 8212,
-          "label": "…\\n—",
-          "sublabel": "",
+          "code": 45,
+          "label": "儿",
+          "sublabel": "-",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -159,12 +159,12 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 8230
+          "longPressCode": 0
         },
         {
           "code": 61,
-          "label": "+\\n=",
-          "sublabel": "",
+          "label": "=",
+          "sublabel": "母",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -172,7 +172,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 43
+          "longPressCode": 0
         },
         {
           "code": -5,
@@ -336,9 +336,9 @@
           "longPressCode": 0
         },
         {
-          "code": 12300,
-          "label": "『\\n「",
-          "sublabel": "",
+          "code": 91,
+          "label": "[",
+          "sublabel": "匚",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -346,12 +346,12 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12302
+          "longPressCode": 0
         },
         {
-          "code": 12301,
-          "label": "』\\n」",
-          "sublabel": "",
+          "code": 93,
+          "label": "]",
+          "sublabel": "]",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -359,12 +359,12 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12303
+          "longPressCode": 0
         },
         {
-          "code": 12289,
-          "label": "|\\n、",
-          "sublabel": "",
+          "code": 92,
+          "label": "\\",
+          "sublabel": "ㄏ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -523,9 +523,9 @@
           "longPressCode": 0
         },
         {
-          "code": 65292,
-          "label": "。\\n，",
-          "sublabel": "",
+          "code": 44,
+          "label": "'",
+          "sublabel": "Ｌ",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -533,7 +533,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12290
+          "longPressCode": 0
         },
         {
           "code": 10,
@@ -679,7 +679,7 @@
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_c_punctuation",
+          "popupKeyboard": "",
           "popupCharacters": "",
           "longPressCode": 0
         },

@@ -52,7 +52,6 @@ lime_dayi, lime_dayi_shift
 lime_dayi_sym, lime_dayi_sym_shift
 lime_et26, lime_et26_shift
 lime_et_41, lime_et_41_shift
-lime_ez, lime_ez_shift
 lime_hs, lime_hs_shift
 lime_hsu, lime_hsu_shift
 lime_wb, lime_wb_shift
@@ -230,6 +229,87 @@ When the source zxcv row does NOT end with delete (-5):
 
 ---
 
+## 4b. Shift layout post-processing — `apply_shift_key_rules`
+
+After the per-row pipeline completes, shift layouts (source ends with `_shift`)
+pass through one additional step that rewrites key labels for the shift display state.
+
+### Dual-slide key simplification
+
+Applies to the **qwerty, asdf, and zxcv rows only**. The digit/symbol-shift top row
+is excluded — its dual-slide keys (backtick/tilde prefix, digit keys 1–0,
+dash `_\n-`, equals `+\n=`, em-dash fallback `…\n—`) remain unchanged on shift layouts.
+
+Any key in the non-digit rows whose label is `X\nY` (contains the literal `\n`
+separator) **and has no sublabel** is rewritten to show only `X` (the first part —
+the shift-state character).
+
+| Before (base layout) | After (shift layout) | Row |
+|---|---|---|
+| `{\n[` | `{` | qwerty |
+| `}\n]` | `}` | qwerty |
+| `|\n\` | `\|` | qwerty |
+| `『\n「` | `『` | qwerty |
+| `』\n」` | `』` | qwerty |
+| `|\n、` | `\|` | qwerty |
+| `；\n：` | `；` | asdf |
+| `。\n，` | `。` | asdf |
+| `<\n,` | `<` | zxcv |
+| `>\n.` | `>` | zxcv |
+| `?\n/` | `?` | zxcv |
+
+Keys **with** an IM sublabel are never touched regardless of row —
+`<|ㄓ` (et_41 zxcv IM component) stays as-is.
+
+### Letter-key capitalization
+
+Any key with an IM sublabel whose label is a single lowercase ASCII letter (`a`–`z`)
+has its label uppercased to the corresponding capital (e.g. `q` → `Q`, `a` → `A`).
+Digit labels (`1`, `2` …) and symbol labels (`,`, `.`, `/`) with sublabels are left
+unchanged.
+
+In practice all current source shift layouts already supply uppercase letters, so
+this rule is a safeguard for future layouts.
+
+The symbol top row on shift layouts (`!@#$%^&*()`) is already handled by
+`augment_im_digit_row` which generates single-char labels directly, so it
+arrives at this step with no `\n` labels and is unaffected.
+
+### Shifted-punct revert (Rule 3)
+
+Source shift layouts store the shifted key codes for punctuation: `,`→`<` (60),
+`.`→`>` (62), `/`→`?` (63), `;`→`:` (58). When those keys carry an IM sublabel
+(meaning they are IM component keys, not plain punctuation), the code and label
+must revert to the **base** punctuation so the display matches the base layout.
+
+| Shifted code | Shifted label | Reverts to code | Reverts to label |
+|---|---|---|---|
+| 60 | `<` | 44 | `,` |
+| 62 | `>` | 46 | `.` |
+| 63 | `?` | 47 | `/` |
+| 58 | `:` | 59 | `;` |
+
+Keys without a sublabel are untouched — they are plain punctuation on the shift layer.
+
+### Digit/symbol-row IM sublabel revert (Rule 2b)
+
+In the digit row (codes 48+49 both present) or symbol-shift row (codes 33+41 both present),
+keys with an IM sublabel have their code and label reverted to the base digit so the
+IM component hint is displayed against the correct character:
+
+| Shifted code | Reverts to code | Label |
+|---|---|---|
+| 33 (`!`) | 49 | `1` |
+| 64 (`@`) | 50 | `2` |
+| 35 (`#`) | 51 | `3` |
+| 36 (`$`) | 52 | `4` |
+| 37 (`%`) | 53 | `5` |
+| 94 (`^`) | 54 | `6` |
+| 38 (`&`) | 55 | `7` |
+| 42 (`*`) | 56 | `8` |
+| 40 (`(`) | 57 | `9` |
+| 41 (`)`) | 48 | `0` |
+
 ---
 
 ## 5. Per-key normalisation
@@ -291,6 +371,9 @@ For each source layout in JOBS:
 
     If not had_bottom_row: append IPAD_BOTTOM_ROW
 
+    apply_shift_key_rules   (shift layouts only — see §4b)
+    clear popupKeyboard on all period keys (code 46) — all layouts
+
     id = source_id[:-6] + "_ipad_shift"  if source ends with "_shift"
        = source_id + "_ipad"             otherwise
 ```
@@ -299,9 +382,12 @@ For each source layout in JOBS:
 
 ## 8. JOBS list — what gets generated
 
-26 IM layout files (13 layouts × 2 variants each). Full list in `JOBS` at
+24 IM layout files (12 layouts × 2 variants each). Full list in `JOBS` at
 the bottom of
 [`scripts/build_ipad_layouts.py`](../scripts/build_ipad_layouts.py).
+
+**`lime_ez` / `lime_ez_shift` are excluded from `JOBS`** — their iPad layouts
+are maintained by hand and must not be overwritten by the script.
 
 **English, symbol, and number layouts are not generated here** — maintain
 their `_ipad.json` files separately.
@@ -327,3 +413,6 @@ To add a new IM phone layout:
 8. Printable keys are exactly 7% wide; function keys share the remaining width (lime_wb uses proportional scaling instead).
 9. Output `id` is `source_id + "_ipad"` for base layouts, `base + "_ipad_shift"` for shift variants.
 10. English, symbol, and number `_ipad.json` files are never written by this script.
+11. In shift layouts, dual-slide keys (label `X\nY`, no sublabel) show only `X`; single lowercase letter labels with IM sublabels are capitalized.
+12. In shift layouts, IM sublabel keys with shifted-punct codes (`< > ? :`) revert to base punct (`, . / ;`); IM sublabel keys in the digit/symbol-shift row revert to base digit (`1`–`0`).
+13. The period key (code 46) has `popupKeyboard` cleared in all generated iPad IM layouts. `lime_ez`/`lime_ez_shift` are excluded from generation and managed manually.

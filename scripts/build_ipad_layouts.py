@@ -47,7 +47,6 @@ IM_LAYOUTS = {
     "lime_dayi_sym", "lime_dayi_sym_shift",
     "lime_et26",     "lime_et26_shift",
     "lime_et_41",    "lime_et_41_shift",
-    "lime_ez",       "lime_ez_shift",
     "lime_hs",       "lime_hs_shift",
     "lime_hsu",      "lime_hsu_shift",
     "lime_wb",       "lime_wb_shift",
@@ -746,6 +745,71 @@ def normalize_im_row_widths(row):
     return row
 
 
+# Shifted codes that should revert to their base equivalents when the key
+# carries an IM sublabel.  Source shift layouts store the shifted code; IM
+# component keys must show the base char so the display matches the base layout.
+#
+# Punct: < > ? : (60/62/63/58) → , . / ; (44/46/47/59)
+_SHIFTED_PUNCT_REVERT = {60: (44, ','), 62: (46, '.'), 63: (47, '/'), 58: (59, ';')}
+# Digits: ! @ # $ % ^ & * ( ) (33/64/35/36/37/94/38/42/40/41) → 1–0 (49–48)
+_SHIFTED_DIGIT_REVERT = {
+    33: (49, '1'), 64: (50, '2'), 35: (51, '3'), 36: (52, '4'), 37: (53, '5'),
+    94: (54, '6'), 38: (55, '7'), 42: (56, '8'), 40: (57, '9'), 41: (48, '0'),
+}
+
+
+def apply_shift_key_rules(ipad_layout, source_id):
+    """Post-process an iPad shift layout:
+    1. Dual-slide keys (label X\\nY, no sublabel) in qwerty/asdf/zxcv rows →
+       show only X (the shift-state char).  Digit/symbol-shift top row excluded.
+    2. IM sublabel keys whose label is a single lowercase ASCII letter → capitalize.
+    3. IM sublabel keys whose code is a shifted-punct equivalent (< > ?) →
+       revert code and label to base punct (, . /) so IM component display is
+       consistent with the base layout.
+    No-op on non-shift layouts.
+    """
+    if not source_id.endswith("_shift"):
+        return ipad_layout
+    SEP = "\\n"
+    for row in ipad_layout.get("rows", []):
+        if row.get("isBottomRow", False):
+            continue
+        codes = {k.get("code") for k in row.get("keys", [])}
+        # Digit row (1–0) or symbol-shift row (!@#…): only revert IM sublabel
+        # keys to their base char; dual-slide keys without sublabel stay as-is.
+        is_digit_or_sym_row = (48 in codes and 49 in codes) or (33 in codes and 41 in codes)
+        for key in row.get("keys", []):
+            label = key.get("label", "")
+            sublabel = key.get("sublabel", "")
+            if is_digit_or_sym_row:
+                # Rule 2b: symbol-row IM sublabel digit key → revert to base digit
+                if sublabel:
+                    entry = _SHIFTED_DIGIT_REVERT.get(key.get("code"))
+                    if entry:
+                        key["code"], key["label"] = entry
+            else:
+                if SEP in label and not sublabel:
+                    # Rule 1: dual-slide punctuation/bracket, no IM component → show X.
+                    # For most keys X = chr(longPressCode); swap code←longPressCode so
+                    # tapping the simplified key actually delivers X, not Y.
+                    # Exception: keys where X = chr(code) already (e.g. ；\n：) — no swap.
+                    x = label.split(SEP)[0]
+                    key["label"] = x
+                    lp = key.get("longPressCode", 0)
+                    if lp and len(x) == 1 and ord(x) == lp:
+                        key["code"] = lp
+                        key["longPressCode"] = 0
+                elif sublabel and len(label) == 1 and 'a' <= label <= 'z':
+                    # Rule 2: single lowercase letter with IM sublabel → capitalize
+                    key["label"] = label.upper()
+                elif sublabel:
+                    # Rule 3: shifted-punct with IM sublabel → revert to base punct
+                    entry = _SHIFTED_PUNCT_REVERT.get(key.get("code"))
+                    if entry:
+                        key["code"], key["label"] = entry
+    return ipad_layout
+
+
 def _make_bottom_row(is_wb=False):
     """Return a deep copy of IPAD_BOTTOM_ROW.
 
@@ -846,6 +910,15 @@ def make_ipad_layout(phone, source_id):
         rows_out.append(_make_bottom_row(is_wb))
 
     ipad["rows"] = rows_out
+    apply_shift_key_rules(ipad, source_id)
+
+    # Clear popupKeyboard on the period key (code 46) — the iPad zxcv row
+    # already provides > as a long-press, so the popup is redundant and clutters.
+    for row in ipad["rows"]:
+        for key in row.get("keys", []):
+            if key.get("code") == 46:
+                key["popupKeyboard"] = ""
+
     return ipad
 
 
@@ -880,9 +953,6 @@ JOBS = [
     # lime_et_41
     ("lime_et_41",            "lime_et_41_ipad"),
     ("lime_et_41_shift",      "lime_et_41_ipad_shift"),
-    # lime_ez
-    ("lime_ez",               "lime_ez_ipad"),
-    ("lime_ez_shift",         "lime_ez_ipad_shift"),
     # lime_hs
     ("lime_hs",               "lime_hs_ipad"),
     ("lime_hs_shift",         "lime_hs_ipad_shift"),

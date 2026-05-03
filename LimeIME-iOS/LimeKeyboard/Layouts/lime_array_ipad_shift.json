@@ -149,8 +149,8 @@
           "longPressCode": 0
         },
         {
-          "code": 12300,
-          "label": "『\\n「",
+          "code": 12302,
+          "label": "『",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -159,11 +159,11 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12302
+          "longPressCode": 0
         },
         {
-          "code": 12301,
-          "label": "』\\n」",
+          "code": 12303,
+          "label": "』",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -172,7 +172,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12303
+          "longPressCode": 0
         },
         {
           "code": -5,
@@ -323,8 +323,8 @@
           "longPressCode": 0
         },
         {
-          "code": 58,
-          "label": ":",
+          "code": 59,
+          "label": ";",
           "sublabel": "0−",
           "widthPercent": 7.0,
           "icon": "",
@@ -336,8 +336,8 @@
           "longPressCode": 0
         },
         {
-          "code": 65292,
-          "label": "。\\n，",
+          "code": 12290,
+          "label": "。",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -346,7 +346,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 12290
+          "longPressCode": 0
         },
         {
           "code": 10,
@@ -471,8 +471,8 @@
           "longPressCode": 0
         },
         {
-          "code": 60,
-          "label": "<",
+          "code": 44,
+          "label": ",",
           "sublabel": "8⇣",
           "widthPercent": 7.0,
           "icon": "",
@@ -484,21 +484,21 @@
           "longPressCode": 0
         },
         {
-          "code": 62,
-          "label": ">",
+          "code": 46,
+          "label": ".",
           "sublabel": "9⇣",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
           "isRepeatable": false,
           "isSticky": false,
-          "popupKeyboard": "@xml/popup_punctuation",
+          "popupKeyboard": "",
           "popupCharacters": "",
           "longPressCode": 0
         },
         {
-          "code": 63,
-          "label": "\\?",
+          "code": 47,
+          "label": "/",
           "sublabel": "0⇣",
           "widthPercent": 7.0,
           "icon": "",
