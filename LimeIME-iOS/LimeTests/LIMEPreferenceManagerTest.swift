@@ -153,7 +153,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
         XCTAssertEqual(prefs.cj5ImReverselookup,    "none")
         XCTAssertEqual(prefs.ecjImReverselookup,    "none")
         XCTAssertEqual(prefs.dayiImReverselookup,   "none")
-        XCTAssertEqual(prefs.bpmfImReverselookup,   "none")
+        XCTAssertEqual(prefs.phoneticImReverselookup,   "none")
         XCTAssertEqual(prefs.ezImReverselookup,     "none")
         XCTAssertEqual(prefs.arrayImReverselookup,  "none")
         XCTAssertEqual(prefs.array10ImReverselookup,"none")
@@ -223,8 +223,8 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     }
 
     func testRoundTripReverseLookupBpmf() {
-        prefs.bpmfImReverselookup = "phonetic"
-        XCTAssertEqual(prefs.bpmfImReverselookup, "phonetic")
+        prefs.phoneticImReverselookup = "phonetic"
+        XCTAssertEqual(prefs.phoneticImReverselookup, "phonetic")
     }
 
     func testRoundTripKeyboardList() {

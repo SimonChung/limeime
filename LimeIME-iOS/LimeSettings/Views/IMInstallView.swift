@@ -293,8 +293,7 @@ private struct FamilyInstallGroup: View {
             }
         } label: {
             HStack {
-                Label(family.chineseName + " (" + family.englishName + ")",
-                      systemImage: family.systemIcon)
+                Label(family.chineseName, systemImage: family.systemIcon)
                 if isInstalled {
                     Spacer()
                     Text("已安裝")

@@ -17,7 +17,7 @@ struct ReverseLookupSettingsView: View {
     @AppStorage("cj5_im_reverselookup",     store: sharedDefaults) private var cj5: String     = "none"
     @AppStorage("ecj_im_reverselookup",     store: sharedDefaults) private var ecj: String     = "none"
     @AppStorage("dayi_im_reverselookup",    store: sharedDefaults) private var dayi: String    = "none"
-    @AppStorage("bpmf_im_reverselookup",    store: sharedDefaults) private var bpmf: String    = "none"
+    @AppStorage("phonetic_im_reverselookup", store: sharedDefaults) private var bpmf: String    = "none"
     @AppStorage("ez_im_reverselookup",      store: sharedDefaults) private var ez: String      = "none"
     @AppStorage("array_im_reverselookup",   store: sharedDefaults) private var array: String   = "none"
     @AppStorage("array10_im_reverselookup", store: sharedDefaults) private var array10: String = "none"

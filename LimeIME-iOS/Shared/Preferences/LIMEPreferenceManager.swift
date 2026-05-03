@@ -276,9 +276,9 @@ final class LIMEPreferenceManager {
         set { defaults.set(newValue, forKey: "dayi_im_reverselookup") }
     }
 
-    var bpmfImReverselookup: String {
-        get { stringValue("bpmf_im_reverselookup", default: "none") }
-        set { defaults.set(newValue, forKey: "bpmf_im_reverselookup") }
+    var phoneticImReverselookup: String {
+        get { stringValue("phonetic_im_reverselookup", default: "none") }
+        set { defaults.set(newValue, forKey: "phonetic_im_reverselookup") }
     }
 
     var ezImReverselookup: String {
