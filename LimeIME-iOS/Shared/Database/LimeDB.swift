@@ -2278,9 +2278,15 @@ final class LimeDB {
         srcConfig.readonly = true
         let srcQueue = try DatabaseQueue(path: sourcePath, configuration: srcConfig)
 
+        // Mirror Android importDb: cloud .limedb files store data in a "custom" table
+        // (backup/export format). Fall back to tableName when custom is absent.
+        let srcTableName: String = try srcQueue.read { db in
+            try db.tableExists("custom") ? "custom" : tableName
+        }
+
         // Detect available columns in the source table
         let srcCols = try srcQueue.read { db in
-            try Row.fetchAll(db, sql: "PRAGMA table_info(\(tableName))").map { $0["name"] as String? ?? "" }
+            try Row.fetchAll(db, sql: "PRAGMA table_info(\(srcTableName))").map { $0["name"] as String? ?? "" }
         }
         let hasCode3r    = srcCols.contains("code3r")
         let hasBasescore = srcCols.contains("basescore")
@@ -2294,7 +2300,7 @@ final class LimeDB {
         let srcRows = try srcQueue.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT \(selCols.joined(separator: ", "))
-                FROM \(tableName)
+                FROM \(srcTableName)
                 WHERE code IS NOT NULL AND word IS NOT NULL
             """)
         }

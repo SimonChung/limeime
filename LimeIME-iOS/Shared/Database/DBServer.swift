@@ -279,12 +279,23 @@ final class DBServer {
             .appendingPathComponent(DBServer.databaseBackupName + "_restore_\(UUID().uuidString).zip")
         defer { try? FileManager.default.removeItem(at: tempZip) }
 
-        do {
-            try FileManager.default.copyItem(at: uri, to: tempZip)
-            restoreDatabase(srcFilePath: tempZip.path)
-        } catch {
-            print("[DBServer] restoreDatabase(url): error copying file — \(error)")
+        // Use NSFileCoordinator so File Provider extensions (Google Drive, Dropbox, etc.)
+        // download the file content before we copy it. Without this, copyItem silently
+        // fails for cloud-backed files that are not yet local.
+        var coordinatorError: NSError?
+        var copyError: Error?
+        NSFileCoordinator().coordinate(readingItemAt: uri, options: .withoutChanges, error: &coordinatorError) { coordinatedURL in
+            do {
+                try FileManager.default.copyItem(at: coordinatedURL, to: tempZip)
+            } catch {
+                copyError = error
+            }
         }
+        if let err = coordinatorError ?? copyError {
+            print("[DBServer] restoreDatabase(url): error copying file — \(err)")
+            return
+        }
+        restoreDatabase(srcFilePath: tempZip.path)
     }
 
     // MARK: - 11. restoreDatabase (path)
