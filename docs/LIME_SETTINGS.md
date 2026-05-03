@@ -463,71 +463,74 @@ Entry point reachable from the "下載 / 匯入輸入法" NavigationLink in §5.
 NavigationStack (continued)
 └── IMInstallView
     └── List
-        ├── DisclosureGroup "注音 (phonetic)"
+        ├── DisclosureGroup "注音"
         │   ├── [if checkBackupTable("phonetic")]
         │   │   Toggle "還原已學習記錄"
         │   │   pref key: restore_on_import_phonetic  (UserDefaults.standard)
         │   │   default: true (when first shown)
-        │   ├── Button "☁ 標準版"         → downloadIM(CLOUD_PHONETIC,          table: "phonetic", restoreLearning: restoreOnImport)
-        │   ├── Button "☁ 完整版"         → downloadIM(CLOUD_PHONETIC_COMPLETE,  table: "phonetic", restoreLearning: restoreOnImport)
-        │   ├── Button "☁ BIG5 字集"       → downloadIM(CLOUD_PHONETIC_BIG5,      table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ OpenVanilla 注音字根"          → downloadIM(CLOUD_PHONETIC,                 table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ OpenVanilla 注音字根 (BIG5字集)" → downloadIM(CLOUD_PHONETIC_BIG5,          table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 注音連打字根"                  → downloadIM(CLOUD_PHONETIC_COMPLETE,        table: "phonetic", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 注音連打字根 (BIG5字集)"       → downloadIM(CLOUD_PHONETIC_COMPLETE_BIG5,   table: "phonetic", restoreLearning: restoreOnImport)
         │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "phonetic", restoreLearning: restoreOnImport)
         │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "phonetic", restoreLearning: restoreOnImport)
         │   (同上模式適用於以下所有 built-in IM DisclosureGroup，各 IM 獨立使用 restore_on_import_{tableNick} key；
         │    checkBackupTable 返回 false 時 Toggle 不顯示；聯想詞庫 group 除外)
-        ├── DisclosureGroup "倉頡 (cj)"
+        ├── DisclosureGroup "倉頡"
         │   ├── [if checkBackupTable("cj")] Toggle "還原已學習記錄"  pref: restore_on_import_cj  default: true
-        │   ├── Button "☁ 標準"            → downloadIM(CLOUD_CJ,      table: "cj", restoreLearning: restoreOnImport)
-        │   ├── Button "☁ BIG5"             → downloadIM(CLOUD_CJ_BIG5, table: "cj", restoreLearning: restoreOnImport)
-        │   ├── Button "☁ 香港字"          → downloadIM(CLOUD_CJHK,    table: "cj", restoreLearning: restoreOnImport)
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "cj", restoreLearning: restoreOnImport)
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "cj", restoreLearning: restoreOnImport)
-        ├── DisclosureGroup "快倉 (scj)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_SCJ, table: "scj")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "scj")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "scj")
-        ├── DisclosureGroup "倉頡五代 (cj5)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_CJ5, table: "cj5")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "cj5")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "cj5")
-        ├── DisclosureGroup "速成 (ecj)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_ECJ, table: "ecj")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "ecj")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "ecj")
-        ├── DisclosureGroup "大易 (dayi)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_DAYI, table: "dayi")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "dayi")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "dayi")
-        ├── DisclosureGroup "輕鬆 (ez)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_EZ, table: "ez")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "ez")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "ez")
-        ├── DisclosureGroup "行列 (array)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_ARRAY, src: "array.limedb")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "array")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "array")
-        ├── DisclosureGroup "行列 10 (array10)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_ARRAY10, src: "array10.limedb")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "array10")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "array10")
-        ├── DisclosureGroup "拼音 (pinyin)"
-        │   ├── Button "☁ Unicode"          → downloadIM(CLOUD_PINYIN,     table: "pinyin")
-        │   ├── Button "☁ BIG5"             → downloadIM(CLOUD_PINYIN_BIG5, table: "pinyin")
-        │   ├── Button "☁ 簡體 GB"         → downloadIM(CLOUD_PINYIN_GB,   table: "pinyin")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "pinyin")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "pinyin")
-        ├── DisclosureGroup "華象直覺 (hs)"
-        │   ├── Button "☁ 完整版"         → downloadIM(CLOUD_HS,    table: "hs")
-        │   ├── Button "☁ 一版"            → downloadIM(CLOUD_HS_V1, table: "hs")
-        │   ├── Button "☁ 二版"            → downloadIM(CLOUD_HS_V2, table: "hs")
-        │   ├── Button "☁ 三版"            → downloadIM(CLOUD_HS_V3, table: "hs")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "hs")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "hs")
-        ├── DisclosureGroup "筆順五碼 (wb)"
-        │   ├── Button "☁ 下載"            → downloadIM(CLOUD_WB, table: "wb")
-        │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "wb")
-        │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "wb")
-        ├── DisclosureGroup "自建 (custom)"
+        │   ├── Button "☁ 倉頡字根"           → downloadIM(CLOUD_CJ,      table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 倉頡字根 (BIG5字集)" → downloadIM(CLOUD_CJ_BIG5, table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "☁ 倉頡香港字字根"     → downloadIM(CLOUD_CJHK,    table: "cj", restoreLearning: restoreOnImport)
+        │   ├── Button "匯入 .limedb"         → fileImporter → importFromAttachedDB(table: "cj", restoreLearning: restoreOnImport)
+        │   └── Button "匯入 .cin / .lime"      → fileImporter → importTxtTable(table: "cj", restoreLearning: restoreOnImport)
+        ├── DisclosureGroup "倉頡五代"
+        │   ├── Button "☁ 倉頡五代字根"       → downloadIM(CLOUD_CJ5, table: "cj5")
+        │   ├── Button "匯入 .limedb"         → fileImporter → importFromAttachedDB(table: "cj5")
+        │   └── Button "匯入 .cin / .lime"      → fileImporter → importTxtTable(table: "cj5")
+        ├── DisclosureGroup "快倉"
+        │   ├── Button "☁ 快倉字根"           → downloadIM(CLOUD_SCJ, table: "scj")
+        │   ├── Button "匯入 .limedb"         → fileImporter → importFromAttachedDB(table: "scj")
+        │   └── Button "匯入 .cin / .lime"      → fileImporter → importTxtTable(table: "scj")
+        ├── DisclosureGroup "速成"
+        │   ├── Button "☁ 簡易速成"           → downloadIM(CLOUD_ECJ,   table: "ecj")
+        │   ├── Button "☁ 速成香港字字根"     → downloadIM(CLOUD_ECJHK, table: "ecj")
+        │   ├── Button "匯入 .limedb"         → fileImporter → importFromAttachedDB(table: "ecj")
+        │   └── Button "匯入 .cin / .lime"      → fileImporter → importTxtTable(table: "ecj")
+        ├── DisclosureGroup "大易"
+        │   ├── Button "☁ OpenVanilla 大易字根"  → downloadIM(CLOUD_DAYI,      table: "dayi")
+        │   ├── Button "☁ Unicode 3+4 碼單字版" → downloadIM(CLOUD_DAYIUNI,   table: "dayi")
+        │   ├── Button "☁ Unicode 3+4 碼詞庫版" → downloadIM(CLOUD_DAYIUNIP,  table: "dayi")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "dayi")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "dayi")
+        ├── DisclosureGroup "輕鬆"
+        │   ├── Button "☁ 輕鬆字根"             → downloadIM(CLOUD_EZ, table: "ez")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "ez")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "ez")
+        ├── DisclosureGroup "行列"
+        │   ├── Button "☁ 老刀行列字根"         → downloadIM(CLOUD_ARRAY, table: "array")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "array")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "array")
+        ├── DisclosureGroup "行列 10"
+        │   ├── Button "☁ 老刀行列10字根"       → downloadIM(CLOUD_ARRAY10, table: "array10")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "array10")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "array10")
+        ├── DisclosureGroup "拼音"
+        │   ├── Button "☁ 拼音字根"             → downloadIM(CLOUD_PINYIN,    table: "pinyin")
+        │   ├── Button "☁ 拼音字根 (簡體GB)"    → downloadIM(CLOUD_PINYINGB,  table: "pinyin")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "pinyin")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "pinyin")
+        ├── DisclosureGroup "華象直覺"
+        │   ├── Button "☁ 華象完整版"           → downloadIM(CLOUD_HS,    table: "hs")
+        │   ├── Button "☁ 華象一版"             → downloadIM(CLOUD_HS_V1, table: "hs")
+        │   ├── Button "☁ 華象二版"             → downloadIM(CLOUD_HS_V2, table: "hs")
+        │   ├── Button "☁ 華象三版"             → downloadIM(CLOUD_HS_V3, table: "hs")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "hs")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "hs")
+        ├── DisclosureGroup "筆順五碼"
+        │   ├── Button "☁ 筆順五碼字根"         → downloadIM(CLOUD_WB, table: "wb")
+        │   ├── Button "匯入 .limedb"           → fileImporter → importFromAttachedDB(table: "wb")
+        │   └── Button "匯入 .cin / .lime"        → fileImporter → importTxtTable(table: "wb")
+        ├── DisclosureGroup "自建"
         │   ├── Button "匯入 .limedb"     → fileImporter → importFromAttachedDB(table: "custom") → seedCustomIM()
         │   └── Button "匯入 .cin / .lime"  → fileImporter → importTxtTable(table: "custom") → seedCustomIM()
         ├── DisclosureGroup "聯想詞庫"  systemImage: "text.bubble"
@@ -697,28 +700,53 @@ Form
 
 ### 7.1 Layout
 
+No second-level navigation exists in this tab, so it uses a `ScrollView` + `VStack` layout
+(same pattern as the 設定 tab) rather than `List`. This gives a centred 560 pt column on iPad
+and a standard full-width layout on iPhone.
+
 ```
 NavigationStack
-└── List
-    ├── Section "備份"
-    │   ├── Button "備份資料庫"
-    │   │   → db.exportDB(to: tempPath)
-    │   │   → ShareLink / UIActivityViewController (Files, AirDrop, Mail…)
-    │   └── Text "備份包含所有字根、關聯字及偏好設定。"
-    │         .font(.footnote).foregroundColor(.secondary)
-    ├── Section "還原"
-    │   ├── Button "還原資料庫"
-    │   │   → confirmAlert("還原後目前所有資料將被取代，確定繼續？")
-    │   │   → fileImporter([.item])   // pick .db / .limedb
-    │   │   → performRestore(url:)
-    │   └── Text "還原後鍵盤將重新載入資料庫。"
-    │         .font(.footnote).foregroundColor(.secondary)
-    ├── Section "初始資料庫"
-    │   └── Button "還原預設資料庫"  → restoreBundledDatabase() (uses isWorking / statusMessage)
-    └── Section "狀態" (visible when statusMessage non-empty)
-        └── Text(statusMessage).font(.footnote).foregroundColor(.secondary)
-.navigationTitle("資料庫管理")
+└── ScrollView
+    └── VStack(alignment: .leading, spacing: 0)   // .padding(.horizontal, 24)
+        │                                           // .frame(maxWidth: 560)
+        │                                           // .frame(maxWidth: .infinity)
+        │
+        ├── [iPad only] Text("資料庫管理")           // .font(.title2).bold()
+        │   // Nav bar hidden on iPad (.navigationBarHidden(hSize == .regular))
+        │   // so the title is rendered here, left-aligned with the content column.
+        │   // On iPhone the standard navigation large title is used instead.
+        │
+        ├── formSection(header: "備份", footer: "備份包含所有字根、關聯字及偏好設定。")
+        │   └── Button "備份資料庫"  systemImage: "square.and.arrow.up"
+        │       → performBackup() → UIActivityViewController (Files, AirDrop, Mail…)
+        │
+        ├── formSection(header: "還原", footer: "還原後鍵盤將重新載入資料庫。")
+        │   └── Button "還原資料庫"  systemImage: "arrow.down.circle"  .foregroundColor(.red)
+        │       → confirmAlert("還原後目前所有資料將被取代，確定繼續？")
+        │       → fileImporter([.item])   // pick .db / .limedb
+        │       → performRestore(from:)
+        │
+        ├── formSection(header: "初始資料庫")
+        │   └── Button "還原預設資料庫"  systemImage: "arrow.counterclockwise.circle"  .foregroundColor(.red)
+        │       → confirmAlert → restoreBundledDatabase()
+        │
+        └── [if statusMessage non-empty] formSection(header: "狀態")
+            └── Text(statusMessage).font(.footnote).foregroundColor(.secondary)
+    .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+    .navigationTitle("資料庫管理")          // iPhone only (nav bar shown)
+    .navigationBarHidden(hSize == .regular) // hide nav bar on iPad; show on iPhone
 ```
+
+`formSection(header:footer:content:)` is a private `@ViewBuilder` helper that renders a
+`GroupBox` styled with `FormSectionGroupBoxStyle` (shared with `SetupTabView`) with a small
+uppercase header label above and an optional footnote footer below, matching the visual
+language of an `.insetGrouped` List section.
+
+**iPad width cap.** The inner `VStack` carries `.frame(maxWidth: 560).frame(maxWidth: .infinity)`
+so the content sits in a centred column. The navigation bar is hidden on iPad and a custom
+`.title2.bold()` title is shown at the top of the column (left-aligned with the GroupBoxes)
+at the same vertical height as the large navigation titles in the IM Manager and Preferences
+tabs. On iPhone the standard navigation large title is used and the custom title is hidden.
 
 ### 7.2 Backup Behaviour
 

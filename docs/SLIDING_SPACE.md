@@ -1,103 +1,75 @@
 # Sliding Space Bar — Caret Movement
 
-## Current behaviour
+## Implemented behaviour (iOS)
 
 `SpaceKeyButton` uses raw touch tracking (`touchesBegan/Moved/Ended`) to disambiguate tap,
 swipe, and long-press without UIKit interference.  A horizontal swipe past
-`LayoutMetrics.Gesture.spaceSwipeThreshold` fires:
-
-| direction | key code emitted | ViewController action |
-|-----------|------------------|-----------------------|
-| left  | `LimeKeyCode.prevIM` | `switchToNextActivatedIM(forward: false)` |
-| right | `LimeKeyCode.nextIM` | `switchToNextActivatedIM(forward: true)`  |
-
-This switches the active input method, which is rarely needed mid-sentence and conflicts
-with the much more useful "slide to move cursor" pattern that Apple introduced in iOS 13 for
-the stock keyboard's space bar.
-
----
-
-## Proposed behaviour
-
-Horizontal swipe on the space bar moves the text cursor instead of switching IMs.
+`LayoutMetrics.Gesture.spaceSwipeThreshold` moves the text cursor:
 
 | direction | action |
 |-----------|--------|
-| ← left    | `textDocumentProxy.adjustTextPosition(byCharacterOffset: -1)` |
-| → right   | `textDocumentProxy.adjustTextPosition(byCharacterOffset: +1)` |
+| ← left    | `textDocumentProxy.adjustTextPosition(byCharacterOffset: -N)` |
+| → right   | `textDocumentProxy.adjustTextPosition(byCharacterOffset: +N)` |
 
-IM switching moves to the **globe long-press menu** (already wired up at
-`KeyboardViewController.swift:2818`) or the Globe key tap (`advanceToNextInputMode()`).
+Caret movement accelerates with slide distance (see tiers below).
+IM switching is via the Globe key tap (`advanceToNextInputMode()`) or the Globe long-press menu.
 
 ---
 
-## iOS implementation
+## Architecture
 
-### 1. Continuous tracking (preferred)
+### `SpaceKeyButton` (KeyboardView.swift)
 
-Replace the single-fire threshold check with per-`touchesMoved` accumulation so the cursor
-tracks the finger smoothly — matching the Apple stock keyboard feel.
+Raw touch tracking with three phases:
 
-```swift
-// SpaceKeyButton additions
-private var cumulativeDx: CGFloat = 0
-private static let caretStepPx: CGFloat = LayoutMetrics.Gesture.spaceSwipeThreshold / 2
+- **Tap**: `touchesEnded` fires `onTap` if no action was suppressed.
+- **Long-press**: a `Timer` fires `onLongPress` after `spaceLongPressDuration`; cleared on any drag.
+- **Slide**: once `abs(dx) >= deadZone`, long-press is cancelled and `onCaretMove(delta)` is emitted
+  each time the finger crosses a step boundary.
 
-override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-    guard let touch = touches.first, !actionFired else { return }
-    let dx = touch.location(in: self).x - touchBeganPoint.x
-    // Accumulate and emit one caret step per threshold unit crossed
-    let steps = Int(dx / SpaceKeyButton.caretStepPx)
-    let pending = steps - caretStepsFired
-    if pending != 0 {
-        caretStepsFired = steps
-        onCaretMove?(pending)   // new callback, negative = left
-        longPressTimer?.invalidate(); longPressTimer = nil
-        actionFired = true      // suppress tap on touchesEnded
-    }
-}
+### Acceleration tiers
+
+`stepsForDisplacement(_:)` maps absolute displacement to total step count using three linear tiers:
+
+| Travel beyond dead zone | Step size | Effective speed |
+| --- | --- | --- |
+| 0 – 60 pt | 8 pt / step (`stepPx`) | 1× |
+| 60 – 140 pt | 4 pt / step (`stepPx / 2`) | 2× |
+| 140 pt + | 2 pt / step (`stepPx / 4`) | 4× |
+
+`lastCaretStep` tracks the last emitted total so each `touchesMoved` call emits only the
+incremental delta.
+
+### Wiring
+
+```
+SpaceKeyButton.onCaretMove(delta)
+  → KeyboardView.delegate?.keyboardView(_:didMoveCaretBy:)
+    → KeyboardViewController.keyboardView(_:didMoveCaretBy:)
+      → textDocumentProxy.adjustTextPosition(byCharacterOffset: steps * delta)
 ```
 
-Add `var onCaretMove: ((Int) -> Void)?` alongside the existing callbacks.
+`KeyboardViewController` no-ops when `mComposing` is non-empty (cursor movement while the
+engine holds uncommitted text produces undefined results on some apps).
 
-### 2. Wire up in `makeSpaceButton`
+### `LayoutMetrics.Gesture` constants
 
-```swift
-btn.onCaretMove = { [weak self] steps in
-    guard let self else { return }
-    self.delegate?.keyboardView(self, didMoveCaretBy: steps)
-}
-// Remove onSwipeLeft / onSwipeRight assignments (IM switching)
-```
+| Constant | Value | Purpose |
+| --- | --- | --- |
+| `spaceSwipeThreshold` | 12 pt | Initial dead zone before caret tracking begins |
+| `spaceCaretStepPx` | 8 pt | Base step size (tier 1) |
+| `spaceLongPressDuration` | 0.5 s | Long-press delay |
 
-Add `keyboardView(_:didMoveCaretBy:)` to `KeyboardViewDelegate`.
+---
 
-### 3. Handle in `KeyboardViewController`
-
-```swift
-func keyboardView(_ view: KeyboardView, didMoveCaretBy steps: Int) {
-    guard mComposing.isEmpty else { return }   // no cursor move while composing
-    textDocumentProxy.adjustTextPosition(byCharacterOffset: steps)
-}
-```
-
-When composing is active, ignore (or alternatively commit composing first — TBD by UX
-preference).
-
-### 4. `LayoutMetrics` constant
-
-Add `caretStepPx` to `LayoutMetrics.Gesture` so it is tunable in one place alongside
-`spaceSwipeThreshold`.
-
-### Constraints and edge cases
+## Constraints and edge cases
 
 - **Composing active**: `adjustTextPosition` while the engine holds uncommitted text produces
-  undefined results on some apps.  Safest is to no-op; alternatively commit composing first.
-- **Long-press**: existing long-press (IM picker / switch chi/eng) is unaffected because
-  `actionFired` is not set until the caret step threshold is crossed.
-- **Haptics**: emit a light `UIImpactFeedbackGenerator(.light)` per caret step for tactile
-  rhythm (Apple does this on stock keyboard).
-- **Accessibility**: VoiceOver already handles caret via its own gesture; no conflict.
+  undefined results on some apps.  Current behaviour: no-op.
+- **Long-press**: unaffected — `tapSuppressed` is not set until the dead zone is crossed.
+- **Haptics**: `UIImpactFeedbackGenerator(.light)` per caret step (Apple does this on stock
+  keyboard) is not yet wired up.
+- **Accessibility**: VoiceOver handles caret via its own gesture; no conflict.
 
 ---
 
@@ -116,15 +88,6 @@ provide no continuous position data.
 Android's `InputConnection` exposes the same primitive:
 
 ```java
-getCurrentInputConnection()
-    .sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT));
-```
-
-or the higher-level:
-
-```java
-getCurrentInputConnection().commitCorrection(...)  // not useful here
-// better:
 getCurrentInputConnection().sendKeyEvent(
     new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT));
 ```
@@ -142,7 +105,7 @@ be straightforward in `LIMEKeyboardBaseView`.
 
 | Task | Estimate |
 |------|----------|
-| iOS implementation (steps 1–4 above) | ~2 h |
 | Android: touch intercept in `LIMEKeyboardBaseView` | ~3 h |
 | Android: `InputConnection` caret step dispatch | ~1 h |
+| Android: acceleration tiers matching iOS | ~30 min |
 | Shared `LayoutMetrics`-style constant in Android (`dimens.xml`) | ~30 min |

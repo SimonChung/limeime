@@ -33,7 +33,7 @@ fit together*.
 
 | Subview | Owner | Z-order | Role |
 |---|---|---|---|
-| `composingLabel` | bar (`CandidateBarView`) | top | Renders the composing keyname (e.g. `ㄉㄚˊ`) overlaid on the leading region of the bar. Hidden until composing starts. |
+| `composingLabel` | bar (`CandidateBarView`) | top | Renders the composing keyname (e.g. `ㄉㄚˊ`) during composition, **and** the reverse-lookup result (e.g. `日=ㄇㄧˋ; ㄖˋ`) after a candidate is committed. Same font, same color, same position. |
 | `scrollView` | bar | middle | Horizontally-scrolling container for the candidate cells. Spans from the bar's leading edge to `moreSep.leadingAnchor`. |
 | `stackView` | inside `scrollView` | — | Holds the `CandidateButton` instances back to back (no spacing between them). |
 | `moreSep` | bar | top | 1pt × 20pt vertical hairline divider between the candidate area and the chevron. |
@@ -132,6 +132,24 @@ The strip's *visible* height (from `composingStripHeight`) is independent
 of the label's *frame* height — the label can be taller (full lineHeight
 + pad) so the glyph isn't clipped, while the bias inset on candidate
 cells uses the smaller `composingStripHeight` to save vertical space.
+
+### Reverse lookup reuse
+
+After the user commits a candidate, the same `composingLabel` strip is
+reused to show that candidate's codes in the configured lookup IM (e.g.
+`日=ㄇㄧˋ; ㄖˋ`). The strip stays visible until the next keystroke or
+a dismiss-button tap — there is no auto-dismiss timer.
+
+**Implementation guard** (`KeyboardViewController`): `isShowingReverseLookup: Bool`
+is set to `true` by `showReverseLookup(_:)` and cleared by `didPress` /
+`cancelComposing`. While the flag is `true`, `hideComposingPopup()` is a
+no-op, preventing post-commit cleanup (related-phrase fetch, `clearSuggestions`)
+from racing away the result before the user can read it.
+
+**Key naming**: the UserDefaults key is `"\(activeIM)_im_reverselookup"` where
+`activeIM` equals the IM's `tableNick` from the database (e.g. `"phonetic"`,
+`"dayi"`, `"array"`). The Settings UI must use matching keys — the phonetic
+IM's key is `phonetic_im_reverselookup`, **not** `bpmf_im_reverselookup`.
 
 ---
 
