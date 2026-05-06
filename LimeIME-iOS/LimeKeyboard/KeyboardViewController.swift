@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 
 // Full keyboard extension entry point.
 // Implements IMService behavior per IM_SERVICE.md spec.
@@ -690,8 +690,6 @@ final class KeyboardViewController: UIInputViewController {
             adaptedCandiText = pal.candiText
         }
         keyboardView?.theme  = t
-        view.backgroundColor = keyboardBackdropFillColor(for: t)
-        keyboardTopCoverView?.backgroundColor = keyboardBackdropFillColor(for: t)
         candidateBar?.systemUserInterfaceStyle = systemStyle
         candidateBar?.theme  = t
         if prevScale != keyboardSize || prevFontScale != candidateFontScale { applyHeight() }
@@ -705,7 +703,6 @@ final class KeyboardViewController: UIInputViewController {
         expandedCandidatesPanel?.backgroundColor = .clear
         expandedCollapseButton?.tintColor = adaptedCandiText
         expandedMoreSep?.backgroundColor = adaptedCandiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
-        expandedScrollThumb?.backgroundColor = adaptedCandiText.withAlphaComponent(0.35)
         expandedDismissButton?.tintColor = pal.label
         expandedDismissButton?.backgroundColor = pal.normalKey.withAlphaComponent(0.15)
         expandedComposingLabel?.font = candidateBar.composingStripFont
@@ -753,6 +750,9 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - UI Setup
 
     private func setupKeyboardUI() {
+        // Transparent so the area above the candidate bar (the collapsible
+        // popup strip) doesn't paint a gray rectangle next to the keyname bubble.
+        view.backgroundColor = .clear
         // Initial values for composing popup / expanded panel chrome. Clamped to {0,1}
         // so coloured themes (2–5) fall back to Light/Dark chrome instead of
         // inheriting the theme's tinted candidate bar. applyFeedbackSettings() updates
@@ -768,14 +768,6 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             adaptedCandiText = pal.candiText
         }
-        view.backgroundColor = keyboardBackdropFillColor(for: t0)
-
-        let topCover = UIView()
-        topCover.backgroundColor = keyboardBackdropFillColor(for: t0)
-        topCover.isUserInteractionEnabled = false
-        topCover.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(topCover)
-        keyboardTopCoverView = topCover
 
         // Candidate bar
         candidateBar = CandidateBarView()
@@ -792,12 +784,7 @@ final class KeyboardViewController: UIInputViewController {
         view.addSubview(keyboardView)
 
         NSLayoutConstraint.activate([
-            topCover.topAnchor.constraint(equalTo: view.topAnchor),
-            topCover.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            topCover.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            topCover.bottomAnchor.constraint(equalTo: candidateBar.topAnchor),
-
-            candidateBar.topAnchor.constraint(equalTo: view.topAnchor, constant: keyboardHostCoverHeight),
+            candidateBar.topAnchor.constraint(equalTo: view.topAnchor),
             candidateBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             candidateBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             {
@@ -981,13 +968,6 @@ final class KeyboardViewController: UIInputViewController {
         expandedComposingLabel = stripLabel
     }
 
-    private func keyboardBackdropFillColor(for theme: Int) -> UIColor {
-        if theme == 1 {
-            return UIColor(red: 0.07, green: 0.07, blue: 0.08, alpha: 1)
-        }
-        return UIColor(white: 0.82, alpha: 1)
-    }
-
     private func applyHeight() {
         // Use KeyboardView.preferredHeight so the outer extension view is sized to
         // exactly match the sum of each row's actual height (54 pt regular, 56 pt
@@ -1003,7 +983,7 @@ final class KeyboardViewController: UIInputViewController {
         // with the Pad value (74×scale), leaving a layout gap.
         candidateBarHeightConstraint?.constant = barH
         expandedCollapseHeightConstraint?.constant = barH
-        let totalHeight = keyboardHostCoverHeight + barH + keysHeight
+        let totalHeight = barH + keysHeight
         if let existing = keyboardHeightConstraint {
             existing.constant = totalHeight
         } else {
