@@ -1,4 +1,4 @@
-import XCTest
+﻿import XCTest
 @testable import LimeIME
 
 // MARK: - LIME Constants (mirrors Android LIME.java constants used in tests)
@@ -1807,6 +1807,14 @@ final class LimeDBTest: XCTestCase {
         XCTAssertNotNil(db.emojiConvert("smile", LIME.EMOJI_EN))
         XCTAssertNotNil(db.emojiConvert("笑", LIME.EMOJI_TW))
         XCTAssertNotNil(db.emojiConvert("笑", LIME.EMOJI_CN))
+    }
+
+    func testEmojiFTSQueryDropsBareAsciiButKeepsUsefulPrefixesAndCJK() throws {
+        XCTAssertEqual(LimeDB.buildEmojiFTSQueryForTest("c"), "")
+        XCTAssertEqual(LimeDB.buildEmojiFTSQueryForTest("cr"), "cr*")
+        XCTAssertEqual(LimeDB.buildEmojiFTSQueryForTest("cry"), "cry*")
+        XCTAssertEqual(LimeDB.buildEmojiFTSQueryForTest("國"), "國*")
+        XCTAssertEqual(LimeDB.buildEmojiFTSQueryForTest("笑"), "笑*")
     }
 
     // MARK: - 36. getBaseScore — documents always-0 decision

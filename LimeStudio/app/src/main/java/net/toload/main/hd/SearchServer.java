@@ -729,10 +729,27 @@ public class SearchServer {
             if(emojicache == null){
                 emojicache = new ConcurrentHashMap<>(LIME.SEARCHSRV_RESET_CACHE_SIZE);
             }
-            List<Mapping> results = emojicache.get(code);
-            if (emojicache.get(code) == null) {
+            String cacheKey = type + ":" + code;
+            List<Mapping> results = emojicache.get(cacheKey);
+            if (results == null) {
                 results = dbadapter.emojiConvert(code, type);
-                emojicache.put(code, results);
+                emojicache.put(cacheKey, results);
+            }
+            return results;
+        }
+        return null;
+    }
+
+    public List<Mapping> findEmojiForCandidate(String code, LimeDB.EmojiLocale locale, int limit) {
+        if (code != null) {
+            if (emojicache == null) {
+                emojicache = new ConcurrentHashMap<>(LIME.SEARCHSRV_RESET_CACHE_SIZE);
+            }
+            String cacheKey = "v2:" + locale.name() + ":" + code + ":" + limit;
+            List<Mapping> results = emojicache.get(cacheKey);
+            if (results == null) {
+                results = dbadapter.findEmojiForCandidate(code, locale, limit);
+                emojicache.put(cacheKey, results);
             }
             return results;
         }

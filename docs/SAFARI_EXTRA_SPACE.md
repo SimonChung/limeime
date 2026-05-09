@@ -41,6 +41,20 @@ extension window. The built-in Apple phonetic keyboard not showing the same gap
 suggests the behavior is specific to the third-party keyboard hosting path, not
 to the text field alone.
 
+Important correction from the user screenshots: the `up / down / done`
+form-assistant row above the keyboard is real host UI, but it is not the
+specific LimeIME artifact being fought here. The target artifact is the rounded
+dark host container / padding immediately around LimeIME's third-party keyboard
+surface on iOS 26.
+
+Second correction from the iOS 26.4 simulator repro: when LimeIME is active, a
+visible blank band can also appear at the top of LimeIME's own
+candidate/composing bar. That band is not the 68 pt WebKit accessory row. It is
+also not the whole iOS host container. It is at least partly explained by
+LimeIME's `CandidateBarView` reserving a composing-keyname strip while keeping
+the bar background clear and shifting candidate glyphs down by half the strip
+height.
+
 ---
 
 ## Geometry Proof
@@ -75,6 +89,69 @@ Interpretation:
 
 Therefore the extra space is not caused by LimeIME Auto Layout placing the
 candidate bar too low. There is no internal LimeIME top offset to remove.
+
+---
+
+## Screenshot Clarification
+
+The user-provided iOS 26 screenshots show two different host-owned surfaces:
+
+- The `up / down / done` row above the keyboard is the web form assistant /
+  accessory UI. It is adjacent to the keyboard, but it is not the target bug.
+- The rounded dark container / padding immediately surrounding LimeIME below
+  that row is the target artifact. This is the iOS 26 third-party keyboard host
+  presentation, not LimeIME's candidate-bar layout.
+
+Any future screenshot proof must show LimeIME visibly active and must not use
+Apple’s system keyboard as a stand-in. A screenshot with the Apple system
+keyboard only proves the host accessory row exists; it does not prove the
+LimeIME extra-space behavior.
+
+The iOS 26.4 simulator repro adds one more visible layer:
+
+- A blank gray band at the top of LimeIME's candidate/composing bar itself.
+  `CandidateBarView` currently pins the bar to `view.topAnchor`, but internally
+  reserves `LayoutMetrics.ComposingPopup.stripHeight` for the keyname strip and
+  biases candidate buttons downward by `composingStripHeight / 2`. Because the
+  bar background is `.clear`, this reserved area blends into the rounded host
+  backdrop and looks like extra top space above the composing keyname / candidate
+  row.
+
+So there are three things that must not be conflated:
+
+- WebKit form assistant: the `up / down / done` row.
+- iOS 26 host container: the rounded third-party keyboard backdrop.
+- LimeIME candidate-bar reserve: the blank top band inside the clear
+  candidate/composing bar.
+
+### iOS 26.4 simulator screenshot proof
+
+Computer Use was used on the globe key to select / reach `萊姆輸入法` directly.
+The active keyboard then showed LimeIME's mixed Latin/Zhuyin keycaps, and the
+globe key's next-keyboard value changed to `繁體注音`. The proof that the
+screenshot is LimeIME-active is the simultaneous simulator log:
+
+```text
+2026-05-07 00:18:10.321 ... Successfully spawned LimeKeyboard[76781]
+2026-05-07 00:18:10.323 ... got pid from ready request: 76781
+2026-05-07 00:20:17.168 ... Activity: viewControllerAppearance; appearState: appeared
+```
+
+Screenshot captured from that state:
+
+```text
+.Codex/txt/limeime-keyboard-active-direct-select.png
+```
+
+What this proves on iOS 26.4:
+
+- The active keyboard extension was `net.toload.limeime.keyboard`, not Apple's
+  system keyboard.
+- The `up / down / done` row was still host/WebKit form-assistant UI above the
+  keyboard. It is not the LimeIME bug.
+- The rounded keyboard host backdrop is still outside normal LimeIME key layout
+  ownership. LimeIME can draw inside its extension view; it cannot directly
+  remove a host-owned accessory row or outer host container.
 
 ---
 
@@ -169,14 +246,14 @@ External research grounding this analysis is preserved in
    — owned by `WKContentView`, the private first responder inside any
    `WKWebView` (Safari page content, Gemini web app, Google search box).
    Rendered by the host app process above the keyboard. Appears for any
-   focused HTML `<input>` / `<textarea>`. Has rounded top corners on
-   modern iOS, which matches the visible artifact. A keyboard extension
-   has zero API to suppress or restyle it. Removing it is only possible
-   from the host app side, by swizzling `WKContentView.inputAccessoryView`
-   to `nil`, which Safari / Gemini / Google do not do. The Safari URL bar
-   is a native `UITextField`, not a `WKWebView` input — it does not show
-   this bar, which explains why the URL-bar path can look flush while
-   Gemini / Google `<input>` paths do not.
+   focused HTML `<input>` / `<textarea>`. In the user screenshot this is the
+   `up / down / done` row. It is real and host-owned, but it is not the
+   rounded LimeIME extra-space artifact. A keyboard extension has zero API to
+   suppress or restyle it. Removing it is only possible from the host app side,
+   by swizzling `WKContentView.inputAccessoryView` to `nil`, which Safari /
+   Gemini / Google do not do. The Safari URL bar is a native `UITextField`,
+   not a `WKWebView` input — it does not show this bar, which explains why the
+   URL-bar path can look flush while Gemini / Google `<input>` paths do not.
    - Source: rdar://27763084; Apple Developer Forums thread 81650;
      `https://www.technetexperts.com/hide-ios-input-bar/`.
 
@@ -185,7 +262,10 @@ External research grounding this analysis is preserved in
    etc.) embed third-party keyboards inside a rounded container with
    grey margins on the left, right, and top. The margin region is owned
    by the `UIInputSetHostView` window stack and is not drawable by the
-   extension. This affects both web and native hosts on iOS ≥ 26.
+   extension. This is the best match for the user-provided LimeIME screenshot:
+   LimeIME is active, the web form assistant row is above it, and the actual
+   unwanted area is the rounded host container around the third-party keyboard.
+   This affects both web and native hosts on iOS ≥ 26.
    - Source: Apple Developer Forums thread 800838.
 
 3. **iOS 26 Quick Actions / App Shortcuts bar** — a new system rounded-
@@ -234,12 +314,17 @@ rounded rectangle above LimeIME.
 
 ### Conclusion
 
-The artifact is host- and OS-owned, not LimeIME-owned. There is no
-keyboard-extension API that removes WKWebView's form-assistant
-accessory, the iOS 26 host inset, or the iOS 26 Quick Actions bar.
-Candidate-bar geometry, background fills, cover strips, and
-`UIVisualEffectView` backdrops are the wrong tool for this category of
-bug. They were tried and failed for exactly that reason.
+The full visible artifact is mixed:
+
+- The WebKit form-assistant row is host-owned.
+- The iOS 26 rounded keyboard container is host / OS-owned.
+- The blank band at the top of LimeIME's own composing/candidate bar is
+  LimeIME-owned visual layout, because `CandidateBarView` reserves strip space
+  and paints the bar clear.
+
+Candidate-bar geometry is therefore not the root cause of the WebKit accessory
+or iOS 26 host container, but it can contribute to the extra-space perception
+inside LimeIME's own bounds.
 
 ---
 
@@ -310,10 +395,17 @@ not cause iOS to allocate the extra top padding.
 The unanswered question is not "where is the candidate bar?" We know it is at
 `y = 0` inside the extension.
 
-The unanswered question is:
+The host-owned unanswered question is:
 
-Why does iOS / the host app choose a keyboard-host stack with extra top padding
-for Gemini or Google search, but not always for Safari URL bar?
+Why does iOS 26 / the host app choose the rounded third-party keyboard host
+container with extra top / side padding for Gemini or Google search, but not
+always for Safari URL bar?
+
+The LimeIME-owned unanswered question is:
+
+How should the composing-keyname strip be drawn so it does not create a blank
+top band inside the candidate bar while still avoiding tone-mark clipping and
+candidate/keyname overlap?
 
 Related question:
 
@@ -324,7 +416,8 @@ Possible iOS decision inputs:
 
 - `UITextInputTraits`, such as keyboard type, return key type, autocorrection,
   spell checking, smart insert/delete, secure text entry, and text content type.
-- Host-owned input accessory views or suggestion containers above the keyboard.
+- Host-owned input accessory views or suggestion containers above the keyboard,
+  which are adjacent evidence but not the target rounded-container artifact.
 - Browser/search UI overlays that are visually grouped with the keyboard but are
   not part of the third-party keyboard extension view.
 - Differences between URL/search fields and normal multiline/editable web fields.
@@ -339,18 +432,92 @@ we can collect enough evidence to classify each host path as either:
 - outside LimeIME's input view, not directly drawable or removable by LimeIME.
 
 The existing geometry log already puts the observed bad case in the second
-category unless a future log shows different bounds.
+category unless a future log shows different bounds. The user screenshots also
+show that the iOS 26 rounded container must be tracked separately from the web
+form-assistant row.
 
 ---
 
-## Proposed Next Solution
+## Current Fix Boundary
 
-Do not change candidate-bar geometry, `stripHeight`, candidate insets, or
-add new root subviews for this issue. The failure mode is host-owned. The
-next step is a one-shot classification probe and a Feedback Assistant
-report, not another visual workaround.
+The current evidence must be read conservatively.
 
-### Step 1 — One-shot DEBUG classification probe
+Simulator proof split the visual problem into at least two layers:
+
+- The iOS 26 rounded third-party keyboard container and the WebKit
+  form-assistant row are host-owned. LimeIME cannot remove them.
+- LimeIME's candidate row must stay vertically stable across composing,
+  associated-candidate, and normal candidate states. The composing/keyname strip
+  cannot be treated as active only when `composingText` is non-empty.
+
+### Failed and rejected idea: conditional composing-strip reserve
+
+Attempted LimeIME-owned cleanup, now reverted:
+
+- `CandidateBarView` used `activeComposingStripHeight == 0` when
+  `composingText` was empty.
+- Candidate buttons, dismiss button, separator, and chevron used that active
+  height for vertical bias.
+- The whole candidate bar stayed the same height, so the keyboard height would
+  not bounce between idle and composing states.
+
+Result:
+
+- Failed. The visible Safari / web-input extra space still appeared on hardware.
+- Worse, it made the candidate row unstable. When LimeIME shows associated
+  candidates, there may be no composing keyname in the composing strip, but the
+  candidate row still needs the same vertical reservation / bias as nearby
+  candidate states.
+- Returning strip height `0` only because `composingText` is empty causes the
+  candidate line to move up/down between associated-candidate and composing
+  states. That is a bad UX regression and not an acceptable fix.
+- Therefore `activeComposingStripHeight == 0 when composingText is empty` is a
+  rejected approach, not just a failed Safari-gap fix.
+- This also confirms the conditional composing-strip reserve is not the root
+  cause of the real-device Safari / web-input artifact.
+
+Updated conclusion:
+
+- Not proven fixable in LimeIME: the real-device Safari / web-input extra top
+  space.
+- Do not retry `composingText`-based strip-height changes. Associated
+  candidates need stable vertical placement even with an empty composing
+  keyname.
+- Still possibly fixable in LimeIME: a separate internal candidate-bar drawing
+  issue, if a screenshot shows the gap is below LimeIME's own top edge and the
+  fix preserves candidate-row stability across associated/composing states.
+- Not fixable in LimeIME if proven above the extension top edge: the iOS 26
+  rounded host container and WebKit accessory row.
+
+The next move is not another visual tweak. The next move is a real-device
+classification probe that draws and logs the extension's exact top boundary.
+
+### Step 1 - Real-device boundary probe
+
+Add temporary DEBUG-only proof markers in `KeyboardViewController`:
+
+- A 1 px red line pinned to `view.topAnchor`.
+- A 1 px green line pinned to `candidateBar.topAnchor`.
+- A 1 px blue line pinned to `keyboardView.topAnchor`.
+- Optional labels are not needed; colored lines are enough and reduce layout
+  disturbance.
+
+Then capture real-device screenshots in the failing Safari / Google / Gemini
+field with LimeIME visibly active.
+
+Interpretation:
+
+- If the unwanted space is above the red/green line, it is outside LimeIME's
+  extension view. LimeIME cannot remove it with candidate-bar layout, root
+  background, cover strips, or height changes.
+- If the unwanted space is between the red/green line and the first visible
+  candidate/key content, it is inside `CandidateBarView`. Then the next fix is a
+  candidate-bar drawing/layout change, not a root keyboard-host experiment.
+- If the red line itself is not flush with the top of the visible keyboard
+  surface, the host is clipping/insetting the third-party keyboard surface.
+  Treat this as iOS 26 host-owned behavior and file Feedback Assistant.
+
+### Step 2 - One-shot DEBUG classification log
 
 Add temporary DEBUG-only logging in `KeyboardViewController` that fires
 once per focus change. For each focused field, log:
@@ -380,8 +547,10 @@ once per focus change. For each focused field, log:
 Capture matched logs and screenshots for these scenarios:
 
 - Safari URL bar (no extra space expected — native `UITextField`)
-- Google search `<input>` (extra space expected — WKWebView accessory)
-- Gemini textarea (extra space expected — WKWebView accessory)
+- Google search `<input>` (web form assistant row may appear; separately check
+  for iOS 26 rounded third-party keyboard host container)
+- Gemini textarea (web form assistant row may appear; separately check for iOS
+  26 rounded third-party keyboard host container)
 - Apple's built-in phonetic keyboard in the same Gemini / Google context
   (visual baseline only — Apple's private hosting path; we cannot log
   internals there)
@@ -389,38 +558,38 @@ Capture matched logs and screenshots for these scenarios:
 Run the same set on iOS 25 and iOS 26 if both are available, since the
 expected actors differ by major version.
 
-### Step 2 — Decision table
+### Step 3 - Decision table
 
 | Finding | Classification | Action |
 | --- | --- | --- |
-| Candidate bar `y > 0` or composing label `y > 0` in any future log | LimeIME internal layout regressed | Fix candidate / composing constraints. Bug is in LimeIME. |
-| Candidate bar `y == 0`, composing label `y == 0`, AND `keyboardType` is `.default` / `.emailAddress` etc. on iOS ≤ 25 in Safari / Gemini / Google web form | WKWebView form-assistant `inputAccessoryView` (Prev / Next / Done) | Host-owned. Not fixable from the extension. Document and stop. |
+| Candidate bar `y > 0` in any future log | LimeIME root layout regressed | Fix candidate-bar constraints. Bug is in LimeIME. |
+| Candidate bar `y == 0`, but the bar itself has a visible blank top band above the composing/candidate content | LimeIME candidate-bar reserve / clear-background presentation | LimeIME-owned visual issue. Rework `CandidateBarView` strip drawing, padding, or background treatment. |
+| Candidate bar `y == 0`, composing label `y == 0`, AND only the `up / down / done` row is visible above the keyboard | WKWebView form-assistant `inputAccessoryView` (Prev / Next / Done) | Host-owned adjacent accessory. Not the LimeIME extra-space artifact. Document separately and stop. |
 | Same geometry on iOS ≤ 25 in Safari URL bar | Native `UITextField` — different accessory or none | If URL bar still shows extra space, capture and re-classify; otherwise expected behavior. |
-| iOS ≥ 26 in any host (web or native) | iOS 26 Liquid Glass host insets and / or Quick Actions bar | Host-owned. Not fixable from the extension. File Feedback Assistant referencing forum thread 800838. |
+| iOS ≥ 26 with LimeIME visibly active and rounded dark padding / container around the keyboard | iOS 26 Liquid Glass third-party keyboard host container / insets | Host-owned target artifact. Not fixable from the extension. File Feedback Assistant referencing forum thread 800838. |
 | iPad-only artifact above keyboard | `UITextInputAssistantItem` shortcut bar | See [IPAD_ASSIST_BAR.md](IPAD_ASSIST_BAR.md) §8.1 — extension-side suppression is silently ignored. Not fixable from the extension. |
 
-### Step 3 — Close-out
+### Step 4 - Close-out
 
-For every row except the first, the action is the same: stop iterating
-on LimeIME layout for this case, mark the bug as host / OS-owned, and
-either file Feedback Assistant or accept the behavior. Specifically:
+For every row except a confirmed internal LimeIME row, the action is the same:
+stop iterating on LimeIME layout for this case, mark the bug as host /
+OS-owned, and either file Feedback Assistant or accept the behavior.
+Specifically:
 
-- File or reference an existing Feedback Assistant ticket referencing
-  rdar://27763084 (allow disabling default `inputAccessoryView` on
-  WKWebView) for the iOS ≤ 25 case.
 - File Feedback Assistant referencing Apple Developer Forums thread
   800838 (iOS 26 Liquid Glass extra grey margin around third-party
   keyboard extensions) for the iOS ≥ 26 case.
+- If separately documenting the web form-assistant row, reference
+  rdar://27763084 (allow disabling default `inputAccessoryView` on
+  WKWebView), but do not present it as the LimeIME extra-space root cause.
 - Add a one-line link in `IOS_STATUS.md` (or equivalent) noting the
   artifact and the version gating, so future contributors do not re-open
   the candidate-bar branch of this investigation.
 
 ### Hard rule
 
-No more candidate-layout edits, no more cover strips, no more root-view
-backdrops, and no more `UIVisualEffectView` experiments for this bug
-unless a future log shows the candidate bar or composing label moving
-inside LimeIME's own bounds (the first row of the decision table).
-Every prior visual workaround has failed for the same structural
-reason: the artifact lives in a window above LimeIME's input view that
-the extension does not own.
+No more root-view backdrops, top cover strips, or `UIVisualEffectView`
+experiments for the host-owned portions of this bug. Candidate-bar work is only
+appropriate for the LimeIME-owned blank band inside `CandidateBarView` itself,
+and should be scoped to the composing-keyname strip / candidate padding rather
+than trying to cover host pixels above the input view.

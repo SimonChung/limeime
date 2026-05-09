@@ -77,6 +77,7 @@ import net.toload.main.hd.keyboard.LIMEKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboardBaseView;
 import net.toload.main.hd.keyboard.LIMEKeyboardView;
 import net.toload.main.hd.keyboard.LIMEMetaKeyKeyListener;
+import net.toload.main.hd.limedb.LimeDB;
 import net.toload.main.hd.ui.LIMEPreference;
 
 import java.lang.ref.WeakReference;
@@ -2485,7 +2486,7 @@ public class LIMEService extends InputMethodService
 
                                 if (list.get(0).getWord().matches("[A-Za-z]+")) {
 
-                                    item1 = SearchSrv.emojiConvert(list.get(0).getWord(), LIME.EMOJI_EN);
+                                    item1 = SearchSrv.findEmojiForCandidate(list.get(0).getWord(), LimeDB.EmojiLocale.EN, 8);
                                     if (!item1.isEmpty()) {
                                         for (Mapping m : item1) {
                                             if (emojiCheck.get(m.getWord()) == null) {
@@ -2504,7 +2505,7 @@ public class LIMEService extends InputMethodService
                                             list.get(1).getWord().getBytes().length > 1 &&
                                             list.get(1).getWord().length() < 4
                                     ) {
-                                        item2 = SearchSrv.emojiConvert(list.get(1).getWord(), LIME.EMOJI_TW);
+                                        item2 = SearchSrv.findEmojiForCandidate(list.get(1).getWord(), LimeDB.EmojiLocale.TW, 8);
                                         if (!item2.isEmpty()) {
                                             for (Mapping m : item2) {
                                                 if (emojiCheck.get(m.getWord()) == null) {
@@ -2514,7 +2515,7 @@ public class LIMEService extends InputMethodService
                                             }
                                         }
                                         if (item2.isEmpty()) {
-                                            item3 = SearchSrv.emojiConvert(list.get(1).getWord(), LIME.EMOJI_CN);
+                                            item3 = new LinkedList<>();
                                             if (!item3.isEmpty()) {
                                                 for (Mapping m : item3) {
                                                     if (emojiCheck.get(m.getWord()) == null) {
@@ -2676,7 +2677,7 @@ public class LIMEService extends InputMethodService
                                                 insertPosition = list.size();
                                             }
 
-                                            item1 = SearchSrv.emojiConvert(list.get(0).getWord(), LIME.EMOJI_EN);
+                                            item1 = SearchSrv.findEmojiForCandidate(list.get(0).getWord(), LimeDB.EmojiLocale.EN, 8);
                                             if (!item1.isEmpty()) {
                                                 for (Mapping m : item1) {
                                                     if (emojiCheck.get(m.getWord()) == null) {

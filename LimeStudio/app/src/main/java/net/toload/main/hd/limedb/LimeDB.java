@@ -53,6 +53,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -103,7 +104,11 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     private static String TAG = "LimeDB";
 
     private static SQLiteDatabase db = null;  //Jeremy '12,5,1 add static modifier. Shared db instance for dbserver and searchserver
-    private final static int DATABASE_VERSION = 102;
+    private final static int DATABASE_VERSION = 103;
+    private final static String EMOJI_DATA_VERSION = "17.0";
+    private final static String EMOJI_TABLE_DATA = "emoji_data";
+    private final static String EMOJI_TABLE_FTS = "emoji_fts";
+    private final static String EMOJI_TABLE_USER = "emoji_user";
 
     //Jeremy '15, 6, 1 between search clause without using related column for better sorting order.
 
@@ -121,6 +126,38 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     //private final static int BETWEEN_SEARCH_WAY_BACK_LEVELS = 5; //Jeremy '15,6,30
 
     private static boolean codeDualMapped = false;
+
+    public enum EmojiLocale {
+        EN,
+        TW
+    }
+
+    public static class EmojiDataRow {
+        public final String value;
+        public final String cp;
+        public final String groupName;
+        public final String subgroup;
+        public final int sortOrder;
+        public final String nameEn;
+        public final String nameTw;
+        public final String tagsEn;
+        public final String tagsTw;
+        public final double version;
+
+        public EmojiDataRow(String value, String cp, String groupName, String subgroup, int sortOrder,
+                            String nameEn, String nameTw, String tagsEn, String tagsTw, double version) {
+            this.value = value;
+            this.cp = cp;
+            this.groupName = groupName;
+            this.subgroup = subgroup;
+            this.sortOrder = sortOrder;
+            this.nameEn = nameEn;
+            this.nameTw = nameTw;
+            this.tagsEn = tagsEn;
+            this.tagsTw = tagsTw;
+            this.version = version;
+        }
+    }
 
     /**
      * Checks if the current code has dual mapping enabled.
@@ -336,7 +373,6 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
     // Han and Emoji Databases
     private LimeHanConverter hanConverter;
-    private EmojiConverter emojiConverter;
 
     private final int SLEEP_DELAY_100_MS = 100;
     /**
@@ -643,6 +679,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
             long endTime = System.currentTimeMillis();
             Log.i(TAG, "OnUpgrade() upgrade database to verser 102.  Elapsed time = " + (endTime - startTime) + "ms.");
+        }
+        if (oldVersion < 103) {
+            createEmojiTables(dbin, false);
         }
 
     }
@@ -4653,16 +4692,339 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     /**
      * Converts text to emoji suggestions.
      * 
-     * <p>This method uses the emoji converter to find emoji mappings for the
-     * given source text. The emoji database is automatically initialized if needed.
+     * <p>This method keeps the legacy public entry point while routing lookups
+     * through the integrated emoji tables in the main LIME database.
      * 
      * @param source The source text to convert
      * @param emoji The emoji mode (e.g., LIME.EMOJI_EN for English emoji)
      * @return List of Mapping objects containing emoji suggestions
      */
     public List<Mapping> emojiConvert(String source, int emoji){
+        if (emoji == LIME.EMOJI_EN) {
+            return findEmojiForCandidate(source, EmojiLocale.EN, 8);
+        }
+        if (emoji == LIME.EMOJI_TW) {
+            return findEmojiForCandidate(source, EmojiLocale.TW, 8);
+        }
+        return new LinkedList<>();
+    }
+
+    public List<Mapping> findEmojiForCandidate(String candidate, EmojiLocale locale, int limit) {
+        List<Mapping> output = new LinkedList<>();
+        if (candidate == null || candidate.trim().isEmpty()) {
+            return output;
+        }
+        if (checkDBConnection()) {
+            return output;
+        }
         checkEmojiDB();
-        return emojiConverter.convert(source, emoji);
+        String query = buildEmojiFtsQuery(candidate);
+        if (query.isEmpty()) {
+            return output;
+        }
+        int safeLimit = limit > 0 ? limit : 8;
+        String localeNameColumn = locale == EmojiLocale.EN ? "name_en" : "name_tw";
+        String localeTagColumn = locale == EmojiLocale.EN ? "tags_en" : "tags_tw";
+        String sql = "SELECT d.value FROM " + EMOJI_TABLE_FTS + " f " +
+                "JOIN " + EMOJI_TABLE_DATA + " d ON d.rowid = f.rowid " +
+                "LEFT JOIN " + EMOJI_TABLE_USER + " u ON u.value = d.value " +
+                "WHERE " + EMOJI_TABLE_FTS + " MATCH ? " +
+                "ORDER BY (u.last_used IS NULL), u.last_used DESC, d.sort_order ASC LIMIT ?";
+        try (Cursor cursor = db.rawQuery(sql, new String[]{query, String.valueOf(safeLimit)})) {
+            while (cursor != null && cursor.moveToNext()) {
+                String word = cursor.getString(0);
+                if (word != null && !word.isEmpty()) {
+                    Mapping mapping = new Mapping();
+                    mapping.setCode("");
+                    mapping.setWord(word);
+                    mapping.setEmojiRecord();
+                    output.add(mapping);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error finding emoji for candidate using " + localeNameColumn + "/" + localeTagColumn, e);
+        }
+        return output;
+    }
+
+    public void recordEmojiUsage(String value, long timestampSeconds) {
+        if (value == null || value.isEmpty() || checkDBConnection()) {
+            return;
+        }
+        ensureEmojiTables();
+        try {
+            ContentValues cv = new ContentValues();
+            cv.put("last_used", timestampSeconds);
+            int updated = db.update(EMOJI_TABLE_USER, cv, "value=?", new String[]{value});
+            if (updated > 0) {
+                db.execSQL("UPDATE " + EMOJI_TABLE_USER + " SET use_count = use_count + 1 WHERE value = ?",
+                        new Object[]{value});
+                return;
+            }
+            cv.put("value", value);
+            cv.put("use_count", 1);
+            db.insertWithOnConflict(EMOJI_TABLE_USER, null, cv, SQLiteDatabase.CONFLICT_IGNORE);
+        } catch (Exception e) {
+            Log.e(TAG, "Error recording emoji usage", e);
+        }
+    }
+
+    public void createEmojiTablesForTest(boolean forceRecreate) {
+        if (checkDBConnection()) {
+            return;
+        }
+        createEmojiTables(db, forceRecreate);
+    }
+
+    public void replaceEmojiDataForTest(List<EmojiDataRow> rows, String emojiVersion) {
+        if (checkDBConnection()) {
+            return;
+        }
+        ensureEmojiTables();
+        db.beginTransaction();
+        try {
+            clearEmojiBaseData(db);
+            insertEmojiRows(db, rows);
+            rebuildEmojiFts(db);
+            db.delete(LIME.DB_TABLE_IM, LIME.DB_IM_COLUMN_CODE + "=?", new String[]{"emoji"});
+            insertEmojiMetadata(db, emojiVersion, rows.size());
+            db.execSQL("DELETE FROM " + EMOJI_TABLE_USER + " WHERE value NOT IN (SELECT value FROM " + EMOJI_TABLE_DATA + ")");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public int getEmojiUseCountForTest(String value) {
+        if (checkDBConnection()) {
+            return 0;
+        }
+        try (Cursor cursor = db.rawQuery("SELECT use_count FROM " + EMOJI_TABLE_USER + " WHERE value = ?", new String[]{value})) {
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getInt(0);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error reading emoji use count", e);
+        }
+        return 0;
+    }
+
+    private void ensureEmojiTables() {
+        createEmojiTables(db, false);
+    }
+
+    private void refreshEmojiDataIfNeeded() {
+        if (checkDBConnection()) {
+            return;
+        }
+        ensureEmojiTables();
+        if (isEmojiDataCurrent()) {
+            return;
+        }
+
+        File importFile = new File(mContext.getCacheDir(), "emoji_import.db");
+        try (InputStream inputStream = mContext.getResources().openRawResource(R.raw.emoji)) {
+            LIMEUtilities.copyRAWFile(inputStream, importFile);
+            if (!tableExists(importFile.getAbsolutePath(), EMOJI_TABLE_DATA)) {
+                Log.w(TAG, "Bundled emoji.db does not contain emoji_data; keeping existing emoji data");
+                return;
+            }
+            importEmojiData(importFile);
+        } catch (Exception e) {
+            Log.e(TAG, "Error refreshing emoji data", e);
+        } finally {
+            if (importFile.exists() && !importFile.delete()) {
+                Log.w(TAG, "Failed to delete temporary emoji import database");
+            }
+            File legacyEmojiDb = mContext.getDatabasePath("emoji.db");
+            if (legacyEmojiDb.exists() && !legacyEmojiDb.delete()) {
+                Log.w(TAG, "Failed to delete legacy standalone emoji database");
+            }
+        }
+    }
+
+    private boolean isEmojiDataCurrent() {
+        try (Cursor cursor = db.rawQuery(
+                "SELECT desc FROM " + LIME.DB_TABLE_IM + " WHERE code=? AND title=?",
+                new String[]{"emoji", "version"})) {
+            return cursor != null && cursor.moveToFirst() && EMOJI_DATA_VERSION.equals(cursor.getString(0));
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking emoji data version", e);
+            return false;
+        }
+    }
+
+    private void importEmojiData(File importFile) {
+        String attachedPath = quoteSqlString(importFile.getAbsolutePath());
+        db.beginTransaction();
+        try {
+            db.execSQL("ATTACH DATABASE " + attachedPath + " AS emoji_src");
+            clearEmojiBaseData(db);
+            db.execSQL("INSERT INTO " + EMOJI_TABLE_DATA + " " +
+                    "(value, cp, group_name, subgroup, sort_order, name_en, name_tw, tags_en, tags_tw, version) " +
+                    "SELECT value, cp, group_name, subgroup, sort_order, name_en, name_tw, tags_en, tags_tw, version " +
+                    "FROM emoji_src." + EMOJI_TABLE_DATA);
+            rebuildEmojiFts(db);
+            db.execSQL("INSERT INTO " + LIME.DB_TABLE_IM + " " +
+                    "(code, title, desc, keyboard, disable, selkey, endkey, spacestyle) " +
+                    "SELECT code, title, desc, keyboard, disable, selkey, endkey, spacestyle " +
+                    "FROM emoji_src." + LIME.DB_TABLE_IM + " WHERE code='emoji'");
+            db.execSQL("DELETE FROM " + EMOJI_TABLE_USER + " WHERE value NOT IN (SELECT value FROM " + EMOJI_TABLE_DATA + ")");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+            try {
+                db.execSQL("DETACH DATABASE emoji_src");
+            } catch (Exception e) {
+                Log.w(TAG, "Error detaching emoji import database", e);
+            }
+        }
+    }
+
+    private static void createEmojiTables(SQLiteDatabase targetDb, boolean forceRecreate) {
+        if (forceRecreate) {
+            targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_FTS);
+            targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_USER);
+            targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_DATA);
+        }
+        targetDb.execSQL("CREATE TABLE IF NOT EXISTS " + EMOJI_TABLE_DATA + " (" +
+                "value TEXT PRIMARY KEY, " +
+                "cp TEXT NOT NULL, " +
+                "group_name TEXT NOT NULL, " +
+                "subgroup TEXT NOT NULL, " +
+                "sort_order INTEGER NOT NULL, " +
+                "name_en TEXT, " +
+                "name_tw TEXT, " +
+                "tags_en TEXT, " +
+                "tags_tw TEXT, " +
+                "version REAL NOT NULL)");
+        targetDb.execSQL("CREATE INDEX IF NOT EXISTS idx_emoji_group ON " + EMOJI_TABLE_DATA + "(group_name, sort_order)");
+        if (!tableExists(targetDb, EMOJI_TABLE_FTS)) {
+            createEmojiFtsTable(targetDb);
+        }
+        targetDb.execSQL("CREATE TABLE IF NOT EXISTS " + EMOJI_TABLE_USER + " (" +
+                "value TEXT PRIMARY KEY REFERENCES " + EMOJI_TABLE_DATA + "(value), " +
+                "last_used INTEGER, " +
+                "use_count INTEGER NOT NULL DEFAULT 0)");
+    }
+
+    private static boolean tableExists(SQLiteDatabase targetDb, String tableName) {
+        try (Cursor cursor = targetDb.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','virtual table') AND name=?",
+                new String[]{tableName})) {
+            return cursor != null && cursor.moveToFirst();
+        }
+    }
+
+    private static boolean tableExists(String databasePath, String tableName) {
+        SQLiteDatabase sourceDb = null;
+        try {
+            sourceDb = SQLiteDatabase.openDatabase(databasePath, null, SQLiteDatabase.OPEN_READONLY);
+            return tableExists(sourceDb, tableName);
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking attached emoji database table", e);
+            return false;
+        } finally {
+            if (sourceDb != null) {
+                sourceDb.close();
+            }
+        }
+    }
+
+    private static void createEmojiFtsTable(SQLiteDatabase targetDb) {
+        try {
+            targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts5(" +
+                    "name_en, name_tw, tags_en, tags_tw, " +
+                    "content='" + EMOJI_TABLE_DATA + "', content_rowid='rowid', " +
+                    "tokenize='unicode61 remove_diacritics 1')");
+        } catch (SQLiteException fts5Error) {
+            Log.w(TAG, "FTS5 unavailable for emoji search; falling back to FTS4", fts5Error);
+            targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts4(" +
+                    "name_en, name_tw, tags_en, tags_tw, " +
+                    "tokenize=unicode61 \"remove_diacritics=1\", " +
+                    "content=" + EMOJI_TABLE_DATA + ")");
+        }
+    }
+
+    private static void clearEmojiBaseData(SQLiteDatabase targetDb) {
+        targetDb.delete(EMOJI_TABLE_DATA, null, null);
+        targetDb.delete(LIME.DB_TABLE_IM, LIME.DB_IM_COLUMN_CODE + "=?", new String[]{"emoji"});
+    }
+
+    private static void insertEmojiRows(SQLiteDatabase targetDb, List<EmojiDataRow> rows) {
+        for (EmojiDataRow row : rows) {
+            ContentValues cv = new ContentValues();
+            cv.put("value", row.value);
+            cv.put("cp", row.cp);
+            cv.put("group_name", row.groupName);
+            cv.put("subgroup", row.subgroup);
+            cv.put("sort_order", row.sortOrder);
+            cv.put("name_en", row.nameEn);
+            cv.put("name_tw", row.nameTw);
+            cv.put("tags_en", row.tagsEn);
+            cv.put("tags_tw", row.tagsTw);
+            cv.put("version", row.version);
+            targetDb.insertWithOnConflict(EMOJI_TABLE_DATA, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    private static void rebuildEmojiFts(SQLiteDatabase targetDb) {
+        targetDb.execSQL("INSERT INTO " + EMOJI_TABLE_FTS + "(" + EMOJI_TABLE_FTS + ") VALUES('rebuild')");
+    }
+
+    private static void insertEmojiMetadata(SQLiteDatabase targetDb, String emojiVersion, int amount) {
+        insertEmojiMetadataRow(targetDb, "version", emojiVersion);
+        insertEmojiMetadataRow(targetDb, "name", "Emoji " + emojiVersion + " Dataset");
+        insertEmojiMetadataRow(targetDb, "source", "emoji.db");
+        insertEmojiMetadataRow(targetDb, "amount", String.valueOf(amount));
+        insertEmojiMetadataRow(targetDb, "import", String.valueOf(System.currentTimeMillis() / 1000L));
+    }
+
+    private static void insertEmojiMetadataRow(SQLiteDatabase targetDb, String title, String desc) {
+        ContentValues cv = new ContentValues();
+        cv.put("code", "emoji");
+        cv.put("title", title);
+        cv.put("desc", desc);
+        cv.put("keyboard", "");
+        cv.put("disable", "");
+        cv.put("selkey", "");
+        cv.put("endkey", "");
+        cv.put("spacestyle", "");
+        targetDb.insert(LIME.DB_TABLE_IM, null, cv);
+    }
+
+    private static String buildEmojiFtsQuery(String input) {
+        String trimmed = input == null ? "" : input.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (String rawPart : trimmed.split("\\s+")) {
+            String token = rawPart.replaceAll("[^\\p{L}\\p{N}_]+", "");
+            if (token.isEmpty()) {
+                continue;
+            }
+            if (isSingleAsciiAlphabeticToken(token)) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(token).append('*');
+        }
+        return builder.toString();
+    }
+
+    private static boolean isSingleAsciiAlphabeticToken(String token) {
+        if (token.length() != 1) {
+            return false;
+        }
+        char value = token.charAt(0);
+        return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
+    }
+
+    private static String quoteSqlString(String value) {
+        return "'" + value.replace("'", "''") + "'";
     }
 
     /**
@@ -4697,16 +5059,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     }
 
     private void checkEmojiDB() {
-        if (emojiConverter == null) {
-
-            File emojiDBFile = LIMEUtilities.isFileNotExist(
-                    mContext.getDatabasePath("emoji.db").getAbsolutePath());
-
-            if (emojiDBFile != null)
-                LIMEUtilities.copyRAWFile(mContext.getResources().openRawResource(R.raw.emoji), emojiDBFile);
-
-            emojiConverter = new EmojiConverter(mContext);
-        }
+        refreshEmojiDataIfNeeded();
     }
 
     private void checkHanDB() {
@@ -5679,7 +6032,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
      * <p>This method:
      * <ul>
      *   <li>Closes and deletes the main database, then restores from raw resource</li>
-     *   <li>Closes and deletes the emoji database, then restores from raw resource</li>
+     *   <li>Refreshes integrated emoji tables from raw resource</li>
      *   <li>Closes and deletes the han converter database, then restores from raw resource</li>
      *   <li>Reopens database connections</li>
      * </ul>
@@ -5699,14 +6052,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         LIMEUtilities.copyRAWFile(mContext.getResources().openRawResource(R.raw.lime), dbFile);
         openDBConnection(true);
 
-        if(emojiConverter != null)
-            emojiConverter.close();
-
-        emojiConverter = null;
-        File emojiDbFile =mContext.getDatabasePath( "emoji.db");
-             emojiDbFile.deleteOnExit();
-        LIMEUtilities.copyRAWFile(mContext.getResources().openRawResource(R.raw.emoji), emojiDbFile);
-        emojiConverter = new EmojiConverter(mContext);
+        createEmojiTables(db, true);
+        refreshEmojiDataIfNeeded();
 
         if(hanConverter != null)
             hanConverter.close();
@@ -5722,4 +6069,3 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
     }
 }
-

@@ -42,6 +42,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -122,6 +123,44 @@ public class LimeDBTest {
         // Test that database connection can be opened
         boolean connectionOpened = limeDB.openDBConnection(false);
         assertTrue("Database connection should be opened", connectionOpened);
+    }
+
+    @Test(timeout = 5000)
+    public void testEmojiDbV2SchemaSearchAndUserRecordPreservation() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        limeDB.createEmojiTablesForTest(true);
+        limeDB.replaceEmojiDataForTest(Arrays.asList(
+                new LimeDB.EmojiDataRow("🇯🇵", "1F1EF,1F1F5", "Flags", "country-flag", 1,
+                        "flag: Japan", "日本國旗", "flag|Japan", "國旗|日本|國|旗|日|本", 0.6),
+                new LimeDB.EmojiDataRow("😢", "1F622", "Smileys & Emotion", "face-concerned", 2,
+                        "crying face", "哭臉", "cry|crying|face", "哭臉|哭|臉", 1.0)
+        ), "17.0");
+
+        List<Mapping> flags = limeDB.findEmojiForCandidate("國旗", LimeDB.EmojiLocale.TW, 8);
+        assertFalse("國旗 should find emoji candidates", flags.isEmpty());
+        assertEquals("🇯🇵", flags.get(0).getWord());
+
+        List<Mapping> bareAscii = limeDB.findEmojiForCandidate("c", LimeDB.EmojiLocale.EN, 8);
+        assertTrue("Bare one-character ASCII candidate should be ignored", bareAscii.isEmpty());
+
+        List<Mapping> cryPrefix = limeDB.findEmojiForCandidate("cr", LimeDB.EmojiLocale.EN, 8);
+        assertFalse("Two-character ASCII prefix should find emoji candidates", cryPrefix.isEmpty());
+        assertEquals("😢", cryPrefix.get(0).getWord());
+
+        limeDB.recordEmojiUsage("🇯🇵", 1000L);
+        limeDB.replaceEmojiDataForTest(Arrays.asList(
+                new LimeDB.EmojiDataRow("🇯🇵", "1F1EF,1F1F5", "Flags", "country-flag", 1,
+                        "flag: Japan", "日本國旗", "flag|Japan", "國旗|日本|國|旗|日|本", 0.6)
+        ), "17.0");
+
+        assertEquals("Existing emoji user record should survive refresh", 1, limeDB.getEmojiUseCountForTest("🇯🇵"));
+        assertEquals("Missing emoji user records should be absent", 0, limeDB.getEmojiUseCountForTest("😢"));
     }
 
     @Test
@@ -5926,4 +5965,3 @@ public class LimeDBTest {
     }
 
 }
-

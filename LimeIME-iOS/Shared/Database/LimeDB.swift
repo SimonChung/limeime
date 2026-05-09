@@ -1,4 +1,4 @@
-import Foundation
+﻿import Foundation
 import CoreFoundation
 import GRDB
 import ZIPFoundation
@@ -43,10 +43,6 @@ final class LimeDB {
 
     // Related phrase score cache (mirrors Android's relatedScore HashMap)
     private var relatedScore: [Int64: Int] = [:]
-
-    // Emoji database (emoji.db) — opened lazily on first emojiConvert call
-    private var emojiQueue: DatabaseQueue?
-    private var emojiQueueLoaded = false
 
     // Key mapping caches (mirrors Android's keysDefMap, keysReMap, keysDualMap)
     private var keysDefMap: [String: [String: String]] = [:]
@@ -138,8 +134,12 @@ final class LimeDB {
 
     // MARK: - Schema Migration
 
-    // Current schema version (mirrors Android DB_VERSION = 102).
-    private static let CURRENT_DB_VERSION = 102
+    // Current schema version (mirrors Android DB_VERSION = 103).
+    private static let CURRENT_DB_VERSION = 103
+    private static let EMOJI_DATA_VERSION = "17.0"
+    private static let EMOJI_TABLE_DATA = "emoji_data"
+    private static let EMOJI_TABLE_FTS = "emoji_fts"
+    private static let EMOJI_TABLE_USER = "emoji_user"
 
     private func migrate() throws {
         try dbQueue.write { db in
@@ -257,6 +257,9 @@ final class LimeDB {
                     """, arguments: [code, code.uppercased(), code.uppercased() + " 輸入法鍵盤"])
                 }
             }
+        }
+        if version < 103 {
+            try LimeDB.createEmojiTables(db, forceRecreate: false)
         }
         // Stamp the new version
         try db.execute(sql: "PRAGMA user_version = \(LimeDB.CURRENT_DB_VERSION)")
@@ -2101,46 +2104,224 @@ final class LimeDB {
         }
     }
 
-    // MARK: - Emoji (emoji.db — mirrors Android EmojiConverter.java)
+    // MARK: - Emoji (integrated main-db tables)
 
-    // Emoji type constants (mirrors Android LIME.EMOJI_CN / EMOJI_EN / EMOJI_TW)
-    static let EMOJI_CN = 1
-    static let EMOJI_EN = 2
-    static let EMOJI_TW = 3
+    // Emoji type constants (mirrors Android LIME.EMOJI_EN / EMOJI_TW / EMOJI_CN)
+    static let EMOJI_EN = 1
+    static let EMOJI_TW = 2
+    static let EMOJI_CN = 3
 
-    /// Query emoji.db for emoji matching the given tag.
-    /// Schema: tables `cn` / `en` / `tw`, columns `tag TEXT, value TEXT`.
+    enum EmojiLocale {
+        case en
+        case tw
+    }
+
+    /// Legacy-compatible emoji lookup routed through the integrated emoji tables.
     func emojiConvert(_ source: String, _ emoji: Int) -> [Mapping] {
-        guard !source.isEmpty else { return [] }
-        guard let queue = loadEmojiQueue() else { return [] }
-        let table: String
         switch emoji {
-        case LimeDB.EMOJI_CN: table = "cn"
-        case LimeDB.EMOJI_EN: table = "en"
-        default:               table = "tw"   // EMOJI_TW or default
+        case LimeDB.EMOJI_EN:
+            return findEmojiForCandidate(source, locale: .en, limit: 8)
+        case LimeDB.EMOJI_TW:
+            return findEmojiForCandidate(source, locale: .tw, limit: 8)
+        default:
+            return []
         }
-        let tag = source.lowercased()
-        let results: [String] = (try? queue.read { db in
-            try String.fetchAll(db,
-                sql: "SELECT value FROM \(table) WHERE tag = ? AND value IS NOT NULL AND value != ''",
-                arguments: [tag])
+    }
+
+    func findEmojiForCandidate(_ candidate: String, locale: EmojiLocale, limit: Int = 8) -> [Mapping] {
+        let query = LimeDB.buildEmojiFTSQuery(candidate)
+        guard !query.isEmpty else { return [] }
+        refreshEmojiDataIfNeeded()
+        let safeLimit = max(limit, 1)
+        let words: [String] = (try? dbQueue.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT d.value
+                FROM \(LimeDB.EMOJI_TABLE_FTS) f
+                JOIN \(LimeDB.EMOJI_TABLE_DATA) d ON d.rowid = f.rowid
+                LEFT JOIN \(LimeDB.EMOJI_TABLE_USER) u ON u.value = d.value
+                WHERE \(LimeDB.EMOJI_TABLE_FTS) MATCH ?
+                ORDER BY (u.last_used IS NULL), u.last_used DESC, d.sort_order ASC
+                LIMIT ?
+            """, arguments: [query, safeLimit])
         }) ?? []
-        // Deduplicate while preserving order
         var seen = Set<String>()
-        return results.compactMap { word -> Mapping? in
+        return words.compactMap { word -> Mapping? in
             guard seen.insert(word).inserted else { return nil }
-            return Mapping(id: 0, code: tag, word: word,
+            return Mapping(id: 0, code: candidate, word: word,
                            score: 0, baseScore: 0,
                            recordType: Mapping.RecordType.emoji)
         }
     }
 
-    private func loadEmojiQueue() -> DatabaseQueue? {
-        if emojiQueueLoaded { return emojiQueue }
-        emojiQueueLoaded = true
-        guard let url = Bundle.main.url(forResource: "emoji", withExtension: "db") else { return nil }
-        emojiQueue = try? DatabaseQueue(path: url.path)
-        return emojiQueue
+    func recordEmojiUsage(_ value: String, timestampSeconds: Int64 = Int64(Date().timeIntervalSince1970)) {
+        guard !value.isEmpty else { return }
+        try? dbQueue.write { db in
+            try LimeDB.createEmojiTables(db, forceRecreate: false)
+            try db.execute(sql: """
+                UPDATE \(LimeDB.EMOJI_TABLE_USER)
+                SET last_used = ?, use_count = use_count + 1
+                WHERE value = ?
+            """, arguments: [timestampSeconds, value])
+            let updated = db.changesCount
+            if updated == 0 {
+                try db.execute(sql: """
+                    INSERT OR IGNORE INTO \(LimeDB.EMOJI_TABLE_USER) (value, last_used, use_count)
+                    VALUES (?, ?, 1)
+                """, arguments: [value, timestampSeconds])
+            }
+        }
+    }
+
+    private func refreshEmojiDataIfNeeded() {
+        do {
+            let current = try dbQueue.read { db in
+                try String.fetchOne(db,
+                    sql: "SELECT desc FROM im WHERE code = ? AND title = ?",
+                    arguments: ["emoji", "version"])
+            }
+            guard current != LimeDB.EMOJI_DATA_VERSION else { return }
+            guard let url = Bundle.main.url(forResource: "emoji", withExtension: "db") else { return }
+            var sourceConfig = Configuration()
+            sourceConfig.readonly = true
+            let sourceQueue = try DatabaseQueue(path: url.path, configuration: sourceConfig)
+            let hasEmojiData = try sourceQueue.read { db in try db.tableExists(LimeDB.EMOJI_TABLE_DATA) }
+            guard hasEmojiData else { return }
+            let sourceRows = try sourceQueue.read { db in
+                try Row.fetchAll(db, sql: """
+                    SELECT value, cp, group_name, subgroup, sort_order, name_en, name_tw, tags_en, tags_tw, version
+                    FROM \(LimeDB.EMOJI_TABLE_DATA)
+                """)
+            }
+            let imRows = try sourceQueue.read { db in
+                try Row.fetchAll(db, sql: """
+                    SELECT code, title, desc, keyboard, disable, selkey, endkey, spacestyle
+                    FROM im
+                    WHERE code = 'emoji'
+                """)
+            }
+            try dbQueue.write { db in
+                try LimeDB.createEmojiTables(db, forceRecreate: false)
+                try db.execute(sql: "DELETE FROM \(LimeDB.EMOJI_TABLE_DATA)")
+                for row in sourceRows {
+                    try db.execute(sql: """
+                        INSERT INTO \(LimeDB.EMOJI_TABLE_DATA)
+                        (value, cp, group_name, subgroup, sort_order, name_en, name_tw, tags_en, tags_tw, version)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, arguments: [
+                        row["value"] as String?,
+                        row["cp"] as String?,
+                        row["group_name"] as String?,
+                        row["subgroup"] as String?,
+                        row["sort_order"] as Int? ?? 0,
+                        row["name_en"] as String?,
+                        row["name_tw"] as String?,
+                        row["tags_en"] as String?,
+                        row["tags_tw"] as String?,
+                        row["version"] as Double? ?? 0.0,
+                    ])
+                }
+                try LimeDB.rebuildEmojiFTS(db)
+                try db.execute(sql: "DELETE FROM im WHERE code = 'emoji'")
+                for row in imRows {
+                    try db.execute(sql: """
+                        INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, arguments: [
+                        row["code"] as String?,
+                        row["title"] as String?,
+                        row["desc"] as String?,
+                        row["keyboard"] as String?,
+                        LimeDB.parseBoolFlag(row["disable"]) ? 1 : 0,
+                        row["selkey"] as String? ?? "",
+                        row["endkey"] as String? ?? "",
+                        row["spacestyle"] as String? ?? "",
+                    ])
+                }
+                try db.execute(sql: """
+                    DELETE FROM \(LimeDB.EMOJI_TABLE_USER)
+                    WHERE value NOT IN (SELECT value FROM \(LimeDB.EMOJI_TABLE_DATA))
+                """)
+            }
+        } catch {
+            NSLog("LimeDB emoji refresh failed: \(error)")
+        }
+    }
+
+    private static func createEmojiTables(_ db: Database, forceRecreate: Bool) throws {
+        if forceRecreate {
+            try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_FTS)")
+            try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_USER)")
+            try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_DATA)")
+        }
+        try db.execute(sql: """
+            CREATE TABLE IF NOT EXISTS \(EMOJI_TABLE_DATA) (
+                value TEXT PRIMARY KEY,
+                cp TEXT NOT NULL,
+                group_name TEXT NOT NULL,
+                subgroup TEXT NOT NULL,
+                sort_order INTEGER NOT NULL,
+                name_en TEXT,
+                name_tw TEXT,
+                tags_en TEXT,
+                tags_tw TEXT,
+                version REAL NOT NULL
+            )
+        """)
+        try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_emoji_group ON \(EMOJI_TABLE_DATA)(group_name, sort_order)")
+        if try !db.tableExists(EMOJI_TABLE_FTS) {
+            do {
+                try db.execute(sql: """
+                    CREATE VIRTUAL TABLE \(EMOJI_TABLE_FTS) USING fts5(
+                        name_en, name_tw, tags_en, tags_tw,
+                        content='\(EMOJI_TABLE_DATA)', content_rowid='rowid',
+                        tokenize='unicode61 remove_diacritics 1'
+                    )
+                """)
+            } catch {
+                try db.execute(sql: """
+                    CREATE VIRTUAL TABLE \(EMOJI_TABLE_FTS) USING fts4(
+                        name_en, name_tw, tags_en, tags_tw,
+                        tokenize=unicode61 "remove_diacritics=1",
+                        content=\(EMOJI_TABLE_DATA)
+                    )
+                """)
+            }
+        }
+        try db.execute(sql: """
+            CREATE TABLE IF NOT EXISTS \(EMOJI_TABLE_USER) (
+                value TEXT PRIMARY KEY REFERENCES \(EMOJI_TABLE_DATA)(value),
+                last_used INTEGER,
+                use_count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+    }
+
+    private static func rebuildEmojiFTS(_ db: Database) throws {
+        try db.execute(sql: "INSERT INTO \(EMOJI_TABLE_FTS)(\(EMOJI_TABLE_FTS)) VALUES ('rebuild')")
+    }
+
+    private static func buildEmojiFTSQuery(_ input: String) -> String {
+        input.split(whereSeparator: { $0.isWhitespace }).compactMap { part -> String? in
+            let tokenScalars = part.unicodeScalars.filter {
+                CharacterSet.alphanumerics.contains($0) || $0.value == 95
+            }
+            let token = String(String.UnicodeScalarView(tokenScalars))
+            if isSingleASCIIAlphabeticToken(token) {
+                return nil
+            }
+            return token.isEmpty ? nil : token + "*"
+        }.joined(separator: " ")
+    }
+
+    static func buildEmojiFTSQueryForTest(_ input: String) -> String {
+        return buildEmojiFTSQuery(input)
+    }
+
+    private static func isSingleASCIIAlphabeticToken(_ token: String) -> Bool {
+        guard token.unicodeScalars.count == 1, let scalar = token.unicodeScalars.first else {
+            return false
+        }
+        return (65...90).contains(Int(scalar.value)) || (97...122).contains(Int(scalar.value))
     }
 
     /// TC↔SC conversion using iOS CFStringTransform (replaces Android hanconvertv2.db).
@@ -2584,6 +2765,33 @@ final class LimeDB {
     }
 
     // MARK: - IM Capability Detection
+
+    /// Literal characters the IM accepts as composing input.
+    /// For IMs with hardcoded keymaps (phonetic family, cj, dayi, array) returns
+    /// the corresponding constant; the phonetic family resolves further via the
+    /// active `phoneticKeyboardType` (BPMF / ETEN26 / HSU / ETEN). For unknown
+    /// IMs falls back to the `imkeys` field in the im table.
+    /// Used by the iOS keyboard controller to route iPad dual-sliding punctuation /
+    /// full-shape codes (which are guaranteed not to be in any IM's key set) to
+    /// the direct-output path instead of corrupting the composing buffer.
+    func imKeysForTable(_ tableName: String) -> String {
+        let kbType = phoneticKeyboardType
+        switch tableName {
+        case "phonetic", "et41", "et_41", "eten":
+            if kbType.hasPrefix("eten26") || kbType == "et26" { return LimeDB.ETEN26_KEY }
+            if kbType.hasPrefix("hsu")                        { return LimeDB.HSU_KEY }
+            if kbType == "et_41" || kbType == "eten"          { return LimeDB.ETEN_KEY }
+            return LimeDB.BPMF_KEY
+        case "cj", "scj", "cj5", "ecj":
+            return LimeDB.CJ_KEY
+        case "dayi":
+            return LimeDB.DAYI_KEY
+        case "array", "array10":
+            return LimeDB.ARRAY_KEY
+        default:
+            return getImConfig(tableName, "imkeys") ?? ""
+        }
+    }
 
     func detectIMCapabilities(tableName: String) -> (hasNumber: Bool, hasSymbol: Bool) {
         guard isValidTableName(tableName) else { return (false, false) }

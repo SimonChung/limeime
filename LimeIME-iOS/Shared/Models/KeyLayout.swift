@@ -197,3 +197,11 @@ struct LimeKeyLayout {
         ], isBottomRow: true),
     ])
 }
+
+enum CandidateExpansionPolicy {
+    static func shouldExpand(hasCandidatesShown: Bool,
+                             composing: String,
+                             hasChineseSymbolCandidatesShown: Bool) -> Bool {
+        return hasCandidatesShown
+    }
+}

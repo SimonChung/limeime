@@ -720,7 +720,7 @@ final class SearchServer {
     ///
     /// - `list` must include the composing-code echo at index 0 (same structure as getMappingByCode output).
     /// - Looks up emoji by list[0].word if it is pure English letters (EMOJI_EN),
-    ///   else by list[1].word if multi-byte and length < 4 (EMOJI_TW, fallback EMOJI_CN).
+    ///   else by list[1].word if multi-byte and length < 4 (EMOJI_TW).
     /// - Deduplicates within the emoji results using a Set<String> (mirrors Android emojiCheck HashMap).
     /// - Inserts at `insertAt` (0-based index into `list`). Clamped to list.count.
     func injectEmoji(into list: [Mapping], insertAt: Int = 3) -> [Mapping] {
@@ -747,11 +747,6 @@ final class SearchServer {
                     let item2 = db.emojiConvert(word2, LimeDB.EMOJI_TW)
                     if !item2.isEmpty {
                         for m in item2 {
-                            if emojiCheck.insert(m.word).inserted { emojiList.append(m) }
-                        }
-                    } else {
-                        let item3 = db.emojiConvert(word2, LimeDB.EMOJI_CN)
-                        for m in item3 {
                             if emojiCheck.insert(m.word).inserted { emojiList.append(m) }
                         }
                     }
