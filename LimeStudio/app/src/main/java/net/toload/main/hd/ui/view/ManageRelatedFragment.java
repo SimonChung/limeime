@@ -30,7 +30,6 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,8 +47,8 @@ import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.R;
 import net.toload.main.hd.data.Related;
 import net.toload.main.hd.ui.controller.ManageImController;
-import net.toload.main.hd.ui.dialog.ManageRelatedAddDialog;
-import net.toload.main.hd.ui.dialog.ManageRelatedEditDialog;
+import net.toload.main.hd.ui.dialog.ManageRelatedAddSheet;
+import net.toload.main.hd.ui.dialog.ManageRelatedEditSheet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,20 +130,17 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
         this.gridManageRelated.setLayoutManager(new GridLayoutManager(activity, 2));
         this.adapter = new ManageRelatedAdapter(activity);
         this.adapter.setOnItemClickListener((related, position) -> {
-            FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-            // Create and show the dialog.
-            ManageRelatedEditDialog dialog = ManageRelatedEditDialog.newInstance();
-            dialog.setFragment(this, related);
-            dialog.show(ft, "editdialog");
+            ManageRelatedEditSheet sheet = ManageRelatedEditSheet.newInstance();
+            sheet.setFragment(this, related);
+            sheet.show(getParentFragmentManager(), "editsheet");
         });
         this.gridManageRelated.setAdapter(this.adapter);
 
         Button btnManageRelatedAdd = rootView.findViewById(R.id.btnManageRelatedAdd);
         btnManageRelatedAdd.setOnClickListener(v -> {
-            FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-            ManageRelatedAddDialog dialog = ManageRelatedAddDialog.newInstance();
-            dialog.setFragment(this);
-            dialog.show(ft, "adddialog");
+            ManageRelatedAddSheet sheet = ManageRelatedAddSheet.newInstance();
+            sheet.setFragment(this);
+            sheet.show(getParentFragmentManager(), "addsheet");
         });
 
 
@@ -334,18 +330,16 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
     
     @Override
     public void showAddPhraseDialog() {
-        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-        ManageRelatedAddDialog dialog = ManageRelatedAddDialog.newInstance();
-        dialog.setFragment(this);
-        dialog.show(ft, "adddialog");
+        ManageRelatedAddSheet sheet = ManageRelatedAddSheet.newInstance();
+        sheet.setFragment(this);
+        sheet.show(getParentFragmentManager(), "addsheet");
     }
-    
+
     @Override
     public void showEditPhraseDialog(Related phrase) {
-        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-        ManageRelatedEditDialog dialog = ManageRelatedEditDialog.newInstance();
-        dialog.setFragment(this, phrase);
-        dialog.show(ft, "editdialog");
+        ManageRelatedEditSheet sheet = ManageRelatedEditSheet.newInstance();
+        sheet.setFragment(this, phrase);
+        sheet.show(getParentFragmentManager(), "editsheet");
     }
     
     @Override
