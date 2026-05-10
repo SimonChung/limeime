@@ -7,7 +7,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import net.toload.main.hd.data.ImConfig;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.NavigationManager;
 
 import org.junit.Test;
@@ -22,7 +22,7 @@ public class NavigationDrawerFragmentTest {
 
     @Test
     public void testNavigationManagerAvailableFromActivity() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navManager = activity.getNavigationManager();
                 assertNotNull("NavigationManager should be available", navManager);
@@ -32,7 +32,7 @@ public class NavigationDrawerFragmentTest {
 
     @Test
     public void testNavigationManagerImplementsCallbacks() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navManager = activity.getNavigationManager();
                 Class<?>[] interfaces = navManager.getClass().getInterfaces();
@@ -70,7 +70,7 @@ public class NavigationDrawerFragmentTest {
 
     @Test
     public void testNavigationManagerNavigatesAndPersistsSelection() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navManager = activity.getNavigationManager();
                 ImConfig imConfig = new ImConfig();

@@ -47,13 +47,13 @@ import android.util.Log;
 
 import net.toload.main.hd.data.Record;
 import net.toload.main.hd.global.LIME;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.R;
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Keyboard;
 import net.toload.main.hd.ui.controller.ManageImController;
-import net.toload.main.hd.ui.dialog.ManageImAddDialog;
-import net.toload.main.hd.ui.dialog.ManageImEditDialog;
+import net.toload.main.hd.ui.dialog.ManageImAddSheet;
+import net.toload.main.hd.ui.dialog.ManageImEditSheet;
 import net.toload.main.hd.ui.dialog.ManageImKeyboardDialog;
 
 import java.util.ArrayList;
@@ -127,34 +127,32 @@ public class ManageImFragment extends Fragment implements ManageImView {
 
         this.activity = this.getActivity();
 
-        if (activity instanceof MainActivity) {
-            this.manageImController = ((MainActivity) activity).getManageImController();
+        if (activity instanceof LIMESettings) {
+            this.manageImController = ((LIMESettings) activity).getManageImController();
             if (this.manageImController != null) {
                 this.manageImController.setManageImView(this);
             } else {
                 Log.w(TAG, "ManageImController is null; UI operations may fail");
             }
         } else {
-            Log.w(TAG, "Activity is not MainActivity; ManageImController unavailable");
+            Log.w(TAG, "Activity is not LIMESettings; ManageImController unavailable");
         }
 
         this.gridManageIm = rootView.findViewById(R.id.gridManageIm);
         this.gridManageIm.setLayoutManager(new GridLayoutManager(activity, 2));
         this.adapter = new ManageImAdapter();
         this.adapter.setOnItemClickListener((record, position) -> {
-            FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-            ManageImEditDialog dialog = ManageImEditDialog.newInstance();
-            dialog.setFragment(this, record);
-            dialog.show(ft, "editdialog");
+            ManageImEditSheet sheet = ManageImEditSheet.newInstance();
+            sheet.setFragment(this, record);
+            sheet.show(getParentFragmentManager(), "editsheet");
         });
         this.gridManageIm.setAdapter(this.adapter);
 
         Button btnManageImAdd = rootView.findViewById(R.id.btnManageImAdd);
         btnManageImAdd.setOnClickListener(v -> {
-            FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-            ManageImAddDialog dialog = ManageImAddDialog.newInstance(table);
-            dialog.setFragment(this);
-            dialog.show(ft, "adddialog");
+            ManageImAddSheet sheet = ManageImAddSheet.newInstance();
+            sheet.setFragment(this);
+            sheet.show(getParentFragmentManager(), "addsheet");
         });
 
         this.btnManageImKeyboard = rootView.findViewById(R.id.btnManageImKeyboard);
@@ -303,7 +301,7 @@ public class ManageImFragment extends Fragment implements ManageImView {
         assert getArguments() != null;
         // Set the table early so subsequent lifecycle methods have access to it
         this.table = getArguments().getString(ARG_SECTION_CODE);
-        ((MainActivity) activity).onSectionAttached(
+        ((LIMESettings) activity).onSectionAttached(
                 getArguments().getInt(ARG_SECTION_NUMBER));
     }
 
@@ -452,18 +450,16 @@ public class ManageImFragment extends Fragment implements ManageImView {
 
     @Override
     public void showAddRecordDialog() {
-        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-        ManageImAddDialog dialog = ManageImAddDialog.newInstance(table);
-        dialog.setFragment(this);
-        dialog.show(ft, "adddialog");
+        ManageImAddSheet sheet = ManageImAddSheet.newInstance();
+        sheet.setFragment(this);
+        sheet.show(getParentFragmentManager(), "addsheet");
     }
 
     @Override
     public void showEditRecordDialog(Record record) {
-        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-        ManageImEditDialog dialog = ManageImEditDialog.newInstance();
-        dialog.setFragment(this, record);
-        dialog.show(ft, "editdialog");
+        ManageImEditSheet sheet = ManageImEditSheet.newInstance();
+        sheet.setFragment(this, record);
+        sheet.show(getParentFragmentManager(), "editsheet");
     }
 
     @Override

@@ -107,4 +107,12 @@
     <!-- Semi-transparent white background for keyboard (90% opaque, 10% transparent) -->
     <color name="keyboard_background_semi_transparent">#E6FFFFFF</color>
 
+    <!-- SetupFragment status card colors -->
+    <color name="setup_status_green">#C8E6C9</color>
+    <color name="setup_status_yellow">#FFF9C4</color>
+    <color name="setup_status_red">#FFCDD2</color>
+
+    <!-- Material blue for links -->
+    <color name="material_blue">#FF2196F3</color>
+
 </resources>

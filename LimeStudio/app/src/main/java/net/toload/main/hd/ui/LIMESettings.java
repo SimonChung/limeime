@@ -6,12 +6,9 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -29,8 +26,9 @@ import net.toload.main.hd.ui.controller.ManageImController;
 import net.toload.main.hd.ui.controller.SetupImController;
 import net.toload.main.hd.ui.dialog.HelpDialog;
 import net.toload.main.hd.ui.dialog.NewsDialog;
-import net.toload.main.hd.ui.view.MainActivityView;
-import net.toload.main.hd.ui.view.NavigationDrawerFragment;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigationrail.NavigationRailView;
+import net.toload.main.hd.ui.view.LIMESettingsView;
 
 /*
  *
@@ -48,11 +46,11 @@ import net.toload.main.hd.ui.view.NavigationDrawerFragment;
 
 /**
  * Main activity for the LimeIME application.
- * 
- * <p>MainActivity serves as the primary container and coordinator for the IME management UI.
+ *
+ * <p>LIMESettings serves as the primary container and coordinator for the IME management UI.
  * It manages the lifecycle of all major controllers, managers, and UI fragments, ensuring
  * they are properly initialized before fragments are instantiated.
- * 
+ *
  * <h2>Architecture</h2>
  * <p>The activity follows a clean architecture pattern with clear separation of concerns:
  * <ul>
@@ -61,12 +59,12 @@ import net.toload.main.hd.ui.view.NavigationDrawerFragment;
  *   <li><b>Handlers</b>: {@link IntentHandler} - process incoming intents</li>
  *   <li><b>Fragments</b>: SetupImFragment, ManageRelatedFragment, ManageImFragment - provide UI</li>
  * </ul>
- * 
+ *
  * <h2>Initialization Sequence</h2>
  * <p>Controllers are initialized in {@link #onCreate(Bundle)} <b>BEFORE</b> {@code setContentView()}
  * to prevent race conditions when fragments are instantiated during layout inflation. This ensures
  * fragments can safely access controllers via getter methods.
- * 
+ *
  * <h2>Fragment Navigation</h2>
  * <p>Fragment navigation is delegated to {@link NavigationManager}, which orchestrates:
  * <ul>
@@ -74,9 +72,9 @@ import net.toload.main.hd.ui.view.NavigationDrawerFragment;
  *   <li>Navigation drawer item selection</li>
  *   <li>ActionBar title updates</li>
  * </ul>
- * 
+ *
  * <h2>UI Updates</h2>
- * <p>This activity implements {@link MainActivityView} to provide UI update callbacks:
+ * <p>This activity implements {@link LIMESettingsView} to provide UI update callbacks:
  * <ul>
  *   <li>{@link #navigateToFragment(int)} - navigate to fragment by position</li>
  *   <li>{@link #showProgress(String)} - show progress overlay</li>
@@ -85,32 +83,27 @@ import net.toload.main.hd.ui.view.NavigationDrawerFragment;
  *   <li>{@link #onError(String)} - handle errors</li>
  *   <li>{@link #onProgress(int, String)} - update progress status</li>
  * </ul>
- * 
+ *
  * <h2>Edge-to-Edge Display</h2>
  * <p>The activity supports edge-to-edge display on modern Android devices (API 21+) while
  * maintaining backward compatibility. Window insets are properly handled to avoid obscuring
  * UI elements behind system bars.
- * 
- * @see MainActivityView
+ *
+ * @see LIMESettingsView
  * @see NavigationManager
  * @see SetupImController
  * @see ManageImController
  * @see ProgressManager
  */
-public class MainActivity extends AppCompatActivity implements MainActivityView {
+public class LIMESettings extends AppCompatActivity implements LIMESettingsView {
 
     static {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
     }
 
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "LIMESettings";
 
-    // UI Components
-
-    private CharSequence mTitle;
-    private NavigationDrawerFragment mNavigationDrawerFragment;
-    
     // Controllers
     private SetupImController setupImController;
     private ManageImController manageImController;
@@ -121,12 +114,12 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
     private ProgressManager progressManager;
     private ShareManager shareManager;
     private NavigationManager navigationManager;
-    
+
     // Import callback
 
     /**
      * Called when the activity is first created.
-     * 
+     *
      * <p><b>IMPORTANT</b>: Controllers are initialized <b>BEFORE</b> {@code setContentView()} is called.
      * This is critical to prevent race conditions where fragments are instantiated during layout
      * inflation and need to access controllers via getter methods. The initialization order is:
@@ -137,14 +130,14 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
      *   <li>Create {@link ProgressManager}, {@link ShareManager}, {@link NavigationManager}</li>
      *   <li>Configure managers and register callbacks</li>
      * </ol>
-     * 
+     *
      * <p>The activity also:
      * <ul>
      *   <li>Sets up edge-to-edge display</li>
      *   <li>Initializes preference manager and package name</li>
      *   <li>Registers navigation and intent callbacks</li>
      * </ul>
-     * 
+     *
      * @param savedInstanceState If the activity is being re-initialized after previously
      *                           being shut down, this Bundle contains the most recent data
      *                           supplied. If not provided, this value will be null.
@@ -159,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
                 finish();
             }
         });
-        
+
         // Initialize controllers BEFORE setContentView() to prevent race conditions
         // when fragments are instantiated during layout inflation
         // In test mode, use lightweight mock instances to avoid blocking database operations
@@ -175,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
         }
         manageImController = new ManageImController(searchServer);
         setupImController = new SetupImController(this, dbServer, searchServer);
-        
+
         // NOW inflate layout - fragments will find initialized controllers via getters
         setContentView(R.layout.activity_main);
 
@@ -195,28 +188,34 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
         progressManager = new ProgressManager(this);
         shareManager = new ShareManager(this, setupImController, progressManager);
         navigationManager = new NavigationManager(this);
-        
+
         // Set navigation callbacks to NavigationManager
-        setupImController.setNavigationCallbacks(navigationManager);
         setupImController.setNavigationManager(navigationManager);
 
         // initial imList
         navigationManager.setImConfigFullNameList(manageImController.getImConfigFullNameList());
 
-        // Set up the navigation drawer - fragments are now guaranteed to find initialized controllers
-        mNavigationDrawerFragment = (NavigationDrawerFragment)
-                getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
+        // Wire bottom nav (phone) or navigation rail (tablet) — whichever is present in the layout
+        BottomNavigationView bottomNav = findViewById(R.id.main_bottom_nav);
+        NavigationRailView navRail = findViewById(R.id.main_nav_rail);
 
-        // Set up the drawer.
-        assert mNavigationDrawerFragment != null;
-        mNavigationDrawerFragment.setUp(
-                R.id.navigation_drawer,
-                findViewById(R.id.drawer_layout));
-        
-        // If activity is started fresh (not restoring), show the default Setup IM fragment
+        if (bottomNav != null) {
+            bottomNav.setOnItemSelectedListener(item -> {
+                onTabSelected(item.getItemId());
+                return true;
+            });
+        }
+        if (navRail != null) {
+            navRail.setOnItemSelectedListener(item -> {
+                onTabSelected(item.getItemId());
+                return true;
+            });
+        }
+
+        // If activity is started fresh (not restoring), show tab 0 (設定)
         // Skip initial navigation in test mode to prevent blocking startActivitySync()
         if (savedInstanceState == null && !isRunningInTestMode()) {
-            navigateToFragment(0);
+            onTabSelected(R.id.nav_setup);
         }
 
 
@@ -256,15 +255,15 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     }
 
-    
-    
+
+
     /**
      * Navigates to a fragment based on the selected position.
-     * 
-     * <p>This method implements {@link MainActivityView} and delegates the actual navigation
+     *
+     * <p>This method implements {@link LIMESettingsView} and delegates the actual navigation
      * to {@link NavigationManager}, which handles fragment transactions, back stack management,
      * and title updates.
-     * 
+     *
      * <p>This method handles navigation to different fragments based on the selected
      * position:
      * <ul>
@@ -272,29 +271,58 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
      *   <li>Position 1: Shows ManageRelatedFragment (related phrases)</li>
      *   <li>Position 2+: Shows ManageImFragment for the corresponding IM table</li>
      * </ul>
-     * 
+     *
      * <p>All fragment transactions are added to the back stack to allow navigation
      * back through the history.
-     * 
+     *
      * @param position The position of the selected item in the navigation drawer
      * @see NavigationManager#navigateToFragment(int)
      */
     @Override
     public void navigateToFragment(int position) {
-        if (navigationManager != null) {
-            navigationManager.navigateToFragment(position);
+        // Map old drawer positions to tab item IDs:
+        // 0 = 設定 tab, 1+ = 輸入法 tab (IM management)
+        int itemId;
+        if (position == 0) {
+            itemId = R.id.nav_setup;
+        } else {
+            itemId = R.id.nav_im;
         }
+        onTabSelected(itemId);
+        // Sync the selected tab indicator on whichever nav control is present
+        com.google.android.material.bottomnavigation.BottomNavigationView bottomNav = findViewById(R.id.main_bottom_nav);
+        if (bottomNav != null) bottomNav.setSelectedItemId(itemId);
+        com.google.android.material.navigationrail.NavigationRailView navRail = findViewById(R.id.main_nav_rail);
+        if (navRail != null) navRail.setSelectedItemId(itemId);
     }
-    
+
+    private void onTabSelected(int itemId) {
+        androidx.fragment.app.Fragment fragment;
+        if (itemId == R.id.nav_setup) {
+            fragment = net.toload.main.hd.ui.view.SetupFragment.newInstance();
+        } else if (itemId == R.id.nav_im) {
+            fragment = net.toload.main.hd.ui.view.TwoPaneHostFragment.newInstance();
+        } else if (itemId == R.id.nav_prefs) {
+            fragment = net.toload.main.hd.ui.view.LimePreferenceFragment.newInstance();
+        } else if (itemId == R.id.nav_db) {
+            fragment = net.toload.main.hd.ui.view.DbManagerFragment.newInstance();
+        } else {
+            fragment = net.toload.main.hd.ui.view.SetupFragment.newInstance();
+        }
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.main_fragment_container, fragment)
+                .commit();
+    }
+
     /**
      * Shows a progress overlay with an optional message.
-     * 
-     * <p>This method implements {@link MainActivityView} and delegates to
+     *
+     * <p>This method implements {@link LIMESettingsView} and delegates to
      * {@link ProgressManager}, which displays a modal progress dialog or
      * an activity-level overlay depending on what's available.
-     * 
+     *
      * <p>If a message is provided, it will be displayed in the progress view.
-     * 
+     *
      * @param message The message to display in the progress view, or null/empty
      *                to show the progress view without a message
      */
@@ -307,22 +335,22 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
             }
         }
     }
-    
+
     /**
      * Hides the progress overlay.
-     * 
-     * <p>This method implements {@link MainActivityView} and delegates to
+     *
+     * <p>This method implements {@link LIMESettingsView} and delegates to
      * {@link ProgressManager} to dismiss the progress dialog or hide the overlay.
      */
     @Override
     public void hideProgress() {
         if (progressManager != null) progressManager.dismiss();
     }
-    
+
     /**
      * Shows a toast message to the user.
-     * 
-     * <p>This method implements {@link MainActivityView} and delegates to
+     *
+     * <p>This method implements {@link LIMESettingsView} and delegates to
      *
      * @param message The message text to display
      * @param duration The duration to show the message ({@code Toast.LENGTH_SHORT}
@@ -336,22 +364,22 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Finishes this activity.
-     * 
-     * <p>This method implements {@link MainActivityView} and provides a way for
+     *
+     * <p>This method implements {@link LIMESettingsView} and provides a way for
      * controllers to request the activity to close itself.
      */
     @Override
     public void finishActivity() {
         finish();
     }
-    
+
     /**
      * Handles an error by logging and displaying a toast message.
-     * 
-     * <p>This method implements {@link MainActivityView} and is called when an
+     *
+     * <p>This method implements {@link LIMESettingsView} and is called when an
      * error occurs in a controller or fragment. The error is logged at ERROR level
      * and displayed to the user as a long-duration toast.
-     * 
+     *
      * @param message The error message to log and display
      */
     @Override
@@ -359,16 +387,16 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
         Log.e(TAG, message);
         showToast(message, Toast.LENGTH_LONG);
     }
-    
+
     /**
      * Updates progress information on the progress overlay.
-     * 
-     * <p>This method implements {@link MainActivityView} and is called during long-running
+     *
+     * <p>This method implements {@link LIMESettingsView} and is called during long-running
      * operations to update the progress percentage and status message. Both parameters
      * are optional and only update their respective views if provided.
-     * 
+     *
      * <p>This method only updates the progress if a progress view is currently showing.
-     * 
+     *
      * @param percentage The progress percentage (0-100), or -1 to skip percentage update
      * @param status The status message to display, or null/empty to skip message update
      */
@@ -386,101 +414,23 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Called when a navigation section is attached to update the ActionBar title.
-     * 
-     * <p>This method is called by {@link NavigationDrawerFragment} when a navigation
-     * item is selected. It delegates to {@link NavigationManager} to update the title
-     * based on the section number:
-     * <ul>
-     *   <li>Section 0: Sets title to "Initial" (IM setup)</li>
-     *   <li>Section 1: Sets title to "Related" (related phrases)</li>
-     *   <li>Section 2+: Sets title to the IM description from imlist</li>
-     * </ul>
-     * 
-     * <p>The title is later used by {@link #restoreActionBar()} to update the
-     * ActionBar display.
-     * 
-     * @param number The section number (0 = initial, 1 = related, 2+ = IM index)
-     * @see #restoreActionBar()
-     * @see NavigationManager#updateTitle(int)
+     *
+     * <p>No-op stub kept for compatibility with ManageImFragment and ManageRelatedFragment.
+     *
+     * @param number The section number (unused)
      */
+    /** No-op stub kept for compatibility with ManageImFragment and ManageRelatedFragment. */
     public void onSectionAttached(int number) {
-        if (navigationManager != null) {
-            navigationManager.updateTitle(number);
-            mTitle = navigationManager.getCurrentTitle();
-        }
-    }
-
-    /**
-     * Restores the ActionBar title to the current section title.
-     * 
-     * <p>This method updates the ActionBar to display the title stored in mTitle or
-     * fetched from {@link NavigationManager}. The title is set by {@link #onSectionAttached(int)}
-     * when a navigation section is attached.
-     * 
-     * @see #onSectionAttached(int)
-     * @see NavigationManager#getCurrentTitle()
-     */
-    public void restoreActionBar() {
-        ActionBar actionBar = getSupportActionBar();
-        //actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD); //setNavigationMode is deprecated after API21 (v5.0).
-        if (actionBar == null) throw new AssertionError();
-        actionBar.setDisplayShowTitleEnabled(true);
-        CharSequence title = mTitle;
-        if (navigationManager != null && navigationManager.getCurrentTitle() != null) {
-            title = navigationManager.getCurrentTitle();
-        }
-        actionBar.setTitle(title);
-    }
-
-
-    /**
-     * Initialize the contents of the Activity's standard options menu.
-     * 
-     * <p>This method is called when the options menu is first created. It inflates the
-     * menu resource and restores the ActionBar title if the navigation drawer is not open.
-     * If the drawer is open, the drawer decides what menu items to show in the action bar.
-     * 
-     * <p>This behavior prevents menu items from appearing cluttered when the navigation
-     * drawer is visible, providing a cleaner user interface.
-     * 
-     * @param menu The options menu in which items are placed
-     * @return True if the menu should be displayed, false otherwise
-     */
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        if (!mNavigationDrawerFragment.isDrawerOpen()) {
-            // Only show items in the action bar relevant to this screen
-            // if the drawer is not showing. Otherwise, let the drawer
-            // decide what to show in the action bar.
-            getMenuInflater().inflate(R.menu.main, menu);
-            restoreActionBar();
-            return true;
-        }
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    /**
-     * Called when an options menu item is selected.
-     * 
-     * <p>This method handles menu item selection. By default, it delegates to the parent
-     * class implementation. Specific menu item handling is typically done by fragments
-     * or the navigation drawer.
-     * 
-     * @param item The menu item that was selected
-     * @return True if the event was handled, false otherwise
-     */
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        return super.onOptionsItemSelected(item);
+        // no-op — bottom nav / nav rail replaces the old drawer navigation
     }
 
     /**
      * Shows the news/message board dialog.
-     * 
+     *
      * <p>This method displays a {@link NewsDialog} containing news, announcements, or
      * other information to the user. The dialog is shown using the FragmentManager
      * and added to the fragment transaction queue.
-     * 
+     *
      * <p>If an error occurs while showing the dialog (e.g., activity has been destroyed),
      * the error is logged but not thrown. This prevents crashes if the activity is
      * finishing when this method is called.
@@ -497,7 +447,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Setup edge-to-edge display with proper window insets handling.
-     * 
+     *
      * <p>This method enables edge-to-edge display on modern Android devices (API 21+)
      * while maintaining backward compatibility. It handles:
      * <ul>
@@ -505,14 +455,14 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
      *   <li>Transparent status bar and navigation bar for full screen immersion</li>
      *   <li>Status bar icon color based on API level</li>
      * </ul>
-     * 
+     *
      * <p><b>API Compatibility:</b>
      * <ul>
      *   <li><b>API 35+</b>: Uses modern window insets handling and transparent bars</li>
      *   <li><b>API 23-34</b>: Uses {@code setSystemUiVisibility()} for light status bar icons</li>
      *   <li><b>API 21-22</b>: Uses dark status bar (SYSTEM_UI_FLAG_LIGHT_STATUS_BAR not available)</li>
      * </ul>
-     * 
+     *
      * <p>The method ensures UI elements are not obscured by system bars while maintaining
      * visual consistency across API levels.
      */
@@ -520,7 +470,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
     private void setupEdgeToEdge() {
         // Apply window insets to the main content container (FrameLayout)
         // ActionBar already handles its own space, so we only need to account for status bar
-        View container = findViewById(R.id.container);
+        View container = findViewById(R.id.main_fragment_container);
         if (container != null) {
             ViewCompat.setOnApplyWindowInsetsListener(container, (v, insets) -> {
                 int systemBarsType = WindowInsetsCompat.Type.systemBars();
@@ -528,17 +478,14 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
                 int bottomInset = insets.getInsets(systemBarsType).bottom;
                 int leftInset = insets.getInsets(systemBarsType).left;
                 int rightInset = insets.getInsets(systemBarsType).right;
-                
+
                 // Apply padding: top = status bar only (ActionBar handles its own space),
                 // left/right/bottom = system bars
-                v.setPadding(leftInset, topInset, rightInset, bottomInset);
+                v.setPadding(leftInset, topInset, rightInset, 0);
 
                 return insets;
             });
         }
-        
-        // DrawerLayout extends to edges - no padding needed on DrawerLayout itself
-        // The drawer fragment's ListView will handle its own content insets if needed
 
         // Set status bar and navigation bar to transparent for edge-to-edge effect
         // This works on all API levels, but is required for API 35+
@@ -567,11 +514,11 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Called when the activity is becoming visible to the user.
-     * 
+     *
      * <p>This method is called after {@link #onCreate(Bundle)} or after
      * {@link #onRestart()} if the activity was previously stopped. At this point,
      * the activity is visible but may not be in the foreground.
-     * 
+     *
      * <p>Currently, this method performs minimal work. Subclasses may override to
      * perform initialization that requires the activity to be visible.
      */
@@ -583,12 +530,12 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Gets the SetupImController instance.
-     * 
+     *
      * <p>This method is called by fragments to access the SetupImController,
      * which manages import, export, and setup operations. The controller is
      * guaranteed to be initialized in {@link #onCreate(Bundle)} before
      * fragments are instantiated.
-     * 
+     *
      * @return The SetupImController instance
      */
     public SetupImController getSetupImController() {
@@ -597,11 +544,11 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Gets the ManageImController instance.
-     * 
+     *
      * <p>This method is called by fragments to access the ManageImController,
      * which manages IM table operations. The controller is guaranteed to be
      * initialized in {@link #onCreate(Bundle)} before fragments are instantiated.
-     * 
+     *
      * @return The ManageImController instance
      */
     public ManageImController getManageImController() {
@@ -610,14 +557,11 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Gets the NavigationManager instance.
-     * 
+     *
      * <p>This method is called by fragments to access the NavigationManager,
      * which handles fragment navigation and title updates. The manager is
      * guaranteed to be initialized in {@link #onCreate(Bundle)}.
-     * 
-     * <p>The NavigationManager implements {@link NavigationDrawerFragment.NavigationDrawerCallbacks}
-     * to handle navigation drawer item selection.
-     * 
+     *
      * @return The NavigationManager instance
      * @see NavigationManager
      */
@@ -627,11 +571,11 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Gets the ShareManager instance.
-     * 
+     *
      * <p>This method is called by dialogs to access the ShareManager,
      * which handles share operations and dialog coordination. The manager
      * is guaranteed to be initialized in {@link #onCreate(Bundle)}.
-     * 
+     *
      * @return The ShareManager instance
      */
     public ShareManager getShareManager() {
@@ -642,7 +586,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
      * Gets the ProgressManager instance.
      *
      * <p>This allows fragments and dialogs to show or hide activity-level progress
-     * overlays through the coordinator (MainActivity) without needing to manage
+     * overlays through the coordinator (LIMESettings) without needing to manage
      * their own progress UI.
      *
      * @return The ProgressManager instance
@@ -653,10 +597,10 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
     /**
      * Checks if the app is running in test mode (instrumentation tests).
-     * 
+     *
      * <p>This is used to skip UI dialogs (like HelpDialog) that would block
      * test execution by preventing ActivityScenario.launch() from completing.
-     * 
+     *
      * @return true if running under instrumentation tests, false otherwise
      */
     private boolean isRunningInTestMode() {

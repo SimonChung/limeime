@@ -196,7 +196,7 @@ public class ArchitectureComplianceTest {
     @Test
     public void testMainActivityIsCoordinator() {
         try {
-            Class<?> mainActivityClass = Class.forName("net.toload.main.hd.ui.MainActivity");
+            Class<?> mainActivityClass = Class.forName("net.toload.main.hd.ui.LIMESettings");
             
             // Check for getter methods using reflection
             boolean hasSetupImControllerGetter = false;
@@ -220,7 +220,7 @@ public class ArchitectureComplianceTest {
             assertTrue("MainActivity should have getManageImController()", hasManageImControllerGetter);
             assertTrue("MainActivity should have getProgressManager()", hasProgressManagerGetter);
         } catch (ClassNotFoundException e) {
-            fail("MainActivity.class not found: " + e.getMessage());
+            fail("LIMESettings.class not found: " + e.getMessage());
         }
     }
 

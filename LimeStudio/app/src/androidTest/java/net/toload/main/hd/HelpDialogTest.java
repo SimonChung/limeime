@@ -9,7 +9,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.dialog.HelpDialog;
 
 import org.junit.After;
@@ -106,7 +106,7 @@ public class HelpDialogTest {
      */
     @Test(timeout = 60000)
     public void testHelpDialogSurvivesRecreation() throws Exception {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             // Show the HelpDialog
             scenario.onActivity(activity -> {
                 DialogFragment dialog = HelpDialog.newInstance();

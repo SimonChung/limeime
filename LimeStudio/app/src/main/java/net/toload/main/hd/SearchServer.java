@@ -41,7 +41,7 @@ import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.global.LIMEUtilities;
 import net.toload.main.hd.limedb.LimeDB;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -285,7 +285,7 @@ public class SearchServer {
         String result = dbadapter.getCodeListStringByWord(word);
         if (result != null && !result.isEmpty()) {
             LIMEUtilities.showNotification(
-                    mContext, true, mContext.getText(R.string.ime_setting), result, new Intent(mContext, MainActivity.class));
+                    mContext, true, mContext.getText(R.string.ime_setting), result, new Intent(mContext, LIMESettings.class));
 
             if(mLIMEPref.getReverseLookupNotify()){
                 Toast.makeText(mContext, result, Toast.LENGTH_SHORT).show();

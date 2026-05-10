@@ -12,13 +12,12 @@ import android.os.Handler;
 import android.os.Looper;
 
 import net.toload.main.hd.data.ImConfig;
-import net.toload.main.hd.ui.view.MainActivityView;
+import net.toload.main.hd.ui.view.LIMESettingsView;
 import net.toload.main.hd.ui.view.NavigationDrawerView;
 import net.toload.main.hd.ui.view.NavigationMenuItem;
 import net.toload.main.hd.ui.view.SetupImView;
 import net.toload.main.hd.DBServer;
 import net.toload.main.hd.SearchServer;
-import net.toload.main.hd.ui.view.NavigationDrawerFragment;
 import net.toload.main.hd.ui.NavigationManager;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEUtilities;
@@ -49,12 +48,11 @@ public class SetupImController extends BaseController implements ImportDialog.On
     private final SearchServer searchServer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     
-    private MainActivityView mainActivityView;
+    private LIMESettingsView mainActivityView;
     private NavigationDrawerView navigationDrawerView;
     private SetupImView setupImView;
     private NavigationManager navigationManager;
 
-    private NavigationDrawerFragment.NavigationDrawerCallbacks navigationCallbacks;
     private File fileToImport;
     
     public SetupImController(Context context, DBServer dbServer, SearchServer searchServer) {
@@ -63,7 +61,7 @@ public class SetupImController extends BaseController implements ImportDialog.On
         this.searchServer = searchServer;
     }
     
-    public void setMainActivityView(MainActivityView view) {
+    public void setMainActivityView(LIMESettingsView view) {
         this.mainActivityView = view;
     }
     
@@ -71,10 +69,6 @@ public class SetupImController extends BaseController implements ImportDialog.On
         this.navigationDrawerView = view;
     }
     
-    public void setNavigationCallbacks(NavigationDrawerFragment.NavigationDrawerCallbacks callbacks) {
-        this.navigationCallbacks = callbacks;
-    }
-
     public void setNavigationManager(NavigationManager manager) {
         this.navigationManager = manager;
     }
@@ -84,7 +78,7 @@ public class SetupImController extends BaseController implements ImportDialog.On
     }
     
     /**
-     * Sets the file to import (called by IntentHandler or MainActivity).
+     * Sets the file to import (called by IntentHandler or LIMESettings).
      * @param file The file to import
      */
     public void setFileToImport(File file) {
@@ -193,10 +187,10 @@ public class SetupImController extends BaseController implements ImportDialog.On
     }
     
     public void onNavigationItemSelected(int position) {
-        if (navigationCallbacks != null) {
-            navigationCallbacks.onNavigationDrawerItemSelected(position);
+        if (navigationManager != null) {
+            navigationManager.navigateToFragment(position);
         }
-        
+
         if (navigationDrawerView != null) {
             navigationDrawerView.setSelectedItem(position);
         }

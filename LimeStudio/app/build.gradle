@@ -126,7 +126,11 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'net.lingala.zip4j:zip4j:2.11.6'
 
-    implementation(platform('org.jetbrains.kotlin:kotlin-bom:2.3.10'))
+    implementation(platform('org.jetbrains.kotlin:kotlin-bom:2.2.0'))
+
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.slidingpanelayout:slidingpanelayout:1.2.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.8.7'
 
     // AndroidX Test dependencies
     androidTestImplementation 'junit:junit:4.13.2'

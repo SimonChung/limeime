@@ -23,7 +23,7 @@ import java.lang.ref.WeakReference;
  *   <li>Dismissing and cleaning up dialogs</li>
  * </ul>
  * 
- * <p>This extraction reduces MainActivity's UI management complexity and provides
+ * <p>This extraction reduces LIMESettings's UI management complexity and provides
  * a reusable component for progress tracking across the application.
  */
 public class ProgressManager {

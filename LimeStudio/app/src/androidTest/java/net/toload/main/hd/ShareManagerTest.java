@@ -30,7 +30,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.ShareManager;
 
 import org.junit.Before;
@@ -64,7 +64,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerExists() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", manager);
@@ -79,7 +79,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerHasExportMethods() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 
@@ -103,7 +103,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerUsesProgressManager() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager shareManager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", shareManager);
@@ -128,7 +128,7 @@ public class ShareManagerTest {
         // - DBServer.exportZippedDbRelated() for Related database exports
         // - SearchServer.exportTxtTable() for text exports
         
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", manager);
@@ -146,7 +146,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerDelegatesToSearchServerForText() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist for text exports", manager);
@@ -164,7 +164,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerCreatesProperShareIntents() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", manager);
@@ -187,7 +187,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerNoDirectLimeDBAccess() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", manager);
@@ -206,7 +206,7 @@ public class ShareManagerTest {
      */
     @Test
     public void testShareManagerHasControllerDependency() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ShareManager manager = activity.getShareManager();
                 assertNotNull("ShareManager should exist", manager);

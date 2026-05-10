@@ -494,6 +494,7 @@
     <string name="l3_initial_restore_confirm">請在按確認後點選將還原之備份檔</string>
     <string name="l3_initial_restore_start">開始還原資料庫</string>
     <string name="l3_initial_restore_end">資料庫還原完成</string>
+    <string name="l3_restore_default_confirm">確定要還原為預設資料庫嗎？所有自訂字根將會被覆蓋。</string>
 
     <string name="l3_initial_cloud_backup_database">Google Drive備份</string>
     <string name="l3_initial_cloud_backup_start">開始Google Drive資料庫備份</string>
@@ -787,5 +788,33 @@
         <item>50</item>
         <item>60</item>
     </string-array>
+
+
+    <!-- SetupFragment strings -->
+    <string name="setup_step_enable_keyboard">於系統設定中啟用 LimeIME</string>
+    <string name="setup_step_switch_keyboard">將輸入法切換為 LimeIME</string>
+    <string name="setup_status_active">LimeIME 鍵盤已啟用且為目前輸入法 ✓</string>
+    <string name="setup_status_enabled_not_active">已啟用，但尚未切換為 LimeIME — 點按下方按鈕切換</string>
+    <string name="setup_status_not_enabled">尚未在系統中啟用 LimeIME — 點按下方按鈕前往系統設定</string>
+    <string name="url_github_limeime">https://github.com/lime-ime/limeime</string>
+    <string name="setup_im_privacy_note">LimeIME 不會收集任何輸入內容或個人資料。</string>
+
+    <!-- Step 6: ImListFragment / ImDetailFragment strings -->
+    <string name="im_list_title">輸入法</string>
+    <string name="im_list_action_install">下載/匯入</string>
+    <string name="im_detail_section_info">輸入法資訊</string>
+    <string name="im_detail_label_name">名稱</string>
+    <string name="im_detail_label_records">筆數</string>
+    <string name="im_detail_section_keyboard">軟鍵盤配置</string>
+    <string name="im_detail_label_keyboard">鍵盤佈局</string>
+    <string name="im_detail_keyboard_default">預設</string>
+    <string name="im_detail_section_table">字根資料表</string>
+    <string name="im_detail_manage_table">管理字根資料表</string>
+    <string name="im_detail_section_options">選項</string>
+    <string name="im_detail_backup_on_delete">刪除時備份已學習記錄</string>
+    <string name="im_detail_remove_im">移除輸入法</string>
+    <string name="im_detail_remove_confirm">確定要移除此輸入法的所有資料嗎？</string>
+    <string name="im_related_label">聯想詞庫</string>
+    <string name="im_detail_keyboard_picker_title">選擇鍵盤佈局</string>
 
 </resources>

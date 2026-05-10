@@ -8,13 +8,12 @@ import net.toload.main.hd.R;
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.ui.view.ManageImFragment;
 import net.toload.main.hd.ui.view.ManageRelatedFragment;
-import net.toload.main.hd.ui.view.NavigationDrawerFragment;
 import net.toload.main.hd.ui.view.SetupImFragment;
 
 import java.util.List;
 
 /**
- * Manages navigation between fragments in MainActivity.
+ * Manages navigation between fragments in LIMESettings.
  * 
  * <p>This class encapsulates all navigation-related functionality, including:
  * <ul>
@@ -24,14 +23,14 @@ import java.util.List;
  *   <li>IM list management for navigation</li>
  * </ul>
  * 
- * <p>This extraction reduces MainActivity's complexity and provides a dedicated
+ * <p>This extraction reduces LIMESettings's complexity and provides a dedicated
  * component for managing fragment navigation flow.
  */
-public class NavigationManager implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+public class NavigationManager {
     
     private static final String TAG = "NavigationManager";
     
-    private final MainActivity activity;
+    private final LIMESettings activity;
     private List<ImConfig> imConfigFullNameList;
     private CharSequence currentTitle;
     
@@ -60,7 +59,7 @@ public class NavigationManager implements NavigationDrawerFragment.NavigationDra
      * 
      * @param activity The activity context for navigation operations
      */
-    public NavigationManager(MainActivity activity) {
+    public NavigationManager(LIMESettings activity) {
         this.activity = activity;
     }
     
@@ -98,20 +97,6 @@ public class NavigationManager implements NavigationDrawerFragment.NavigationDra
     }
     
     /**
-     * Callback from NavigationDrawerFragment when a navigation item is selected.
-     * 
-     * <p>This method is called when the user selects an item from the navigation
-     * drawer. It delegates to {@link #navigateToFragment(int)} to handle the actual
-     * navigation.
-     * 
-     * @param position The position of the selected item in the navigation drawer
-     */
-    @Override
-    public void onNavigationDrawerItemSelected(int position) {
-        navigateToFragment(position);
-    }
-    
-    /**
      * Navigates to a fragment based on the selected position.
      * 
      * <p>This method handles navigation to different fragments:
@@ -132,14 +117,14 @@ public class NavigationManager implements NavigationDrawerFragment.NavigationDra
         if (position == 0) {
             // Navigate to SetupImFragment (IM setup)
             fragmentManager.beginTransaction()
-                    .replace(R.id.container, SetupImFragment.newInstance(position), "SetupImFragment")
+                    .replace(R.id.main_fragment_container, SetupImFragment.newInstance(position), "SetupImFragment")
                     .addToBackStack("SetupImFragment")
                     .commit();
             updateTitle(position);
         } else if (position == 1) {
             // Navigate to ManageRelatedFragment (related phrases)
             fragmentManager.beginTransaction()
-                    .replace(R.id.container, ManageRelatedFragment.newInstance(position), "ManageRelatedFragment")
+                    .replace(R.id.main_fragment_container, ManageRelatedFragment.newInstance(position), "ManageRelatedFragment")
                     .addToBackStack("ManageRelatedFragment")
                     .commit();
             updateTitle(position);
@@ -160,7 +145,7 @@ public class NavigationManager implements NavigationDrawerFragment.NavigationDra
             
             String tableName = imConfigFullNameList.get(imIndex).getCode();
             fragmentManager.beginTransaction()
-                    .replace(R.id.container, ManageImFragment.newInstance(position, tableName), 
+                    .replace(R.id.main_fragment_container, ManageImFragment.newInstance(position, tableName), 
                              "ManageImFragment_" + tableName)
                     .addToBackStack("ManageImFragment_" + tableName)
                     .commit();
@@ -197,9 +182,6 @@ public class NavigationManager implements NavigationDrawerFragment.NavigationDra
                 Log.w(TAG, "Cannot update title - invalid IM index: " + imIndex);
             }
         }
-        
-        // Update the ActionBar with the new title
-        activity.restoreActionBar();
     }
     
     /**

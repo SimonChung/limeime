@@ -26,14 +26,14 @@ public class ManageImKeyboardDialogTest {
 
     @Test
     public void testActivityProvidesController() {
-        try (androidx.test.core.app.ActivityScenario<net.toload.main.hd.ui.MainActivity> scenario = androidx.test.core.app.ActivityScenario.launch(net.toload.main.hd.ui.MainActivity.class)) {
+        try (androidx.test.core.app.ActivityScenario<net.toload.main.hd.ui.LIMESettings> scenario = androidx.test.core.app.ActivityScenario.launch(net.toload.main.hd.ui.LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     java.lang.reflect.Method getter = activity.getClass().getMethod("getManageImController");
                     Object controller = getter.invoke(activity);
-                    assertNotNull("MainActivity.getManageImController() should return controller", controller);
+                    assertNotNull("LIMESettings.getManageImController() should return controller", controller);
                 } catch (Exception e) {
-                    fail("MainActivity should expose getManageImController(): " + e.getMessage());
+                    fail("LIMESettings should expose getManageImController(): " + e.getMessage());
                 }
             });
         }

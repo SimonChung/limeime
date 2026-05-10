@@ -17,7 +17,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * Handles intent processing for MainActivity.
+ * Handles intent processing for LIMESettings.
  * 
  * <p>This class encapsulates all intent-related logic, including:
  * <ul>
@@ -27,17 +27,17 @@ import java.io.OutputStream;
  *   <li>Input stream to file conversion</li>
  * </ul>
  * 
- * <p>This extraction reduces MainActivity's complexity and centralizes intent
+ * <p>This extraction reduces LIMESettings's complexity and centralizes intent
  * handling logic for better maintainability.
  */
 public class IntentHandler {
     
     private static final String TAG = "IntentHandler";
     
-    private final MainActivity activity;
+    private final LIMESettings activity;
     private final SetupImController setupImController;
     
-    public IntentHandler(MainActivity activity, SetupImController setupImController) {
+    public IntentHandler(LIMESettings activity, SetupImController setupImController) {
         this.activity = activity;
         this.setupImController = setupImController;
     }

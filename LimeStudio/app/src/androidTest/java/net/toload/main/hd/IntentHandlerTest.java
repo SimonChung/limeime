@@ -9,7 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.IntentHandler;
 
 import org.junit.FixMethodOrder;
@@ -49,7 +49,7 @@ public class IntentHandlerTest {
      */
     @Test(timeout = 60000)
     public void processTextPlainIntent_doesNotCrash() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     File tmp = new File(activity.getCacheDir(), "test_import.lime");
@@ -85,7 +85,7 @@ public class IntentHandlerTest {
 
     @Test
     public void processTextPlainCinIntent_doesNotCrash() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     File tmp = new File(activity.getCacheDir(), "test_import.cin");
@@ -110,7 +110,7 @@ public class IntentHandlerTest {
 
     @Test
     public void processZipIntent_doesNotCrash() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     File tmp = new File(activity.getCacheDir(), "array.limedb");
@@ -135,7 +135,7 @@ public class IntentHandlerTest {
 
     @Test
     public void processViewIntentWithInvalidScheme_gracefullyFails() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     File tmp = new File(activity.getCacheDir(), "bad_scheme.lime");
@@ -160,7 +160,7 @@ public class IntentHandlerTest {
 
     @Test
     public void processViewIntentWithFileSchemeAndLimeExtension_doesNotCrash() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 try {
                     File tmpDir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);

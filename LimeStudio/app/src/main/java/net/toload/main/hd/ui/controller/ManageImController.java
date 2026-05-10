@@ -380,6 +380,35 @@ public class ManageImController extends BaseController {
     }
 
     /**
+     * Sets the enabled/disabled state of an IM entry in the `im` table.
+     *
+     * <p>Updates the {@code disable} column for the row with the given id.
+     * The change is in-memory on the ImConfig object at call-site; this method
+     * persists it to the database so the state survives restarts.
+     *
+     * @param id      the {@code _id} of the IM row to update
+     * @param enabled {@code true} to enable (disable=false), {@code false} to disable
+     */
+    public void setImEnabled(int id, boolean enabled) {
+        if (searchServer == null) {
+            if (DEBUG) Log.e(TAG, "SearchServer not initialized");
+            return;
+        }
+        executor.submit(() -> {
+            try {
+                android.content.ContentValues cv = new android.content.ContentValues();
+                cv.put(LIME.DB_IM_COLUMN_DISABLE, String.valueOf(!enabled));
+                searchServer.updateRecord(LIME.DB_TABLE_IM, cv,
+                        LIME.DB_IM_COLUMN_ID + " = ?",
+                        new String[]{String.valueOf(id)});
+                if (DEBUG) Log.i(TAG, "setImEnabled(): id=" + id + ", enabled=" + enabled);
+            } catch (Exception e) {
+                handleError(manageImView, "Failed to set IM enabled: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
      * Exposes the SearchServer instance for callers that need to run background tasks.
      *
      * @return the `SearchServer` used by this controller; may be null in tests

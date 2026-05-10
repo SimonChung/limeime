@@ -4,7 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import net.toload.main.hd.ui.view.MainActivityView;
+import net.toload.main.hd.ui.view.LIMESettingsView;
 import net.toload.main.hd.ui.view.ViewUpdateListener;
 
 /**
@@ -50,7 +50,7 @@ public abstract class BaseController {
      * @param percentage The progress percentage (0-100)
      * @param status The status message
      */
-    protected void updateProgress(MainActivityView view, int percentage, String status) {
+    protected void updateProgress(LIMESettingsView view, int percentage, String status) {
         if (view != null) {
             mainHandler.post(() -> view.onProgress(percentage, status));
         }
@@ -63,7 +63,7 @@ public abstract class BaseController {
      * @param view The view to update (may be null)
      * @param message The progress message to display
      */
-    protected void showProgress(MainActivityView view, String message) {
+    protected void showProgress(LIMESettingsView view, String message) {
         if (view != null) {
             mainHandler.post(() -> view.showProgress(message));
         }
@@ -75,7 +75,7 @@ public abstract class BaseController {
      * 
      * @param view The view to update (may be null)
      */
-    protected void hideProgress(MainActivityView view) {
+    protected void hideProgress(LIMESettingsView view) {
         if (view != null) {
             mainHandler.post(view::hideProgress);
         }
@@ -89,7 +89,7 @@ public abstract class BaseController {
      * @param message The toast message to display
      * @param duration The toast duration (e.g., Toast.LENGTH_SHORT or Toast.LENGTH_LONG)
      */
-    protected void showToast(MainActivityView view, String message, int duration) {
+    protected void showToast(LIMESettingsView view, String message, int duration) {
         if (view != null) {
             mainHandler.post(() -> view.showToast(message, duration));
         }
@@ -102,8 +102,8 @@ public abstract class BaseController {
      * @param message The progress message
      */
     public void showProgress(Object view, String message) {
-        if (view instanceof MainActivityView) {
-            showProgress((MainActivityView) view, message);
+        if (view instanceof LIMESettingsView) {
+            showProgress((LIMESettingsView) view, message);
         }
     }
     
@@ -113,8 +113,8 @@ public abstract class BaseController {
      * @param view The view object
      */
     public void hideProgress(Object view) {
-        if (view instanceof MainActivityView) {
-            hideProgress((MainActivityView) view);
+        if (view instanceof LIMESettingsView) {
+            hideProgress((LIMESettingsView) view);
         }
     }
     
@@ -126,8 +126,8 @@ public abstract class BaseController {
      * @param duration The toast duration
      */
     public void showToast(Object view, String message, int duration) {
-        if (view instanceof MainActivityView) {
-            showToast((MainActivityView) view, message, duration);
+        if (view instanceof LIMESettingsView) {
+            showToast((LIMESettingsView) view, message, duration);
         }
     }
 }

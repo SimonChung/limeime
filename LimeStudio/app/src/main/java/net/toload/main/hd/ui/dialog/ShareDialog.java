@@ -40,7 +40,7 @@ import android.widget.Button;
 
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.global.LIME;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.R;
 import net.toload.main.hd.ui.controller.ManageImController;
 
@@ -134,8 +134,8 @@ public class ShareDialog extends DialogFragment {
         assert getDialog() != null;
         getDialog().getWindow().setTitle(getResources().getString(R.string.share_dialog_title));
         activity = getActivity();
-		if (activity instanceof MainActivity) {
-			manageImController = ((MainActivity) activity).getManageImController();
+		if (activity instanceof LIMESettings) {
+			manageImController = ((LIMESettings) activity).getManageImController();
 		}
         View view = inflater.inflate(R.layout.fragment_dialog_share, container, false);
 
@@ -195,7 +195,7 @@ public class ShareDialog extends DialogFragment {
 			alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, 
 					activity.getResources().getString(R.string.share_lime_cin),
 					(dialog, which) -> {
-						MainActivity mainActivity = (MainActivity) activity;
+						LIMESettings mainActivity = (LIMESettings) activity;
 						if (mainActivity.getShareManager() != null) {
 							mainActivity.getShareManager().shareImAsText(tableName);
 						}
@@ -206,7 +206,7 @@ public class ShareDialog extends DialogFragment {
 		alertDialog.setButton(DialogInterface.BUTTON_NEUTRAL, 
 				activity.getResources().getString(R.string.share_lime_db),
 				(dialog, which) -> {
-					MainActivity mainActivity = (MainActivity) activity;
+					LIMESettings mainActivity = (LIMESettings) activity;
 					if (mainActivity.getShareManager() != null) {
 						if (isRelated) {
 							mainActivity.getShareManager().shareRelatedAsDatabase();

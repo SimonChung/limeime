@@ -30,7 +30,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.NavigationManager;
 import net.toload.main.hd.ui.ProgressManager;
 import net.toload.main.hd.ui.ShareManager;
@@ -69,7 +69,7 @@ public class MainActivityTest {
      */
     @Test
     public void testMainActivityCreatesSingletonInstances() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 // Get instances
                 SetupImController setupCtrl1 = activity.getSetupImController();
@@ -104,7 +104,7 @@ public class MainActivityTest {
      */
     @Test
     public void testGetterMethodsReturnNonNullInstances() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 assertNotNull("SetupImController should not be null", 
                     activity.getSetupImController());
@@ -127,7 +127,7 @@ public class MainActivityTest {
      */
     @Test
     public void testMainActivityDoesNotImplementNavigationDrawerCallbacks() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 // Check if MainActivity implements NavigationDrawerCallbacks interface
                 Class<?>[] interfaces = activity.getClass().getInterfaces();
@@ -153,7 +153,7 @@ public class MainActivityTest {
      */
     @Test
     public void testNavigationManagerImplementsCallbacks() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navManager = activity.getNavigationManager();
                 assertNotNull("NavigationManager should exist", navManager);
@@ -183,7 +183,7 @@ public class MainActivityTest {
      */
     @Test
     public void testMainActivityExposesManagersControllersOnly() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 // Verify getter methods exist
                 assertNotNull("Should have getSetupImController()", 
@@ -213,7 +213,7 @@ public class MainActivityTest {
      */
     @Test
     public void testActivityLifecycleMaintainsSingletons() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 SetupImController ctrl = activity.getSetupImController();
                 assertNotNull("Controller should be created", ctrl);

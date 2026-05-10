@@ -30,7 +30,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.controller.ManageImController;
 
 import org.junit.Before;
@@ -65,7 +65,7 @@ public class ManageImFragmentTest {
      */
     @Test
     public void testIMKeyboardLoadingUsesController() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 // Get controller from MainActivity
                 ManageImController controller = activity.getManageImController();
@@ -88,7 +88,7 @@ public class ManageImFragmentTest {
      */
     @Test
     public void testAsynchronousRecordLoadingIsThreadSafe() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ManageImController controller = activity.getManageImController();
                 
@@ -117,7 +117,7 @@ public class ManageImFragmentTest {
      */
     @Test
     public void testRecordManagementDelegatesToController() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ManageImController controller = activity.getManageImController();
                 
@@ -144,7 +144,7 @@ public class ManageImFragmentTest {
         // This is verified by ArchitectureComplianceTest
         // but we add a specific test here for clarity
         
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 // Verify fragment gets controller, not direct DB access
                 ManageImController controller = activity.getManageImController();
