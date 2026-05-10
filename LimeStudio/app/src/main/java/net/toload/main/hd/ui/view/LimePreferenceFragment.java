@@ -17,7 +17,7 @@ import net.toload.main.hd.ui.LIMESettings;
 
 public class LimePreferenceFragment extends Fragment {
 
-    private int hostId;
+    private static final int HOST_ID = View.generateViewId();
 
     public static LimePreferenceFragment newInstance() {
         return new LimePreferenceFragment();
@@ -28,8 +28,7 @@ public class LimePreferenceFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         FrameLayout frame = new FrameLayout(requireContext());
-        hostId = View.generateViewId();
-        frame.setId(hostId);
+        frame.setId(HOST_ID);
         return frame;
     }
 
@@ -38,7 +37,7 @@ public class LimePreferenceFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         if (savedInstanceState == null) {
             getChildFragmentManager().beginTransaction()
-                    .replace(hostId, new LIMEPreference.PrefsFragment())
+                    .replace(HOST_ID, new LIMEPreference.PrefsFragment())
                     .commit();
         }
     }
