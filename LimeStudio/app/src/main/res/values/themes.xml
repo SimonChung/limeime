@@ -27,12 +27,12 @@
     Explicit windowBackground to ?attr/colorBackground is required on API 35+ where
     edge-to-edge + transparent system bars otherwise fall back to white.
   -->
-  <style name="LIMESettingsTheme" parent="Theme.AppCompat.DayNight">
+  <style name="LIMESettingsTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
   </style>
 
   <!-- Base application theme — follows system day/night. -->
-  <style name="AppTheme" parent="Theme.AppCompat.DayNight">
+  <style name="AppTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
   </style>
 

@@ -30,7 +30,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.ProgressManager;
 
 import org.junit.Before;
@@ -73,7 +73,7 @@ public class ProgressManagerTest {
 
         androidx.test.espresso.idling.CountingIdlingResource idlingResource = new androidx.test.espresso.idling.CountingIdlingResource("ProgressManagerTest");
         androidx.test.espresso.IdlingRegistry.getInstance().register(idlingResource);
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 assertNotNull("ProgressManager should exist", manager);
@@ -111,7 +111,7 @@ public class ProgressManagerTest {
      */
     @Test
     public void testProgressManagerUpdateMessage() throws InterruptedException {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 
@@ -151,7 +151,7 @@ public class ProgressManagerTest {
      */
     @Test
     public void testProgressManagerUpdatePercentage() throws InterruptedException {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 
@@ -198,7 +198,7 @@ public class ProgressManagerTest {
 
         CountingIdlingResource idlingResource = new CountingIdlingResource("ProgressManagerTest");
         IdlingRegistry.getInstance().register(idlingResource);
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 idlingResource.increment();
@@ -254,7 +254,7 @@ public class ProgressManagerTest {
 
         androidx.test.espresso.idling.CountingIdlingResource idlingResource = new androidx.test.espresso.idling.CountingIdlingResource("ProgressManagerTest");
         androidx.test.espresso.IdlingRegistry.getInstance().register(idlingResource);
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             for (int i = 0; i < 3; i++) {
                 final int cycle = i;
                 scenario.onActivity(activity -> {
@@ -288,7 +288,7 @@ public class ProgressManagerTest {
      */
     @Test
     public void testProgressManagerHandlesNullEmptyMessages() throws InterruptedException {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 
@@ -316,7 +316,7 @@ public class ProgressManagerTest {
 
         androidx.test.espresso.idling.CountingIdlingResource idlingResource = new androidx.test.espresso.idling.CountingIdlingResource("ProgressManagerTest");
         androidx.test.espresso.IdlingRegistry.getInstance().register(idlingResource);
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 ProgressManager manager = activity.getProgressManager();
                 idlingResource.increment();

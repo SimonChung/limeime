@@ -65,7 +65,7 @@
         </provider>
 
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.LIMESettings"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:hardwareAccelerated="true"
             android:exported="true" >

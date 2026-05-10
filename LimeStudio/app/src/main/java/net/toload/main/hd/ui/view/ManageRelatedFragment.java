@@ -44,7 +44,7 @@ import android.widget.Toast;
 
 
 import net.toload.main.hd.global.LIME;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.R;
 import net.toload.main.hd.data.Related;
 import net.toload.main.hd.ui.controller.ManageImController;
@@ -118,9 +118,9 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
 
         this.activity = this.getActivity();
         
-        // Get ManageImController from MainActivity
-        if (this.activity instanceof MainActivity) {
-            this.manageImController = ((MainActivity) this.activity).getManageImController();
+        // Get ManageImController from LIMESettings
+        if (this.activity instanceof LIMESettings) {
+            this.manageImController = ((LIMESettings) this.activity).getManageImController();
             if (this.manageImController != null) {
                 this.manageImController.setManageRelatedView(this);
             }
@@ -232,7 +232,7 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
         super.onAttach(context);
         Activity activity = (Activity) context;
         assert getArguments() != null;
-        ((MainActivity) activity).onSectionAttached(
+        ((LIMESettings) activity).onSectionAttached(
                 getArguments().getInt(ARG_SECTION_NUMBER));
     }
 

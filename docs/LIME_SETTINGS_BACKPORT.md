@@ -1,6 +1,15 @@
 # LIME Settings — iOS → Android UI Backport Plan
 
-Status: PLAN ONLY. No source files are modified by this document. Implementation is gated on explicit user approval per CLAUDE.md plan-mode rule.
+Status: APPROVED FOR IMPLEMENTATION. Decisions locked (see §A).
+
+## A. Locked Implementation Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| **Rollout strategy** | Single cutover — no feature flag | The git worktree already provides isolation; a flag adds dead code that must be cleaned up later |
+| **Language for new files** | Java | All 66 existing source files are `.java`; mixing languages adds build config complexity for no gain |
+| **Activity rename** | `MainActivity` → `LIMESettings` | Rename the activity class and all references; update `AndroidManifest.xml` accordingly |
+| **Missing deps** | Add Material 3, SlidingPaneLayout, Lifecycle ViewModel | None of these are currently in `app/build.gradle` |
 
 ## 0. Scope and Hard Constraints
 
@@ -21,7 +30,7 @@ This is a **view-layer-only** backport of the iOS LimeSettings UI ([LIME_SETTING
 
 | iOS spec section | iOS view | Android target | New / Refactor |
 |---|---|---|---|
-| §2 TabView (4 tabs) | `TabView` | `BottomNavigationView` (phone, `sw<600dp`) **xor** `NavigationRail` (tablet, `sw≥600dp`) — never both visible at once — over a single `FragmentContainerView` | **Refactor** `MainActivity` + new `activity_main.xml` |
+| §2 TabView (4 tabs) | `TabView` | `BottomNavigationView` (phone, `sw<600dp`) **xor** `NavigationRail` (tablet, `sw≥600dp`) — never both visible at once — over a single `FragmentContainerView` | **Rename + refactor** `MainActivity` → `LIMESettings` + new `activity_main.xml` |
 | §4 設定 tab | `SetupTabView` (iOS-only banner + step list) | Refactored `SetupImFragment` — keeps Android activation buttons + adds About card | **Refactor** existing fragment |
 | §5.1 IM List | `IMListView` | New `ImListFragment` (RecyclerView with enable/disable toggle) | **New** fragment, replaces the IM-grid portion of `SetupImFragment` |
 | §5.2 IM Detail | `IMDetailView` | New `ImDetailFragment` (per-IM info + keyboard picker entry + table editor entry + remove) | **New** |
@@ -42,7 +51,7 @@ This is a **view-layer-only** backport of the iOS LimeSettings UI ([LIME_SETTING
 Android replaces the existing `DrawerLayout` + `NavigationDrawerFragment` with a tab-bar coordinator that mirrors the iOS `TabView` (§2 of the iOS spec) but uses native Android primitives. Per Material 3 guidance, **only one** top-level nav control is shown per form factor — phones get a horizontal bottom bar, tablets get a vertical left rail.
 
 ```
-MainActivity
+LIMESettings (renamed from MainActivity)
 ├── activity_main.xml      (phone variant — res/layout/activity_main.xml)
 │   └── CoordinatorLayout
 │       ├── FragmentContainerView          @+id/main_fragment_container
@@ -60,7 +69,7 @@ MainActivity
         └── FragmentContainerView          @+id/main_fragment_container  (fills rest)
 ```
 
-The two `activity_main.xml` variants are resolved by Android's resource qualifier system; `MainActivity` looks up either `R.id.main_bottom_nav` or `R.id.main_nav_rail` (whichever exists at runtime) and binds the same `OnItemSelectedListener`. The menu XML is shared between both controls.
+The two `activity_main.xml` variants are resolved by Android's resource qualifier system; `LIMESettings` looks up either `R.id.main_bottom_nav` or `R.id.main_nav_rail` (whichever exists at runtime) and binds the same `OnItemSelectedListener`. The menu XML is shared between both controls.
 
 Tab-to-iOS mapping mirrors LIME_SETTINGS.md §2:
 
@@ -397,7 +406,7 @@ Drawables (vector icons) — add small set matching iOS SF Symbols semantics:
 Per constraint #1, controller and model layers are **off-limits** with the following **narrow** exceptions, each strictly additive:
 
 1. `ManageImController` — add a public pass-through `setImEnabled(int id, boolean enabled)` **only if** an equivalent method is not already callable from a fragment. It must just delegate to the existing `LIMEPreferenceManager` + `DBServer` writes used today by `SetupImFragment`'s grid logic. **Behaviour MUST be identical.**
-2. `MainActivityView` interface — may gain a new callback `onTabSelected(int index)` if needed by `MainActivity` to drive `BottomNavigationView`. Existing callbacks unchanged.
+2. `LIMESettingsView` interface (renamed from `MainActivityView`) — may gain a new callback `onTabSelected(int index)` if needed by `LIMESettings` to drive `BottomNavigationView`. Existing callbacks unchanged.
 
 If during implementation any further controller change appears necessary, **STOP and re-plan** — do not silently expand scope.
 
@@ -407,10 +416,17 @@ If during implementation any further controller change appears necessary, **STOP
 
 ## 11. Dependency / Tooling Notes
 
-- Material 3 (`com.google.android.material:material:1.12+`) is already on the build classpath — verify in `app/build.gradle` before relying on `BottomSheetDialogFragment` Material 3 styles. (Implementation step: confirm version, no change unless < 1.10.)
-- `androidx.slidingpanelayout:slidingpanelayout:1.2.0+` — add to `dependencies {}` if not present.
-- `androidx.recyclerview:recyclerview:1.3.x` — already present.
-- `androidx.preference:preference:1.2.x` — already present.
+The following dependencies are **confirmed missing** from `app/build.gradle` and **must be added** in step 1 of §13:
+
+| Dependency | Version | Why needed |
+|---|---|---|
+| `com.google.android.material:material` | `1.12.0` | `BottomNavigationView`, `NavigationRailView`, `BottomSheetDialogFragment`, `MaterialCardView`, `TextInputLayout`, all M3 styles |
+| `androidx.slidingpanelayout:slidingpanelayout` | `1.2.0` | Two-pane host for tab 1 (§3) |
+| `androidx.lifecycle:lifecycle-viewmodel` | `2.8.7` | `ImNavigationViewModel` used in §3 for selection state |
+
+Already present (no version change needed):
+- `androidx.recyclerview:recyclerview` — via `appcompat:1.7.1` transitive
+- `androidx.preference:preference:1.2.1` — explicit
 - **No Compose** dependencies introduced in this plan (keeps PR diff scoped).
 
 ---
@@ -432,27 +448,28 @@ No existing test is rewritten or deleted.
 
 ---
 
-## 13. Migration Order (Suggested Implementation Sequence)
+## 13. Migration Order (Implementation Sequence — Single Cutover)
 
-Each step lands as a single commit and leaves the app build-green and runnable.
+**Strategy:** Each step lands as a single commit and leaves the app build-green and runnable. No feature flag — the git worktree provides isolation. All new files are Java.
 
-1. **Add bottom-nav + 4 empty fragments** alongside (not replacing) `MainActivity`'s `DrawerLayout`. Hide drawer behind a feature flag `pref_use_new_settings_ui` (default off) for safe rollout.
-2. **DbManagerFragment** — relocate backup/restore controls; old `SetupImFragment` buttons hidden when flag on.
-3. **ImInstallFragment** — relocate per-IM download/import controls.
-4. **SetupFragment** — strip `SetupImFragment` to the activation guide + About card; verify `IntentHandler` still routes external file shares unchanged.
-5. **ImListFragment + ImDetailFragment + SlidingPaneLayout host** — replace drawer-based IM navigation.
-6. **Refactor ManageImFragment / ManageRelatedFragment** list visuals; **introduce sheets**, keep old dialogs alive for one release.
-7. **LimePreferenceFragment reskin** — visual theme attributes only; do **not** edit `preference.xml` or relocate any preference keys (§8).
-8. **Remove** `NavigationDrawerFragment`, the legacy `fragment_dialog_*` add/edit layouts, and the feature flag once parity is confirmed in QA.
+1. **Dependencies + rename** — add the three missing deps to `app/build.gradle` (§11); rename `MainActivity.java` → `LIMESettings.java` (and `MainActivityView` interface → `LIMESettingsView`); update `AndroidManifest.xml` `<activity android:name=".ui.LIMESettings">`. App must build green.
+2. **New `activity_main.xml` + bottom-nav shell** — replace `DrawerLayout` with `CoordinatorLayout` + `BottomNavigationView` + `FragmentContainerView`; add tablet variant at `res/layout-sw600dp/activity_main.xml` with `NavigationRail`; wire 4 empty placeholder fragments in `LIMESettings`; add `res/menu/main_nav.xml`. Remove `NavigationDrawerFragment` and `fragment_navigation_drawer.xml`. App must build green and show 4 empty tabs.
+3. **DbManagerFragment** — new fragment + `fragment_db_manager.xml`; move backup/restore/bundled-restore controls and their click handlers verbatim from `SetupImFragment`; host under tab 3 (資料庫).
+4. **ImInstallFragment** — new fragment + `fragment_im_install.xml` + `item_im_family_card.xml`; move per-IM download/import buttons verbatim from `SetupImFragment`; host under tab 1 (輸入法) temporarily until §6 SlidingPaneLayout host is ready. Verify `IntentHandler` still routes external `.limedb`/`.lime`/`.cin` shares unchanged.
+5. **SetupFragment** — refactor remaining `SetupImFragment` to match §4 layout (brand block, status card, 2 action buttons, About card); delete the now-empty per-IM and backup/restore button blocks. Rename file to `SetupFragment.java` + `fragment_setup.xml`.
+6. **ImListFragment + ImDetailFragment + TwoPaneHostFragment + ImNavigationViewModel** — new files per §5.1/§5.2/§3; wire `SlidingPaneLayout`; host under tab 1; retire the temporary placeholder.
+7. **Refactor ManageImFragment / ManageRelatedFragment** list visuals per §6.1/§6.3; **add ManageImAddSheet / ManageImEditSheet / ManageRelatedAddSheet / ManageRelatedEditSheet** per §6.2/§6.3; delete legacy `ManageImAddDialog`, `ManageImEditDialog`, `ManageRelatedAddDialog`, `ManageRelatedEditDialog` and their layouts.
+8. **LimePreferenceFragment reskin** — Material 3 theme attributes only; host in tab 2 (喜好設定). Do **not** edit `preference.xml` or relocate any key.
 
-At every step the existing **import-from-other-app** path (`IntentHandler` + `IMPORT_*` actions + `ImportDialog`) must be smoke-tested by sharing a `.limedb` file from Files / Downloads to LimeIME. This is the explicit constraint #2 invariant.
+At every step the existing **import-from-other-app** path (`IntentHandler` + `IMPORT_*` actions + `ImportDialog`) must be verified by checking that `IntentHandler` still compiles and its `Activity` reference resolves to `LIMESettings`. This is constraint #2.
 
 ---
 
-## 14. Open Questions for User Confirmation
+## 14. Resolved Decisions
 
-These items are deferred to the user before implementation begins:
+All questions resolved before implementation began:
 
-1. **Feature flag rollout** (§13 step 1) — keep flag, or replace UI in one cut-over commit? Plan defaults to flag for safety.
-
-No source files will be touched until this is resolved.
+1. **Feature flag rollout** → **RESOLVED: single cutover** (no flag). Git worktree provides isolation; flag eliminated to avoid dead-code cleanup later.
+2. **Language for new files** → **RESOLVED: Java**. Consistent with all 66 existing source files.
+3. **Activity rename** → **RESOLVED: `MainActivity` → `LIMESettings`**. `MainActivityView` → `LIMESettingsView`.
+4. **Missing dependencies** → **RESOLVED: add in step 1** — Material 3 `1.12.0`, SlidingPaneLayout `1.2.0`, Lifecycle ViewModel `2.8.7`.

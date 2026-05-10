@@ -40,7 +40,7 @@ import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.global.LIMEProgressListener;
 import net.toload.main.hd.global.LIMEUtilities;
 import net.toload.main.hd.limedb.LimeDB;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -695,7 +695,7 @@ public class  DBServer {
 	//Jeremy '12,4,23 rewriting using alert notification builder in LIME utilities to replace the deprecated method
 	private void showNotificationMessage(String message) {
 		Intent i;
-		i = new Intent(appContext, MainActivity.class);
+		i = new Intent(appContext, LIMESettings.class);
 
 		LIMEUtilities.showNotification(
 				appContext, true, appContext.getText(R.string.ime_setting), message, i);

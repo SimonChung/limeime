@@ -22,14 +22,14 @@ import java.io.File;
  *   <li>Android share intent creation and file provider URI handling</li>
  * </ul>
  * 
- * <p>This extraction reduces MainActivity's complexity and provides a reusable
+ * <p>This extraction reduces LIMESettings's complexity and provides a reusable
  * component for share operations across the application.
  */
 public class ShareManager {
     
     private static final String TAG = "ShareManager";
     
-    private final MainActivity activity;
+    private final LIMESettings activity;
     private final SetupImController setupImController;
     private final ProgressManager progressManager;
     
@@ -42,7 +42,7 @@ public class ShareManager {
      * @param setupImController The controller for export operations
      * @param progressManager The progress manager for showing export progress
      */
-    public ShareManager(MainActivity activity, SetupImController setupImController, ProgressManager progressManager) {
+    public ShareManager(LIMESettings activity, SetupImController setupImController, ProgressManager progressManager) {
         this.activity = activity;
         this.setupImController = setupImController;
         this.progressManager = progressManager;

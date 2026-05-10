@@ -46,7 +46,7 @@ import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.R;
 import net.toload.main.hd.ui.controller.ManageImController;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 
 import java.util.List;
 
@@ -158,8 +158,8 @@ public class ImportDialog extends DialogFragment {
 	public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle icicle) {
         assert getDialog() != null;
         activity = getActivity();
-		if (activity instanceof MainActivity) {
-			manageImController = ((MainActivity) activity).getManageImController();
+		if (activity instanceof LIMESettings) {
+			manageImController = ((LIMESettings) activity).getManageImController();
 		}
 		getDialog().getWindow().setTitle(getResources().getString(R.string.import_dialog_title));
 

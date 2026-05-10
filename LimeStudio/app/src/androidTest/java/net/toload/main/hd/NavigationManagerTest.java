@@ -5,7 +5,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.core.app.ActivityScenario;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.NavigationManager;
 import net.toload.main.hd.ui.view.ManageRelatedFragment;
 import net.toload.main.hd.ui.view.SetupImFragment;
@@ -23,7 +23,7 @@ public class NavigationManagerTest {
 
     @Test
     public void navigateToSetupAndRelatedFragments_doesNotCrash() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navigationManager = activity.getNavigationManager();
                 FragmentManager fm = activity.getSupportFragmentManager();

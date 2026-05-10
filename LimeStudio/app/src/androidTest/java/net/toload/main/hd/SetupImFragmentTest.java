@@ -27,7 +27,7 @@ package net.toload.main.hd;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.controller.SetupImController;
 import net.toload.main.hd.ui.view.SetupImFragment;
 
@@ -44,7 +44,7 @@ public class SetupImFragmentTest {
 
     @Test
     public void fragmentObtainsControllerAndHasNoLimeDbField() throws Exception {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 SetupImFragment fragment = SetupImFragment.newInstance(0);
                 assertNotNull("SetupImFragment instance", fragment);

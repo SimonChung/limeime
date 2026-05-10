@@ -7,7 +7,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 import net.toload.main.hd.ui.dialog.NewsDialog;
 
 import org.junit.Test;
@@ -40,7 +40,7 @@ public class NewsDialogTest {
 
     @Test
     public void testNewsDialogSurvivesRecreation() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 DialogFragment dialog = NewsDialog.newInstance();
                 dialog.show(activity.getSupportFragmentManager(), "newsdialog-smoke");

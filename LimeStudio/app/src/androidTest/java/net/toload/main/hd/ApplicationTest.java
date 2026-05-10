@@ -37,7 +37,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import net.toload.main.hd.global.LIMEPreferenceManager;
-import net.toload.main.hd.ui.MainActivity;
+import net.toload.main.hd.ui.LIMESettings;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -267,14 +267,14 @@ public class ApplicationTest {
         // Test that main activity can be launched
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         
-        android.content.Intent mainIntent = new android.content.Intent(appContext, MainActivity.class);
+        android.content.Intent mainIntent = new android.content.Intent(appContext, LIMESettings.class);
         mainIntent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
         
         android.content.pm.PackageManager pm = appContext.getPackageManager();
         android.content.pm.ResolveInfo resolveInfo = pm.resolveActivity(mainIntent, 0);
         
-        assertNotNull("MainActivity should be resolvable", resolveInfo);
-        assertNotNull("MainActivity component should not be null", resolveInfo.activityInfo);
+        assertNotNull("LIMESettings should be resolvable", resolveInfo);
+        assertNotNull("LIMESettings component should not be null", resolveInfo.activityInfo);
     }
 
 }
