@@ -29,7 +29,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textAppearance="?attr/textAppearanceSubtitle1"
                 android:textStyle="bold" />
 
             <ImageView
@@ -38,7 +38,7 @@
                 android:layout_height="24dp"
                 android:src="@drawable/ic_chevron_down"
                 android:contentDescription="@null"
-                app:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="?attr/colorControlNormal" />
 
         </LinearLayout>
 
@@ -71,7 +71,7 @@
             <!-- Import .limedb -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_import_limedb"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -80,7 +80,7 @@
             <!-- Import .cin / .lime (hidden for RELATED) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_import_txt"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -90,7 +90,7 @@
             <!-- Import default related (visible only for RELATED) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_import_default_related"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"

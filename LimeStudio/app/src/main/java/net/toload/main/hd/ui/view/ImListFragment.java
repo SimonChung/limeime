@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import net.toload.main.hd.R;
@@ -63,15 +64,24 @@ public class ImListFragment extends Fragment {
 
         View rootView = inflater.inflate(R.layout.fragment_im_list, container, false);
 
-        MaterialToolbar toolbar = rootView.findViewById(R.id.im_list_toolbar);
-        toolbar.inflateMenu(R.menu.im_list_menu);
-        toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.action_install) {
-                vm.showInstall.setValue(true);
-                return true;
-            }
-            return false;
-        });
+        // Toolbar is title-only; install action moved to FAB
+        rootView.findViewById(R.id.im_list_toolbar); // keep reference if needed later
+
+        FloatingActionButton fab = rootView.findViewById(R.id.fab_install);
+        fab.setOnClickListener(v -> vm.showInstall.setValue(true));
+
+        // Push FAB above the activity's BottomNavigationView (fragment container fills full screen)
+        View bottomNav = requireActivity().findViewById(R.id.main_bottom_nav);
+        if (bottomNav != null) {
+            bottomNav.post(() -> {
+                int navHeight = bottomNav.getHeight();
+                if (navHeight > 0 && fab.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) fab.getLayoutParams();
+                    lp.bottomMargin = navHeight + (int) (16 * getResources().getDisplayMetrics().density);
+                    fab.setLayoutParams(lp);
+                }
+            });
+        }
 
         RecyclerView recyclerView = rootView.findViewById(R.id.im_list_recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -90,7 +100,14 @@ public class ImListFragment extends Fragment {
         final Activity act = activity;
 
         new Thread(() -> {
-            final List<ImConfig> list = ctrl.getImConfigFullNameList();
+            final List<ImConfig> rawList = ctrl.getImConfigFullNameList();
+            // Filter out the internal emoji dataset — it is not a user-facing Chinese IM
+            final List<ImConfig> list = new ArrayList<>();
+            for (ImConfig im : rawList) {
+                if (!"emoji".equals(im.getCode())) {
+                    list.add(im);
+                }
+            }
             if (act == null) return;
             act.runOnUiThread(() -> {
                 if (!isAdded() || activity == null) return;

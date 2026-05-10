@@ -37,7 +37,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/im_detail_section_info"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textAppearance="?attr/textAppearanceSubtitle2"
                         android:layout_marginBottom="12dp" />
 
                     <!-- 名稱 row -->
@@ -52,14 +52,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/im_detail_label_name"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textAppearance="?attr/textAppearanceBody2" />
 
                         <TextView
                             android:id="@+id/tv_im_name"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="2"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textAppearance="?attr/textAppearanceBody2"
                             android:gravity="end" />
                     </LinearLayout>
 
@@ -74,14 +74,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/im_detail_label_records"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textAppearance="?attr/textAppearanceBody2" />
 
                         <TextView
                             android:id="@+id/tv_im_records"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="2"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textAppearance="?attr/textAppearanceBody2"
                             android:gravity="end"
                             android:text="…" />
                     </LinearLayout>
@@ -105,7 +105,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/im_detail_section_keyboard"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textAppearance="?attr/textAppearanceSubtitle2"
                         android:layout_marginBottom="12dp" />
 
                     <LinearLayout
@@ -120,14 +120,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/im_detail_label_keyboard"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textAppearance="?attr/textAppearanceBody2" />
 
                         <TextView
                             android:id="@+id/tv_keyboard_value"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="2"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textAppearance="?attr/textAppearanceBody2"
                             android:gravity="end"
                             android:text="@string/im_detail_keyboard_default" />
 
@@ -158,7 +158,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/im_detail_section_table"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textAppearance="?attr/textAppearanceSubtitle2"
                         android:layout_marginBottom="12dp" />
 
                     <LinearLayout
@@ -173,7 +173,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/im_detail_manage_table"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                            android:textAppearance="?attr/textAppearanceBody2" />
 
                         <ImageView
                             android:layout_width="24dp"
@@ -201,7 +201,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/im_detail_section_options"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textAppearance="?attr/textAppearanceSubtitle2"
                         android:layout_marginBottom="12dp" />
 
                     <com.google.android.material.switchmaterial.SwitchMaterial

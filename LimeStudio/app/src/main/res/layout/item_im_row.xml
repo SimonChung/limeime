@@ -28,13 +28,13 @@
             android:id="@+id/tv_im_label"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
+            android:textAppearance="?attr/textAppearanceBody1" />
 
         <TextView
             android:id="@+id/tv_im_desc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textAppearance="?attr/textAppearanceCaption"
             android:visibility="gone" />
 
     </LinearLayout>

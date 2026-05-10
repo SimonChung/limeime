@@ -23,17 +23,16 @@
             android:layout_marginBottom="24dp">
 
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@mipmap/ic_launcher"
-                android:background="@drawable/shape_icon_bg"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/logo"
                 android:contentDescription="@null" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="萊姆輸入法"
-                android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                android:textAppearance="?attr/textAppearanceHeadline5"
                 android:layout_marginStart="16dp" />
 
         </LinearLayout>
@@ -51,7 +50,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="16dp"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
+                android:textAppearance="?attr/textAppearanceBody2" />
 
         </com.google.android.material.card.MaterialCardView>
 
@@ -60,7 +59,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="設定 LimeIME"
-            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textAppearance="?attr/textAppearanceHeadline6"
             android:layout_marginBottom="8dp" />
 
         <!-- Setup Step List -->
@@ -123,7 +122,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/setup_im_privacy_note"
-            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textAppearance="?attr/textAppearanceCaption"
             android:layout_marginBottom="24dp" />
 
         <!-- Button: System Settings -->
@@ -181,7 +180,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="?attr/colorOutline"
+                    android:background="?attr/colorControlHighlight"
                     android:layout_marginTop="8dp"
                     android:layout_marginBottom="8dp" />
 
@@ -209,7 +208,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="?attr/colorOutline"
+                    android:background="?attr/colorControlHighlight"
                     android:layout_marginTop="8dp"
                     android:layout_marginBottom="8dp" />
 

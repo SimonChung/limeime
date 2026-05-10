@@ -31,7 +31,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="備份"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceSubtitle1"
                     android:layout_marginBottom="8dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -44,7 +44,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="備份包含所有字根、關聯字及偏好設定。"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textAppearance="?attr/textAppearanceCaption"
                     android:layout_marginTop="8dp" />
 
             </LinearLayout>
@@ -68,7 +68,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="還原"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceSubtitle1"
                     android:layout_marginBottom="8dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -81,7 +81,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="從先前的備份檔案還原所有設定與字根。"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textAppearance="?attr/textAppearanceCaption"
                     android:layout_marginTop="8dp" />
 
             </LinearLayout>
@@ -105,7 +105,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="初始資料庫"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceSubtitle1"
                     android:layout_marginBottom="8dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -137,7 +137,7 @@
                     android:id="@+id/dbStatusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+                    android:textAppearance="?attr/textAppearanceBody2" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

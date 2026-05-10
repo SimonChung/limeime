@@ -30,12 +30,24 @@
   <style name="LIMESettingsTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
     <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    <!-- Action bar follows surface/background — no branded primary color -->
+    <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
+    <item name="actionBarTheme">@style/ThemeOverlay.AppCompat.ActionBar</item>
   </style>
 
   <!-- Base application theme — follows system day/night. -->
   <style name="AppTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
     <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    <!-- Action bar follows surface/background — no branded primary color -->
+    <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
+    <item name="actionBarTheme">@style/ThemeOverlay.AppCompat.ActionBar</item>
+  </style>
+
+  <!-- Action bar uses window background color, adapts to light/dark system theme -->
+  <style name="LIME.ActionBarStyle" parent="Widget.AppCompat.ActionBar">
+    <item name="background">?android:attr/colorBackground</item>
+    <item name="elevation">4dp</item>
   </style>
 
   <style name="LIMETheme" parent="Theme.AppCompat.Light">

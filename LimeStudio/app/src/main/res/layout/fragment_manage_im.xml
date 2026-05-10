@@ -104,7 +104,7 @@
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:text="0"
                 android:id="@+id/txtNavigationInfo"
-                android:textSize="8pt"
+                android:textSize="12sp"
                 android:gravity="center_horizontal"
                 android:layout_weight="1" />
 
