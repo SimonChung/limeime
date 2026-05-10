@@ -29,11 +29,13 @@
   -->
   <style name="LIMESettingsTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
+    <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
   </style>
 
   <!-- Base application theme — follows system day/night. -->
   <style name="AppTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
+    <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
   </style>
 
   <style name="LIMETheme" parent="Theme.AppCompat.Light">
