@@ -82,6 +82,13 @@ public class TwoPaneHostFragment extends Fragment {
                 vm.showInstall.setValue(false);
             }
         });
+
+        // Close the sliding pane (reveal list) when the detail back stack empties
+        getChildFragmentManager().addOnBackStackChangedListener(() -> {
+            if (getChildFragmentManager().getBackStackEntryCount() == 0) {
+                slidingPaneLayout.close();
+            }
+        });
     }
 
     /**

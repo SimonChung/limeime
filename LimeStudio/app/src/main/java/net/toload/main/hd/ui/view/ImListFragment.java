@@ -64,9 +64,6 @@ public class ImListFragment extends Fragment {
 
         View rootView = inflater.inflate(R.layout.fragment_im_list, container, false);
 
-        // Toolbar is title-only; install action moved to FAB
-        rootView.findViewById(R.id.im_list_toolbar); // keep reference if needed later
-
         FloatingActionButton fab = rootView.findViewById(R.id.fab_install);
         fab.setOnClickListener(v -> vm.showInstall.setValue(true));
 

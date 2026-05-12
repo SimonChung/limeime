@@ -640,11 +640,11 @@
           "popupCharacters": ""
         },
         {
-          "code": 44,
+          "code": 39,
           "codes": [
-            44
+            39
           ],
-          "label": "\"\\n,",
+          "label": "\"\\n'",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",

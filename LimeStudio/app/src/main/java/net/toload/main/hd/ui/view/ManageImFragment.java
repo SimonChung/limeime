@@ -29,6 +29,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Looper;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -44,6 +45,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 import android.util.Log;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import net.toload.main.hd.data.Record;
 import net.toload.main.hd.global.LIME;
@@ -124,6 +126,32 @@ public class ManageImFragment extends Fragment implements ManageImView {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_manage_im, container, false);
+
+        // Back navigation toolbar
+        MaterialToolbar toolbar = rootView.findViewById(R.id.manage_im_toolbar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> {
+                Fragment parent = getParentFragment();
+                if (parent != null) {
+                    parent.getChildFragmentManager().popBackStack();
+                }
+            });
+        }
+
+        // Handle system back gesture and hardware back button.
+        // The toolbar ← alone is unreliable near the left-edge gesture zone on Android 10+;
+        // OnBackPressedCallback intercepts both the swipe-back gesture and the KEYCODE_BACK key.
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(),
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        Fragment parent = getParentFragment();
+                        if (parent != null) {
+                            parent.getChildFragmentManager().popBackStack();
+                        }
+                    }
+                });
 
         this.activity = this.getActivity();
 

@@ -28,6 +28,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
@@ -40,6 +41,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.material.appbar.MaterialToolbar;
 
 
 import net.toload.main.hd.global.LIME;
@@ -114,6 +116,30 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_manage_related, container, false);
+
+        // Back navigation toolbar
+        MaterialToolbar toolbar = rootView.findViewById(R.id.manage_related_toolbar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> {
+                Fragment parent = getParentFragment();
+                if (parent != null) {
+                    parent.getChildFragmentManager().popBackStack();
+                }
+            });
+        }
+
+        // Handle system back gesture and hardware back button.
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(),
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        Fragment parent = getParentFragment();
+                        if (parent != null) {
+                            parent.getChildFragmentManager().popBackStack();
+                        }
+                    }
+                });
 
         this.activity = this.getActivity();
         

@@ -54,7 +54,10 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import net.toload.main.hd.R;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.ui.LIMESettings;
+import net.toload.main.hd.ui.controller.ManageImController;
 import net.toload.main.hd.ui.controller.SetupImController;
+
+import com.google.android.material.appbar.MaterialToolbar;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -72,7 +75,11 @@ public class ImInstallFragment extends Fragment {
     private static final String TAG = "ImInstallFragment";
 
     private SetupImController setupImController;
+    private ManageImController manageImController;
     private Activity activity;
+    private RecyclerView recyclerView;
+    private ImFamilyAdapter adapter;
+    private List<ImFamily> currentFamilies;
 
     // File picker launchers
     private ActivityResultLauncher<Intent> limedbLauncher;
@@ -106,6 +113,7 @@ public class ImInstallFragment extends Fragment {
                                 if (file != null && ctrl != null) {
                                     if (rel) ctrl.importZippedDbRelated(file);
                                     else ctrl.importZippedDb(file, tbl, restore);
+                                    if (act != null) act.runOnUiThread(() -> onInstallComplete(tbl));
                                 }
                             }).start();
                         }
@@ -125,7 +133,8 @@ public class ImInstallFragment extends Fragment {
                             new Thread(() -> {
                                 File file = saveUriToFile(uri, act);
                                 if (file != null && ctrl != null) {
-                                    ctrl.importTxtTable(file, tbl, restore);
+                                    ctrl.importTxtTable(file, tbl, restore,
+                                            () -> onInstallComplete(tbl));
                                 }
                             }).start();
                         }
@@ -141,15 +150,35 @@ public class ImInstallFragment extends Fragment {
 
         if (activity instanceof LIMESettings) {
             setupImController = ((LIMESettings) activity).getSetupImController();
+            manageImController = ((LIMESettings) activity).getManageImController();
         } else {
-            Log.w(TAG, "Activity is not LIMESettings; SetupImController unavailable");
+            Log.w(TAG, "Activity is not LIMESettings; controllers unavailable");
         }
 
         View rootView = inflater.inflate(R.layout.fragment_im_install, container, false);
 
-        RecyclerView recyclerView = rootView.findViewById(R.id.im_install_list);
+        // Toolbar with back navigation and refresh action
+        MaterialToolbar toolbar = rootView.findViewById(R.id.im_install_toolbar);
+        toolbar.setNavigationOnClickListener(v -> {
+            Fragment host = getParentFragment();
+            if (host != null) {
+                host.getChildFragmentManager().popBackStack();
+            }
+        });
+        toolbar.inflateMenu(R.menu.im_install_menu);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_refresh) {
+                loadFamilyListAsync();
+                return true;
+            }
+            return false;
+        });
+
+        recyclerView = rootView.findViewById(R.id.im_install_list);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerView.setAdapter(new ImFamilyAdapter(buildFamilyList()));
+
+        // Load installed state async, then set adapter
+        loadFamilyListAsync();
 
         return rootView;
     }
@@ -159,6 +188,33 @@ public class ImInstallFragment extends Fragment {
         super.onDestroyView();
         activity = null;
         setupImController = null;
+        manageImController = null;
+        recyclerView = null;
+        adapter = null;
+        currentFamilies = null;
+    }
+
+    // -------- Async family list loader --------
+
+    private void loadFamilyListAsync() {
+        final Activity act = activity;
+        final ManageImController ctrl = manageImController;
+        final RecyclerView rv = recyclerView;
+        new Thread(() -> {
+            List<ImFamily> families = buildFamilyList();
+            if (ctrl != null) {
+                for (ImFamily family : families) {
+                    family.isInstalled = ctrl.countRecords(family.tableName) > 0;
+                }
+            }
+            if (act == null || rv == null) return;
+            act.runOnUiThread(() -> {
+                if (!isAdded()) return;
+                currentFamilies = families;
+                adapter = new ImFamilyAdapter(families);
+                rv.setAdapter(adapter);
+            });
+        }).start();
     }
 
     // -------- Restore-learning preference --------
@@ -247,11 +303,13 @@ public class ImInstallFragment extends Fragment {
     private static class CloudVariant {
         final int labelResId;
         final String count;
+        final String fileSize;
         final String url;
 
-        CloudVariant(int labelResId, String count, String url) {
+        CloudVariant(int labelResId, String count, String fileSize, String url) {
             this.labelResId = labelResId;
             this.count = count;
+            this.fileSize = fileSize;
             this.url = url;
         }
     }
@@ -263,15 +321,18 @@ public class ImInstallFragment extends Fragment {
         final boolean hasRestoreSwitch;
         final boolean isRelated;
         final boolean isCustom;
+        final int iconResId;
+        boolean isInstalled = false; // populated async before adapter is set
 
         ImFamily(String tableName, String displayTitle, List<CloudVariant> cloudVariants,
-                 boolean hasRestoreSwitch, boolean isRelated, boolean isCustom) {
+                 boolean hasRestoreSwitch, boolean isRelated, boolean isCustom, int iconResId) {
             this.tableName = tableName;
             this.displayTitle = displayTitle;
             this.cloudVariants = cloudVariants;
             this.hasRestoreSwitch = hasRestoreSwitch;
             this.isRelated = isRelated;
             this.isCustom = isCustom;
+            this.iconResId = iconResId;
         }
     }
 
@@ -280,103 +341,117 @@ public class ImInstallFragment extends Fragment {
 
         // 注音
         List<CloudVariant> phonetic = new ArrayList<>();
-        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_big5, "15,945",
+        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_big5, "15,945", "370 KB",
                 LIME.DATABASE_CLOUD_IM_PHONETIC_BIG5));
-        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic, "34,838",
+        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic, "34,838", "755 KB",
                 LIME.DATABASE_CLOUD_IM_PHONETIC));
-        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_adv_big5, "76,122",
+        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_adv_big5, "76,122", "1.3 MB",
                 LIME.DATABASE_CLOUD_IM_PHONETICCOMPLETE_BIG5));
-        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_adv, "95,029",
+        phonetic.add(new CloudVariant(R.string.l3_im_download_from_phonetic_adv, "95,029", "1.6 MB",
                 LIME.DATABASE_CLOUD_IM_PHONETICCOMPLETE));
-        list.add(new ImFamily(LIME.DB_TABLE_PHONETIC, "注音", phonetic, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_PHONETIC, "注音", phonetic, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 倉頡
         List<CloudVariant> cj = new ArrayList<>();
-        cj.add(new CloudVariant(R.string.l3_im_download_from_cj_big5, "13,859",
+        cj.add(new CloudVariant(R.string.l3_im_download_from_cj_big5, "13,859", "506 KB",
                 LIME.DATABASE_CLOUD_IM_CJ_BIG5));
-        cj.add(new CloudVariant(R.string.l3_im_download_from_cj, "28,596",
+        cj.add(new CloudVariant(R.string.l3_im_download_from_cj, "28,596", "830 KB",
                 LIME.DATABASE_CLOUD_IM_CJ));
-        cj.add(new CloudVariant(R.string.l3_im_download_from_cjk_hk_cj, "30,278",
+        cj.add(new CloudVariant(R.string.l3_im_download_from_cjk_hk_cj, "30,278", "884 KB",
                 LIME.DATABASE_CLOUD_IM_CJHK));
-        list.add(new ImFamily(LIME.DB_TABLE_CJ, "倉頡", cj, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_CJ, "倉頡", cj, true, false, false,
+                R.drawable.ic_archivebox));
 
         // 倉頡五代
         List<CloudVariant> cj5 = new ArrayList<>();
-        cj5.add(new CloudVariant(R.string.l3_im_download_from_cj5, "24,004",
+        cj5.add(new CloudVariant(R.string.l3_im_download_from_cj5, "24,004", "491 KB",
                 LIME.DATABASE_CLOUD_IM_CJ5));
-        list.add(new ImFamily(LIME.DB_TABLE_CJ5, "倉頡五代", cj5, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_CJ5, "倉頡五代", cj5, true, false, false,
+                R.drawable.ic_archivebox));
 
         // 速倉
         List<CloudVariant> scj = new ArrayList<>();
-        scj.add(new CloudVariant(R.string.l3_im_download_from_scj, "74,250",
+        scj.add(new CloudVariant(R.string.l3_im_download_from_scj, "74,250", "1.2 MB",
                 LIME.DATABASE_CLOUD_IM_SCJ));
-        list.add(new ImFamily(LIME.DB_TABLE_SCJ, "速倉", scj, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_SCJ, "速倉", scj, true, false, false,
+                R.drawable.ic_archivebox));
 
         // 英文倉頡
         List<CloudVariant> ecj = new ArrayList<>();
-        ecj.add(new CloudVariant(R.string.l3_im_download_from_ecj, "13,119",
+        ecj.add(new CloudVariant(R.string.l3_im_download_from_ecj, "13,119", "390 KB",
                 LIME.DATABASE_CLOUD_IM_ECJ));
-        ecj.add(new CloudVariant(R.string.l3_im_download_from_cjk_hk_ecj, "27,853",
+        ecj.add(new CloudVariant(R.string.l3_im_download_from_cjk_hk_ecj, "27,853", "625 KB",
                 LIME.DATABASE_CLOUD_IM_ECJHK));
-        list.add(new ImFamily(LIME.DB_TABLE_ECJ, "英文倉頡", ecj, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_ECJ, "英文倉頡", ecj, true, false, false,
+                R.drawable.ic_archivebox));
 
         // 大易
         List<CloudVariant> dayi = new ArrayList<>();
-        dayi.add(new CloudVariant(R.string.setup_load_download_dayiuni, "27,198",
+        dayi.add(new CloudVariant(R.string.setup_load_download_dayiuni, "27,198", "630 KB",
                 LIME.DATABASE_CLOUD_IM_DAYIUNI));
-        dayi.add(new CloudVariant(R.string.setup_load_download_dayiunip, "117,766",
+        dayi.add(new CloudVariant(R.string.setup_load_download_dayiunip, "117,766", "2.1 MB",
                 LIME.DATABASE_CLOUD_IM_DAYIUNIP));
-        dayi.add(new CloudVariant(R.string.l3_im_download_from_dayi, "18,638",
+        dayi.add(new CloudVariant(R.string.l3_im_download_from_dayi, "18,638", "465 KB",
                 LIME.DATABASE_CLOUD_IM_DAYI));
-        list.add(new ImFamily(LIME.DB_TABLE_DAYI, "大易", dayi, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_DAYI, "大易", dayi, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 輕鬆
         List<CloudVariant> ez = new ArrayList<>();
-        ez.add(new CloudVariant(R.string.l3_im_download_from_ez, "14,422",
+        ez.add(new CloudVariant(R.string.l3_im_download_from_ez, "14,422", "340 KB",
                 LIME.DATABASE_CLOUD_IM_EZ));
-        list.add(new ImFamily(LIME.DB_TABLE_EZ, "輕鬆", ez, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_EZ, "輕鬆", ez, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 行列
         List<CloudVariant> array = new ArrayList<>();
-        array.add(new CloudVariant(R.string.l3_im_download_from_array, "32,386",
+        array.add(new CloudVariant(R.string.l3_im_download_from_array, "32,386", "680 KB",
                 LIME.DATABASE_CLOUD_IM_ARRAY));
-        list.add(new ImFamily(LIME.DB_TABLE_ARRAY, "行列", array, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_ARRAY, "行列", array, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 行列十
         List<CloudVariant> array10 = new ArrayList<>();
-        array10.add(new CloudVariant(R.string.l3_im_download_from_array10, "32,120",
+        array10.add(new CloudVariant(R.string.l3_im_download_from_array10, "32,120", "670 KB",
                 LIME.DATABASE_CLOUD_IM_ARRAY10));
-        list.add(new ImFamily(LIME.DB_TABLE_ARRAY10, "行列十", array10, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_ARRAY10, "行列十", array10, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 華象
         List<CloudVariant> hs = new ArrayList<>();
-        hs.add(new CloudVariant(R.string.l3_im_download_from_hs, "183,659",
+        hs.add(new CloudVariant(R.string.l3_im_download_from_hs, "183,659", "3.2 MB",
                 LIME.DATABASE_CLOUD_IM_HS));
-        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v1, "50,845",
+        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v1, "50,845", "1.1 MB",
                 LIME.DATABASE_CLOUD_IM_HS_V1));
-        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v2, "50,838",
+        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v2, "50,838", "1.0 MB",
                 LIME.DATABASE_CLOUD_IM_HS_V2));
-        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v3, "64,324",
+        hs.add(new CloudVariant(R.string.l3_im_download_from_hs_v3, "64,324", "1.2 MB",
                 LIME.DATABASE_CLOUD_IM_HS_V3));
-        list.add(new ImFamily(LIME.DB_TABLE_HS, "華象", hs, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_HS, "華象", hs, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 五筆
         List<CloudVariant> wb = new ArrayList<>();
-        wb.add(new CloudVariant(R.string.l3_im_download_from_wb, "26,378",
+        wb.add(new CloudVariant(R.string.l3_im_download_from_wb, "26,378", "590 KB",
                 LIME.DATABASE_CLOUD_IM_WB));
-        list.add(new ImFamily(LIME.DB_TABLE_WB, "五筆", wb, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_WB, "五筆", wb, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 拼音
         List<CloudVariant> pinyin = new ArrayList<>();
-        pinyin.add(new CloudVariant(R.string.l3_im_download_from_pinyin_big5, "34,753",
+        pinyin.add(new CloudVariant(R.string.l3_im_download_from_pinyin_big5, "34,753", "730 KB",
                 LIME.DATABASE_CLOUD_IM_PINYIN));
-        list.add(new ImFamily(LIME.DB_TABLE_PINYIN, "拼音", pinyin, true, false, false));
+        list.add(new ImFamily(LIME.DB_TABLE_PINYIN, "拼音", pinyin, true, false, false,
+                R.drawable.ic_keyboard_outline));
 
         // 自建 (CUSTOM) — no restore switch, no cloud buttons
-        list.add(new ImFamily(LIME.DB_TABLE_CUSTOM, "自建", new ArrayList<>(), false, false, true));
+        list.add(new ImFamily(LIME.DB_TABLE_CUSTOM, "自建", new ArrayList<>(), false, false, true,
+                R.drawable.ic_add));
 
         // 聯想詞庫 (RELATED) — no restore switch, no cloud buttons, no txt import
-        list.add(new ImFamily(LIME.DB_TABLE_RELATED, "聯想詞庫", new ArrayList<>(), false, true, false));
+        list.add(new ImFamily(LIME.DB_TABLE_RELATED, "聯想詞庫", new ArrayList<>(), false, true, false,
+                R.drawable.ic_list_bullet));
 
         return list;
     }
@@ -391,6 +466,9 @@ public class ImInstallFragment extends Fragment {
         ImFamilyAdapter(List<ImFamily> families) {
             this.families = families;
             this.expanded = new boolean[families.size()];
+            for (int i = 0; i < families.size(); i++) {
+                expanded[i] = !families.get(i).isInstalled;
+            }
         }
 
         @NonNull
@@ -423,7 +501,9 @@ public class ImInstallFragment extends Fragment {
     private class ImFamilyViewHolder extends RecyclerView.ViewHolder {
 
         final LinearLayout cardHeader;
+        final android.widget.ImageView ivFamilyIcon;
         final TextView tvTitle;
+        final TextView tvInstalledBadge;
         final android.widget.ImageView ivChevron;
         final LinearLayout bodyContainer;
         final SwitchMaterial switchRestoreLearning;
@@ -435,7 +515,9 @@ public class ImInstallFragment extends Fragment {
         ImFamilyViewHolder(@NonNull View itemView) {
             super(itemView);
             cardHeader = itemView.findViewById(R.id.card_header);
+            ivFamilyIcon = itemView.findViewById(R.id.iv_family_icon);
             tvTitle = itemView.findViewById(R.id.tv_im_title);
+            tvInstalledBadge = itemView.findViewById(R.id.tv_installed_badge);
             ivChevron = itemView.findViewById(R.id.iv_chevron);
             bodyContainer = itemView.findViewById(R.id.body_container);
             switchRestoreLearning = itemView.findViewById(R.id.switch_restore_learning);
@@ -446,12 +528,41 @@ public class ImInstallFragment extends Fragment {
         }
 
         void bind(ImFamily family, boolean isExpanded, Runnable toggleExpand) {
+            // Family icon
+            if (family.iconResId != 0) {
+                ivFamilyIcon.setImageResource(family.iconResId);
+                ivFamilyIcon.setVisibility(View.VISIBLE);
+            } else {
+                ivFamilyIcon.setVisibility(View.GONE);
+            }
+
             tvTitle.setText(family.displayTitle);
+
+            // Installed badge + chevron + header click lock
+            if (family.isInstalled) {
+                tvInstalledBadge.setVisibility(View.VISIBLE);
+                ivChevron.setVisibility(View.GONE);
+                cardHeader.setOnClickListener(null);
+                cardHeader.setClickable(false);
+            } else {
+                tvInstalledBadge.setVisibility(View.GONE);
+                ivChevron.setVisibility(View.VISIBLE);
+                cardHeader.setClickable(true);
+                cardHeader.setOnClickListener(v -> {
+                    float toDeg = isExpanded ? 0f : 180f;
+                    ivChevron.animate().rotation(toDeg).setDuration(200).start();
+                    toggleExpand.run();
+                });
+            }
+
+            // Expand/collapse
+            bodyContainer.setVisibility(isExpanded ? View.VISIBLE : View.GONE);
+            ivChevron.clearAnimation();
+            ivChevron.setRotation(isExpanded ? 180f : 0f);
 
             // Restore switch visibility
             if (family.hasRestoreSwitch) {
                 switchRestoreLearning.setVisibility(View.VISIBLE);
-                // Restore persisted state without triggering listener
                 switchRestoreLearning.setOnCheckedChangeListener(null);
                 switchRestoreLearning.setChecked(getRestorePref(family.tableName));
                 switchRestoreLearning.setOnCheckedChangeListener((buttonView, isChecked) ->
@@ -460,30 +571,30 @@ public class ImInstallFragment extends Fragment {
                 switchRestoreLearning.setVisibility(View.GONE);
             }
 
-            // Cloud buttons — rebuild each bind to avoid stale listeners
+            // Cloud variant rows — rebuild each bind to avoid stale listeners
             cloudButtonsContainer.removeAllViews();
             if (!family.cloudVariants.isEmpty()) {
                 cloudButtonsContainer.setVisibility(View.VISIBLE);
                 for (CloudVariant variant : family.cloudVariants) {
-                    MaterialButton btn = new MaterialButton(
-                            requireContext(),
-                            null,
-                            com.google.android.material.R.attr.borderlessButtonStyle);
-                    btn.setLayoutParams(new LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT));
-                    String label = getString(R.string.download_button_with_count,
-                            getString(variant.labelResId), variant.count);
-                    btn.setText(label);
+                    View row = LayoutInflater.from(requireContext())
+                            .inflate(R.layout.item_cloud_variant, cloudButtonsContainer, false);
+                    TextView tvName = row.findViewById(R.id.tv_variant_name);
+                    TextView tvMeta = row.findViewById(R.id.tv_variant_meta);
+                    MaterialButton btnInstall = row.findViewById(R.id.btn_install);
+
+                    tvName.setText(getString(variant.labelResId));
+                    tvMeta.setText(variant.count + " · " + variant.fileSize);
+
                     final String url = variant.url;
-                    btn.setOnClickListener(v -> {
+                    btnInstall.setOnClickListener(v -> {
                         if (setupImController != null) {
                             setupImController.downloadAndImportZippedDb(
                                     family.tableName, url,
-                                    switchRestoreLearning.isChecked());
+                                    switchRestoreLearning.isChecked(),
+                                    () -> onInstallComplete(family.tableName));
                         }
                     });
-                    cloudButtonsContainer.addView(btn);
+                    cloudButtonsContainer.addView(row);
                 }
             } else {
                 cloudButtonsContainer.setVisibility(View.GONE);
@@ -504,31 +615,51 @@ public class ImInstallFragment extends Fragment {
             // Default related button (visible only for RELATED)
             if (family.isRelated) {
                 btnImportDefaultRelated.setVisibility(View.VISIBLE);
-                btnImportDefaultRelated.setOnClickListener(v -> showDefaultRelatedConfirmDialog());
+                btnImportDefaultRelated.setOnClickListener(v ->
+                        showDefaultRelatedConfirmDialog(() -> onInstallComplete(family.tableName)));
             } else {
                 btnImportDefaultRelated.setVisibility(View.GONE);
             }
-
-            // Expand/collapse
-            bodyContainer.setVisibility(isExpanded ? View.VISIBLE : View.GONE);
-            ivChevron.clearAnimation();
-            ivChevron.setRotation(isExpanded ? 180f : 0f);
-
-            cardHeader.setOnClickListener(v -> {
-                float toDeg = isExpanded ? 0f : 180f;
-                ivChevron.animate().rotation(toDeg).setDuration(200).start();
-                toggleExpand.run();
-            });
         }
     }
 
-    private void showDefaultRelatedConfirmDialog() {
+    // -------- Install-complete callback --------
+
+    /**
+     * Called after any install path succeeds. Re-queries installed state for the given
+     * table, marks it installed, collapses its card, and refreshes just that item.
+     * Must be called on the main thread.
+     */
+    private void onInstallComplete(String tableName) {
+        if (!isAdded() || currentFamilies == null || adapter == null) return;
+        final ManageImController ctrl = manageImController;
+        if (ctrl == null) return;
+        new Thread(() -> {
+            boolean installed = ctrl.countRecords(tableName) > 0;
+            Activity act = activity;
+            if (act == null) return;
+            act.runOnUiThread(() -> {
+                if (!isAdded() || currentFamilies == null || adapter == null) return;
+                for (int i = 0; i < currentFamilies.size(); i++) {
+                    if (tableName.equals(currentFamilies.get(i).tableName)) {
+                        currentFamilies.get(i).isInstalled = installed;
+                        if (installed) adapter.expanded[i] = false;
+                        adapter.notifyItemChanged(i);
+                        break;
+                    }
+                }
+            });
+        }).start();
+    }
+
+    private void showDefaultRelatedConfirmDialog(Runnable onSuccess) {
         if (activity == null) return;
         new AlertDialog.Builder(activity)
                 .setMessage(R.string.setup_im_import_related_default_confirm)
                 .setPositiveButton(R.string.dialog_confirm, (dialog, which) -> {
                     if (setupImController != null) {
                         setupImController.importDbDefaultRelated();
+                        if (onSuccess != null) onSuccess.run();
                     }
                 })
                 .setNegativeButton(R.string.dialog_cancel, (dialog, which) -> dialog.dismiss())

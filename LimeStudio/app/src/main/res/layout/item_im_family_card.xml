@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header row: title + chevron -->
+        <!-- Header row: icon + title + installed badge + chevron -->
         <LinearLayout
             android:id="@+id/card_header"
             android:layout_width="match_parent"
@@ -24,6 +24,15 @@
             android:gravity="center_vertical"
             android:background="?attr/selectableItemBackground">
 
+            <!-- Per-family icon -->
+            <ImageView
+                android:id="@+id/iv_family_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="12dp"
+                android:contentDescription="@null"
+                app:tint="?attr/colorControlNormal" />
+
             <TextView
                 android:id="@+id/tv_im_title"
                 android:layout_width="0dp"
@@ -31,6 +40,17 @@
                 android:layout_weight="1"
                 android:textAppearance="?attr/textAppearanceSubtitle1"
                 android:textStyle="bold" />
+
+            <!-- Shown when installed; replaces chevron -->
+            <TextView
+                android:id="@+id/tv_installed_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/im_installed_badge"
+                android:textAppearance="?attr/textAppearanceCaption"
+                android:textColor="?attr/colorPrimary"
+                android:layout_marginEnd="4dp"
+                android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/iv_chevron"
@@ -61,7 +81,7 @@
                 android:layout_marginBottom="8dp"
                 android:text="還原已學習記錄" />
 
-            <!-- Dynamic cloud download buttons injected here -->
+            <!-- Dynamic cloud download rows injected here -->
             <LinearLayout
                 android:id="@+id/cloud_buttons_container"
                 android:layout_width="match_parent"
@@ -75,7 +95,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="匯入 .limedb" />
+                android:text="匯入 .limedb"
+                app:icon="@drawable/ic_archivebox"
+                app:iconGravity="start"
+                app:iconPadding="8dp" />
 
             <!-- Import .cin / .lime (hidden for RELATED) -->
             <com.google.android.material.button.MaterialButton
@@ -85,7 +108,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="匯入 .cin / .lime"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:icon="@drawable/ic_list_bullet"
+                app:iconGravity="start"
+                app:iconPadding="8dp" />
 
             <!-- Import default related (visible only for RELATED) -->
             <com.google.android.material.button.MaterialButton
@@ -95,7 +121,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="@string/setup_im_import_related_default"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:icon="@drawable/ic_list_bullet"
+                app:iconGravity="start"
+                app:iconPadding="8dp" />
 
         </LinearLayout>
 

@@ -182,6 +182,8 @@ The **Model and Controller layers must achieve the same testability goals** as t
 
 **Purpose**: One-time keyboard activation guide, database seeding, and app information. Corresponds to the non-IM-management parts of Android's `SetupImFragment`.
 
+![iPhone 17 Pro Max simulator screenshot of the 設定 tab](lime_settings_ios_setup.png)
+
 ### 4.1 Layout
 
 Inspired by Gboard's setup screen: a single scrollable screen with the LimeIME logo at top, a visual three-step instruction list, and **one CTA button** that opens the relevant iOS Settings page directly. The two-button (Step 1 / Step 2) layout is replaced by this unified design.
@@ -323,6 +325,8 @@ func openLimeKeyboardSettings() {
 
 Entry point for the **輸入法** tab.
 
+![iPhone 17 Pro Max simulator screenshot of the 輸入法 tab IM list](lime_settings_ios_im_list.png)
+
 ```
 NavigationStack
 └── List (editable for drag-reorder)
@@ -351,6 +355,8 @@ NavigationStack
 ### 5.2 IM Detail Screen
 
 Drill-down from any IM row **or** from the synthetic 聯想詞庫 entry. Shows metadata, allows changing the soft keyboard layout, and links to the Table Editor. Sections are conditionally shown based on `im.tableNick`.
+
+![iPhone 17 Pro Max simulator screenshot of the IM detail screen](lime_settings_ios_im_detail.png)
 
 ```
 NavigationStack (continued)
@@ -458,6 +464,8 @@ The keyboard extension re-reads both the pref and the DB row at the top of `init
 ### 5.3 IM Install Screen — Download & Import
 
 Entry point reachable from the "下載 / 匯入輸入法" NavigationLink in §5.1. Each IM is a top-level `DisclosureGroup`; cloud download options appear only for built-in IMs.
+
+![iPhone 17 Pro Max simulator screenshot of the IM install and import screen](lime_settings_ios_im_install.png)
 
 ```
 NavigationStack (continued)
@@ -569,6 +577,8 @@ When import or download is running, show a centred `ProgressView("匯入中…")
 
 Reached via NavigationLink from §5.2 ("瀏覽 / 編輯資料表").
 
+![iPhone 17 Pro Max simulator screenshot of the mapping record list](lime_settings_ios_record_list.png)
+
 ```
 NavigationStack (continued)
 └── RecordListView(table: String)
@@ -644,6 +654,8 @@ Validation on Save: code and word must not be empty.
 
 The related-phrase editor is reached via **輸入法 → 聯想詞庫 → 瀏覽 / 編輯聯想詞庫**. It is no longer a standalone tab. `RelatedListView` accepts `isEmbedded: Bool`; when `true` the inner `NavigationView` wrapper is omitted so it can be pushed as a navigation destination without nesting. Equivalent to Android's `ManageRelatedFragment`.
 
+![iPhone 17 Pro Max simulator screenshot of the related phrase list](lime_settings_ios_related_list.png)
+
 ```
 NavigationStack (continued from §5.2)
 └── RelatedListView(isEmbedded: true)
@@ -697,6 +709,8 @@ Form
 ## 7. Feature: DB Manager (資料庫 Tab)
 
 **Purpose**: Backup the entire `lime.db` file and restore from a previous backup. Corresponds to the backup/restore buttons in Android's `SetupImFragment`.
+
+![iPhone 17 Pro Max simulator screenshot of the 資料庫 tab](lime_settings_ios_database.png)
 
 ### 7.1 Layout
 
@@ -774,6 +788,8 @@ When backup export or restore copy is running, show a centred `ProgressView` ove
 ## 8. Feature: IM Preferences (喜好設定 Tab)
 
 **Purpose**: Replicate all settings from Android's `LIMEPreference` (`preference.xml`). All values persist to `UserDefaults(suiteName: "group.net.toload.limeime")` so the keyboard extension can read them without IPC.
+
+![iPhone 17 Pro Max simulator screenshot of the 喜好設定 tab](lime_settings_ios_preferences.png)
 
 Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime"))` (aliased as `sharedDefaults` constant) for every value.
 
@@ -857,6 +873,8 @@ Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime")
 ### 8.9 Section 字根反查 (Reverse Lookup) — Sub-screen
 
 A `NavigationLink` opens a dedicated sub-screen. Configures which IM provides the reverse-lookup annotation for each main IM when no candidate is found.
+
+![iPhone 17 Pro Max simulator screenshot of the 字根反查設定 sub-screen](lime_settings_ios_reverse_lookup.png)
 
 ```
 NavigationLink "字根反查設定" → ReverseLookupSettingsView

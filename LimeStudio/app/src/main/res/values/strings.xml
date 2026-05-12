@@ -277,6 +277,12 @@
     <string name="preference_smart_chinese_input">開啟中文智慧選字</string>
     <string name="preference_smart_chinese_input_message">部份輸入法可能會影響中英混打功能</string>
 
+    <!-- IM catalog install page -->
+    <string name="im_install_action">安裝</string>
+    <string name="im_installed_badge">已安裝</string>
+    <string name="im_install_refresh">重新整理</string>
+    <string name="im_install_title">下載 / 匯入輸入法</string>
+
     <!-- String formatting templates -->
     <string name="download_button_with_count">%1$s (%2$s)</string>
     <string name="version_format">v%1$s - %2$d</string>

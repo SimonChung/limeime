@@ -112,7 +112,10 @@
     <color name="setup_status_yellow">#FFF9C4</color>
     <color name="setup_status_red">#FFCDD2</color>
 
-    <!-- Material blue for links -->
+    <!-- Material blue for links and UI accent (tabs, FAB, buttons) -->
     <color name="material_blue">#FF2196F3</color>
+
+    <!-- Lime green for switches and secondary accents — matches iOS LIME brand color -->
+    <color name="lime_green">#FF4CAF50</color>
 
 </resources>

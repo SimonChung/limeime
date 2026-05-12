@@ -379,11 +379,19 @@ public class SetupImController extends BaseController implements ImportDialog.On
      * Downloads an IM database from the cloud and imports it.
      */
     public void downloadAndImportZippedDb(String tableName, String url, boolean restoreLearning) {
+        downloadAndImportZippedDb(tableName, url, restoreLearning, null);
+    }
+
+    /**
+     * Downloads an IM database from the cloud and imports it.
+     * @param onSuccess Optional Runnable posted to the main thread after a successful import.
+     */
+    public void downloadAndImportZippedDb(String tableName, String url, boolean restoreLearning,
+                                          Runnable onSuccess) {
         if (context == null) {
             handleError(setupImView, "Context unavailable for download", null);
             return;
         }
-
 
         if (!isNetworkAvailable() || url == null || url.isEmpty()) {
             handleError(setupImView, context.getString(R.string.l3_tab_initial_error), null);
@@ -412,6 +420,7 @@ public class SetupImController extends BaseController implements ImportDialog.On
                     }
 
                     importZippedDb(tempfile, tableName, restoreLearning);
+                    if (onSuccess != null) mainHandler.post(onSuccess);
 
                 } catch (Exception e) {
                     hideProgress(mainActivityView);
@@ -590,12 +599,20 @@ public class SetupImController extends BaseController implements ImportDialog.On
      * Imports a text file into an IM table with optional user record restore.
      */
     public void importTxtTable(File file, String tableName, boolean restoreUserRecords) {
+        importTxtTable(file, tableName, restoreUserRecords, null);
+    }
+
+    /**
+     * Imports a text file into an IM table with optional user record restore.
+     * @param onSuccess Optional Runnable posted to the main thread after a successful import.
+     */
+    public void importTxtTable(File file, String tableName, boolean restoreUserRecords,
+                               Runnable onSuccess) {
         if (!searchServer.isValidTableName(tableName)) {
             handleError(setupImView, context.getString(R.string.error_table_name) + ": " + tableName, null);
             return;
         }
 
-        
         try {
             showProgress(mainActivityView, context.getString(R.string.setup_im_import_standard));
             try {
@@ -641,12 +658,12 @@ public class SetupImController extends BaseController implements ImportDialog.On
                     }
                     refreshSetupImButtonStates();
                     refreshNavigationMenu();
+                    if (success && onSuccess != null) mainHandler.post(onSuccess);
                 }
             });
         } catch (Exception e) {
             handleError(setupImView, context.getString(R.string.error_import_db), e);
         }
-
     }
 
 
