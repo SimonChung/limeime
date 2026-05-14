@@ -1,4 +1,4 @@
-// LIMEPreferenceManagerTest.swift
+﻿// LIMEPreferenceManagerTest.swift
 // LimeIMETests
 //
 // Round-trip tests for every preference key in spec §9.
@@ -258,9 +258,8 @@ final class LIMEPreferenceManagerTest: XCTestCase {
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".db")
         defer { try? FileManager.default.removeItem(at: tempURL) }
-        // LIMEPreferenceManager is in Shared, compiled into LimeIMETests — use LimeDB directly
         let db = try LimeDB(path: tempURL.path)
-        prefs.syncIMActivatedState(db: db)
+        prefs.syncIMActivatedState(dbServer: DBServer(_testDatasource: db))
         let state = prefs.keyboardState
         XCTAssertNotNil(state)
     }
@@ -271,7 +270,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempURL) }
         let db = try LimeDB(path: tempURL.path)
         _ = db.openDBConnection(false)
-        prefs.syncIMActivatedState(db: db)
+        prefs.syncIMActivatedState(dbServer: DBServer(_testDatasource: db))
         let state = prefs.keyboardState
         XCTAssertNotNil(state)
     }

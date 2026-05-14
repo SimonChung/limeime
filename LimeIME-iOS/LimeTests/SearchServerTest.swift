@@ -1,4 +1,4 @@
-// SearchServerTest.swift
+﻿// SearchServerTest.swift
 // Port of SearchServerTest.java (256 @Test methods) to XCTest.
 // Target: ≥180 tests ported. Static-field injection tests are SKIPPED (not portable to Swift).
 // All tests use real LimeDB backed by a temp SQLite file (no mocks).
@@ -1491,19 +1491,29 @@ final class SearchServerTest: XCTestCase {
         spy.getMappingByCodeResponses["a"] = [dummyMapping]
 
         // Expectation: after learnRelatedPhraseAndUpdateScore the re-warm fires.
-        // updateScore + re-warm are on a single background dispatch — wait for updateScore.
+        // updateScore + re-warm are on a single background dispatch. Wait for the
+        // actual "ab" re-query instead of sleeping; full-suite scheduling can be slow.
         let scoreExp = expectation(description: "updateScore called")
         spy.onUpdateScore = { scoreExp.fulfill() }
+        let rewarmExp = expectation(description: "ab re-warmed")
+        let rewarmLock = NSLock()
+        var didFulfillRewarm = false
+        spy.onGetMappingByCode = { [weak spy, weak rewarmExp] in
+            rewarmLock.lock()
+            defer { rewarmLock.unlock() }
+            guard let spy, !didFulfillRewarm else { return }
+            let calls = spy.getMappingByCodeCallArgs.filter { $0 == "ab" }
+            if calls.count >= 2 {
+                didFulfillRewarm = true
+                rewarmExp?.fulfill()
+            }
+        }
 
         let mapping = Mapping(id: 42, code: "abc", word: "測試",
                               score: 5, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
         ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp], timeout: 5.0)
-
-        // Allow the re-warm (same background block, continues after updateScore) to run.
-        // A very small sleep is enough since it's in-process work on the same block.
-        Thread.sleep(forTimeInterval: 0.2)
+        wait(for: [scoreExp, rewarmExp], timeout: 5.0)
 
         XCTAssertTrue(spy.updateScoreCalled, "score must be updated in DB")
         // The evicted prefix \"ab\" must have been re-fetched from spy.
@@ -1600,13 +1610,24 @@ final class SearchServerTest: XCTestCase {
 
         let scoreExp = expectation(description: "updateScore called for ab")
         spy.onUpdateScore = { scoreExp.fulfill() }
+        let rewarmExp = expectation(description: "ab re-warmed after score update")
+        let rewarmLock = NSLock()
+        var didFulfillRewarm = false
+        spy.onGetMappingByCode = { [weak spy, weak rewarmExp] in
+            rewarmLock.lock()
+            defer { rewarmLock.unlock() }
+            guard let spy, !didFulfillRewarm else { return }
+            if spy.getMappingByCodeCallArgs.contains("ab") {
+                didFulfillRewarm = true
+                rewarmExp?.fulfill()
+            }
+        }
 
         let mapping = Mapping(id: 7, code: "ab", word: "測試",
                               score: 10, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
         ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp], timeout: 5.0)
-        Thread.sleep(forTimeInterval: 0.2)
+        wait(for: [scoreExp, rewarmExp], timeout: 5.0)
 
         XCTAssertTrue(spy.updateScoreCalled)
         // The candidate code itself must be re-queried from DB after score update.
@@ -2629,6 +2650,9 @@ final class SpyLimeDB: LimeDBProtocol {
     func emojiConvert(_ source: String, _ emoji: Int) -> [Mapping] { [] }
     func findEmojiForCandidate(_ candidate: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping] { [] }
     func searchEmoji(_ queryText: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping] { [] }
+    func loadEmojiCategoryPages() -> [[Mapping]] { [] }
+    func loadRecentEmoji(limit: Int) -> [Mapping] { [] }
+    func recordEmojiUsage(_ value: String, timestampSeconds: Int64) {}
     func getCodeListStringByWord(_ keyword: String, table: String?) -> String? { codeListResponse }
     func getEnglishSuggestions(_ word: String) -> [String]? { nil }
 
@@ -2646,6 +2670,10 @@ final class SpyLimeDB: LimeDBProtocol {
     func getKeyboardConfigList() -> [KeyboardConfig]? { nil }
     func getKeyboardConfig(_ keyboard: String?) -> KeyboardConfig? { nil }
     func getKeyboardInfo(_ keyboardCode: String, _ field: String) -> String? { nil }
+    func detectIMCapabilities(tableName: String) -> (hasNumber: Bool, hasSymbol: Bool) {
+        (false, false)
+    }
+    func imKeysForTable(_ tableName: String) -> String { "" }
 
     // MARK: LimeDBProtocol — table validation
     func isValidTableName(_ name: String?) -> Bool { true }

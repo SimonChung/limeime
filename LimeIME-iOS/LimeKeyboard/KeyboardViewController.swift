@@ -12,7 +12,6 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - SearchServer
     private var searchServer: SearchServer?
-    private var db: LimeDB?
     private var lastKnownRestoreTimestamp: Double = 0
 
     // MARK: - Composing State (spec §3)
@@ -365,14 +364,11 @@ final class KeyboardViewController: UIInputViewController {
                 if let idx = activatedIMs.firstIndex(where: { $0.tableNick == saved }) {
                     activeIM      = saved
                     activeIMIndex = idx
-                    if let db = self.db {
-                        let caps = imCapabilities(for: activeIM, db: db)
-                        searchServer?.setTableName(activeIM,
-                            hasNumberMapping: caps.hasNumber,
-                            hasSymbolMapping: caps.hasSymbol)
-                    } else {
-                        searchServer?.setTableName(activeIM)
-                    }
+                    let caps = searchServer?.detectIMCapabilities(tableName: activeIM)
+                        ?? (hasNumber: false, hasSymbol: false)
+                    searchServer?.setTableName(activeIM,
+                        hasNumberMapping: caps.hasNumber,
+                        hasSymbolMapping: caps.hasSymbol)
                     searchServer?.setPhoneticKeyboardType(phoneticKeyboardType)
                     refreshImKeys()
                 }
@@ -403,50 +399,14 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Database Setup
 
     private func setupDatabase() {
-        guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: "group.net.toload.limeime")
-        else { return }
-
-        let dbPath = containerURL.appendingPathComponent("lime.db").path
-
-        // Copy bundled lime.db to App Group container on first launch
-        if !FileManager.default.fileExists(atPath: dbPath) {
-            copyBundledDB(to: dbPath)
-        }
-
-        guard let limeDB = try? LimeDB(path: dbPath) else { return }
-
-        // Auto-import phonetic FIRST — this is the heavy I/O work
-        // that must stay off the main thread.
-        importPhoneticIfNeeded(db: limeDB, containerURL: containerURL)
-        importRelatedIfNeeded(db: limeDB)
-
-        // Build the activated IM list off-thread (DB reads only)
-        let allIMs = (try? limeDB.getAllImConfigs()) ?? []
-        let kbState = UserDefaults(suiteName: "group.net.toload.limeime")?.string(forKey: "keyboard_state") ?? ""
-        var resolved: [ImConfig]
-        if kbState.isEmpty {
-            resolved = allIMs.filter { $0.enabled }
-        } else {
-            // keyboard_state is semicolon-separated indices (e.g. "0;1;2") — matches syncIMActivatedState output.
-            let enabledIndices = Set(kbState.components(separatedBy: ";"))
-            resolved = allIMs.enumerated()
-                .filter { enabledIndices.contains(String($0.offset)) }
-                .map { $0.element }
-        }
-        if resolved.isEmpty { resolved = allIMs.filter { $0.enabled } }
-        if resolved.isEmpty { resolved = buildFallbackIMList(db: limeDB) }
-
-        let firstNick = resolved.first?.tableNick ?? allIMs.first(where: { $0.enabled })?.tableNick ?? "phonetic"
-        let resolvedIM = firstNick.isEmpty ? "phonetic" : firstNick
-        let caps = imCapabilities(for: resolvedIM, db: limeDB)
-        let ss = SearchServer(db: limeDB)
-        ss.setTableName(resolvedIM, hasNumberMapping: caps.hasNumber, hasSymbolMapping: caps.hasSymbol)
+        guard let context = try? DBServer.shared.prepareKeyboardRuntimeDatabase() else { return }
+        let ss = context.searchServer
+        let resolved = context.activatedIMs
+        let resolvedIM = context.initialIM
 
         // Marshal all state assignments back to the main thread
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.db           = limeDB
             self.searchServer = ss
             self.activatedIMs  = resolved
 
@@ -457,7 +417,7 @@ final class KeyboardViewController: UIInputViewController {
             if !savedIM.isEmpty, let idx = resolved.firstIndex(where: { $0.tableNick == savedIM }) {
                 self.activeIM      = savedIM
                 self.activeIMIndex = idx
-                let savedCaps = self.imCapabilities(for: savedIM, db: limeDB)
+                let savedCaps = ss.detectIMCapabilities(tableName: savedIM)
                 ss.setTableName(savedIM, hasNumberMapping: savedCaps.hasNumber, hasSymbolMapping: savedCaps.hasSymbol)
                 // Refresh the keyboard layout if the restored IM differs from the
                 // phonetic default that initOnStartInput applied before DB was ready.
@@ -469,7 +429,7 @@ final class KeyboardViewController: UIInputViewController {
                         if savedIM == "array10"  { return "phone_simple" }
                         return kbCode
                     }
-                    if let imkb = limeDB.getKeyboardConfig(kbCode)?.imkb, !imkb.isEmpty { return imkb }
+                    if let imkb = ss.getKeyboardConfig(kbCode)?.imkb, !imkb.isEmpty { return imkb }
                     if savedIM == "array10" { return "phone_simple" }
                     return "lime_\(savedIM)"
                 }()
@@ -493,32 +453,7 @@ final class KeyboardViewController: UIInputViewController {
             // so refreshImKeys must run AFTER setPhoneticKeyboardType.
             self.refreshImKeys()
             self.applyFeedbackSettings()
-        }
-    }
-
-    /// Build an activatedIMs list directly from IM data tables that have rows.
-    /// Used as a fallback when the im table is empty (first launch before any import).
-    private func buildFallbackIMList(db: LimeDB) -> [ImConfig] {
-        let candidates: [(nick: String, label: String, keyboard: String)] = [
-            ("phonetic", "注音",     "lime_phonetic"),
-            ("dayi",     "大易",     "lime_dayi"),
-            ("cj",       "倉頡",     "lime_cj"),
-            ("cj5",      "倉頡五代", "lime_cj"),
-            ("array",    "行列",     "lime_array"),
-            ("array10",  "行列十",   "phone_simple"),
-            ("wb",       "筆順五碼", "lime_wb"),
-            ("hs",       "許氏",     "lime_hs"),
-            ("ez",       "輕鬆",     "lime_ez"),
-            ("scj",      "速成",     "lime_cj"),
-            ("ecj",      "易倉頡",   "lime_cj"),
-        ]
-        var idx: Int64 = 0
-        return candidates.compactMap { (nick, label, keyboard) in
-            guard db.tableHasData(nick) else { return nil }
-            defer { idx += 1 }
-            return ImConfig(id: idx, imName: nick, tableNick: nick, label: label,
-                            fullName: "", keyboardId: keyboard, keyboardLandscapeId: keyboard,
-                            enabled: true, sortOrder: Int(idx))
+            self.preloadEmojiCategoryPages()
         }
     }
 
@@ -541,9 +476,8 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         // 2. DB-side (controls visible layout via resolvedLayoutId → activatedIMs cache)
-        guard let limeDB = self.db else { return }
         guard let idx = activatedIMs.firstIndex(where: { $0.tableNick == "phonetic" }) else { return }
-        let freshKb = limeDB.getImConfig("phonetic", "keyboard") ?? ""
+        let freshKb = searchServer?.getImConfig("phonetic", "keyboard") ?? ""
         guard !freshKb.isEmpty, freshKb != activatedIMs[idx].keyboardId else { return }
         let old = activatedIMs[idx]
         activatedIMs[idx] = ImConfig(
@@ -725,53 +659,16 @@ final class KeyboardViewController: UIInputViewController {
         if isExpandedCandidatesVisible { reloadExpandedCandidates() }
     }
 
-    private func copyBundledDB(to destPath: String) {
-        guard let srcURL = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
-        try? FileManager.default.copyItem(at: srcURL, to: URL(fileURLWithPath: destPath))
-    }
-
-    private func importPhoneticIfNeeded(db: LimeDB, containerURL: URL) {
-        // Use tableHasData (not tableExists): bundled lime.db pre-creates all tables as empty shells.
-        // Only import if the phonetic table genuinely has no data.
-        guard !db.tableHasData("phonetic") else { return }
-        guard let srcURL = Bundle.main.url(forResource: "phonetic", withExtension: "db") else { return }
-        try? db.importFromAttachedDB(sourcePath: srcURL.path, tableName: "phonetic")
-        searchServer?.clearAllCaches()
-    }
-
-    private func importRelatedIfNeeded(db: LimeDB) {
-        guard !db.tableHasData("related") else { return }
-        guard let srcURL = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
-        db.importDbRelated(srcURL)
-    }
-
-    /// Determine whether an IM's code table uses digit and/or symbol characters.
-    /// The phonetic family (and similar tone-based IMs) use digits 0-9 for initials/tones
-    /// and symbols like ;, /, ., - for finals. Non-phonetic IMs (Cangjie, Array, etc.)
-    /// typically use only letters.
-    private func imCapabilities(for imCode: String,
-                                db: LimeDB) -> (hasNumber: Bool, hasSymbol: Bool) {
-        let lc = imCode.lowercased()
-        // Phonetic family: standard phonetic, ETEN 26/41, HSU, Dayi — all use digits+symbols
-        let phoneticFamily = ["phonetic", "et26", "et_41", "eten", "hsu", "hs", "dayi", "ez"]
-        if phoneticFamily.contains(where: { lc.hasPrefix($0) }) {
-            return (hasNumber: true, hasSymbol: true)
-        }
-        // Stroke5 (wb) uses only letters
-        // Cangjie (cj), Array, EZ, etc. — detect from DB
-        return db.detectIMCapabilities(tableName: imCode)
-    }
-
     /// Refresh the cached `imkeys` for the active IM. Called after every
     /// SearchServer.setTableName / setPhoneticKeyboardType so handleCharacter
     /// can use it as the authoritative input-acceptance check on iPad layouts.
-    /// Reads from `LimeDB.imKeysForTable` which uses hardcoded keymaps for
+    /// Reads through `SearchServer.imKeysForTable` which uses hardcoded keymaps for
     /// known IMs (phonetic / cj / dayi / array) and falls back to the im
     /// table's `imkeys` field for unknown ones — the im table row may be
     /// missing for IMs that have a hardcoded keymap, so getImConfig alone
     /// returns "" for them on iOS.
     private func refreshImKeys() {
-        currentImKeys = db?.imKeysForTable(activeIM) ?? ""
+        currentImKeys = searchServer?.imKeysForTable(activeIM) ?? ""
     }
 
     // MARK: - UI Setup
@@ -2080,7 +1977,7 @@ final class KeyboardViewController: UIInputViewController {
             }
             // Emoji injection for English predictions (spec §6 step 5, §7)
             if !mappings.isEmpty, let ss = self.searchServer, self.enableEmoji {
-                mappings = ss.injectEmoji(into: mappings, word: word, type: LimeDB.EMOJI_EN,
+                mappings = ss.injectEnglishEmoji(into: mappings, word: word,
                                           insertAt: self.enableEmojiPosition)
             }
             DispatchQueue.main.async { [weak self] in
@@ -2145,12 +2042,8 @@ final class KeyboardViewController: UIInputViewController {
         LDComposingBuffer = ""
 
         // Reconfigure SearchServer for the new IM
-        if let db = self.db {
-            let caps = imCapabilities(for: activeIM, db: db)
-            ss.setTableName(activeIM, hasNumberMapping: caps.hasNumber, hasSymbolMapping: caps.hasSymbol)
-        } else {
-            ss.setTableName(activeIM)
-        }
+        let caps = ss.detectIMCapabilities(tableName: activeIM)
+        ss.setTableName(activeIM, hasNumberMapping: caps.hasNumber, hasSymbolMapping: caps.hasSymbol)
         ss.setPhoneticKeyboardType(phoneticKeyboardType)
         refreshImKeys()
 
@@ -2647,13 +2540,10 @@ extension KeyboardViewController: KeyboardViewDelegate {
         sharedDefaults?.set(activeIM, forKey: "keyboard_list")
         clearShiftState()
         clearComposing(force: false)
-        if let db = self.db {
-            let caps = imCapabilities(for: activeIM, db: db)
-            searchServer?.setTableName(activeIM, hasNumberMapping: caps.hasNumber,
-                                       hasSymbolMapping: caps.hasSymbol)
-        } else {
-            searchServer?.setTableName(activeIM)
-        }
+        let caps = searchServer?.detectIMCapabilities(tableName: activeIM)
+            ?? (hasNumber: false, hasSymbol: false)
+        searchServer?.setTableName(activeIM, hasNumberMapping: caps.hasNumber,
+                                   hasSymbolMapping: caps.hasSymbol)
         searchServer?.setPhoneticKeyboardType(phoneticKeyboardType)
         refreshImKeys()
         if let layout = LayoutLoader.load(resolvedLayoutId(for: activeIM)), layout.id != currentLayout.id {
@@ -3028,12 +2918,21 @@ extension KeyboardViewController: KeyboardViewDelegate {
     }
 
     private func loadEmojiCategoryPages() -> [[Mapping]] {
-        let recent = db?.loadRecentEmoji(limit: 32) ?? []
+        let recent = searchServer?.loadRecentEmoji(32) ?? []
         var pages = EmojiPanelFallback.categories.map { emojiMappings(from: $0) }
+        let dbCategoryPages = searchServer?.loadEmojiCategoryPages() ?? []
+        for (index, dbPage) in dbCategoryPages.enumerated()
+            where index + 1 < pages.count && !dbPage.isEmpty {
+            pages[index + 1] = dbPage
+        }
         if !recent.isEmpty {
             pages[0] = recent
         }
         return pages
+    }
+
+    private func preloadEmojiCategoryPages() {
+        searchServer?.preloadEmojiCategoryPages()
     }
 
     private func loadEmojiSearchFallbackItems() -> [Mapping] {
@@ -3062,8 +2961,8 @@ extension KeyboardViewController: KeyboardViewDelegate {
             emojiPanelView?.setEmojis(loadEmojiSearchFallbackItems())
             return
         }
-        let english = db?.searchEmoji(trimmed, locale: .en, limit: 80) ?? []
-        let traditional = db?.searchEmoji(trimmed, locale: .tw, limit: 80) ?? []
+        let english = searchServer?.searchEmoji(trimmed, locale: .en, limit: 80) ?? []
+        let traditional = searchServer?.searchEmoji(trimmed, locale: .tw, limit: 80) ?? []
         var seen = Set<String>()
         let results = (english + traditional).filter { seen.insert($0.word).inserted }
         emojiPanelView?.setEmojis(results)
@@ -3075,14 +2974,16 @@ private enum EmojiPanelFallback {
         ["😀", "😂", "😍", "🥰", "😘", "😭", "👍", "🙏", "👏", "🎉", "❤️", "✨", "🔥", "✅", "⭐", "💯"],
         ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "😘",
          "😋", "😛", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥳", "😏", "😒", "😔", "😢", "😭", "😤", "😱"],
+        ["👋", "🤚", "🖐", "✋", "🖖", "👌", "🤌", "🤏", "✌", "🤞", "🫰", "🤟", "🤘", "🤙", "👈", "👉",
+         "👆", "🖕", "👇", "☝", "🫵", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "🙏", "💅"],
         ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔",
          "🐧", "🐦", "🐤", "🦆", "🦅", "🦉", "🐺", "🐗", "🐴", "🦄", "🐝", "🦋", "🐌", "🐞", "🐢", "🐍"],
         ["🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝",
          "🍅", "🥑", "🍆", "🥔", "🥕", "🌽", "🌶", "🥒", "🥬", "🥦", "🍄", "🥜", "🍞", "🧀", "🍔", "🍟"],
-        ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
-         "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸", "🥌"],
         ["🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🛵", "🏍",
          "🛺", "🚲", "🛴", "🚨", "🚔", "🚍", "🚘", "🚖", "✈", "🚀", "🚁", "⛵", "🚢", "🚉", "🚇", "🚆"],
+        ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
+         "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸", "🥌"],
         ["💡", "🔦", "🕯", "🪔", "📱", "💻", "⌨", "🖥", "🖨", "🖱", "🖲", "💽", "💾", "💿", "📷", "🎥",
          "📺", "📻", "🎙", "⏰", "⌚", "📚", "✏", "📌", "✂", "🔒", "🔑", "🔨", "🧰", "🧲", "🧪", "🧬"],
         ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣", "💕", "💞", "💓", "💗", "💖",
@@ -3206,7 +3107,7 @@ extension KeyboardViewController: EmojiPanelViewDelegate {
         isSelfUpdate = true
         textDocumentProxy.insertText(mapping.word)
         isSelfUpdate = false
-        db?.recordEmojiUsage(mapping.word)
+        searchServer?.recordEmojiUsage(mapping.word)
     }
 
     func emojiPanelViewDidRequestABC(_ view: EmojiPanelView) {
@@ -3270,6 +3171,16 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private var lastRenderedViewportHeight: CGFloat = 0
     private var emojiContentOffsetX: CGFloat = 0
     private var emojiContentWidth: CGFloat = 0
+    private var categoryStartDisplayPageIndexes: [Int] = []
+    private var displayPageOffsets: [CGFloat] = []
+    private var categoryStartDisplayOffsets: [CGFloat] = []
+    private var displayEmojiPages: [[Mapping]] = []
+    private var displayPageSourceIndexes: [Int] = []
+    private var renderedDisplayPageIndexes: Set<Int> = []
+    private var cachedPagination: EmojiPanelPaginationResult?
+    private var cachedPaginationCellsPerPage: Int = 0
+    private var cachedPaginationCategoryButtonCount: Int = 0
+    private var reusableEmojiLabels: [UILabel] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -3283,11 +3194,13 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
     func setEmojis(_ emojis: [Mapping]) {
         self.emojiPages = [emojis]
+        invalidatePaginationCache()
         rebuildEmojiButtons()
     }
 
     func setEmojiPages(_ pages: [[Mapping]]) {
         self.emojiPages = pages
+        invalidatePaginationCache()
         if !isSearchMode {
             setEmojiContentOffset(0, animated: false)
             activeCategoryIndex = 1
@@ -3303,6 +3216,12 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             rebuildEmojiButtons()
         }
         updateCategoryIconSpacer()
+    }
+
+    private func invalidatePaginationCache() {
+        cachedPagination = nil
+        cachedPaginationCellsPerPage = 0
+        cachedPaginationCategoryButtonCount = 0
     }
 
     private func setup() {
@@ -3402,8 +3321,8 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         categoryButtons.append(abc)
         categoryBar.addArrangedSubview(abc)
         categoryBar.addArrangedSubview(categoryIconSpacer)
-        ["clock", "face.smiling", "pawprint", "apple.logo", "soccerball",
-         "car", "lightbulb", "heart", "flag"].enumerated().forEach { index, symbol in
+        ["clock", "face.smiling", "person.crop.circle", "pawprint", "apple.logo", "car",
+         "soccerball", "lightbulb", "heart", "flag"].enumerated().forEach { index, symbol in
             let button = iconButton(symbol, action: #selector(tapCategory))
             button.tag = index + 1
             categoryButtons.append(button)
@@ -3458,6 +3377,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private func rebuildEmojiButtons() {
         lastRenderedWidth = bounds.width
         lastRenderedViewportHeight = emojiViewport.bounds.height
+        reusableEmojiLabels.append(contentsOf: emojiContentView.subviews.compactMap { $0 as? UILabel })
         emojiContentView.subviews.forEach { $0.removeFromSuperview() }
         buttonMappings = []
         visibleRows = currentVisibleRows()
@@ -3468,14 +3388,41 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         let columnsPerPage = isSearchMode ? 0 : normalModeColumnsPerPage(pageWidth: pageWidth)
         let horizontalInset = emojiHorizontalInset()
         let cellWidth = isSearchMode ? buttonSize : (pageWidth - horizontalInset * 2) / CGFloat(columnsPerPage)
-        let pages = isSearchMode ? [emojiPages.flatMap { $0 }] : emojiPages
+        let cellsPerPage = max(1, columnsPerPage * rows)
+        let pages: [[Mapping]]
+        let pageSourceIndexes: [Int]
+        if isSearchMode {
+            pages = [emojiPages.flatMap { $0 }]
+            categoryStartDisplayPageIndexes = []
+            pageSourceIndexes = [0]
+        } else {
+            let pagination = pagination(cellsPerPage: cellsPerPage)
+            pages = pagination.pages
+            categoryStartDisplayPageIndexes = pagination.categoryStartDisplayPageIndexes
+            pageSourceIndexes = pagination.sourcePageIndexes
+        }
+        displayEmojiPages = pages
+        displayPageSourceIndexes = pageSourceIndexes
+        displayPageOffsets = pageOffsets(sourceIndexes: pageSourceIndexes,
+                                         pageWidth: pageWidth,
+                                         horizontalInset: horizontalInset)
+        categoryStartDisplayOffsets = categoryStartDisplayPageIndexes.map { pageIndex in
+            pageIndex < displayPageOffsets.count ? displayPageOffsets[pageIndex] : CGFloat(pageIndex) * pageWidth
+        }
         if isSearchMode {
             let columns = Int(ceil(Double(pages.first?.count ?? 0) / Double(rows)))
             emojiContentWidth = max(pageWidth, CGFloat(columns) * buttonSize + 24)
         } else {
-            emojiContentWidth = max(pageWidth, CGFloat(max(pages.count, 1)) * pageWidth)
+            emojiContentWidth = max(pageWidth, (displayPageOffsets.last ?? 0) + pageWidth)
         }
-        for (pageIndex, page) in pages.enumerated() {
+        emojiContentOffsetX = min(max(emojiContentOffsetX, 0), maxEmojiContentOffsetX())
+        let pageIndexes = renderPageIndexes(pageWidth: pageWidth)
+        renderedDisplayPageIndexes = Set(pageIndexes)
+        for pageIndex in pageIndexes {
+            let page = pages[pageIndex]
+            let pageOffsetX = pageIndex < displayPageOffsets.count
+                ? displayPageOffsets[pageIndex]
+                : CGFloat(pageIndex) * pageWidth
             let pageRows: Int
             let pageButtonSize: CGFloat
             if isSearchMode {
@@ -3485,8 +3432,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
                 pageRows = max(rows, Int(ceil(pageHeight / buttonSize)))
                 pageButtonSize = buttonSize
             } else {
-                let realRows = max(1, Int(ceil(Double(page.count) / Double(max(columnsPerPage, 1)))))
-                pageRows = min(rows, realRows)
+                pageRows = rows
                 pageButtonSize = emojiButtonSize(forRows: pageRows)
             }
             let cellsPerPage = columnsPerPage * pageRows
@@ -3499,34 +3445,78 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
                     row = index % rows
                 } else {
                     column = index % columnsPerPage
-                    row = (index / columnsPerPage) % pageRows
+                    row = index / columnsPerPage
                 }
-                let button = UILabel()
+                let button = dequeueEmojiLabel()
                 let isRealEmoji = index < page.count
                 button.text = isRealEmoji ? page[index].word : "\u{25CF}"
                 button.font = UIFont.systemFont(ofSize: emojiFontSize(for: pageButtonSize))
                 button.textAlignment = .center
-                button.isUserInteractionEnabled = true
-                button.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapEmojiLabel(_:))))
                 if isRealEmoji {
                     button.tag = buttonMappings.count
+                    button.textColor = .label
+                    button.backgroundColor = .clear
                     buttonMappings.append(page[index])
                 } else {
                     button.tag = -1
                     button.textColor = UIColor.label.withAlphaComponent(0.001)
                     button.backgroundColor = UIColor.label.withAlphaComponent(0.001)
                 }
-                button.frame = CGRect(x: (isSearchMode ? 0 : CGFloat(pageIndex) * pageWidth) + CGFloat(column) * cellWidth + horizontalInset,
+                button.frame = CGRect(x: pageOffsetX - emojiContentOffsetX + CGFloat(column) * cellWidth + horizontalInset,
                                       y: CGFloat(row) * pageButtonSize,
                                       width: cellWidth,
                                       height: pageButtonSize)
                 emojiContentView.addSubview(button)
             }
         }
-        let maxOffsetX = maxEmojiContentOffsetX()
-        emojiContentOffsetX = min(max(emojiContentOffsetX, 0), maxOffsetX)
+        if reusableEmojiLabels.count > 160 {
+            reusableEmojiLabels.removeFirst(reusableEmojiLabels.count - 160)
+        }
         layoutEmojiContent(height: pageHeight)
         updateCategoryHighlightForScroll()
+    }
+
+    private func dequeueEmojiLabel() -> UILabel {
+        if let label = reusableEmojiLabels.popLast() {
+            return label
+        }
+        let label = UILabel()
+        label.isUserInteractionEnabled = true
+        label.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapEmojiLabel(_:))))
+        return label
+    }
+
+    private func pagination(cellsPerPage: Int) -> EmojiPanelPaginationResult {
+        if let cachedPagination,
+           cachedPaginationCellsPerPage == cellsPerPage,
+           cachedPaginationCategoryButtonCount == categoryButtons.count {
+            return cachedPagination
+        }
+        let pagination = EmojiPanelPaginator.displayPages(sourcePages: emojiPages,
+                                                          cellsPerPage: cellsPerPage,
+                                                          categoryButtonCount: categoryButtons.count)
+        cachedPagination = pagination
+        cachedPaginationCellsPerPage = cellsPerPage
+        cachedPaginationCategoryButtonCount = categoryButtons.count
+        return pagination
+    }
+
+    private func renderPageIndexes(pageWidth: CGFloat) -> [Int] {
+        guard !displayEmojiPages.isEmpty else { return [] }
+        guard !isSearchMode else { return [0] }
+        let buffer = pageWidth
+        let visibleStart = emojiContentOffsetX - buffer
+        let visibleEnd = emojiContentOffsetX + pageWidth + buffer
+        return displayEmojiPages.indices.filter { index in
+            let start = index < displayPageOffsets.count ? displayPageOffsets[index] : CGFloat(index) * pageWidth
+            let end = start + pageWidth
+            return end >= visibleStart && start <= visibleEnd
+        }
+    }
+
+    private func needsRenderForCurrentOffset() -> Bool {
+        guard !isSearchMode else { return false }
+        return Set(renderPageIndexes(pageWidth: emojiPageWidth())) != renderedDisplayPageIndexes
     }
 
     private func emojiPageWidth() -> CGFloat {
@@ -3535,6 +3525,22 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
     private func emojiPageHeight() -> CGFloat {
         max(emojiViewport.bounds.height, CGFloat(max(1, currentVisibleRows())) * emojiButtonSize())
+    }
+
+    private func pageOffsets(sourceIndexes: [Int],
+                             pageWidth: CGFloat,
+                             horizontalInset: CGFloat) -> [CGFloat] {
+        guard !sourceIndexes.isEmpty else { return [0] }
+        var offsets: [CGFloat] = []
+        var nextOffset: CGFloat = 0
+        for index in sourceIndexes.indices {
+            offsets.append(nextOffset)
+            let nextIsSameCategory = index + 1 < sourceIndexes.count
+                && sourceIndexes[index] == sourceIndexes[index + 1]
+                && sourceIndexes[index] != 0
+            nextOffset += nextIsSameCategory ? max(1, pageWidth - horizontalInset * 2) : pageWidth
+        }
+        return offsets
     }
 
     private func usesPadEmojiLayout() -> Bool {
@@ -3614,9 +3620,9 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
     private func layoutEmojiContent(height: CGFloat? = nil) {
         let contentHeight = height ?? emojiContentView.frame.height
-        emojiContentView.frame = CGRect(x: 0,
+        emojiContentView.frame = CGRect(x: emojiContentOffsetX,
                                         y: 0,
-                                        width: emojiContentWidth,
+                                        width: max(emojiViewport.bounds.width, 1),
                                         height: contentHeight)
         emojiViewport.contentSize = CGSize(width: emojiContentWidth, height: contentHeight)
         emojiViewport.contentOffset.x = min(emojiContentOffsetX, maxEmojiContentOffsetX())
@@ -3626,6 +3632,11 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         let clampedX = min(max(offsetX, 0), maxEmojiContentOffsetX())
         emojiContentOffsetX = clampedX
         emojiViewport.setContentOffset(CGPoint(x: clampedX, y: 0), animated: animated)
+        if needsRenderForCurrentOffset() {
+            rebuildEmojiButtons()
+            return
+        }
+        layoutEmojiContent()
         updateCategoryHighlightForScroll()
     }
 
@@ -3676,14 +3687,20 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     @objc private func tapCategory(_ sender: UIButton) {
         activeCategoryIndex = sender.tag
         updateCategoryHighlight()
-        let targetX = CGFloat(max(sender.tag - 1, 0)) * emojiPageWidth()
+        let targetX = sender.tag < categoryStartDisplayOffsets.count
+            ? categoryStartDisplayOffsets[sender.tag]
+            : CGFloat(max(sender.tag - 1, 0)) * emojiPageWidth()
         setEmojiContentOffset(targetX, animated: true)
     }
 
     private func updateCategoryHighlightForScroll() {
         guard !isSearchMode else { return }
-        let page = Int(round(emojiContentOffsetX / emojiPageWidth()))
-        activeCategoryIndex = min(max(page + 1, 1), max(categoryButtons.count - 1, 1))
+        var active = 1
+        for (index, startOffset) in categoryStartDisplayOffsets.enumerated()
+            where index > 0 && startOffset <= emojiContentOffsetX + 0.5 {
+            active = index
+        }
+        activeCategoryIndex = min(max(active, 1), max(categoryButtons.count - 1, 1))
         updateCategoryHighlight()
     }
 
@@ -3698,6 +3715,11 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard scrollView === emojiViewport else { return }
         emojiContentOffsetX = min(max(scrollView.contentOffset.x, 0), maxEmojiContentOffsetX())
+        if needsRenderForCurrentOffset() {
+            rebuildEmojiButtons()
+            return
+        }
+        layoutEmojiContent()
         updateCategoryHighlightForScroll()
     }
 

@@ -21,7 +21,10 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(LimeKeyCode.emojiPanel.rawValue, -201)
         XCTAssertEqual(LimeKeyCode.emojiABC.rawValue, -202)
         XCTAssertEqual(LimeKeyCode.emojiCategoryRecent.rawValue, -203)
-        XCTAssertEqual(LimeKeyCode.emojiCategoryFlags.rawValue, -211)
+        XCTAssertEqual(LimeKeyCode.emojiCategoryPeople.rawValue, -205)
+        XCTAssertEqual(LimeKeyCode.emojiCategoryTravel.rawValue, -208)
+        XCTAssertEqual(LimeKeyCode.emojiCategoryActivities.rawValue, -209)
+        XCTAssertEqual(LimeKeyCode.emojiCategoryFlags.rawValue, -212)
     }
 
     func testEnglishLayoutHasEmojiLauncherOnBottomRowAndChineseSwitchAboveIt() {
@@ -75,6 +78,27 @@ final class KeyboardViewControllerTest: XCTestCase {
         ))
     }
 
+    func testEmojiPanelPaginatorSplitsLargeCategoriesIntoDisplayPages() {
+        let category = (0..<75).map { index in
+            Mapping(id: index, code: "", word: "e\(index)",
+                    score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.emoji)
+        }
+
+        let result = EmojiPanelPaginator.displayPages(sourcePages: [[], category],
+                                                      cellsPerPage: 28,
+                                                      categoryButtonCount: 3)
+
+        XCTAssertEqual(result.pages.map { $0.map(\.word) }, [
+            [],
+            Array(0..<28).map { "e\($0)" },
+            Array(28..<56).map { "e\($0)" },
+            Array(56..<75).map { "e\($0)" },
+        ])
+        XCTAssertEqual(result.categoryStartDisplayPageIndexes, [0, 0, 1])
+        XCTAssertEqual(result.sourcePageIndexes, [0, 1, 1, 1])
+    }
+
     private func loadKeyboardLayoutFixture(_ layoutID: String) throws -> KeyboardLayoutFixture {
         let testFileURL = URL(fileURLWithPath: #filePath)
         let iosRoot = testFileURL.deletingLastPathComponent().deletingLastPathComponent()
@@ -84,4 +108,5 @@ final class KeyboardViewControllerTest: XCTestCase {
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(KeyboardLayoutFixture.self, from: data)
     }
+
 }

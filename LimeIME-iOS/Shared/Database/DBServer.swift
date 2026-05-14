@@ -7,6 +7,13 @@ import ZIPFoundation
 
 final class DBServer {
 
+    struct KeyboardRuntimeContext {
+        let searchServer: SearchServer
+        let activatedIMs: [ImConfig]
+        let initialIM: String
+        let capabilities: (hasNumber: Bool, hasSymbol: Bool)
+    }
+
     // MARK: - Singleton
     static let shared = DBServer()
     // Internal (not private) so @testable import LimeIME tests can construct fresh
@@ -803,6 +810,101 @@ final class DBServer {
         return SearchServer(db: ds)
     }
 
+    // MARK: - Keyboard Runtime Bootstrap
+
+    func prepareKeyboardRuntimeDatabase() throws -> KeyboardRuntimeContext {
+        let dbURL = dataDirURL.appendingPathComponent(DBServer.databaseName)
+        if !FileManager.default.fileExists(atPath: dbURL.path) {
+            try copyBundledDatabase(to: dbURL)
+        }
+
+        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        try importPhoneticIfNeeded(containerURL: dataDirURL)
+        importRelatedIfNeeded()
+
+        let allIMs = (try? ds.getAllImConfigs()) ?? []
+        let keyboardState = UserDefaults(suiteName: DBServer.appGroupID)?
+            .string(forKey: "keyboard_state") ?? ""
+        var activated: [ImConfig]
+        if keyboardState.isEmpty {
+            activated = allIMs.filter { $0.enabled }
+        } else {
+            let enabledIndices = Set(keyboardState.components(separatedBy: ";"))
+            activated = allIMs.enumerated()
+                .filter { enabledIndices.contains(String($0.offset)) }
+                .map { $0.element }
+        }
+        if activated.isEmpty { activated = allIMs.filter { $0.enabled } }
+        if activated.isEmpty { activated = buildFallbackIMList() }
+
+        let firstNick = activated.first?.tableNick
+            ?? allIMs.first(where: { $0.enabled })?.tableNick
+            ?? "phonetic"
+        let initialIM = firstNick.isEmpty ? "phonetic" : firstNick
+        let searchServer = SearchServer(db: ds)
+        let capabilities = searchServer.detectIMCapabilities(tableName: initialIM)
+        searchServer.setTableName(initialIM,
+                                  hasNumberMapping: capabilities.hasNumber,
+                                  hasSymbolMapping: capabilities.hasSymbol)
+        return KeyboardRuntimeContext(searchServer: searchServer,
+                                      activatedIMs: activated,
+                                      initialIM: initialIM,
+                                      capabilities: capabilities)
+    }
+
+    private func copyBundledDatabase(to destinationURL: URL) throws {
+        guard let sourceURL = Bundle.main.url(forResource: "lime", withExtension: "db") else {
+            throw DBServerError.bundledDatabaseMissing
+        }
+        try FileManager.default.createDirectory(at: destinationURL.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+    }
+
+    private func importPhoneticIfNeeded(containerURL: URL) throws {
+        guard !tableHasData("phonetic") else { return }
+        guard let sourceURL = Bundle.main.url(forResource: "phonetic", withExtension: "db") else { return }
+        try importFromAttachedDB(sourcePath: sourceURL.path, tableName: "phonetic")
+        datasource?.resetCache()
+    }
+
+    private func importRelatedIfNeeded() {
+        guard !tableHasData("related") else { return }
+        guard let sourceURL = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
+        importDbRelated(sourcedb: sourceURL)
+        datasource?.resetCache()
+    }
+
+    private func buildFallbackIMList() -> [ImConfig] {
+        let candidates: [(nick: String, label: String, keyboard: String)] = [
+            ("phonetic", "注音",     "lime_phonetic"),
+            ("dayi",     "大易",     "lime_dayi"),
+            ("cj",       "倉頡",     "lime_cj"),
+            ("cj5",      "倉頡五代", "lime_cj"),
+            ("array",    "行列",     "lime_array"),
+            ("array10",  "行列十",   "phone_simple"),
+            ("wb",       "筆順五碼", "lime_wb"),
+            ("hs",       "許氏",     "lime_hs"),
+            ("ez",       "輕鬆",     "lime_ez"),
+            ("scj",      "速成",     "lime_cj"),
+            ("ecj",      "易倉頡",   "lime_cj"),
+        ]
+        var idx: Int64 = 0
+        return candidates.compactMap { candidate in
+            guard tableHasData(candidate.nick) else { return nil }
+            defer { idx += 1 }
+            return ImConfig(id: idx,
+                            imName: candidate.nick,
+                            tableNick: candidate.nick,
+                            label: candidate.label,
+                            fullName: "",
+                            keyboardId: candidate.keyboard,
+                            keyboardLandscapeId: candidate.keyboard,
+                            enabled: true,
+                            sortOrder: Int(idx))
+        }
+    }
+
     // MARK: - Related Proxies
 
     func getRelated(_ pword: String?, _ maximum: Int, _ offset: Int) -> [Related] {
@@ -856,6 +958,7 @@ final class DBServer {
 // MARK: - DBServerError
 enum DBServerError: Error {
     case datasourceUnavailable
+    case bundledDatabaseMissing
     case archiveCreationFailed
     case fileNotFound(String)
     case unsafeZipEntry(String)       // SEC: zip-slip rejected entry path

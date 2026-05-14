@@ -1,4 +1,4 @@
-// LimeDBProtocol.swift
+﻿// LimeDBProtocol.swift
 // Protocol abstracting every LimeDB call made by SearchServer, enabling dependency injection in tests.
 // SearchServer's `db` property is typed `any LimeDBProtocol`; production code passes a real `LimeDB`.
 // Test code passes a `SpyLimeDB` (or any other conforming double).
@@ -39,6 +39,9 @@ protocol LimeDBProtocol: AnyObject {
     func emojiConvert(_ source: String, _ emoji: Int) -> [Mapping]
     func findEmojiForCandidate(_ candidate: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping]
     func searchEmoji(_ queryText: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping]
+    func loadEmojiCategoryPages() -> [[Mapping]]
+    func loadRecentEmoji(limit: Int) -> [Mapping]
+    func recordEmojiUsage(_ value: String, timestampSeconds: Int64)
 
     // MARK: Reverse lookup / English
     func getCodeListStringByWord(_ keyword: String, table: String?) -> String?
@@ -58,6 +61,8 @@ protocol LimeDBProtocol: AnyObject {
     func getKeyboardConfigList() -> [KeyboardConfig]?
     func getKeyboardConfig(_ keyboard: String?) -> KeyboardConfig?
     func getKeyboardInfo(_ keyboardCode: String, _ field: String) -> String?
+    func detectIMCapabilities(tableName: String) -> (hasNumber: Bool, hasSymbol: Bool)
+    func imKeysForTable(_ tableName: String) -> String
 
     // MARK: Table validation
     func isValidTableName(_ name: String?) -> Bool

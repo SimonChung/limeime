@@ -1889,6 +1889,57 @@ final class LimeDBTest: XCTestCase {
         XCTAssertEqual(db.loadRecentEmoji(limit: 8).map(\.word), ["🇯🇵", "😢"])
     }
 
+    func testEmojiCategoryPagesLoadFromDatabaseGroupsInCatalogOrder() throws {
+        let db = try makeLimeDB()
+        try db.replaceEmojiDataForTest([
+            .init(value: "🐶", cp: "1F436", groupName: "Animals & Nature", subgroup: "animal-mammal",
+                  sortOrder: 30, nameEn: "dog face", nameTw: "狗臉",
+                  tagsEn: "dog|face", tagsTw: "狗|臉", version: 1.0),
+            .init(value: "😀", cp: "1F600", groupName: "Smileys & Emotion", subgroup: "face-smiling",
+                  sortOrder: 20, nameEn: "grinning face", nameTw: "笑臉",
+                  tagsEn: "grin|smile|face", tagsTw: "笑臉|笑|臉", version: 1.0),
+            .init(value: "😢", cp: "1F622", groupName: "Smileys & Emotion", subgroup: "face-concerned",
+                  sortOrder: 10, nameEn: "crying face", nameTw: "哭臉",
+                  tagsEn: "cry|crying|face", tagsTw: "哭臉|哭|臉", version: 1.0),
+            .init(value: "👋", cp: "1F44B", groupName: "People & Body", subgroup: "hand-fingers-open",
+                  sortOrder: 25, nameEn: "waving hand", nameTw: "揮手",
+                  tagsEn: "wave|hand", tagsTw: "揮手|手", version: 1.0),
+            .init(value: "🍎", cp: "1F34E", groupName: "Food & Drink", subgroup: "food-fruit",
+                  sortOrder: 40, nameEn: "red apple", nameTw: "蘋果",
+                  tagsEn: "apple|fruit", tagsTw: "蘋果|水果", version: 1.0),
+            .init(value: "🚗", cp: "1F697", groupName: "Travel & Places", subgroup: "transport-ground",
+                  sortOrder: 50, nameEn: "automobile", nameTw: "汽車",
+                  tagsEn: "car|auto", tagsTw: "車|汽車", version: 1.0),
+            .init(value: "⚽", cp: "26BD", groupName: "Activities", subgroup: "sport",
+                  sortOrder: 60, nameEn: "soccer ball", nameTw: "足球",
+                  tagsEn: "soccer|ball", tagsTw: "足球|球", version: 1.0),
+            .init(value: "💡", cp: "1F4A1", groupName: "Objects", subgroup: "light-video",
+                  sortOrder: 70, nameEn: "light bulb", nameTw: "燈泡",
+                  tagsEn: "light|bulb", tagsTw: "燈泡|燈", version: 1.0),
+            .init(value: "❤️", cp: "2764 FE0F", groupName: "Symbols", subgroup: "heart",
+                  sortOrder: 80, nameEn: "red heart", nameTw: "紅心",
+                  tagsEn: "heart|love", tagsTw: "愛心|心", version: 1.0),
+            .init(value: "🇯🇵", cp: "1F1EF,1F1F5", groupName: "Flags", subgroup: "country-flag",
+                  sortOrder: 90, nameEn: "flag: Japan", nameTw: "日本國旗",
+                  tagsEn: "flag|Japan", tagsTw: "國旗|日本", version: 0.6),
+        ], emojiVersion: "17.0")
+
+        db.recordEmojiUsage("😀", timestampSeconds: 3000)
+        let pages = db.loadEmojiCategoryPages()
+
+        XCTAssertEqual(pages.map { $0.map(\.word) }, [
+            ["😢", "😀"],
+            ["👋"],
+            ["🐶"],
+            ["🍎"],
+            ["🚗"],
+            ["⚽"],
+            ["💡"],
+            ["❤️"],
+            ["🇯🇵"],
+        ])
+    }
+
     // MARK: - 36. getBaseScore — documents always-0 decision
 
     func testLimeDBGetBaseScoreAlwaysZero() throws {

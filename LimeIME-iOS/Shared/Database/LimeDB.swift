@@ -140,6 +140,17 @@ final class LimeDB {
     private static let EMOJI_TABLE_DATA = "emoji_data"
     private static let EMOJI_TABLE_FTS = "emoji_fts"
     private static let EMOJI_TABLE_USER = "emoji_user"
+    private static let EMOJI_CATEGORY_GROUPS = [
+        "Smileys & Emotion",
+        "People & Body",
+        "Animals & Nature",
+        "Food & Drink",
+        "Travel & Places",
+        "Activities",
+        "Objects",
+        "Symbols",
+        "Flags",
+    ]
 
     private func migrate() throws {
         try dbQueue.write { db in
@@ -2192,6 +2203,27 @@ final class LimeDB {
             Mapping(id: 0, code: "", word: $0,
                     score: 0, baseScore: 0,
                     recordType: Mapping.RecordType.emoji)
+        }
+    }
+
+    func loadEmojiCategoryPages() -> [[Mapping]] {
+        refreshEmojiDataIfNeeded()
+        let pages: [[String]] = (try? dbQueue.read { db in
+            try LimeDB.EMOJI_CATEGORY_GROUPS.map { groupName in
+                try String.fetchAll(db, sql: """
+                    SELECT value
+                    FROM \(LimeDB.EMOJI_TABLE_DATA)
+                    WHERE group_name = ?
+                    ORDER BY sort_order ASC
+                """, arguments: [groupName])
+            }
+        }) ?? Array(repeating: [], count: LimeDB.EMOJI_CATEGORY_GROUPS.count)
+        return pages.map { words in
+            words.map {
+                Mapping(id: 0, code: "", word: $0,
+                        score: 0, baseScore: 0,
+                        recordType: Mapping.RecordType.emoji)
+            }
         }
     }
 

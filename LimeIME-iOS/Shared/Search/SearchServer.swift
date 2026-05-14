@@ -770,7 +770,7 @@ final class SearchServer {
     /// Direct emoji injection by explicit word and type.
     /// Used for the English prediction path where the lookup word is known directly.
     func injectEmoji(into list: [Mapping], word: String, type: Int, insertAt: Int = 3) -> [Mapping] {
-        let candidates = db.emojiConvert(word, type)
+        let candidates = emojiConvert(word, type)
         guard !candidates.isEmpty else { return list }
         let existingWords = Set(list.map { $0.word })
         let unique = candidates.filter { !existingWords.contains($0.word) }
@@ -779,6 +779,85 @@ final class SearchServer {
         let idx = min(insertAt, result.count)
         result.insert(contentsOf: unique, at: idx)
         return result
+    }
+
+    func injectEnglishEmoji(into list: [Mapping], word: String, insertAt: Int = 3) -> [Mapping] {
+        return injectEmoji(into: list, word: word, type: LimeDB.EMOJI_EN, insertAt: insertAt)
+    }
+
+    func emojiConvert(_ code: String, _ type: Int) -> [Mapping] {
+        guard !code.isEmpty else { return [] }
+        let cacheKey = "\(type):\(code)"
+        if let cached = cachedEmojiMappings(cacheKey) { return cached }
+        let results = db.emojiConvert(code, type)
+        cacheEmojiMappings(results, for: cacheKey)
+        return results
+    }
+
+    func findEmojiForCandidate(_ code: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping] {
+        guard !code.isEmpty else { return [] }
+        let cacheKey = "v2:\(locale):\(code):\(limit)"
+        if let cached = cachedEmojiMappings(cacheKey) { return cached }
+        let results = db.findEmojiForCandidate(code, locale: locale, limit: limit)
+        cacheEmojiMappings(results, for: cacheKey)
+        return results
+    }
+
+    func searchEmoji(_ query: String, locale: LimeDB.EmojiLocale, limit: Int) -> [Mapping] {
+        guard !query.isEmpty else { return [] }
+        let cacheKey = "search:\(locale):\(query):\(limit)"
+        if let cached = cachedEmojiMappings(cacheKey) { return cached }
+        let results = db.searchEmoji(query, locale: locale, limit: limit)
+        cacheEmojiMappings(results, for: cacheKey)
+        return results
+    }
+
+    func loadRecentEmoji(_ limit: Int) -> [Mapping] {
+        let cacheKey = "recent:\(limit)"
+        if let cached = cachedEmojiMappings(cacheKey) { return cached }
+        let results = db.loadRecentEmoji(limit: limit)
+        cacheEmojiMappings(results, for: cacheKey)
+        return results
+    }
+
+    func loadEmojiCategoryPages() -> [[Mapping]] {
+        emojiCategoryCacheLock.lock()
+        if let cached = emojiCategoryPagesCache {
+            emojiCategoryCacheLock.unlock()
+            return cached
+        }
+        emojiCategoryCacheLock.unlock()
+
+        let pages = db.loadEmojiCategoryPages()
+
+        emojiCategoryCacheLock.lock()
+        emojiCategoryPagesCache = pages
+        emojiCategoryCacheLock.unlock()
+        return pages
+    }
+
+    func preloadEmojiCategoryPages() {
+        emojiCategoryCacheLock.lock()
+        let shouldStart = emojiCategoryPagesCache == nil && !isEmojiCategoryPreloadInFlight
+        if shouldStart { isEmojiCategoryPreloadInFlight = true }
+        emojiCategoryCacheLock.unlock()
+        guard shouldStart else { return }
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            let pages = self.db.loadEmojiCategoryPages()
+            self.emojiCategoryCacheLock.lock()
+            if !pages.isEmpty {
+                self.emojiCategoryPagesCache = pages
+            }
+            self.isEmojiCategoryPreloadInFlight = false
+            self.emojiCategoryCacheLock.unlock()
+        }
+    }
+
+    func recordEmojiUsage(_ value: String) {
+        db.recordEmojiUsage(value, timestampSeconds: Int64(Date().timeIntervalSince1970))
+        clearEmojiCaches()
     }
 
     // MARK: - Reverse Lookup (spec §8, §13)
@@ -830,6 +909,7 @@ final class SearchServer {
         relatedCache.removeAll()
         blacklistCache.removeAll()
         cacheLock.unlock()
+        clearEmojiCaches()
     }
 
     private func evictIfNeeded() {
@@ -877,9 +957,35 @@ final class SearchServer {
     private var coderemap: [String: [String]] = [:]
     private var englishCache: [String: [Mapping]] = [:]
     private var emojiCache: [String: [Mapping]] = [:]
+    private var emojiCategoryPagesCache: [[Mapping]]?
+    private var isEmojiCategoryPreloadInFlight = false
+    private let emojiCategoryCacheLock = NSLock()
     private var keynameCache: [String: String] = [:]
     private var lastEnglishWord: String? = nil
     private var noSuggestionsForLastEnglishWord: Bool = false
+
+    private func cachedEmojiMappings(_ cacheKey: String) -> [Mapping]? {
+        cacheLock.lock()
+        let cached = emojiCache[cacheKey]
+        cacheLock.unlock()
+        return cached
+    }
+
+    private func cacheEmojiMappings(_ mappings: [Mapping], for cacheKey: String) {
+        cacheLock.lock()
+        emojiCache[cacheKey] = mappings
+        cacheLock.unlock()
+    }
+
+    private func clearEmojiCaches() {
+        cacheLock.lock()
+        emojiCache.removeAll()
+        cacheLock.unlock()
+        emojiCategoryCacheLock.lock()
+        emojiCategoryPagesCache = nil
+        isEmojiCategoryPreloadInFlight = false
+        emojiCategoryCacheLock.unlock()
+    }
 
     // MARK: - Cache Initialisation (mirrors Java initialCache())
 
@@ -895,7 +1001,7 @@ final class SearchServer {
         cacheLock.unlock()
         coderemap.removeAll()
         englishCache.removeAll()
-        emojiCache.removeAll()
+        clearEmojiCaches()
         keynameCache.removeAll()
         suggestionLock.lock()
         clearRunTimeSuggestion(abandonSuggestion: false)
@@ -919,7 +1025,7 @@ final class SearchServer {
         blacklistCache.removeAll()
         cacheLock.unlock()
         englishCache.removeAll()
-        emojiCache.removeAll()
+        clearEmojiCaches()
         keynameCache.removeAll()
         coderemap.removeAll()
         suggestionLock.lock()
@@ -1135,6 +1241,19 @@ final class SearchServer {
 
     func getKeyboardConfig(_ keyboard: String) -> KeyboardConfig? {
         return db.getKeyboardConfig(keyboard)
+    }
+
+    func detectIMCapabilities(tableName: String) -> (hasNumber: Bool, hasSymbol: Bool) {
+        let lc = tableName.lowercased()
+        let phoneticFamily = ["phonetic", "et26", "et_41", "eten", "hsu", "hs", "dayi", "ez"]
+        if phoneticFamily.contains(where: { lc.hasPrefix($0) }) {
+            return (hasNumber: true, hasSymbol: true)
+        }
+        return db.detectIMCapabilities(tableName: tableName)
+    }
+
+    func imKeysForTable(_ tableName: String) -> String {
+        return db.imKeysForTable(tableName)
     }
 
     func getKeyboardInfo(_ keyboardCode: String, _ field: String) -> String? {

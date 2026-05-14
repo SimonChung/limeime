@@ -1,4 +1,4 @@
-// LIMEPreferenceManager.swift
+﻿// LIMEPreferenceManager.swift
 // LimeIME-iOS
 //
 // Model layer: typed accessors for all shared UserDefaults preference keys.
@@ -327,17 +327,6 @@ final class LIMEPreferenceManager {
 
     /// Rebuilds the keyboard_state semicolon-delimited string from im.enabled rows.
     /// Mirrors Android's LIMEPreferenceManager.syncIMActivatedState().
-    /// - Parameter db: An open LimeDB instance.
-    func syncIMActivatedState(db: LimeDB) {
-        guard let configs = try? db.getAllImConfigs() else { return }
-        let enabledIndices = configs.enumerated()
-            .filter { $0.element.enabled }
-            .map { "\($0.offset)" }
-        let state = enabledIndices.joined(separator: ";")
-        keyboardState = state
-    }
-
-    /// DBServer-based overload — use this in Controllers to avoid direct LimeDB access.
     func syncIMActivatedState(dbServer: DBServer) {
         guard let configs = try? dbServer.getAllImConfigs() else { return }
         let enabledIndices = configs.enumerated()

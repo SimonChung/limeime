@@ -1,4 +1,4 @@
-//
+﻿//
 //  StrokeBenchmark.swift
 //  LimeTests
 //
@@ -89,21 +89,7 @@ final class StrokeBenchmark: XCTestCase {
     /// user's typing cadence.
     private func runFixture(im: String, strokes: String) throws {
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
-
-        // Open the data: URL via SpringBoard's URL handler. This works
-        // around iOS 26's bottom address bar layout (which moves and
-        // renames the URL field every few releases) and survives the
-        // post-rebuild active-keyboard reset by avoiding the URL field
-        // entirely. The data: URL is small enough to fit in a single
-        // openURL.
-        let html = """
-        <!doctype html><meta name=viewport content='width=device-width'>\
-        <body style='margin:0'>\
-        <textarea autofocus style='width:100vw;height:100vh;font-size:24px;border:0;outline:0'></textarea>
-        """
-        let dataURL = "data:text/html;charset=utf-8," +
-            (html.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
-        try openURLViaSpringBoard(dataURL)
+        try ensureBenchmarkPage(in: safari)
 
         // Wait for Safari to come to the foreground with the page loaded.
         XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10),
@@ -152,6 +138,37 @@ final class StrokeBenchmark: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// Ensure Safari has the benchmark textarea open. Consecutive UI
+    /// benchmark tests often leave that textarea focused, while iOS 26
+    /// exposes the minimized address pill as an `Other` instead of a
+    /// text field. Reusing the page avoids a fragile URL-bar round trip.
+    private func ensureBenchmarkPage(in safari: XCUIApplication) throws {
+        safari.activate()
+        if safari.wait(for: .runningForeground, timeout: 3) {
+            dismissSafariFirstLaunch(in: safari)
+            let existingTextArea = safari.webViews.textViews.firstMatch
+            if existingTextArea.waitForExistence(timeout: 1) {
+                existingTextArea.tap()
+                return
+            }
+        }
+
+        // Open the data: URL via SpringBoard's URL handler. This works
+        // around iOS 26's bottom address bar layout (which moves and
+        // renames the URL field every few releases) and survives the
+        // post-rebuild active-keyboard reset by avoiding the URL field
+        // entirely. The data: URL is small enough to fit in a single
+        // openURL.
+        let html = """
+        <!doctype html><meta name=viewport content='width=device-width'>\
+        <body style='margin:0'>\
+        <textarea autofocus style='width:100vw;height:100vh;font-size:24px;border:0;outline:0'></textarea>
+        """
+        let dataURL = "data:text/html;charset=utf-8," +
+            (html.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
+        try openURLViaSpringBoard(dataURL)
+    }
 
     /// Open a URL in Safari via SpringBoard, sidestepping Safari's URL
     /// bar entirely. Uses the `x-safari-https://` scheme trick is not

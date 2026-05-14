@@ -19,13 +19,14 @@ enum LimeKeyCode: Int {
     case emojiABC       = -202 // iOS/Android: return from emoji panel to English keyboard
     case emojiCategoryRecent  = -203
     case emojiCategorySmileys = -204
-    case emojiCategoryAnimals = -205
-    case emojiCategoryFood    = -206
-    case emojiCategorySports  = -207
+    case emojiCategoryPeople  = -205
+    case emojiCategoryAnimals = -206
+    case emojiCategoryFood    = -207
     case emojiCategoryTravel  = -208
-    case emojiCategoryObjects = -209
-    case emojiCategorySymbols = -210
-    case emojiCategoryFlags   = -211
+    case emojiCategoryActivities = -209
+    case emojiCategoryObjects = -210
+    case emojiCategorySymbols = -211
+    case emojiCategoryFlags   = -212
     case nextIM              = -20  // cycle to next activated IM (spec §10)
     case prevIM              = -21  // cycle to previous activated IM (spec §10)
     case switchSymbolKeyboard = -15  // cycle symbol keyboard pages (spec §10, Android code -15)
@@ -34,6 +35,48 @@ enum LimeKeyCode: Int {
     case arrowRight = -31
     case arrowUp    = -32
     case arrowDown  = -33
+}
+
+struct EmojiPanelPaginationResult {
+    let pages: [[Mapping]]
+    let categoryStartDisplayPageIndexes: [Int]
+    let sourcePageIndexes: [Int]
+}
+
+enum EmojiPanelPaginator {
+    static func displayPages(sourcePages: [[Mapping]],
+                             cellsPerPage: Int,
+                             categoryButtonCount: Int) -> EmojiPanelPaginationResult {
+        let safeCellsPerPage = max(cellsPerPage, 1)
+        var displayPages: [[Mapping]] = []
+        var sourceIndexes: [Int] = []
+        var starts = Array(repeating: 0, count: max(categoryButtonCount, sourcePages.count + 1))
+        for (sourceIndex, sourcePage) in sourcePages.enumerated() {
+            let buttonTag = sourceIndex + 1
+            if buttonTag < starts.count {
+                starts[buttonTag] = displayPages.count
+            }
+            if sourceIndex == 0 || sourcePage.isEmpty {
+                displayPages.append(sourcePage)
+                sourceIndexes.append(sourceIndex)
+                continue
+            }
+            var start = 0
+            while start < sourcePage.count {
+                let end = min(start + safeCellsPerPage, sourcePage.count)
+                displayPages.append(Array(sourcePage[start..<end]))
+                sourceIndexes.append(sourceIndex)
+                start = end
+            }
+        }
+        if displayPages.isEmpty {
+            displayPages.append([])
+            sourceIndexes.append(0)
+        }
+        return EmojiPanelPaginationResult(pages: displayPages,
+                                          categoryStartDisplayPageIndexes: starts,
+                                          sourcePageIndexes: sourceIndexes)
+    }
 }
 
 // MARK: - Key definition
