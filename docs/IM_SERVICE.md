@@ -416,7 +416,7 @@ iOS provides built-in English word completion that keyboard extensions can use, 
 
 1. **Null check**: If `selectedCandidate` is null, return
 2. **Surrogate check**: If word contains Unicode surrogate (emoji), commit directly and clear composing
-3. **Han conversion**: If `hanConvertOption` != 0, apply `SearchSrv.hanConvert(word)` before committing. Show toast notification if `hanConvertNotify` is enabled (throttled to once per minute).
+3. **Han conversion**: If `hanConvertOption` != 0, apply `SearchSrv.hanConvert(word)` before committing.
    - **iOS Porting Note**: LimeIME uses `hanconvertv2.db` for simple 1-to-1 character-by-character lookup (no context-dependent conversion). iOS provides `CFStringTransform` with `kCFStringTransformToSimplifiedChinese` / `kCFStringTransformToTraditionalChinese` which is functionally equivalent or better — uses Apple's maintained mapping, no need to ship `hanconvertv2.db`. Drop: `LimeHanConverter` class and `hanconvertv2.db`. Replace with a single `CFStringTransform()` call.
 4. **Commit text**: `ic.commitText(wordToCommit, 1)`
 5. **Special clear**: If Stroke5 (wb), emoji, or Chinese punctuation → `clearComposing(true)`
@@ -987,7 +987,6 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 | Phonetic keyboard type | `phonetic_keyboard_type` | String | "phonetic" | Code remapping in `preProcessingRemappingCode()`: Standard / ETEN / ETEN26 / HSU |
 | Auto-commit threshold | `auto_commit` | int | 0 (off) | Composing auto-commit when length reaches threshold (phonetic only) |
 | Han conversion | `han_convert_option` | int | 0 (off) | 0=off, 1=T→S, 2=S→T. Applied in `commitTyped()` before `commitText()` |
-| Han conversion notify | `han_convert_notify` | boolean | true | Toast notification on Han conversion (throttled to 1/min) |
 | Selection key option | `selkey_option` | int | 0 | Candidate selkey prepend: 0=none, 1=prepend mixedModeSelkey, 2=prepend with space |
 | Smart Chinese input | `smart_chinese_input` | boolean | false | Enables runtime phrase suggestion (`makeRunTimeSuggestion`) in SearchServer |
 | Auto Chinese symbol | `auto_chinese_symbol` | boolean | false | Shows Chinese punctuation candidates when candidate list cleared |
@@ -1028,7 +1027,6 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 | Show arrow keys | `show_arrow_key` | int | 0 | Arrow key row visibility mode |
 | Split keyboard | `split_keyboard_mode` | int | 0 | Split keyboard layout mode |
 | Keyboard theme | `keyboard_theme` | int | 0 | Theme index — triggers input view recreation on change |
-| Show number keypads | `display_number_keypads` | boolean | false | Number row visibility |
 | Number row in English | `number_row_in_english` | boolean | true | Number row in English keyboard |
 
 ### Feedback

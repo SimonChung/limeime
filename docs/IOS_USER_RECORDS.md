@@ -509,7 +509,7 @@ The following sections of [LIME_SETTINGS.md](LIME_SETTINGS.md) must be updated o
 
 The same pattern applies to every other DisclosureGroup (one `restore_on_import_{tableNick}` key per IM). The toggle row is **hidden** when `checkBackupTable(tableNick)` returns `false`.
 
-The `聯想詞庫` DisclosureGroup is **excluded** — user records backup/restore does not apply to the related table.
+The `關聯字庫` DisclosureGroup is **excluded** — user records backup/restore does not apply to the related table.
 
 ### 9.3 §9 Preference Key Reference — add per-IM keys
 

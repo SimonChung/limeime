@@ -106,7 +106,7 @@ fragment_im_list.xml, item_im_row.xml.
 | IM list with enable Toggle | RecyclerView rows with SwitchMaterial writing im.disable via ManageImController.setImEnabled (ImListFragment.java:182-215); emoji filtered out (ImListFragment.java:99-114). | At parity. | - |
 | Sorted by im.sortOrder | getImConfigFullNameList() order; sort source unverified. | Confirm controller sorts by sort_order. | P3 |
 | Enabled/disabled opacity HALF_ALPHA_VALUE | Implemented (ImListFragment.java:194, 201). | At parity. | - |
-| Related-phrase row appended | TYPE_RELATED row with ic_list_bullet, no toggle, now pushes `ImDetailFragment` with a synthetic `ImConfig(code="related", desc="關聯詞庫")` (ImListFragment.java:283-294) — matches iOS `IMRow(id:-1, tableNick:"related")` pattern (LIME_SETTINGS.md:343,401). | At parity. **DONE 2026-05-14.** | - |
+| Related-phrase row appended | TYPE_RELATED row with ic_list_bullet, no toggle, now pushes `ImDetailFragment` with a synthetic `ImConfig(code="related", desc="關聯字庫")` (ImListFragment.java:283-294) — matches iOS `IMRow(id:-1, tableNick:"related")` pattern (LIME_SETTINGS.md:343,401). | At parity. **DONE 2026-05-14.** | - |
 | Section headers | No headers; flat list. | Add TYPE_HEADER_* rows. | P2 |
 | Toolbar plus install button | FAB fab_install (fragment_im_list.xml:15-24, ImListFragment.java:67-81). | At parity (drag-to-reorder dropped per iOS spec parity). | - |
 | Toggle also updates keyboard_state | Spec section 10.4 mandates LIMEPreferenceManager.syncIMActivatedState() after toggle | Verify setImEnabled calls it (currently only SetupImFragment.onPause does). | P2 |
@@ -124,9 +124,9 @@ fragment_im_detail.xml.
 | Array10 phone-keypad Picker on auto_commit | NOT in ImDetailFragment. Still global pref (preference.xml:180-186). | MISSING. Add conditional Section when tableCode == array10. | P1 |
 | Custom-IM root mapping toggles (accept_number_index / accept_symbol_index) | NOT in ImDetailFragment. Still global prefs (preference.xml:388-395). | MISSING. Add conditional Section when tableCode == custom. | P1 |
 | Browse/edit table NavigationLink | row_manage_table pushes ManageImFragment (ImDetailFragment.java:108-115). | At parity. | - |
-| Options: backup_on_delete_{tableNick} toggle, default true | Implemented (fragment_im_detail.xml:210-214, ImDetailFragment.java:118-128); DEFAULT IS FALSE (ImDetailFragment.java:121). | DEFAULT MISMATCH; change to true. | P2 |
+| Options: backup_on_delete_{tableNick} toggle, default true | Implemented (fragment_im_detail.xml; ImDetailFragment.java:166-176). Default `true` (`ImDetailFragment.java:169`). | At parity. | - |
 | Remove IM destructive button | Button + confirm dialog rendered, but on confirm only shows Function-under-development Toast (ImDetailFragment.java:210-219). | MISSING CORE FEATURE. Wire to manageImController.clearTable(tableCode, switchBackup.isChecked()), then sync IM activated state, dismiss. Confirm-message wording varies by backup toggle state. | P1 |
-| Related-phrase detail page | iOS uses synthetic IMDetail; Android now matches — `ImListFragment` constructs `ImConfig(code="related")` and pushes `ImDetailFragment` (ImListFragment.java:283-294). `ImDetailFragment` detects `"related".equals(tableCode)` and hides 軟鍵盤配置 / 選項 / 版本 sections, retexts 字根資料表 → 聯想詞庫 / 瀏覽 / 編輯聯想詞庫, and routes the table row to `ManageRelatedFragment`. 移除輸入法 button is kept so users can clear the related table to load their own (per user direction 2026-05-14 — iOS spec line 387's "hidden when related" is overridden). | **DONE 2026-05-14.** | - |
+| Related-phrase detail page | iOS uses synthetic IMDetail; Android now matches — `ImListFragment` constructs `ImConfig(code="related")` and pushes `ImDetailFragment` (ImListFragment.java:283-294). `ImDetailFragment` detects `"related".equals(tableCode)` and hides 軟鍵盤配置 / 選項 / 版本 sections, retexts 字根資料表 → 關聯字庫 / 瀏覽 / 編輯關聯字庫, and routes the table row to `ManageRelatedFragment`. 移除輸入法 button is kept so users can clear the related table to load their own (per user direction 2026-05-14 — iOS spec line 387's "hidden when related" is overridden). | **DONE 2026-05-14.** | - |
 | Share / Export from detail | ShareManager/ShareDialog exist; no entry point on detail. | Add share icon to im_detail_toolbar. | P2 |
 
 ### 2.3 IM Install (Download + Import) - section 5.3
@@ -168,9 +168,9 @@ ManageRelatedEditSheet.java.
 The iOS spec defines RecordListView and RelatedListView as the SAME visual template
 (differing only in row schema and search filter). Android currently does not:
 
-| Element | ManageImFragment (字根) | ManageRelatedFragment (聯想) | iOS Spec |
+| Element | ManageImFragment (字根) | ManageRelatedFragment (關聯字) | iOS Spec |
 |---|---|---|---|
-| Toolbar title | "字根管理" (R.string.im_detail_manage_table, fragment_manage_im.xml:18) | "聯想詞庫" (R.string.im_related_label, fragment_manage_related.xml:19) | im.label (§6.1) / "關聯字管理" (§6.2) |
+| Toolbar title | "字根管理" (R.string.im_detail_manage_table, fragment_manage_im.xml:18) | "關聯字庫" (R.string.im_related_label, fragment_manage_related.xml:19) | im.label (§6.1) / "關聯字管理" (§6.2) |
 | Keyboard-select button at top | btnManageImKeyboard (fragment_manage_im.xml:30-37, ManageImFragment.java:186-196) — opens ManageImKeyboardDialog | (absent) | iOS moves keyboard selection to IMDetailView (§5.2). On Android it should also live on ImDetailFragment, not here. |
 | 字根 / 文字 search-by toggle | ToggleButton toggleManageIm (fragment_manage_im.xml:45-53, ManageImFragment.java:198-207) — sets searchroot flag | (absent — related has only word search) | Picker segmented ["字根","文字"] (§6.1); Related has no toggle (§6.2). Behaviour at parity for Related; Android IM uses ToggleButton instead of segmented Picker but the underlying flag is the same. |
 | Search input | EditText edtManageImSearch + explicit Search button toggling to Reset (ManageImFragment.java:241-262) | EditText + same explicit Search/Reset button (ManageRelatedFragment.java:205-225) | .searchable(text:) with native clear (§6.1, §6.2). Both Android editors use explicit Search/Reset button; iOS uses live searchable. |
@@ -214,7 +214,7 @@ ManageRelatedAdapter.java, ManageRelatedAddSheet.java, ManageRelatedEditSheet.ja
 | Swipe-to-edit + swipe-to-delete | Tap-row opens edit sheet (ManageRelatedFragment.java:158-162); delete via showDeleteConfirmDialog (ManageRelatedFragment.java:369-378) | Add ItemTouchHelper.SimpleCallback. | P2 |
 | Toolbar + icon to add | btnManageRelatedAdd inline (fragment_manage_related.xml:51-57) | Move into MaterialToolbar menu. | P2 |
 | Search prefix vs contains on word | searchRelated invokes loadRelatedPhrases (ManageRelatedFragment.java:238-250) — query semantics unverified in this pass. | Verify against §6.2 contains-match. | P3 (verify) |
-| Title "關聯字管理" | R.string.im_related_label (fragment_manage_related.xml:19) — current copy is "聯想詞庫". | Align string resource to "關聯字管理" if iOS wording is canonical (product decision). | P3 |
+| Title "關聯字管理" | R.string.im_related_label (fragment_manage_related.xml:19) — current copy is "關聯字庫". | Align string resource to "關聯字管理" if iOS wording is canonical (product decision). | P3 |
 | AddRelated sheet: word / related fields | ManageRelatedAddSheet (file not opened) | Verify field labels + non-empty validation. | P3 (verify) |
 | EditRelated sheet: word / related / Save / Delete with confirm | ManageRelatedEditSheet (file not opened); confirm flow uses showDeleteConfirmDialog (ManageRelatedFragment.java:369-378) | Verify schema and confirm-alert wording. | P3 (verify) |
 | Pagination label format | "1-100 of 1000" (ManageRelatedFragment.java:297-302) | Same format unification as §3.2. | P3 |
@@ -284,7 +284,6 @@ screens (section 2.2), not the global preferences screen.
 | enable_emoji_position Picker, default 3 | defaultValue=3 (preference.xml:56-63). | At parity. | - |
 | keyboard_size Picker, default 1.1 | defaultValue=1 (preference.xml:116-122). | DEFAULT MISMATCH; change to 1.1. | P2 |
 | show_arrow_key Picker, default 0 | defaultValue=0 (preference.xml:80-86). | At parity. | - |
-| display_number_keypads Toggle, default false | MISSING KEY in preference.xml. | NEW PREFERENCE KEY; add. | P2 |
 | split_keyboard_mode Picker (iPad only) | Present (preference.xml:89-95). | iOS-only hide rule; Android keep or product decision. | P3 |
 
 ### 5.2 Keyboard Feedback (section 8.2)
@@ -319,8 +318,7 @@ screens (section 2.2), not the global preferences screen.
 | iOS Spec Item | Android Current | Gap | Severity |
 |---|---|---|---|
 | Section header | Inline (preference.xml:217-228). | Reorg. | P2 |
-| han_convert_option Picker (segmented), default 0 | defaultValue=0 (preference.xml:222-228). | Functional parity; segmented is iOS-only. | P3 |
-| han_convert_notify Toggle, default true | defaultValue=true (preference.xml:216-220). | At parity. | - |
+| han_convert_option Picker (segmented), default 0 | defaultValue=0 (preference.xml). | Functional parity; segmented is iOS-only. | P3 |
 
 ### 5.6 Related and Learning (section 8.6)
 
@@ -372,7 +370,7 @@ screens (section 2.2), not the global preferences screen.
 
 | Pref Key | Android Current | Spec Default | Gap |
 |---|---|---|---|
-| backup_on_delete_{tableNick} | ImDetailFragment.java:121 reads default false | true | DEFAULT MISMATCH; change to true. |
+| backup_on_delete_{tableNick} | ImDetailFragment.java:169 reads default true | true | At parity. |
 | restore_on_import_{tableNick} | ImInstallFragment.java:222-232 reads default true | true | At parity. |
 
 Storage: spec uses UserDefaults.standard (not the App Group). Android uses
@@ -411,7 +409,7 @@ iOS spec section 10.1 drops these. Not automatic gaps; flagged for product revie
 | switch_english_mode | preference.xml:145-149 | External keyboard | Keep on Android. |
 | switch_english_mode_shift | preference.xml:150-154 | External keyboard | Keep on Android. |
 | disable_physical_selkey | preference.xml:175-178 | External keyboard | Keep on Android. |
-| selkey_option | preference.xml:188-194 | (No iOS analogue) | Audit; verify still in use. |
+| selkey_option | preference.xml:350-356 | External keyboard; no iOS analogue | Keep on Android. |
 | physical_keyboard_type | preference.xml:208-214 | External keyboard | Keep on Android. |
 | english_dictionary_physical_keyboard | preference.xml:352-357 | External keyboard | Keep on Android. |
 | physical_keyboard_sort | preference.xml:383-387 | External keyboard | Keep on Android. |
@@ -438,7 +436,7 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 1. Top-of-screen titles missing on tab fragments — add MaterialToolbar with title to fragment_im_list.xml (管理輸入法), fragment_db_manager.xml (資料庫管理), and the preferences host (鍵盤偏好設定). See §0.1.
 2. Reverse-Lookup sub-screen; collapse 13 flat ListPreference into a single drill-down (preference.xml:236-327).
 3. Preferences re-sectioning into the 8-section layout from spec section 8.
-4. Default mismatches; backup_on_delete_{*} (false->true), enable_emoji (false->true), keyboard_size (1->1.1), font_size (1->1.1), smart_chinese_input and auto_chinese_symbol (verify with product).
+4. ~~Default mismatches~~ — RESOLVED 2026-05-14: `backup_on_delete_{*}`=true, `enable_emoji`=true, `keyboard_size`="1", `font_size`="1", `smart_chinese_input`=true, `auto_chinese_symbol`=false, `han_convert_option`=0 — all aligned on both platforms.
 5. ~~App Setup: revert step list / privacy note / inline title~~ — DONE 2026-05-13 (see §1).
 6. IM Detail: add Version row + share/export toolbar action.
 7. IM List: section headers, syncIMActivatedState after toggle.
@@ -446,7 +444,6 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 9. Edit-sheet confirms — add confirmAlert before Save and before Delete in ManageImEditSheet and ManageRelatedEditSheet (§3.4); the existing dead helper showDeleteConfirmDialog can be wired or removed.
 10. IM Install: add pinyin GB variant, audit cloud lists, verify seedCustomIM post-import, confirm progress overlay.
 11. DB Manager: wire status footer, confirm progress overlay, align restore-section footer copy.
-12. New preference key: display_number_keypads.
 
 ### P3 - Cosmetic / parity polish
 
@@ -473,20 +470,20 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 > - **Preferences page left padding** — Programmatic `setIconSpaceReserved(false)` cascade through `PreferenceGroup` tree (`LIMEPreference.disableIconSpaceReserved`) after `setPreferencesFromResource`, because the XML-only attribute does not propagate to children on AndroidX Preference. `search_bar_bg.xml` switched to filled grey pill (no stroke).
 > - **Related editor (`ManageRelatedFragment` + `fragment_manage_related.xml`)** — Heading set to "關聯字管理"; row layout (`related.xml`) rebuilt as 3-column `pword` (start, weight 2) / `cword` (center, weight 3) / `freq` (end, weight 2, `%,d` formatted, secondary colour); bold removed. `DividerItemDecoration` between rows. Pagination bar pushed above `BottomNavigationView` at runtime via `bottomNav.post { lp.bottomMargin = navHeight }` (same pattern as IM-list FAB). Pagination text reformatted to iOS-style "第 N / M 頁 · X,XXX 筆". Search hint "搜尋詞彙", pagination buttons "&lt;上頁" / "下頁&gt;".
 > - **Mapping record editor (`ManageImFragment` + `fragment_manage_im.xml`)** — Same pagination-bar push + dividers + iOS-format pagination text + button labels.
-> - **DB Manager (`fragment_db_manager.xml` + `DbManagerFragment`)** — `MaterialToolbar` removed; large 28sp bold heading "資料庫管理" added at top. Three `MaterialCardView` wrappers removed; each action now rendered as a section-label `TextView` (備份 / 還原 / 初始資料庫) + a single pill `MaterialButton` + caption description below. Buttons use `Widget.MaterialComponents.Button.UnelevatedButton` with `app:cornerRadius="10dp"` + `app:backgroundTint="@color/setup_status_bg"` (note: `?attr/borderlessButtonStyle` cannot show a custom background, so the Unelevated style is required). Colour coding: 備份資料庫 blue text + folder icon (`ic_folder_24` — swapped in from `outline_share_24` 2026-05-14 because the Android backup flow opens the system File Manager via `ACTION_CREATE_DOCUMENT`, not a share sheet); 還原資料庫 red text + download icon (`ic_download_24`); 還原預設資料庫 red text + refresh icon (`ic_refresh`). Restore caption updated: "還原後鍵盤將重新載入資料庫。".
+> - **DB Manager (`fragment_db_manager.xml` + `DbManagerFragment`)** — `MaterialToolbar` removed; large 28sp bold heading "資料庫管理" added at top. Three `MaterialCardView` wrappers removed; each action now rendered as a section-label `TextView` (備份 / 還原 / 初始資料庫) + a single pill `MaterialButton` + caption description below. Buttons use `Widget.MaterialComponents.Button.UnelevatedButton` with `app:cornerRadius="10dp"` + `app:backgroundTint="@color/setup_status_bg"` (note: `?attr/borderlessButtonStyle` cannot show a custom background, so the Unelevated style is required). Colour coding: 備份資料庫 blue text + upload icon (`ic_upload_24`); 還原資料庫 red text + download icon (`ic_download_24`); 還原預設資料庫 red text + refresh icon (`ic_refresh`). Restore caption updated: "還原後鍵盤將重新載入資料庫。".
 > - **IM Detail (`fragment_im_detail.xml` + `ImDetailFragment`)** — Toolbar title cleared; large 28sp heading `tv_im_detail_heading` added below the toolbar (matches iOS pattern of inline `.navigationTitle(im.label)` with no toolbar title). Section labels moved OUTSIDE each `MaterialCardView` as small secondary-colour `TextView`s (輸入法資訊 / 軟鍵盤配置 / 字根資料表 / 選項), matching iOS `Section` header pattern. Card row dividers added between 名稱 / 版本 / 筆數. 字根資料表 row gained a leading blue grid icon (`ic_grid_on_24`). 移除輸入法 button switched from `Widget.MaterialComponents.Button.OutlinedButton` to `?attr/borderlessButtonStyle` with `@color/setup_status_fg_red` text, centered, matching iOS's red-text-only destructive style.
-> - **IM List → 聯想詞庫 routing** — Click on the related row no longer pushes `ManageRelatedFragment` directly. Instead `ImListFragment` constructs a synthetic `ImConfig(id=-1, code="related", desc=getString(im_related_heading))` and pushes `ImDetailFragment`, mirroring iOS's `IMRow(tableNick:"related")` pattern (LIME_SETTINGS.md:343,401). `ImDetailFragment` detects `isRelated = "related".equals(tableCode)` and applies these variations:
+> - **IM List → 關聯字庫 routing** — Click on the related row no longer pushes `ManageRelatedFragment` directly. Instead `ImListFragment` constructs a synthetic `ImConfig(id=-1, code="related", desc=getString(im_related_heading))` and pushes `ImDetailFragment`, mirroring iOS's `IMRow(tableNick:"related")` pattern (LIME_SETTINGS.md:343,401). `ImDetailFragment` detects `isRelated = "related".equals(tableCode)` and applies these variations:
 >   - Hide `section_keyboard` (no soft keyboard for related)
 >   - Hide `section_options` (no `backup_on_delete_related` toggle)
 >   - Hide `row_version` + `divider_version` (related has no `mapping_version`)
->   - Retext `tv_section_table_label` → "聯想詞庫" (iOS LIME_SETTINGS.md:380)
->   - Retext `tv_manage_table_label` → "瀏覽 / 編輯聯想詞庫" (iOS LIME_SETTINGS.md:382)
+>   - Retext `tv_section_table_label` → "關聯字庫" (iOS LIME_SETTINGS.md:380)
+>   - Retext `tv_manage_table_label` → "瀏覽 / 編輯關聯字庫" (iOS LIME_SETTINGS.md:382)
 >   - Route the 字根資料表 row click to `ManageRelatedFragment.newInstance(1)` instead of `ManageImFragment`
 >   - Keep 移除輸入法 button visible — user directive 2026-05-14 (overrides iOS spec line 387 "hidden when related"). Rationale: lets users clear the related table to load their own. Handler routes through existing `SearchServer.clearTable("related")`.
 >
-> New string resources added (`strings_settings.xml`): `im_related_heading=關聯詞庫`, `im_detail_section_related=聯想詞庫`, `im_detail_manage_related=瀏覽 / 編輯聯想詞庫`.
+> New string resources added (`strings_settings.xml`): `im_related_heading=關聯字庫`, `im_detail_section_related=關聯字庫`, `im_detail_manage_related=瀏覽 / 編輯關聯字庫`.
 >
-> New drawables added: `ic_folder_24.xml` (Material folder, used for DB Manager backup button), `ic_grid_on_24.xml` (Material grid, used for 字根資料表 row leading icon), `ic_status_check.xml` / `ic_status_warning.xml` / `ic_status_error.xml` (Setup tab three-state icons), `ic_download_24.xml` (DB Manager restore), `db_pill_bg.xml` (initial attempt at pill background, superseded by `app:backgroundTint` approach — file still on disk, deletable).
+> New drawables added: `ic_upload_24.xml` (DB Manager backup), `ic_folder_24.xml` (unused legacy DB Manager backup icon candidate), `ic_grid_on_24.xml` (Material grid, used for 字根資料表 row leading icon), `ic_status_check.xml` / `ic_status_warning.xml` / `ic_status_error.xml` (Setup tab three-state icons), `ic_download_24.xml` (DB Manager restore), `db_pill_bg.xml` (initial attempt at pill background, superseded by `app:backgroundTint` approach — file still on disk, deletable).
 >
 > New colour resources (`colors.xml`): `setup_status_bg=#1F808080`, `setup_status_fg_green=#2E7D32`, `setup_status_fg_yellow=#EF6C00`, `setup_status_fg_red=#C62828` — shared across Setup banner, About card, DB Manager pills, IM Detail destructive button.
 >
@@ -498,7 +495,7 @@ file path or layout block to touch.
 ### P1 — Missing core features (block parity)
 
 - [x] **§3.4 / P1.1** Split Related Add/Edit sheets into two separate fields. — DONE 2026-05-13.
-  - [ ] `sheet_manage_related_add.xml`: add second `TextInputEditText edt_related` below `edt_word`; rename labels (詞彙 / 關聯詞).
+  - [ ] `sheet_manage_related_add.xml`: add second `TextInputEditText edt_related` below `edt_word`; rename labels (詞彙 / 關聯字).
   - [ ] `sheet_manage_related_edit.xml`: same — and prefill `edt_word` = `related.getPword()`, `edt_related` = `related.getCword()`.
   - [ ] `ManageRelatedAddSheet.java:88-100`: pass `edt_word` and `edt_related` directly to `hostFragment.addRelated(pword, cword, score)`; delete `source.substring(0,1)` split.
   - [ ] `ManageRelatedEditSheet.java:80-115`: same — drop the concat + substring logic.
@@ -515,12 +512,13 @@ file path or layout block to touch.
   - [ ] Wrap `LimePreferenceFragment` host in a layout with a `MaterialToolbar` titled `鍵盤偏好設定`.
 - [x] **§5.9 / P2.2** ~~Reverse-Lookup sub-screen — nested PreferenceScreen~~ — DONE 2026-05-13.
 - [x] **§5 / P2.3** ~~Preferences re-sectioning into 8 (+1 physical-keyboard) categories~~ — DONE 2026-05-13.
-- [x] **§5 / P2.4** ~~Default mismatches (`enable_emoji`/`keyboard_size`/`font_size`/`backup_on_delete`)~~ — DONE 2026-05-13. Pending:
-  - [ ] `enable_emoji` default `false` -> `true` (`preference.xml:51-55`).
-  - [ ] `keyboard_size` default `1` -> `1.1` (`preference.xml:116-122`).
-  - [ ] `font_size` default `1` -> `1.1` (`preference.xml:123-129`).
-  - [ ] `backup_on_delete_{*}` runtime default `false` -> `true` (`ImDetailFragment.java:121`).
-  - [ ] Confirm with product: `smart_chinese_input` and `auto_chinese_symbol` defaults — iOS §8.4 table says `true`, iOS §9 reference table says `false`. Hold change until resolved.
+- [x] **§5 / P2.4** ~~Default mismatches (`enable_emoji`/`keyboard_size`/`font_size`/`backup_on_delete`/`smart_chinese_input`/`auto_chinese_symbol`)~~ — DONE 2026-05-14 (all sub-items resolved):
+  - [x] `enable_emoji` default → `true` (`preference.xml`).
+  - [x] `keyboard_size` default → `"1"` (一般) on both iOS and Android — final product decision reverses prior `"1.1"` alignment.
+  - [x] `font_size` default → `"1"` (一般) on both platforms — same.
+  - [x] `backup_on_delete_{*}` runtime default `true` (`ImDetailFragment.java:169` — bug at old L121 was already fixed).
+  - [x] `smart_chinese_input` default → `true` on both platforms (iOS `LIMEPreferenceManager.swift` + Android `preference.xml` defaultValue + `LIMEPreferenceManager.java`).
+  - [x] `auto_chinese_symbol` default → `false` on both platforms.
 - [x] **§1 / P2.5** ~~App Setup: revert step list / privacy note / inline title~~ — DONE 2026-05-13.
 - [x] **§2.2 / P2.6** ~~IM Detail Version row + share toolbar~~ — DONE 2026-05-13 (share is Toast stub pending ShareDialog wiring).
 - [x] **§2.1 / P2.7** ~~IM List section headers + syncIMActivatedState on toggle~~ — DONE 2026-05-13.
@@ -543,7 +541,7 @@ file path or layout block to touch.
   - [ ] Wire `dbStatusText` updates (status footer is `visibility=gone` and never toggled — `fragment_db_manager.xml:121-143`).
   - [ ] Confirm `performBackup` / `performRestore` post progress through `ProgressManager`.
   - [ ] Align restore-section footer copy with iOS spec wording (`fragment_db_manager.xml:83`).
-- [x] **§5.1 / P2.12** ~~Add new preference key `display_number_keypads`~~ — DONE 2026-05-13. (Toggle, default `false`) to `preference.xml` under Keyboard Appearance.
+- [x] **§5.1 / P2.12** ~~Add new preference key `display_number_keypads`~~ — **REVERTED 2026-05-14**. Initially added to Android `preference.xml` 2026-05-13, then fully removed (iOS spec, iOS Swift accessor, Android `preference.xml`, Android Java accessor, Android strings) as a confirmed ghost pref with no consumers on either platform.
 
 ### P3 — Cosmetic / parity polish
 
@@ -560,12 +558,12 @@ file path or layout block to touch.
   - [ ] `@array/im_reverse_lookup_codes` and `@array/im_reverse_lookup` each have 14 entries (`none` + 13 IMs).
   - [ ] `@array/han_convert_options_values` has 3 entries (0–2).
 - [ ] Status footer copy alignment (DB Manager + IM Install).
-- [ ] Product decision: keep or retire Android-only physical-keyboard prefs (`hide_software_keyboard_typing_with_physical`, `switch_english_mode*`, `disable_physical_selkey`, `physical_keyboard_type`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`).
+- [ ] Product decision: keep or retire Android-only physical-keyboard prefs (`hide_software_keyboard_typing_with_physical`, `switch_english_mode*`, `disable_physical_selkey`, `selkey_option`, `physical_keyboard_type`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`).
 - [ ] Initial score on `ManageImAddSheet.java:52` change `1` -> `0` to match iOS spec §6.1.1.
 - [ ] Replace `Toast(R.string.insert_error)` / `Toast(R.string.update_error)` with inline `TextInputLayout` `setError(...)` in all four sheets.
 - [ ] Verify pagination / search-filter / confirm-alert behaviour in `ManageImFragment` and `ManageRelatedFragment` bodies beyond line 200 (not sampled in this pass).
 - [ ] Decide: keep Android-only score field on Related Add/Edit sheets, or remove for spec parity.
-- [ ] Decide: align `R.string.im_related_label` (現「聯想詞庫」) with iOS title `關聯字管理`, or keep current copy.
+- [ ] Decide: align `R.string.im_related_label` (現「關聯字庫」) with iOS title `關聯字管理`, or keep current copy.
 - [ ] Unify pagination label to "第 N 頁 / 共 M 筆" (use existing `R.string.manage_im_navigation_info` / `R.string.manage_related_navigation_info`).
 
 ### Test edits (paired with P1/P2 work above)

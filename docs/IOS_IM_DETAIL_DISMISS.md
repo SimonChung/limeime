@@ -136,7 +136,7 @@ NavigationSplitView {
         ForEach($imList) { $row in
             HStack { … }.tag(DetailSelection.im(row.id))
         }
-        Label("關聯詞庫", systemImage: "text.bubble").tag(DetailSelection.related)
+        Label("關聯字庫", systemImage: "text.bubble").tag(DetailSelection.related)
     }
     .overlay(alignment: .bottomTrailing) {
         Button { selection = .install } label: { … }   // floating ＋

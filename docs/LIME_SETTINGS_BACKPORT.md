@@ -40,7 +40,7 @@ This is a **view-layer-only** backport of the iOS LimeSettings UI ([LIME_SETTING
 | §6.2 RelatedList + Add/Edit | `RelatedListView` + sheets | Refactored `ManageRelatedFragment` + new `ManageRelatedAddSheet` / `ManageRelatedEditSheet` | **Refactor list, replace dialogs** |
 | §7 DB Manager | `DBManagerTabView` | New `DbManagerFragment` (extracts backup/restore from `SetupImFragment`) | **New** |
 | §8 Preferences | `PreferencesTabView` (Form sections) | Refactored `LIMEPreference` activity hosting a `PreferenceFragmentCompat` reskinned with Material 3 grouped sections (or a Compose-equivalent `Form` page) | **Refactor** |
-| §8.9 Reverse Lookup | Sub-screen | Add an `androidx.preference.PreferenceScreen` nested screen under Preferences | **Refactor** |
+| §8.4.1 Reverse Lookup | Sub-screen | Add an `androidx.preference.PreferenceScreen` nested inside `pref_section_im_behaviour` as the last §8.4 item (after `reverse_lookup_notify`) | **Refactor** |
 
 > Android already has the entire 外接鍵盤 (External Keyboard) preferences group; the iOS spec drops it. Android **keeps** that group.
 
@@ -80,7 +80,7 @@ Tab-to-iOS mapping mirrors LIME_SETTINGS.md §2:
 | 2 | 喜好設定 | `LimePreferenceFragment` (refactored existing `PrefsFragment`) |
 | 3 | 資料庫 | `DbManagerFragment` |
 
-The 聯想詞庫 entry collapses into the 輸入法 tab (synthetic IM row, same as iOS §5.1 last section).
+The 關聯字庫 entry collapses into the 輸入法 tab (synthetic IM row, same as iOS §5.1 last section).
 
 ---
 
@@ -95,7 +95,7 @@ Tab "輸入法" host fragment (TwoPaneHostFragment)
 └── SlidingPaneLayout
     ├── (start, fixed 320dp on tablet, full-width on phone)
     │   FragmentContainerView  @+id/im_list_pane
-    │   → ImListFragment   (master list of IMs + 聯想詞庫 row)
+    │   → ImListFragment   (master list of IMs + 關聯字庫 row)
     └── (end, fills remaining width on tablet, slides over on phone)
         FragmentContainerView  @+id/im_detail_pane
         → ImDetailFragment / ImInstallFragment / ManageImFragment / ManageRelatedFragment
@@ -167,7 +167,7 @@ Implementation note: a small `KeyboardActivationProbe` helper (View-layer, in th
 
 | Removed from old `SetupImFragment` | Moved to |
 |---|---|
-| Per-IM download buttons (注音/倉頡/快倉/…/聯想詞庫) | Tab 1 → `ImInstallFragment` (§5.3 below) |
+| Per-IM download buttons (注音/倉頡/快倉/…/關聯字庫) | Tab 1 → `ImInstallFragment` (§5.3 below) |
 | Backup / Restore Local buttons | Tab 3 → `DbManagerFragment` (§7) |
 | 自建 import button | Tab 1 → `ImInstallFragment` 自建 group |
 
@@ -195,7 +195,7 @@ fragment_im_list.xml
         └── SwitchMaterial  @+id/switch_enabled
             onChange → manageImController.setImEnabled(id, enabled)   ← already exists; if not, expose via view-layer helper that delegates to LIMEPreferenceManager + DB
 
-Section "聯想詞庫" rendered as a sticky footer item with NavigationLink semantic
+Section "關聯字庫" rendered as a sticky footer item with NavigationLink semantic
 → tap pushes ImDetailFragment(syntheticRelatedRow)
 ```
 
@@ -215,7 +215,7 @@ Sections (visibility identical to iOS spec):
 3. **注音鍵盤類型** — *(NOT moved here; stays in Tab 2 喜好設定 per §8.)*
 4. **電話鍵盤設定** — *(NOT moved here; stays in Tab 2 喜好設定 per §8.)*
 5. **字根對應設定** — *(NOT moved here; stays in Tab 2 喜好設定 per §8. iOS surfaces this only when `tableNick == "custom"`; Android keeps it as a global preference.)*
-6. **字根資料表** — single row → push `ManageImFragment(table=im.tableNick)` (or `ManageRelatedFragment` for the synthetic 聯想詞庫 row).
+6. **字根資料表** — single row → push `ManageImFragment(table=im.tableNick)` (or `ManageRelatedFragment` for the synthetic 關聯字庫 row).
 7. **選項** — `SwitchMaterial` "刪除時備份已學習記錄" bound to `backup_on_delete_{tableNick}` (use `SharedPreferences` default file, mirroring iOS `UserDefaults.standard` exception — these are settings-app-only and must not pollute the keyboard's shared prefs).
 8. **無 header** — `MaterialButton` "移除輸入法" with `?attr/colorError` text → `MaterialAlertDialog` confirm → existing `manageImController.clearTable(...)`.
 
@@ -231,7 +231,7 @@ fragment_im_install.xml
     └── item_im_family_card.xml  (Material 3 ExpandableCard pattern)
         ├── header row
         │   ├── ImageView icon
-        │   ├── TextView family title (注音 / 倉頡 / … / 自建 / 聯想詞庫)
+        │   ├── TextView family title (注音 / 倉頡 / … / 自建 / 關聯字庫)
         │   └── ImageView chevron (rotates on expand)
         └── expandable body (LinearLayout, hidden when collapsed)
             ├── (if checkBackupTable(tableNick)) SwitchMaterial "還原已學習記錄"
@@ -247,7 +247,7 @@ fragment_im_install.xml
 Self-build (自建) family: only the two local-import buttons; on success calls
 setupImController invocation that internally hits db.seedCustomIM-equivalent path (existing).
 
-聯想詞庫 family: only "匯入 .limedb" → existing DBServer.importDbRelated path.
+關聯字庫 family: only "匯入 .limedb" → existing DBServer.importDbRelated path.
 ```
 
 Progress overlay: reuse existing `activity_progress_overlay` in `activity_main.xml` driven by `ProgressManager`. **No change to ProgressManager.**
@@ -305,7 +305,7 @@ Validation rules unchanged: code & word must be non-empty.
 
 ### 6.3 ManageRelatedFragment + ManageRelatedAddSheet / EditSheet
 
-Same treatment as §6.1/§6.2. Two `TextInputLayout` fields ("詞彙", "關聯詞"), pagination bar, swipe actions. Bound to existing `ManageRelatedController` methods.
+Same treatment as §6.1/§6.2. Two `TextInputLayout` fields ("詞彙", "關聯字"), pagination bar, swipe actions. Bound to existing `ManageRelatedController` methods.
 
 ### 6.4 Dialogs to retire / preserve
 

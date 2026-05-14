@@ -178,7 +178,7 @@ Steps:
    - 倉頡/速倉/英文倉頡: a cangjie radical icon
    - 大易/輕鬆/行列/行列十/五筆/華象: generic `ic_grid_view`
    - 自建 (CUSTOM): `ic_edit`
-   - 聯想詞庫 (RELATED): `ic_list`
+   - 關聯字庫 (RELATED): `ic_list`
 4. In `bind()`, set `iv_family_icon.setImageResource(family.iconResId)`
 
 **Acceptance**: each card header shows a distinct icon to the left of the title.
