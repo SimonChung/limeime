@@ -26,9 +26,11 @@ package net.toload.main.hd.ui.view;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.TypedValue;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -126,6 +128,7 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
             });
 
             toolbar.inflateMenu(R.menu.menu_manage_related);
+            tintToolbarMenuIcons(toolbar);
 
             toolbar.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == R.id.action_manage_related_add) {
@@ -232,6 +235,18 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
         return rootView;
     }
 
+    private void tintToolbarMenuIcons(MaterialToolbar toolbar) {
+        TypedValue typedValue = new TypedValue();
+        requireContext().getTheme().resolveAttribute(android.R.attr.textColorSecondary, typedValue, true);
+        int tint = typedValue.data;
+        for (int i = 0; i < toolbar.getMenu().size(); i++) {
+            Drawable icon = toolbar.getMenu().getItem(i).getIcon();
+            if (icon != null) {
+                icon.mutate().setTint(tint);
+            }
+        }
+    }
+
     public void searchRelated(){
         searchRelated(preQuery);
     }
@@ -289,10 +304,6 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
         if (adapter != null) {
             adapter.submitList(this.relatedlist);
             gridManageRelated.scrollToPosition(0);
-        }
-
-        if (total == 0) {
-            Toast.makeText(activity, R.string.no_search_result, Toast.LENGTH_SHORT).show();
         }
 
         int totalPages = (total + LIME.IM_MANAGE_DISPLAY_AMOUNT - 1) / LIME.IM_MANAGE_DISPLAY_AMOUNT;

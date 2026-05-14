@@ -579,3 +579,188 @@ No new `LayoutMetrics` constants — `Chevron.buttonWidth`, `Chevron.iconSize`,
 5. Change `font_size` in Settings while panel open → dismiss button height
    tracks bar height with no layout drift.
 6. iPhone 20 × 36 pt; iPad 26 × 46 pt (at fontScale 1.0).
+
+---
+
+## 8. Android backport target
+
+Android should backport the iOS candidate-bar dismiss control and the
+candidate-local notification surface, but it does **not** need the iOS
+expanded-panel asymmetry. Android can already show popups above the
+candidate bar through `PopupWindow`, so the expanded candidate popup may
+continue to grow above the bar instead of becoming an iOS-style
+full-keyboard replacement.
+
+### Dismiss key parity
+
+Add the dismiss key to both Android candidate surfaces:
+
+| Surface | Layout / owner | Required change |
+|---|---|---|
+| Fixed/floating candidate view | `res/layout/candidates.xml`, `CandidateViewContainer` | Add a leading `ImageButton` before `CandidateView` and wire it to clear composing. |
+| In-input keyboard candidate view | `res/layout/inputcandidate.xml`, `CandidateInInputViewContainer` | Add the same leading `ImageButton` before `candidatesView` and wire it through `LIMEService`. |
+| Expanded popup | `res/layout/candidatepopup.xml`, `CandidateView` / `CandidateExpandedView` | Keep the existing close/collapse button for collapsing the popup. Add a separate leading dismiss action only if row-1 parity is implemented for the popup later. |
+
+The visual contract should match iOS exactly in relative terms:
+
+| Property | Android target |
+|---|---|
+| Width | `candidate_expand_button_width / 2` (`21sp` with current `42sp` dimen). Use a named dimen such as `candidate_dismiss_button_width`, not an inline magic number. |
+| Height | Candidate glyph-row height only: `CandidateView.mHeight` in Java, or the same measured height as the candidate row in XML. It must not include any composing/keyname strip height. |
+| Vertical alignment | Center on the candidate glyph axis. If the Android composing/keyname view is embedded above the row, the dismiss button starts below that embedded strip. |
+| Keyname X anchor | The composing/keyname popup or embedded label starts at the dismiss button's trailing edge, matching the candidate viewport leading edge. It must not start at absolute screen X=0 once the dismiss button exists. |
+| Icon | Programmatic cross glyph using `candidateNormalTextColor` / `candiText`; do not use `btn_close` because that drawable carries its own solid/selector background. The apparent glyph size should match the iOS dismiss xmark. |
+| Background | Same candidate background as the row, plus the iOS-style visible touch extent: `candidateNormalTextColor`/`candiText` at about 10% alpha with 6dp corner radius. Pressed/focused state may reuse the existing close-button selector. |
+| Separator | None between dismiss and candidates. The candidate text begins immediately after the dismiss zone. |
+| Visibility | Show when the candidate row has composing/candidates/reverse-lookup content; hide when the candidate row is empty. Do not replace the voice/mic button or expand button on the right. |
+
+Behavior must also match iOS:
+
+1. Tapping dismiss clears the current composing buffer and candidate list.
+2. It does **not** delete committed document text.
+3. If the expanded candidate popup is open, dismiss hides/collapses it before
+   clearing composing.
+4. It clears the composing keyname/reverse-lookup popup or embedded label.
+5. It should reuse the existing service clearing path (`clearComposing(false)`
+   / `clearSuggestions()` or the local equivalent) rather than duplicating
+   candidate-state cleanup.
+
+Android width accounting must reserve the dismiss zone at the leading edge:
+
+```java
+int dismissWidth = getResources()
+        .getDimensionPixelSize(R.dimen.candidate_dismiss_button_width);
+int rightWidth = visibleRightButtons * candidateExpandButtonWidth;
+int maxCandidateWidth = containerWidth - dismissWidth - rightWidth;
+```
+
+The row should still use the existing right-side logic:
+
+- empty candidate row: right button can remain voice input;
+- non-empty row: right button remains expand/collapse;
+- keyboard-hidden row: `candidate_keyboard` remains the restore-keyboard
+  button.
+
+### Existing Android microphone key
+
+Android already has a microphone/voice-input action in the candidate row.
+It is not a standalone key in the candidate text strip; it reuses the
+right-side candidate action button when there is no candidate content.
+
+| Surface | Layout / owner | Location |
+|---|---|---|
+| In-input keyboard candidate view | `res/layout/inputcandidate.xml`, `CandidateInInputViewContainer` | `candidate_right` inside `candidate_right_parent`, at the far trailing edge of the candidate row. It sits to the right of `candidatesView`; when the soft keyboard is hidden, `candidate_keyboard` may appear immediately to its left as the restore-keyboard button. |
+| Fixed/floating candidate view | `res/layout/candidates.xml`, `CandidateViewContainer` | The existing right-side button is the expand button only. Current code does not swap this fixed/floating surface to the microphone icon when empty. |
+| Options menu | `LIMEService` menu item `voice_input` | Secondary entry point; not part of candidate-bar geometry. |
+
+The in-input row chooses the right button icon in
+`CandidateInInputViewContainer.requestLayout()`:
+
+```java
+if (mCandidateView.isEmpty()) {
+    mRightButton.setImageDrawable(mCandidateView.mDrawableVoiceInput);
+} else {
+    mRightButton.setImageDrawable(isKeyboardHidden
+            ? mCandidateView.mDrawableExpandUpButton
+            : mCandidateView.mDrawableExpandDownButton);
+}
+```
+
+Its click behavior mirrors the same state split:
+
+| Candidate row state | Right button visual | Tap behavior |
+|---|---|---|
+| Empty (`mCandidateView.isEmpty() == true`) | Theme `voiceInputIcon` (`btn_voice_*` / `sym_keyboard_voice_*`) | Calls `CandidateView.startVoiceInput()`, which delegates to `LIMEService.startVoiceInput()`. |
+| Non-empty, keyboard visible | Expand-down icon | Opens the expanded candidate popup through `CandidateView.showCandidatePopup()`. |
+| Non-empty, keyboard hidden | Expand-up icon | Opens the expanded candidate popup upward; `candidate_keyboard` remains the separate restore-keyboard action. |
+
+`LIMEService.startVoiceInput()` first tries to switch to Google's voice IME
+when `LIMEUtilities.isVoiceSearchServiceExist(...)` finds one. If that
+switch does not take, or no voice IME is available, it falls back to a
+`RecognizerIntent.ACTION_RECOGNIZE_SPEECH` launched through
+`VoiceInputActivity`. The recognizer uses the system locale as
+`RecognizerIntent.EXTRA_LANGUAGE`, free-form language model, and one result.
+
+Recognized text returns to the service through two paths:
+
+1. `VoiceInputActivity` stores the result in `sPendingVoiceText`; when LIME's
+   input view starts again, `onStartInputView()` consumes and commits it.
+2. As a backup, `VoiceInputActivity` broadcasts
+   `net.toload.main.hd.VOICE_INPUT_RESULT` with `recognized_text`;
+   `LIMEService` receives it and calls `commitVoiceTextWithRetry(...)`.
+
+Both paths commit the recognized text through `InputConnection.commitText`.
+The microphone key should not clear composing, replace existing candidates,
+or delete document text by itself; it only starts voice input. Any text commit
+happens later when the recognizer returns a non-empty result.
+
+### Replace system IME toasts with `lime_toast`
+
+Android's IME-mode toasts should stop using `Toast.makeText(...)` for
+keyboard-local feedback. Add a small candidate-surface popup named
+`lime_toast` and route keyboard/IME feedback through it.
+
+Scope: replace the IME-facing system toasts in `LIMEService`, especially:
+
+- active IM switch feedback (`activeIMName`);
+- Chinese/English mode feedback (`typing_mode_english`,
+  `typing_mode_mixed`).
+
+Reverse lookup is **not** a `lime_toast`. When
+`SearchServer.getCodeListStringFromWord(...)` is running inside
+`LIMEService`, successful reverse lookup should reuse the composing
+keyname/reverse-lookup strip, matching iOS behavior. It should remain visible
+until the next keystroke, dismiss tap, or other normal composing/candidate
+clear. Empty/no-match reverse lookup results should stay silent in the IME and
+must not fall back to Android `Toast.makeText(...)`.
+
+Do **not** replace settings/import/activity toasts in this pass; those are
+normal app UI feedback, not keyboard-surface feedback.
+
+`lime_toast` placement aligns with the composing keyname popup:
+
+| State | Placement |
+|---|---|
+| No composing keyname visible | Same anchor and baseline as the composing keyname popup/embedded composing label: horizontally aligned to the dismiss button's trailing edge / candidate viewport leading edge. |
+| Composing keyname visible | Same Y as keyname, but shifted right of the keyname by measured keyname width + an 8dp gap. Clamp the right edge inside the candidate viewport. |
+| Candidate popup expanded above the bar | Popup may remain above the candidate bar; no iOS asymmetric candidate-bar layout is needed. |
+
+The styling should read as the same family as the composing keyname surface:
+
+| Property | Target |
+|---|---|
+| View | `TextView` inside a reusable `PopupWindow`, owned by `CandidateView` or a small helper owned by the candidate container. |
+| Font size | Same as `@dimen/composing_text_size` multiplied by `mLIMEPref.getFontSize()`. |
+| Text color | `mColorComposingText`. |
+| Background | `mColorComposingBackground`, same corner treatment as the composing popup/embedded label. |
+| Padding | Horizontal 8dp, vertical 2-4dp so short labels do not look cramped. |
+| Duration | Match Android short-toast feel, about 1200-1500 ms, but cancel and replace immediately when a newer `lime_toast` arrives. |
+| Touch | Not touchable; never steals candidate/key presses. |
+
+Implementation shape:
+
+```java
+candidateView.showLimeToast(text);
+```
+
+`showLimeToast` should:
+
+1. lazily create/reuse a `PopupWindow` and `TextView`;
+2. measure the current composing keyname view if it is visible;
+3. place the toast at composing-popup Y, or just above the candidate row when
+   using the popup path;
+4. apply the right offset only when keyname text is visible;
+5. auto-dismiss through the existing `UIHandler` so show/hide ordering matches
+   `showComposing()` / `hideComposing()`.
+
+### Android verification
+
+1. Start composing → leading dismiss appears; right expand remains on the right.
+2. Tap dismiss → composing text, candidates, keyname/reverse lookup, and expanded
+   popup all disappear; document text is unchanged.
+3. Switch IMs → `lime_toast` appears where the composing keyname would appear.
+4. Start composing, then switch Chinese/English → keyname remains at the left and
+   `lime_toast` appears to its right without overlap.
+5. Expand candidates while keyboard is hidden → popup may render above the
+   candidate row; no extra iOS-style asymmetric row math is required.
+6. Confirm settings/import/activity screens still use normal Android toasts.

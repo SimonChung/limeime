@@ -464,17 +464,23 @@
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
-            <!-- 移除輸入法 button (borderless red text, centered) -->
+            <!-- 移除輸入法 button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_remove_im"
-                style="?attr/borderlessButtonStyle"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:minHeight="48dp"
                 android:text="@string/im_detail_remove_im"
                 android:textAllCaps="false"
                 android:textColor="@color/setup_status_fg_red"
-                android:gravity="center" />
+                android:gravity="center"
+                app:backgroundTint="@android:color/transparent"
+                app:cornerRadius="4dp"
+                app:rippleColor="@color/setup_status_red"
+                app:strokeColor="@color/setup_status_fg_red"
+                app:strokeWidth="1dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

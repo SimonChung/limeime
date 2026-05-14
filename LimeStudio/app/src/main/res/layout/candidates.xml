@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ /*
   ~  *
@@ -39,12 +39,22 @@
         android:textColor="@color/second_foreground_light"
         android:background="@color/composing_background_light"
         android:minWidth="0dip"
+        android:layout_marginStart="@dimen/candidate_dismiss_button_width"
         android:gravity="top"
         />
     <LinearLayout
         android:layout_height="wrap_content"
         android:layout_width="fill_parent"
         android:background="@color/third_background_light">
+
+    <ImageButton
+            android:id="@+id/candidate_dismiss"
+            android:contentDescription="@string/close_cand"
+            android:layout_width="@dimen/candidate_dismiss_button_width"
+            android:layout_height="@dimen/candidate_stripe_height"
+            android:clickable="true"
+            android:visibility="gone"
+            />
 
     <view xmlns:android="http://schemas.android.com/apk/res/android"
 		    class="net.toload.main.hd.candidate.CandidateView"

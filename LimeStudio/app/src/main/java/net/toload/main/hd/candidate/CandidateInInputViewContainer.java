@@ -1,5 +1,4 @@
 
-
 /*
  *
  *  *
@@ -41,6 +40,7 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
 
     private static final boolean DEBUG = false;
     private static final String TAG = "CandiInputViewContainer";
+    private ImageButton mDismissButton;
     private ImageButton mRightButton;
     private ImageButton mKeyboardButton;
     private CandidateView mCandidateView;
@@ -71,9 +71,13 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 vg.setClipChildren(false);
                 vg.setClipToPadding(false);
             }
+            mDismissButton = findViewById(R.id.candidate_dismiss);
             mRightButton = findViewById(R.id.candidate_right);
             mKeyboardButton = findViewById(R.id.candidate_keyboard);
 
+            if (mDismissButton != null) {
+                mDismissButton.setOnClickListener(this);
+            }
             if (mRightButton != null) {
                 mRightButton.setOnClickListener(this);
             }
@@ -92,6 +96,14 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
 
             assert mCandidateView != null;
             mCandidateView.setBackgroundColor(mCandidateView.mColorBackground);
+            if (mDismissButton != null) {
+                mDismissButton.setPadding(0, 0, 0, 0);
+                mDismissButton.setScaleType(ImageButton.ScaleType.CENTER);
+                mDismissButton.setMinimumWidth(0);
+                mDismissButton.setMinimumHeight(0);
+                mDismissButton.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
+                mDismissButton.setBackground(mCandidateView.makeDismissButtonBackground());
+            }
             if (mRightButton != null) {
                 mRightButton.setBackgroundColor(mCandidateView.mColorBackground);
             }
@@ -158,6 +170,10 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             boolean showKeyboardButton = (mService != null) && mService.isKeyboardViewHidden();
             boolean isEmpty = mCandidateView.isEmpty();
             
+            if (mDismissButton != null) {
+                mDismissButton.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            }
+
             // Update keyboard button visibility
             if (mKeyboardButton != null) {
                 mKeyboardButton.setVisibility(showKeyboardButton ? View.VISIBLE : View.GONE);
@@ -189,6 +205,9 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
         post(() -> {
             int containerWidth = getWidth();
             if (containerWidth > 0 && mCandidateView != null) {
+                if (mDismissButton != null) {
+                    mDismissButton.setVisibility(mCandidateView.isEmpty() ? View.GONE : View.VISIBLE);
+                }
                 ViewGroup.LayoutParams params = mCandidateView.getLayoutParams();
                 if (params instanceof LinearLayout.LayoutParams) {
                     LinearLayout.LayoutParams llParams = (LinearLayout.LayoutParams) params;
@@ -196,16 +215,22 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                     // Calculate buttons width - always use dimension resource for consistency
                     int buttonsWidth = 0;
                     int buttonWidth = getResources().getDimensionPixelSize(R.dimen.candidate_expand_button_width);
+                    int dismissWidth = getResources().getDimensionPixelSize(R.dimen.candidate_dismiss_button_width);
+                    boolean dismissVisible = mDismissButton != null && mDismissButton.getVisibility() == View.VISIBLE;
                     boolean keyboardVisible = mKeyboardButton != null && mKeyboardButton.getVisibility() == View.VISIBLE;
                     boolean rightVisible = mRightButton != null && mRightButton.getVisibility() == View.VISIBLE;
                     
                     if (DEBUG) {
                         Log.i(TAG, "Width constraint: containerWidth=" + containerWidth + 
                               ", keyboardVisible=" + keyboardVisible + 
+                              ", dismissVisible=" + dismissVisible +
                               ", rightVisible=" + rightVisible +
                               ", buttonWidth=" + buttonWidth);
                     }
                     
+                    if (dismissVisible) {
+                        buttonsWidth += dismissWidth;
+                    }
                     if (keyboardVisible) {
                         buttonsWidth += buttonWidth;
                     }
@@ -249,7 +274,11 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
 
     @Override
     public void onClick(View v) {
-        if (v == mKeyboardButton) {
+        if (v == mDismissButton) {
+            if (mCandidateView != null) {
+                mCandidateView.dismissComposingFromCandidate();
+            }
+        } else if (v == mKeyboardButton) {
             // Restore keyboard view when keyboard button is clicked
             // Use forceRestore=true to restore even when candidates/composing text is present
             if (mService != null) {

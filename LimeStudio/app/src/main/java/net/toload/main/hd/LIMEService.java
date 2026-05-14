@@ -76,7 +76,6 @@ import android.widget.GridLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import net.toload.main.hd.candidate.CandidateInInputViewContainer;
 import net.toload.main.hd.candidate.CandidateView;
@@ -2916,15 +2915,7 @@ public class LIMEService extends InputMethodService
         //initialKeyboard();
         initialIMKeyboard();
 
-        // Only show toast if Looper is available (not in test environment)
-        try {
-            if (Looper.myLooper() != null) {
-                Toast.makeText(this, activeIMName, Toast.LENGTH_SHORT).show();
-            }
-        } catch (RuntimeException e) {
-            // Ignore toast errors in test environment
-            Log.w(TAG, "Cannot show toast: " + e.getMessage());
-        }
+        showLimeToast(activeIMName);
 
         try {
             if (mKeyboardSwitcher != null) {
@@ -3792,6 +3783,35 @@ public class LIMEService extends InputMethodService
         }
     }
 
+    public void dismissCandidateComposing() {
+        if (mCandidateView != null) {
+            mCandidateView.hideCandidatePopup();
+        }
+        clearComposing(false);
+    }
+
+    public void showLimeToast(CharSequence text) {
+        if (text == null || text.length() == 0) return;
+        try {
+            if (Looper.myLooper() != null && mCandidateView != null) {
+                mCandidateView.showLimeToast(text);
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Cannot show lime_toast: " + e.getMessage());
+        }
+    }
+
+    public void showReverseLookup(CharSequence text) {
+        if (text == null || text.length() == 0) return;
+        try {
+            if (Looper.myLooper() != null && mCandidateView != null) {
+                mCandidateView.setComposingText(text.toString());
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Cannot show reverse lookup: " + e.getMessage());
+        }
+    }
+
 
     private void handleBackspace() {
         if (DEBUG)
@@ -3968,11 +3988,9 @@ public class LIMEService extends InputMethodService
 
 
         if (mEnglishOnly) {
-            Toast.makeText(this, R.string.typing_mode_english,
-                    Toast.LENGTH_SHORT).show();
+            showLimeToast(getText(R.string.typing_mode_english));
         } else {
-            Toast.makeText(this, R.string.typing_mode_mixed,
-                    Toast.LENGTH_SHORT).show();
+            showLimeToast(getText(R.string.typing_mode_mixed));
         }
         clearSuggestions(); //Jeremy '11,9,5
     }
@@ -4908,7 +4926,7 @@ public class LIMEService extends InputMethodService
         java.util.List<android.content.pm.ResolveInfo> activities = getPackageManager().queryIntentActivities(voiceIntent, 0);
 
         if (activities.isEmpty()) {
-            Toast.makeText(getApplicationContext(), "Voice recognition not available on this device", Toast.LENGTH_LONG).show();
+            showLimeToast("Voice recognition not available on this device");
             return;
         }
 
@@ -4930,13 +4948,13 @@ public class LIMEService extends InputMethodService
 
         } catch (android.content.ActivityNotFoundException e) {
             Log.e(TAG, "launchRecognizerIntent(): VoiceInputActivity not found: " + e.getMessage(), e);
-            Toast.makeText(getApplicationContext(), "Voice input activity not found", Toast.LENGTH_SHORT).show();
+            showLimeToast("Voice input activity not found");
         } catch (SecurityException e) {
             Log.e(TAG, "launchRecognizerIntent(): SecurityException launching VoiceInputActivity: " + e.getMessage(), e);
-            Toast.makeText(getApplicationContext(), "Cannot launch voice input (security restriction)", Toast.LENGTH_SHORT).show();
+            showLimeToast("Cannot launch voice input (security restriction)");
         } catch (Exception e) {
             Log.e(TAG, "launchRecognizerIntent(): Failed to launch VoiceInputActivity: " + e.getMessage(), e);
-            Toast.makeText(getApplicationContext(), "Voice input unavailable: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            showLimeToast("Voice input unavailable: " + e.getMessage());
         }
     }
 

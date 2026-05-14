@@ -45,7 +45,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/manage_related_search"
-                android:drawableStart="@android:drawable/ic_menu_search"
+                android:drawableStart="@drawable/ic_search"
                 android:drawablePadding="8dp"
                 android:inputType="text"
                 android:imeOptions="actionSearch"

@@ -33,7 +33,9 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -172,6 +174,8 @@ public class CandidateView extends View implements View.OnClickListener {
     private int mCloseButtonHeight;
     private ScrollView mPopupScrollView;
     private boolean candidateExpanded = false;
+    private PopupWindow mLimeToastPopup;
+    private TextView mLimeToastTextView;
 
     private boolean waitingForMoreRecords = false;
 
@@ -358,6 +362,8 @@ public class CandidateView extends View implements View.OnClickListener {
         private static final int MSG_SHOW_CANDIDATE_POPUP = 4;
         private static final int MSG_HIDE_CANDIDATE_POPUP = 5;
         private static final int MSG_SET_COMPOSING = 6;
+        private static final int MSG_SHOW_LIME_TOAST = 7;
+        private static final int MSG_HIDE_LIME_TOAST = 8;
 
         public UIHandler(CandidateView candiInstance) {
             super(Looper.getMainLooper());
@@ -397,6 +403,15 @@ public class CandidateView extends View implements View.OnClickListener {
                     mCandiInstance.doSetComposing(composingText);
                     break;
                 }
+                case MSG_SHOW_LIME_TOAST: {
+                    CharSequence text = (CharSequence) msg.obj;
+                    mCandiInstance.doShowLimeToast(text);
+                    break;
+                }
+                case MSG_HIDE_LIME_TOAST: {
+                    mCandiInstance.doHideLimeToast();
+                    break;
+                }
             }
         }
 
@@ -426,6 +441,12 @@ public class CandidateView extends View implements View.OnClickListener {
             sendMessageDelayed(obtainMessage(MSG_HIDE_CANDIDATE_POPUP, 0, 0, null), delay);
         }
 
+        public void showLimeToast(CharSequence text) {
+            removeMessages(MSG_SHOW_LIME_TOAST);
+            removeMessages(MSG_HIDE_LIME_TOAST);
+            sendMessage(obtainMessage(MSG_SHOW_LIME_TOAST, 0, 0, text));
+            sendMessageDelayed(obtainMessage(MSG_HIDE_LIME_TOAST, 0, 0, null), 1400);
+        }
 
     }
 
@@ -493,6 +514,8 @@ public class CandidateView extends View implements View.OnClickListener {
         if (DEBUG)
             Log.i(TAG, "resetWidth() mHeight:" + mHeight);
         int candiWidth = mScreenWidth;
+        if (!isEmpty())
+            candiWidth -= mContext.getResources().getDimensionPixelSize(R.dimen.candidate_dismiss_button_width);
         if (mTotalWidth > mScreenWidth || isEmpty()) candiWidth -= mExpandButtonWidth;
         if (DEBUG)
             Log.i(TAG, "resetWidth() candiWidth:" + candiWidth);
@@ -767,7 +790,7 @@ public class CandidateView extends View implements View.OnClickListener {
         int[] offsetInWindow = new int[2];
         this.getLocationInWindow(offsetInWindow);
         int mPopupComposingY = offsetInWindow[1];
-        int mPopupComposingX = 0;
+        int mPopupComposingX = offsetInWindow[0];
 
         mPopupComposingY -= popupHeight;
 
@@ -832,6 +855,163 @@ public class CandidateView extends View implements View.OnClickListener {
 
         mHandler.dismissCandidatePopup(0);
 
+    }
+
+    public void dismissComposingFromCandidate() {
+        hideCandidatePopup();
+        if (mService != null) {
+            mService.dismissCandidateComposing();
+        } else {
+            clear();
+        }
+    }
+
+    public Drawable makeDismissButtonBackground() {
+        GradientDrawable background = new GradientDrawable();
+        int color = mColorNormalText & 0x00ffffff;
+        background.setColor(color | 0x1a000000);
+        background.setCornerRadius(dpToPx(6));
+        return background;
+    }
+
+    public Drawable makeDismissButtonGlyph() {
+        return new DismissGlyphDrawable(mColorNormalText, dpToPx(14));
+    }
+
+    public void showLimeToast(CharSequence text) {
+        if (text == null || text.length() == 0) return;
+        mHandler.showLimeToast(text);
+    }
+
+    private void doShowLimeToast(CharSequence text) {
+        if (!isShown() || text == null || text.length() == 0) return;
+
+        if (mLimeToastTextView == null) {
+            mLimeToastTextView = new TextView(mContext);
+            mLimeToastTextView.setSingleLine(true);
+            int hPad = dpToPx(8);
+            int vPad = dpToPx(3);
+            mLimeToastTextView.setPadding(hPad, vPad, hPad, vPad);
+
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(mColorComposingBackground);
+            background.setCornerRadius(dpToPx(6));
+            mLimeToastTextView.setBackground(background);
+            mLimeToastTextView.setTextColor(mColorComposingText);
+        }
+
+        float scaledTextSize =
+                mContext.getResources().getDimensionPixelSize(R.dimen.composing_text_size) * mLIMEPref.getFontSize();
+        mLimeToastTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX, scaledTextSize);
+        mLimeToastTextView.setText(text);
+        mLimeToastTextView.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+
+        if (mLimeToastPopup == null) {
+            mLimeToastPopup = new PopupWindow(mContext);
+            mLimeToastPopup.setTouchable(false);
+            mLimeToastPopup.setClippingEnabled(false);
+            mLimeToastPopup.setContentView(mLimeToastTextView);
+            mLimeToastPopup.setBackgroundDrawable(null);
+        }
+
+        int toastWidth = mLimeToastTextView.getMeasuredWidth();
+        int toastHeight = mLimeToastTextView.getMeasuredHeight();
+        int[] offsetInWindow = new int[2];
+        getLocationInWindow(offsetInWindow);
+
+        int x = offsetInWindow[0];
+        int y = offsetInWindow[1] - toastHeight;
+        if (embeddedComposing != null && embeddedComposing.getVisibility() == VISIBLE) {
+            int[] composingOffset = new int[2];
+            embeddedComposing.getLocationInWindow(composingOffset);
+            x = composingOffset[0] + embeddedComposing.getWidth() + dpToPx(8);
+            y = composingOffset[1];
+        } else if (mComposingTextView != null && mComposingTextView.getVisibility() == VISIBLE) {
+            x = offsetInWindow[0] + mComposingTextView.getWidth() + dpToPx(8);
+        }
+
+        int rightEdge = offsetInWindow[0] + Math.max(getWidth(), 0);
+        if (rightEdge > 0) {
+            x = Math.max(offsetInWindow[0], Math.min(x, rightEdge - toastWidth));
+        }
+
+        try {
+            if (mLimeToastPopup.isShowing()) {
+                mLimeToastPopup.update(x, y, toastWidth, toastHeight);
+            } else {
+                mLimeToastPopup.setWidth(toastWidth);
+                mLimeToastPopup.setHeight(toastHeight);
+                mLimeToastPopup.showAtLocation(this, Gravity.NO_GRAVITY, x, y);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing lime toast", e);
+        }
+    }
+
+    private void doHideLimeToast() {
+        if (mLimeToastPopup != null && mLimeToastPopup.isShowing()) {
+            mLimeToastPopup.dismiss();
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * mContext.getResources().getDisplayMetrics().density);
+    }
+
+    private static class DismissGlyphDrawable extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int intrinsicSize;
+
+        DismissGlyphDrawable(int color, int intrinsicSize) {
+            this.intrinsicSize = intrinsicSize;
+            paint.setColor(color);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStyle(Paint.Style.STROKE);
+        }
+
+        @Override
+        public void draw(@NonNull Canvas canvas) {
+            Rect bounds = getBounds();
+            float size = Math.min(bounds.width(), bounds.height());
+            if (size <= 0) return;
+
+            float half = Math.min(intrinsicSize, size) * 0.34f;
+            float centerX = bounds.exactCenterX();
+            float centerY = bounds.exactCenterY();
+            paint.setStrokeWidth(Math.max(2f, Math.min(intrinsicSize, size) * 0.12f));
+            canvas.drawLine(centerX - half, centerY - half,
+                    centerX + half, centerY + half, paint);
+            canvas.drawLine(centerX + half, centerY - half,
+                    centerX - half, centerY + half, paint);
+        }
+
+        @Override
+        public int getIntrinsicWidth() {
+            return intrinsicSize;
+        }
+
+        @Override
+        public int getIntrinsicHeight() {
+            return intrinsicSize;
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+            paint.setColorFilter(colorFilter);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
     }
 
 

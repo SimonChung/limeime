@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <!--
   ~ /*
@@ -41,6 +41,14 @@
         android:paddingTop="0dp"
         android:paddingBottom="0dp">
        
+
+        <ImageButton
+            android:id="@+id/candidate_dismiss"
+            android:contentDescription="@string/close_cand"
+            android:layout_width="@dimen/candidate_dismiss_button_width"
+            android:layout_height="fill_parent"
+            android:clickable="true"
+            android:visibility="gone" />
 
         <net.toload.main.hd.candidate.CandidateView
             android:id="@+id/candidatesView"

@@ -290,15 +290,23 @@ public class SearchServer {
     public void getCodeListStringFromWord(final String word) {
 
         String result = dbadapter.getCodeListStringByWord(word);
-        if (result != null && !result.isEmpty()) {
+        if (isReverseLookupResult(result)) {
             LIMEUtilities.showNotification(
                     mContext, true, mContext.getText(R.string.ime_setting), result, new Intent(mContext, LIMESettings.class));
 
             if(mLIMEPref.getReverseLookupNotify()){
-                Toast.makeText(mContext, result, Toast.LENGTH_SHORT).show();
+                if (mContext instanceof LIMEService) {
+                    ((LIMEService) mContext).showReverseLookup(result);
+                } else {
+                    Toast.makeText(mContext, result, Toast.LENGTH_SHORT).show();
+                }
             }
         }
 
+    }
+
+    private static boolean isReverseLookupResult(String result) {
+        return result != null && !result.trim().isEmpty() && result.contains("=");
     }
 
     /**
