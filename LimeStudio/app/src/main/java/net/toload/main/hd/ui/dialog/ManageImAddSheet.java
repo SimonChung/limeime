@@ -89,7 +89,7 @@ public class ManageImAddSheet extends BottomSheetDialogFragment {
         view.findViewById(R.id.btn_save).setOnClickListener(v -> {
             String code = edtCode.getText() != null ? edtCode.getText().toString().trim() : "";
             String word = edtWord.getText() != null ? edtWord.getText().toString().trim() : "";
-            if (code.isEmpty() || word.isEmpty()) {
+            if (!validateInput(code, word)) {
                 Toast.makeText(requireContext(), R.string.insert_error, Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -98,6 +98,10 @@ public class ManageImAddSheet extends BottomSheetDialogFragment {
             }
             dismiss();
         });
+    }
+
+    private boolean validateInput(String code, String word) {
+        return !code.isEmpty() && !word.isEmpty();
     }
 
     @Override

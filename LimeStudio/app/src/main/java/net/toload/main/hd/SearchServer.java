@@ -140,7 +140,11 @@ public class SearchServer {
         // This prevents NullPointerException during object construction
         if (mContext != null) {
             mLIMEPref = new LIMEPreferenceManager(mContext.getApplicationContext());
-            if (dbadapter == null) dbadapter = new LimeDB(mContext);
+            if (dbadapter == null) {
+                dbadapter = new LimeDB(mContext);
+            } else {
+                dbadapter.openDBConnection(false);
+            }
         } else {
             // For null context (test scenarios), create a minimal preference manager
             // This allows the object to be constructed without crashing

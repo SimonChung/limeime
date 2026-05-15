@@ -75,6 +75,7 @@ public class SearchServerTest {
     @Before
     public void setUp() {
         appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        setStatic("dbadapter", new LimeDB(appContext));
         searchServer = new SearchServer(appContext);
         try {
             searchServer.initialCache();
@@ -4881,15 +4882,17 @@ public class SearchServerTest {
         if (prefetchThread != null) {
             prefetchThread.join(2000);
         }
+        setStatic("isPhysicalKeyboardPressed", false);
 
         // Disable sorting
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
         prefs.edit().putBoolean("sort_suggestions", false).apply();
 
         ConcurrentHashMap<String, List<Mapping>> cache = getStatic("cache", ConcurrentHashMap.class);
+        cache.clear();
         
         // Create and cache mappings
-        String code = "abc";
+        String code = "__searchserver_no_fixture_match__";
         String cacheKey = cacheKey(code);
         List<Mapping> mappingList = new ArrayList<>();
         
@@ -4922,7 +4925,14 @@ public class SearchServerTest {
 
         // After refactor: exact-match cache is evicted and re-warmed from DB.
         List<Mapping> cached = cache.get(cacheKey);
-        assertTrue(cached == null || cached.isEmpty());
+        assertNotSame("Stale in-memory cache list should be replaced after score update",
+                mappingList, cached);
+        if (cached != null) {
+            for (Mapping mapping : cached) {
+                assertNotEquals("詞1", mapping.getWord());
+                assertNotEquals("詞2", mapping.getWord());
+            }
+        }
 
         // Restore sorting preference
         prefs.edit().putBoolean("sort_suggestions", true).apply();

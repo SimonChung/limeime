@@ -147,31 +147,23 @@ public class MainActivityTest {
     }
 
     /**
-     * Test: NavigationManager implements NavigationDrawerCallbacks
+     * Test: NavigationManager owns navigation callback behavior
      * 
      * Verifies proper delegation pattern.
      */
     @Test
-    public void testNavigationManagerImplementsCallbacks() {
+    public void testNavigationManagerOwnsNavigationBehavior() {
         try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
             scenario.onActivity(activity -> {
                 NavigationManager navManager = activity.getNavigationManager();
                 assertNotNull("NavigationManager should exist", navManager);
-                
-                // Check if NavigationManager implements the callback interface
-                Class<?>[] interfaces = navManager.getClass().getInterfaces();
-                
-                boolean implementsCallbacks = false;
-                for (Class<?> iface : interfaces) {
-                    if (iface.getSimpleName().contains("NavigationDrawerCallbacks") ||
-                        iface.getSimpleName().contains("Callbacks")) {
-                        implementsCallbacks = true;
-                        break;
-                    }
+
+                try {
+                    assertNotNull("NavigationManager should expose navigation selection handling",
+                            navManager.getClass().getMethod("navigateToFragment", int.class));
+                } catch (NoSuchMethodException e) {
+                    fail("NavigationManager should expose navigation selection handling");
                 }
-                
-                assertTrue("NavigationManager should implement NavigationDrawerCallbacks", 
-                    implementsCallbacks);
             });
         }
     }

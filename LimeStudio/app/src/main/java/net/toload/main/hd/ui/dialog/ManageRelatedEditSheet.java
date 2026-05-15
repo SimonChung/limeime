@@ -112,7 +112,7 @@ public class ManageRelatedEditSheet extends BottomSheetDialogFragment {
         view.findViewById(R.id.btn_save).setOnClickListener(v -> {
             String pword = edtWord.getText() != null ? edtWord.getText().toString().trim() : "";
             String cword = edtRelated.getText() != null ? edtRelated.getText().toString().trim() : "";
-            if (pword.isEmpty() || cword.isEmpty()) {
+            if (!validateInput(pword, cword)) {
                 Toast.makeText(requireContext(), R.string.update_error, Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -128,6 +128,10 @@ public class ManageRelatedEditSheet extends BottomSheetDialogFragment {
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
         });
+    }
+
+    private boolean validateInput(String pword, String cword) {
+        return !pword.isEmpty() && !cword.isEmpty();
     }
 
     @Override
