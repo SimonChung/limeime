@@ -78,7 +78,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     }
 
     func testDefaultSmartChineseInput() {
-        XCTAssertFalse(prefs.smartChineseInput)
+        XCTAssertTrue(prefs.smartChineseInput)
     }
 
     func testDefaultAutoChineseSymbol() {

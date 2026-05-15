@@ -2,7 +2,7 @@
 
 3-way comparison of every preference item in the LimeIME settings tree across:
 
-1. **iOS spec** — `docs/LIME_SETTINGS.md` §8 (the target design for the back-port)
+1. **iOS current/spec** — `LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift`, aligned to `docs/LIME_SETTINGS.md` §8 and Android current preference strings
 2. **Android pre-back-port** — commit `6791ab7b` (parent of the "Step 3" back-port series), three flat `PreferenceCategory` blocks (`lime_keyboard` / `lime_im` / `lime_mapping`)
 3. **Android current** — HEAD `app/src/main/res/xml/preference.xml`, 7 sectioned categories + 1 nested sub-screen, aligned to iOS §8.1–§8.7 (with §8.3 and §8.8 consolidated away, §8.9 folded into §8.4.1)
 
@@ -22,10 +22,10 @@
 |---|---|---|---|---|---|
 | `keyboard_theme` | Picker / ListPreference | 0 · 鍵盤樣式 · §8.1 鍵盤外觀 | "0" · 鍵盤樣式 · lime_keyboard | "0" · 鍵盤樣式 · pref_section_appearance | Light / dark / coloured keyboard theme. iOS adds value 6 (system follow). |
 | `keyboard_size` | Picker / ListPreference | "1" · 鍵盤大小 · §8.1 鍵盤外觀 | "1" · 鍵盤大小 · lime_keyboard | "1" · 鍵盤大小 · pref_section_appearance | Scale factor for keyboard layout. Default `"1"` (一般) on both iOS and Android. |
-| `font_size` | Picker / ListPreference | "1" · 候選字字型大小 · §8.1 鍵盤外觀 | **"1"** · 字型大小 · lime_keyboard | "1" · 字型大小 · pref_section_appearance | Candidate-strip font scale. Moved from §8.3 into §8.1 (UI grouping). |
+| `font_size` | Picker / ListPreference | "1" · 字型大小 · §8.1 鍵盤外觀 | **"1"** · 字型大小 · lime_keyboard | "1" · 字型大小 · pref_section_appearance | Candidate-strip font scale. Moved from §8.3 into §8.1 (UI grouping). |
 | `number_row_in_english` | Toggle / CheckBox | true · 數字列英文鍵盤 · §8.1 鍵盤外觀 (**iPhone-only** — hidden on iPad) | true · 數字列英文鍵盤 · lime_keyboard | true · 數字列英文鍵盤 · pref_section_appearance | Digit row in English layout. Moved from §8.3 into §8.1 (UI grouping). iOS gates to iPhone in `PreferencesTabView.swift`. |
-| `show_arrow_key` | Picker / ListPreference | 0 · 顯示方向鍵 · §8.1 鍵盤外觀 | "0" · 顯示方向鍵 · lime_keyboard | "0" · 顯示方向鍵 · pref_section_appearance | 無 / 鍵盤上方 / 鍵盤下方. |
-| `split_keyboard_mode` | Picker / ListPreference | 0 · 分離鍵盤 · §8.1 鍵盤外觀 (iPad-only) | "0" · 分離鍵盤 · lime_keyboard | "0" · 分離鍵盤 · pref_section_appearance | 0=off, 1=on, 2=landscape only. |
+| `show_arrow_key` | Picker / ListPreference | 0 · 顯示方向鍵 · §8.1 鍵盤外觀 | "0" · 顯示方向鍵 · lime_keyboard | "0" · 顯示方向鍵 · pref_section_appearance | 無 / 軟鍵盤上方 / 軟鍵盤下方. |
+| `split_keyboard_mode` | Picker / ListPreference | 0 · 分離鍵盤 · §8.1 鍵盤外觀 (iPad-only) | "0" · 分離鍵盤 · lime_keyboard | "0" · 分離鍵盤 · pref_section_appearance | 0=關閉, 1=開啟, 2=僅橫向開啟. |
 
 ## 8.2 Keyboard Feedback (鍵盤回饋)
 
@@ -39,20 +39,21 @@
 
 | Pref Key | Type | iOS (default · label · category) | Android pre-back-port (default · label · category) | Android current (default · label · category) | Function |
 |---|---|---|---|---|---|
-| `smart_chinese_input` | Toggle / CheckBox | true · 智慧組詞 · §8.4 輸入法行為 | false · 開啟中文智慧選字 · lime_im · summary=部份輸入法可能會影響中英混打功能 | true · 開啟中文智慧選字 · pref_section_im_behaviour · summary=部份輸入法可能會影響中英混打功能 | Smart phrase composition. Defaults reconciled to `true` on both iOS and Android current; pre-back-port Android was `false`. |
-| `auto_chinese_symbol` | Toggle / CheckBox | false · 自動中文標點 · §8.4 輸入法行為 | false · 自動中文標點模式 · lime_im · summary=無候選字詞時顯示中文標點選項 | false · 自動中文標點模式 · pref_section_im_behaviour · summary=無候選字詞時顯示中文標點選項 | Auto-insert Chinese punctuation when no candidate. |
-| `candidate_switch` | Toggle / CheckBox | true · 滑動選取候選字 · §8.4 輸入法行為 | true · 滑動選取 · **lime_mapping (§8.6)** · summary=滑動選取輸入法建議文字 | true · 滑動選取 · pref_section_im_behaviour | Swipe vs paged candidate selection. Android current re-categorised from §8.6 to §8.4 to match iOS. |
-| `persistent_language_mode` | Toggle / CheckBox | false · 記憶中英模式 · §8.4 輸入法行為 | false · 記憶中英模式 · **lime_keyboard (§8.1)** · summary=下次切換前保持中英模式 | false · 記憶中英模式 · pref_section_im_behaviour | Persist CN/EN mode across app focus. Re-classified from §8.8 to §8.4 (UI grouping). |
-| `enable_emoji` | Toggle / CheckBox | true · 顯示 Emoji · §8.4 輸入法行為 | **false** · 開啟 EMOJI 顯示 · lime_keyboard | true · 開啟 EMOJI 顯示 · pref_section_im_behaviour | Show emoji candidates. Moved from §8.1 into §8.4 (IM behaviour grouping). |
-| `enable_emoji_position` | Picker / ListPreference | 3 · Emoji 顯示位置 · §8.4 輸入法行為 | "3" · 設定 EMOJI 候選列顯示位置 · lime_keyboard | "3" · 設定 EMOJI 候選列顯示位置 · pref_section_im_behaviour | Position index of emoji in candidate strip; gated by `enable_emoji`. Moved from §8.1 into §8.4. |
-| `reverse_lookup_notify` | Toggle / CheckBox | true · 字根反查提示 · §8.4 輸入法行為 | true · 啟用字根反查跳出提示 · lime_im | true · 啟用字根反查跳出提示 · pref_section_im_behaviour | Popup when a reverse-lookup candidate is committed. Re-classified from §8.8 to §8.4. |
+| `smart_chinese_input` | Toggle / CheckBox | true · 開啟中文智慧選字 · §8.4 輸入法行為 · subtext=部份輸入法可能會影響中英混打功能 | false · 開啟中文智慧選字 · lime_im · summary=部份輸入法可能會影響中英混打功能 | true · 開啟中文智慧選字 · pref_section_im_behaviour · summary=部份輸入法可能會影響中英混打功能 | Smart phrase composition. Defaults reconciled to `true` on both iOS and Android current; pre-back-port Android was `false`. |
+| `auto_chinese_symbol` | Toggle / CheckBox | false · 自動中文標點模式 · §8.4 輸入法行為 · subtext=無候選字詞時顯示中文標點選項 | false · 自動中文標點模式 · lime_im · summary=無候選字詞時顯示中文標點選項 | false · 自動中文標點模式 · pref_section_im_behaviour · summary=無候選字詞時顯示中文標點選項 | Auto-insert Chinese punctuation when no candidate. |
+| `candidate_switch` | Toggle / CheckBox | true · 滑動選取 · §8.4 輸入法行為 · subtext=滑動選取輸入法建議文字 | true · 滑動選取 · **lime_mapping (§8.6)** · summary=滑動選取輸入法建議文字 | true · 滑動選取 · pref_section_im_behaviour | Swipe vs paged candidate selection. Android current re-categorised from §8.6 to §8.4 to match iOS. |
+| `persistent_language_mode` | Toggle / CheckBox | false · 記憶中英模式 · §8.4 輸入法行為 · subtext=下次切換前保持中英模式 | false · 記憶中英模式 · **lime_keyboard (§8.1)** · summary=下次切換前保持中英模式 | false · 記憶中英模式 · pref_section_im_behaviour | Persist CN/EN mode across app focus. Re-classified from §8.8 to §8.4 (UI grouping). |
+| `enable_emoji` | Toggle / CheckBox | true · 開啟 EMOJI 顯示 · §8.4 輸入法行為 · subtext=依字根或中文組字顯示圖示, 由於字型支援的差異所以部份圖示可能無法正確顯示 | **false** · 開啟 EMOJI 顯示 · lime_keyboard | true · 開啟 EMOJI 顯示 · pref_section_im_behaviour | Show emoji candidates. Moved from §8.1 into §8.4 (IM behaviour grouping). |
+| `enable_emoji_button` | Toggle / CheckBox | *(no iOS row)* | *(new)* | true · 顯示 Emoji 鍵盤按鈕 · pref_section_im_behaviour · summary=在英文鍵盤顯示 😀 按鈕以開啟 Emoji 面板 | Android setting for showing the dedicated emoji panel button. iOS does not currently expose this as a separate Preferences row. |
+| `enable_emoji_position` | Picker / ListPreference | 3 · 設定 EMOJI 候選列顯示位置 · §8.4 輸入法行為 | "3" · 設定 EMOJI 候選列顯示位置 · lime_keyboard | "3" · 設定 EMOJI 候選列顯示位置 · pref_section_im_behaviour | Position index of emoji in candidate strip; default 3. When comma/period full-width Chinese punctuation is present at that slot, emoji insertion moves after it so punctuation stays before emoji. Gated by `enable_emoji`. Moved from §8.1 into §8.4. |
+| `reverse_lookup_notify` | Toggle / CheckBox | true · 啟用字根反查跳出提示 · §8.4 輸入法行為 | true · 啟用字根反查跳出提示 · lime_im | true · 啟用字根反查跳出提示 · pref_section_im_behaviour | Popup when a reverse-lookup candidate is committed. Re-classified from §8.8 to §8.4. |
 | `reverse_lookup_screen` | Drill-down / PreferenceScreen | *(screen)* · 字根反查設定 · §8.4.1 字根反查設定 | *(flat entries in lime_im; no wrapper)* | *(screen)* · 字根反查設定 · pref_section_im_behaviour | Opens the reverse-lookup sub-screen. Last item in §8.4 on both platforms. |
 
-## 8.5 Han Conversion (漢字轉換)
+## 8.5 Han Conversion (簡繁轉換)
 
 | Pref Key | Type | iOS (default · label · category) | Android pre-back-port (default · label · category) | Android current (default · label · category) | Function |
 |---|---|---|---|---|---|
-| `han_convert_option` | Picker (`.segmented` on iOS) / ListPreference | 0 · 簡繁轉換 · §8.5 漢字轉換 | "0" · 中文簡/繁體字碼轉換 · lime_im | "0" · 中文簡/繁體字碼轉換 · pref_section_han_convert | 0=off, 1=T→S, 2=S→T. |
+| `han_convert_option` | Picker (`.segmented` on iOS) / ListPreference | 0 · 中文簡/繁體字碼轉換 · §8.5 簡繁轉換 | "0" · 中文簡/繁體字碼轉換 · lime_im | "0" · 中文簡/繁體字碼轉換 · pref_section_han_convert | 0=無, 1=繁轉簡, 2=簡轉繁. |
 
 ## 8.6 Related Phrases & Learning (關聯字與學習)
 
@@ -60,8 +61,8 @@
 |---|---|---|---|---|---|
 | `similiar_enable` | Toggle / CheckBox | true · 啟用關聯字庫 · §8.6 關聯字與學習 | true · 啟用關聯字庫 · lime_mapping · summary=啟用關聯字庫功能 | true · 啟用關聯字庫 · pref_section_related_learning | Toggle related-phrase dictionary. Aligned to iOS §8.6 on both platforms. |
 | `similiar_list` | Picker / ListPreference | 20 · 建議字顯示數量 · §8.6 關聯字與學習 | "20" · 建議字顯示數量 · lime_mapping | "20" · 建議字顯示數量 · pref_section_related_learning | Suggestion-count limit: 0 / 10 / 20 / 30 / 40 / 50. Aligned to iOS §8.6 on both platforms. |
-| `candidate_switch` | Toggle / CheckBox | true · 滑動選取候選字 · §8.4 輸入法行為 (iOS) | true · 滑動選取 · lime_mapping · summary=滑動選取輸入法建議文字 | true · 滑動選取 · pref_section_related_learning | Android keeps here; iOS moves to §8.4. |
-| `candidate_suggestion` | Toggle / CheckBox | true · 自動學習關聯字 · §8.6 關聯字與學習 | true · 啟動自建關聯字 · lime_mapping · summary=依輸入文字自動建立關聯字 | true · 啟動自建關聯字 · pref_section_related_learning | Auto-build related phrases from typed sequences. |
+| `candidate_switch` | Toggle / CheckBox | true · 滑動選取 · §8.4 輸入法行為 (iOS) | true · 滑動選取 · lime_mapping · summary=滑動選取輸入法建議文字 | true · 滑動選取 · pref_section_related_learning | Android keeps here; iOS moves to §8.4. |
+| `candidate_suggestion` | Toggle / CheckBox | true · 啟動自建關聯字 · §8.6 關聯字與學習 · subtext=依輸入文字自動建立關聯字 | true · 啟動自建關聯字 · lime_mapping · summary=依輸入文字自動建立關聯字 | true · 啟動自建關聯字 · pref_section_related_learning | Auto-build related phrases from typed sequences. |
 | `learn_phrase` | Toggle / CheckBox | true · 自動學習新詞 · §8.6 關聯字與學習 | true · 自動學習新詞 · lime_mapping · summary=從常用關聯字學習新詞 | true · 自動學習新詞 · pref_section_related_learning | Promote frequent phrases into the dictionary. |
 | `learning_switch` | Toggle / CheckBox | true · 啟動選取排序 · §8.6 關聯字與學習 | true · 啟動選取排序 · lime_mapping · summary=依選取次數排序選字清單 | true · 啟動選取排序 · pref_section_related_learning | Sort candidate list by selection frequency. |
 
@@ -69,7 +70,7 @@
 
 | Pref Key | Type | iOS (default · label · category) | Android pre-back-port (default · label · category) | Android current (default · label · category) | Function |
 |---|---|---|---|---|---|
-| `english_dictionary_enable` | Toggle / CheckBox | true · 啟用英文建議字 · §8.7 英文字典 | true · 啟用英文字典 · lime_mapping · summary=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · pref_section_english_dictionary | Show English suggestions while in English IM mode. |
+| `english_dictionary_enable` | Toggle / CheckBox | true · 啟用英文字典 · §8.7 英文字典 · subtext=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · lime_mapping · summary=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · pref_section_english_dictionary | Show English suggestions while in English IM mode. |
 
 ## 5.2 IMDetailView — per-IM prefs (cross-listed)
 
@@ -158,7 +159,7 @@ Pre-back-port had **3 flat categories** (`lime_keyboard` / `lime_im` / `lime_map
 |---|---|---|
 | lime_keyboard (鍵盤) | pref_section_appearance (§8.1) | keyboard_theme, keyboard_size, font_size, number_row_in_english, show_arrow_key, split_keyboard_mode |
 | lime_keyboard | pref_section_feedback (§8.2) | vibrate_on_keypress, vibrate_level, sound_on_keypress |
-| lime_keyboard | pref_section_im_behaviour (§8.4) | enable_emoji, enable_emoji_position, persistent_language_mode |
+| lime_keyboard | pref_section_im_behaviour (§8.4) | enable_emoji, enable_emoji_button, enable_emoji_position, persistent_language_mode |
 | lime_keyboard | pref_section_physical_keyboard | hide_software_keyboard_typing_with_physical, switch_english_mode, switch_english_mode_shift |
 | lime_im (輸入法) | pref_section_im_behaviour (§8.4) | smart_chinese_input, auto_chinese_symbol, reverse_lookup_notify |
 | lime_im | pref_section_han_convert (§8.5) | han_convert_option |
@@ -177,7 +178,7 @@ Pre-back-port had **3 flat categories** (`lime_keyboard` / `lime_im` / `lime_map
 
 ## Source paths
 
-- iOS spec: `docs/LIME_SETTINGS.md` §8 (sections §8.1, §8.2, §8.4, §8.4.1 Reverse Lookup sub-screen, §8.5, §8.6, §8.7).
+- iOS current/spec: `LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift`; spec background in `docs/LIME_SETTINGS.md` §8 (sections §8.1, §8.2, §8.4, §8.4.1 Reverse Lookup sub-screen, §8.5, §8.6, §8.7).
 - Android pre-back-port: `git show 6791ab7b:LimeStudio/app/src/main/res/xml/preference.xml` (xml-v17 byte-identical). String resolution via `git show 6791ab7b:LimeStudio/app/src/main/res/values/strings.xml`.
 - Android current: `LimeStudio/app/src/main/res/xml/preference.xml`; strings in `app/src/main/res/values/strings_settings.xml` and `strings.xml`.
 - Gap-tracking & priority cross-reference: `docs/ANDROID_BACKPORT_GAP.md`.

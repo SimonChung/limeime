@@ -272,7 +272,7 @@
         </PreferenceScreen>
     </PreferenceCategory>
 
-    <!-- 5. 漢字轉換 -->
+    <!-- 5. 簡繁轉換 -->
     <PreferenceCategory
         android:key="pref_section_han_convert"
         android:title="@string/pref_section_han_convert">

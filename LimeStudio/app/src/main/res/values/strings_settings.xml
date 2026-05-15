@@ -829,7 +829,7 @@
     <string name="pref_section_feedback">鍵盤回饋</string>
     <string name="pref_section_font_display">字型與顯示</string>
     <string name="pref_section_im_behaviour">輸入法行為</string>
-    <string name="pref_section_han_convert">漢字轉換</string>
+    <string name="pref_section_han_convert">簡繁轉換</string>
     <string name="pref_section_related_learning">關聯字與學習</string>
     <string name="pref_section_english_dictionary">英文字典</string>
     <string name="pref_section_physical_keyboard">外接鍵盤</string>

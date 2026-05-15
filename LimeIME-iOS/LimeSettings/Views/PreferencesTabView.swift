@@ -56,13 +56,13 @@ struct PreferencesTabView: View {
     private let sizeOptions     = ["1.2", "1.1", "1", "0.9", "0.8"]
     private let sizeLabels      = ["特大", "大", "一般", "小", "特小"]
     private let arrowOptions    = [0, 1, 2]
-    private let arrowLabels     = ["無", "鍵盤上方", "鍵盤下方"]
+    private let arrowLabels     = ["無", "軟鍵盤上方", "軟鍵盤下方"]
     private let splitOptions    = [0, 1, 2]
-    private let splitLabels     = ["關閉", "開啟", "僅橫向"]
+    private let splitLabels     = ["關閉", "開啟", "僅橫向開啟"]
     private let vibLevelOptions = [10, 20, 40, 60, 80]
     private let vibLevelLabels  = ["特弱", "弱", "中", "強", "特強"]
     private let hanOptions      = [0, 1, 2]
-    private let hanLabels       = ["不轉換", "繁→簡", "簡→繁"]
+    private let hanLabels       = ["無", "繁轉簡", "簡轉繁"]
     private let similiarOpts    = [0, 10, 20, 30, 40, 50]
 
     @ViewBuilder
@@ -90,7 +90,7 @@ struct PreferencesTabView: View {
                             Text(sizeLabels[i]).tag(sizeOptions[i])
                         }
                     }
-                    Picker("候選字字型大小", selection: $fontSize) {
+                    Picker("字型大小", selection: $fontSize) {
                         ForEach(0..<sizeOptions.count, id: \.self) { i in
                             Text(sizeLabels[i]).tag(sizeOptions[i])
                         }
@@ -127,18 +127,18 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.4
                 Section(header: Text("輸入法行為")) {
-                    Toggle(isOn: $smartChineseInput) { prefRow("智慧組詞", "部份輸入法可能會影響中英混打功能") }
-                    Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點", "無候選字詞時顯示中文標點選項") }
-                    Toggle(isOn: $candidateSwitch) { prefRow("滑動選取候選字", "滑動選取輸入法建議文字") }
+                    Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧選字", "部份輸入法可能會影響中英混打功能") }
+                    Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點模式", "無候選字詞時顯示中文標點選項") }
+                    Toggle(isOn: $candidateSwitch) { prefRow("滑動選取", "滑動選取輸入法建議文字") }
                     Toggle(isOn: $persistentLanguageMode) { prefRow("記憶中英模式", "下次切換前保持中英模式") }
-                    Toggle(isOn: $enableEmoji) { prefRow("顯示 Emoji", "依字根或中文組字顯示圖示，由於字型支援的差異所以部份圖示可能無法正確顯示") }
-                    Picker("Emoji 顯示位置", selection: $emojiPosition) {
+                    Toggle(isOn: $enableEmoji) { prefRow("開啟 EMOJI 顯示", "依字根或中文組字顯示圖示, 由於字型支援的差異所以部份圖示可能無法正確顯示") }
+                    Picker("設定 EMOJI 候選列顯示位置", selection: $emojiPosition) {
                         ForEach(2...10, id: \.self) { pos in
-                            Text("第 \(pos) 個候選後").tag(pos)
+                            Text("第 \(pos) 候選字後顯示").tag(pos)
                         }
                     }
                     .disabled(!enableEmoji)
-                    Toggle("字根反查提示", isOn: $reverseLookupNotify)
+                    Toggle("啟用字根反查跳出提示", isOn: $reverseLookupNotify)
                     NavigationLink(destination: ReverseLookupSettingsView()) {
                         Label("字根反查設定", systemImage: "magnifyingglass")
                     }
@@ -147,8 +147,8 @@ struct PreferencesTabView: View {
                 // §5.2.2 — 鍵盤類型 lives in IMDetailView for the phonetic IM, not here.
 
                 // MARK: §8.5
-                Section(header: Text("漢字轉換")) {
-                    Picker("簡繁轉換", selection: $hanConvertOption) {
+                Section(header: Text("簡繁轉換")) {
+                    Picker("中文簡/繁體字碼轉換", selection: $hanConvertOption) {
                         ForEach(0..<hanOptions.count, id: \.self) { i in
                             Text(hanLabels[i]).tag(hanOptions[i])
                         }
@@ -165,23 +165,16 @@ struct PreferencesTabView: View {
                         }
                     }
                     .disabled(!similiarEnable)
-                    Toggle(isOn: $candidateSuggestion) { prefRow("自動學習關聯字", "依輸入文字自動建立關聯字") }
+                    Toggle(isOn: $candidateSuggestion) { prefRow("啟動自建關聯字", "依輸入文字自動建立關聯字") }
                     Toggle(isOn: $learnPhrase) { prefRow("自動學習新詞", "從常用關聯字學習新詞") }
                     Toggle(isOn: $learningSwitch) { prefRow("啟動選取排序", "依選取次數排序選字清單") }
                 }
 
                 // MARK: §8.7
                 Section(header: Text("英文字典")) {
-                    Toggle(isOn: $englishDictEnable) { prefRow("啟用英文建議字", "當使用英文輸入模式時，顯示英文建議字") }
+                    Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字") }
                 }
 
-                // MARK: About
-                Section(header: Text("關於")) {
-                    LabeledContent("版本", value: appVersion())
-                    LabeledContent("授權", value: "GPL-3.0")
-                    Link("原始碼 (GitHub)",
-                         destination: URL(string: "https://github.com/lime-ime/limeime")!)
-                }
             }
             .navigationTitle("喜好設定")
             .navigationBarTitleDisplayMode(.large)
@@ -192,9 +185,4 @@ struct PreferencesTabView: View {
         }
     }
 
-    private func appVersion() -> String {
-        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
-        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
-        return "\(v) (\(b))"
-    }
 }

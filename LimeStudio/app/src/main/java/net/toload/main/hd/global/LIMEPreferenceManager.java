@@ -271,6 +271,9 @@ public class LIMEPreferenceManager {
 		StringBuilder state = new StringBuilder();
 		HashMap<String, String> imMap = new HashMap<>();
 		for(ImConfig i :imlist){
+			if(i == null || i.isDisable()) {
+				continue;
+			}
 			imMap.put(i.getCode(), i.getCode());
 		}
 
