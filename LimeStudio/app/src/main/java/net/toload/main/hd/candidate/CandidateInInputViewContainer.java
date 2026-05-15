@@ -103,6 +103,7 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 mDismissButton.setMinimumHeight(0);
                 mDismissButton.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
                 mDismissButton.setBackground(mCandidateView.makeDismissButtonBackground());
+                mDismissButton.post(() -> mCandidateView.storePopupDismissButtonWidth(mDismissButton));
             }
             if (mRightButton != null) {
                 mRightButton.setBackgroundColor(mCandidateView.mColorBackground);

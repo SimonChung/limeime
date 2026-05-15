@@ -146,6 +146,13 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         void onCancel();
 
         /**
+         * Called when the user slides horizontally on the space key.
+         *
+         * @param steps signed caret steps; negative moves left, positive moves right
+         */
+        void moveCaretBy(int steps);
+
+        /**
          * Called when the user quickly moves the finger from right to
          * left.
          */
@@ -1406,6 +1413,9 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
             public void onCancel() {
                 mKeyboardActionListener.onCancel();
                 dismissPopupKeyboard();
+            }
+
+            public void moveCaretBy(int steps) {
             }
 
             public void swipeLeft() {

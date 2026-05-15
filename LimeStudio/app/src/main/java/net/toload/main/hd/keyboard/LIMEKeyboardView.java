@@ -51,15 +51,26 @@ public class LIMEKeyboardView extends LIMEKeyboardBaseView {
    // private Keyboard mPhoneKeyboard;
   
     private final int mKeyHeight;
+    private final int mSpaceCaretDeadZone;
+    private final int mSpaceCaretStepPx;
+    private int mSpaceCaretPointerId = -1;
+    private int mSpaceCaretStartX;
+    private int mLastSpaceCaretStep;
+    private boolean mSpaceCaretMoved;
+    private boolean mSpaceCaretCancelled;
 
 	public LIMEKeyboardView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		mKeyHeight = context.getResources().getDimensionPixelSize(R.dimen.key_height);
+        mSpaceCaretDeadZone = context.getResources().getDimensionPixelSize(R.dimen.space_caret_dead_zone);
+        mSpaceCaretStepPx = context.getResources().getDimensionPixelSize(R.dimen.space_caret_step);
 	}
 
 	public LIMEKeyboardView(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
 		mKeyHeight = context.getResources().getDimensionPixelSize(R.dimen.key_height);
+        mSpaceCaretDeadZone = context.getResources().getDimensionPixelSize(R.dimen.space_caret_dead_zone);
+        mSpaceCaretStepPx = context.getResources().getDimensionPixelSize(R.dimen.space_caret_step);
 	}
 
 	@Override
@@ -90,25 +101,127 @@ public class LIMEKeyboardView extends LIMEKeyboardBaseView {
 	public boolean onTouchEvent(@NonNull MotionEvent me) {
 		if(DEBUG) Log.i(TAG, "OnTouchEvent(), me.getActionMasked() =" + me.getActionMasked());
 		LIMEKeyboard keyboard = (LIMEKeyboard) getKeyboard();
-		if (me.getActionMasked() == MotionEvent.ACTION_DOWN) {
+        final int action = me.getActionMasked();
+		if (action == MotionEvent.ACTION_DOWN) {
 			if(DEBUG) Log.i(TAG, "OnTouchEvent(), ACTION_DOWN");
 			keyboard.keyReleased();
+            mSpaceCaretPointerId = me.getPointerId(0);
+            mSpaceCaretStartX = (int) me.getX(0);
+            mLastSpaceCaretStep = 0;
+            mSpaceCaretMoved = false;
+            mSpaceCaretCancelled = false;
+            if (!isTouchOnSpaceKey((int) me.getX(0), (int) me.getY(0))) {
+                mSpaceCaretPointerId = -1;
+            }
 		}
 
-		if (me.getActionMasked() == MotionEvent.ACTION_UP) {
-			int spaceDragDirection = keyboard.getSpaceDragDirection();
-			if(DEBUG) Log.i(TAG, "OnTouchEvent(), ACTION_UP, spaceDragDirection:" + spaceDragDirection);
-			if (spaceDragDirection != 0) {
-				getOnKeyboardActionListener().onKey(
-						spaceDragDirection == 1 ? KEYCODE_NEXT_IM : KEYCODE_PREV_IM,
-								null,0,0);
-				me.setAction(MotionEvent.ACTION_CANCEL);
-				keyboard.keyReleased();
-				return super.onTouchEvent(me);
-			}
-		}
+        if (action == MotionEvent.ACTION_MOVE && handleSpaceCaretMove(me, keyboard)) {
+            return true;
+        }
+
+        if (isEndingActiveSpaceCaret(action, me)) {
+            final boolean consumed = mSpaceCaretMoved;
+            resetSpaceCaretState();
+            if (consumed) {
+                keyboard.keyReleased();
+                return true;
+            }
+        }
+
 		return super.onTouchEvent(me);
 	}
+
+    private boolean handleSpaceCaretMove(@NonNull MotionEvent me, LIMEKeyboard keyboard) {
+        if (mSpaceCaretPointerId == -1) {
+            return false;
+        }
+        final int pointerIndex = me.findPointerIndex(mSpaceCaretPointerId);
+        if (pointerIndex < 0) {
+            return false;
+        }
+
+        final int dx = (int) me.getX(pointerIndex) - mSpaceCaretStartX;
+        if (Math.abs(dx) < mSpaceCaretDeadZone) {
+            return false;
+        }
+
+        if (!mSpaceCaretCancelled) {
+            mSpaceCaretCancelled = true;
+            mSpaceCaretMoved = true;
+            MotionEvent cancelEvent = MotionEvent.obtain(me);
+            cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
+            super.onTouchEvent(cancelEvent);
+            cancelEvent.recycle();
+            keyboard.keyReleased();
+        }
+
+        final int step = (dx < 0 ? -1 : 1) * stepsForSpaceDisplacement(Math.abs(dx));
+        final int delta = step - mLastSpaceCaretStep;
+        if (delta != 0) {
+            mLastSpaceCaretStep = step;
+            mSpaceCaretMoved = true;
+            getOnKeyboardActionListener().moveCaretBy(delta);
+        }
+        return true;
+    }
+
+    private boolean isEndingActiveSpaceCaret(int action, @NonNull MotionEvent me) {
+        if (mSpaceCaretPointerId == -1) {
+            return false;
+        }
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            return true;
+        }
+        if (action == MotionEvent.ACTION_POINTER_UP) {
+            return me.getPointerId(me.getActionIndex()) == mSpaceCaretPointerId;
+        }
+        return false;
+    }
+
+    private void resetSpaceCaretState() {
+        mSpaceCaretPointerId = -1;
+        mSpaceCaretStartX = 0;
+        mLastSpaceCaretStep = 0;
+        mSpaceCaretMoved = false;
+        mSpaceCaretCancelled = false;
+    }
+
+    private boolean isTouchOnSpaceKey(int x, int y) {
+        if (getKeyboard() == null) {
+            return false;
+        }
+        for (Key key : getKeyboard().getKeys()) {
+            if (key.codes != null && key.codes.length > 0
+                    && key.codes[0] == LIMEBaseKeyboard.KEYCODE_SPACE
+                    && x >= key.x && x < key.x + key.width
+                    && y >= key.y && y < key.y + key.height) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int stepsForSpaceDisplacement(int absDx) {
+        int travel = absDx - mSpaceCaretDeadZone;
+        if (travel <= 0) {
+            return 0;
+        }
+
+        final float density = getResources().getDisplayMetrics().density;
+        final float t1 = 60f * density;
+        final float t2 = 140f * density;
+        final float step = mSpaceCaretStepPx;
+
+        final float steps;
+        if (travel <= t1) {
+            steps = travel / step;
+        } else if (travel <= t2) {
+            steps = t1 / step + (travel - t1) / (step / 2f);
+        } else {
+            steps = t1 / step + (t2 - t1) / (step / 2f) + (travel - t2) / (step / 4f);
+        }
+        return (int) steps;
+    }
 	
 
 }

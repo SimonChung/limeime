@@ -41,7 +41,6 @@
     <dimen name="notice_text_size">20sp</dimen>
     <dimen name="keyboard_vertical_correction">-0.05in</dimen>
     <dimen name="spacebar_vertical_correction">0dp</dimen>
-    <dimen name="spacebar_preview_text_size">26sp</dimen>
     <dimen name="spacebar_preview_top_padding">20dp</dimen>
  	<dimen name="mini_keyboard_vertical_correction">-0.05in</dimen>
 

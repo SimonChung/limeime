@@ -26,7 +26,6 @@
 
     <style name="LIMEKeyboard">
         <item name="spaceKeyVerticalCorrection">@dimen/spacebar_vertical_correction</item>
-        <item name="spaceKeySlidingTextSize">@dimen/spacebar_preview_text_size</item>
         <item name="spaceKeyIcon">@drawable/sym_keyboard_space_light</item>
         <item name="spaceKeyPreviewIcon">@drawable/sym_flat_keyboard_space</item>
         <item name="enterKeyIcon">@drawable/sym_keyboard_return_light</item>
@@ -35,9 +34,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_light</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted</item>
-        <item name="spaceKeyTextColor">@color/second_foreground_light</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next</item>
     </style>
     <style name="LIMEKeyboard.Light" parent = "LIMEKeyboard">
         <item name="spaceKeyIcon">@drawable/sym_keyboard_space_light</item>
@@ -48,9 +44,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_light</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted</item>
-        <item name="spaceKeyTextColor">@color/second_foreground_light</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next</item>
     </style>
     <style name="LIMEKeyboard.Dark" parent = "LIMEKeyboard">
         <item name="spaceKeyIcon">@drawable/sym_keyboard_space_dark</item>
@@ -61,9 +54,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_dark</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted</item>
-        <item name="spaceKeyTextColor">@color/third_foreground_dark</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next</item>
     </style>
 
     <style name="LIMEKeyboard.Pink" parent = "LIMEKeyboard">
@@ -75,9 +65,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_white</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift_pink</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted_pink</item>
-        <item name="spaceKeyTextColor">@color/color_white</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous_white</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next_white</item>
     </style>
 
     <style name="LIMEKeyboard.TechBlue" parent = "LIMEKeyboard">
@@ -89,9 +76,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_white</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift_tech_blue</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted_tech_blue</item>
-        <item name="spaceKeyTextColor">@color/color_white</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous_white</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next_white</item>
     </style>
 
     <style name="LIMEKeyboard.FashionPurple" parent = "LIMEKeyboard">
@@ -103,9 +87,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_white</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift_fashion_purple</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted_fashion_purple</item>
-        <item name="spaceKeyTextColor">@color/color_white</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous_white</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next_white</item>
     </style>
 
 
@@ -118,9 +99,6 @@
         <item name ="deleteKeyIcon">@drawable/sym_keyboard_delete_white</item>
         <item name ="shiftKeyIcon">@drawable/sym_keyboard_shift_relax_green</item>
         <item name ="shiftKeyShiftedIcon">@drawable/sym_keyboard_shift_shifted_relax_green</item>
-        <item name="spaceKeyTextColor">@color/color_white</item>
-        <item name="spaceKeySlidingLeftArrow">@drawable/sym_keyboard_previous_white</item>
-        <item name="spaceKeySlidingRightArrow">@drawable/sym_keyboard_next_white</item>
     </style>
 
     <style name="LIMEKeyboardLayout">

@@ -116,11 +116,7 @@
         <attr name="shiftKeyIcon" format="reference" />
         <attr name="shiftKeyShiftedIcon" format="reference" />
         <attr name="deleteKeyIcon" format="reference" />
-        <attr name="spaceKeyTextColor" format="color" />
         <attr name="spaceKeyVerticalCorrection" format="dimension" />
-        <attr name="spaceKeySlidingTextSize" format="dimension" />
-        <attr name="spaceKeySlidingLeftArrow" format="reference" />
-        <attr name="spaceKeySlidingRightArrow" format="reference" />
 
     </declare-styleable>
 
@@ -217,4 +213,3 @@
 
 
 </resources>
-

@@ -79,6 +79,7 @@ public class CandidateViewContainer extends LinearLayout implements OnTouchListe
                 mButtonDismiss.setMinimumHeight(0);
                 mButtonDismiss.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
                 mButtonDismiss.setBackground(mCandidateView.makeDismissButtonBackground());
+                mButtonDismiss.post(() -> mCandidateView.storePopupDismissButtonWidth(mButtonDismiss));
             }
             mButtonExpand.setBackgroundColor(mCandidateView.mColorBackground);
             mButtonExpand.setImageDrawable(mCandidateView.mDrawableExpandDownButton);

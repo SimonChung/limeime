@@ -52,6 +52,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -176,6 +177,7 @@ public class CandidateView extends View implements View.OnClickListener {
     private boolean candidateExpanded = false;
     private PopupWindow mLimeToastPopup;
     private TextView mLimeToastTextView;
+    private int mPopupDismissButtonWidth;
 
     private boolean waitingForMoreRecords = false;
 
@@ -790,7 +792,7 @@ public class CandidateView extends View implements View.OnClickListener {
         int[] offsetInWindow = new int[2];
         this.getLocationInWindow(offsetInWindow);
         int mPopupComposingY = offsetInWindow[1];
-        int mPopupComposingX = offsetInWindow[0];
+        int mPopupComposingX = popupBaseXInWindow(offsetInWindow[0]);
 
         mPopupComposingY -= popupHeight;
 
@@ -920,7 +922,8 @@ public class CandidateView extends View implements View.OnClickListener {
         int[] offsetInWindow = new int[2];
         getLocationInWindow(offsetInWindow);
 
-        int x = offsetInWindow[0];
+        int baseX = popupBaseXInWindow(offsetInWindow[0]);
+        int x = baseX;
         int y = offsetInWindow[1] - toastHeight;
         if (embeddedComposing != null && embeddedComposing.getVisibility() == VISIBLE) {
             int[] composingOffset = new int[2];
@@ -928,12 +931,12 @@ public class CandidateView extends View implements View.OnClickListener {
             x = composingOffset[0] + embeddedComposing.getWidth() + dpToPx(8);
             y = composingOffset[1];
         } else if (mComposingTextView != null && mComposingTextView.getVisibility() == VISIBLE) {
-            x = offsetInWindow[0] + mComposingTextView.getWidth() + dpToPx(8);
+            x = baseX + mComposingTextView.getWidth() + dpToPx(8);
         }
 
         int rightEdge = offsetInWindow[0] + Math.max(getWidth(), 0);
         if (rightEdge > 0) {
-            x = Math.max(offsetInWindow[0], Math.min(x, rightEdge - toastWidth));
+            x = Math.max(baseX, Math.min(x, rightEdge - toastWidth));
         }
 
         try {
@@ -957,6 +960,37 @@ public class CandidateView extends View implements View.OnClickListener {
 
     private int dpToPx(int dp) {
         return Math.round(dp * mContext.getResources().getDisplayMetrics().density);
+    }
+
+    public void storePopupDismissButtonWidth(View dismissButton) {
+        if (dismissButton == null || mPopupDismissButtonWidth > 0) return;
+
+        int width = dismissButton.getWidth();
+        if (width <= 0) width = dismissButton.getMeasuredWidth();
+        if (width <= 0 && dismissButton.getLayoutParams() != null) {
+            width = dismissButton.getLayoutParams().width;
+        }
+
+        if (width > 0) {
+            mPopupDismissButtonWidth = width;
+        } else {
+            dismissButton.post(() -> storePopupDismissButtonWidth(dismissButton));
+        }
+    }
+
+    private int popupBaseXInWindow(int candidateLeft) {
+        int rowLeft = candidateLeft;
+        ViewParent parent = getParent();
+        if (parent instanceof View) {
+            int[] parentOffset = new int[2];
+            ((View) parent).getLocationInWindow(parentOffset);
+            rowLeft = parentOffset[0];
+        }
+        return popupBaseX(rowLeft, mPopupDismissButtonWidth);
+    }
+
+    static int popupBaseX(int rowLeft, int dismissWidth) {
+        return rowLeft + dismissWidth;
     }
 
     private static class DismissGlyphDrawable extends Drawable {

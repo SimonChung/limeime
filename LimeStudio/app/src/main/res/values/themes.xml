@@ -43,6 +43,10 @@
   <!-- Base application theme — follows system day/night. -->
   <style name="AppTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
+    <item name="android:windowDisablePreview">true</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@color/color_transparent</item>
+    <item name="android:windowSplashScreenBackground">?android:attr/colorBackground</item>
+    <item name="android:windowSplashScreenIconBackgroundColor">@color/color_transparent</item>
     <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
     <!-- Action bar follows surface/background — not affected by colorPrimary -->
     <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>

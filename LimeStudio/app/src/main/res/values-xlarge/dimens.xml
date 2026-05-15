@@ -31,7 +31,6 @@
     <dimen name="key_preview_height">180dp</dimen>
     <dimen name="spacebar_vertical_correction">4dip</dimen>
     <dimen name="spacebar_preview_top_padding">15dip</dimen>
-    <dimen name="spacebar_preview_text_size">42sp</dimen>
 
     <dimen name="candidate_stripe_height">50sp</dimen>
     <dimen name="candidate_font_size">45sp</dimen>
