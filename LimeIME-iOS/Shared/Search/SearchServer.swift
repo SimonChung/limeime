@@ -762,7 +762,7 @@ final class SearchServer {
         guard !unique.isEmpty else { return list }
 
         var result = list
-        let idx = min(insertAt, result.count)
+        let idx = adjustedEmojiInsertionIndex(in: result, requestedIndex: insertAt)
         result.insert(contentsOf: unique, at: idx)
         return result
     }
@@ -776,9 +776,26 @@ final class SearchServer {
         let unique = candidates.filter { !existingWords.contains($0.word) }
         guard !unique.isEmpty else { return list }
         var result = list
-        let idx = min(insertAt, result.count)
+        let idx = adjustedEmojiInsertionIndex(in: result, requestedIndex: insertAt)
         result.insert(contentsOf: unique, at: idx)
         return result
+    }
+
+    func adjustedEmojiInsertionIndex(in list: [Mapping], requestedIndex: Int) -> Int {
+        guard !list.isEmpty else { return 0 }
+
+        var index = min(max(requestedIndex, 0), list.count)
+        for candidateIndex in index..<list.count {
+            if isChinesePeriodOrComma(list[candidateIndex]) {
+                index = candidateIndex + 1
+                break
+            }
+        }
+        return index
+    }
+
+    private func isChinesePeriodOrComma(_ candidate: Mapping) -> Bool {
+        return candidate.isChinesePunctuationRecord || candidate.word == "，" || candidate.word == "。"
     }
 
     func injectEnglishEmoji(into list: [Mapping], word: String, insertAt: Int = 3) -> [Mapping] {

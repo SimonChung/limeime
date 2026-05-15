@@ -81,6 +81,7 @@ import net.toload.main.hd.candidate.CandidateInInputViewContainer;
 import net.toload.main.hd.candidate.CandidateView;
 import net.toload.main.hd.candidate.CandidateViewContainer;
 import net.toload.main.hd.data.ChineseSymbol;
+import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
@@ -2939,6 +2940,35 @@ public class LIMEService extends InputMethodService
         String[] fullNames = LIME.IM_FULL_NAMES;
         String[] shortNames = LIME.IM_SHORT_NAMES;
         String[] IMs = LIME.IM_CODES;
+        if (SearchSrv != null) {
+            List<ImConfig> imConfigList = SearchSrv.getImConfigList(null, LIME.IM_FULL_NAME);
+            activatedIMFullNameList.clear();
+            activatedIMList.clear();
+            activatedIMShortNameList.clear();
+
+            StringBuilder activeState = new StringBuilder();
+            for (ImConfig im : imConfigList) {
+                if (im == null || im.getCode() == null) continue;
+                if ("emoji".equals(im.getCode())) continue;
+                if (im.isDisable()) continue;
+
+                int index = indexOfIMCode(IMs, im.getCode());
+                if (index < 0) continue;
+                if (activeState.length() > 0) activeState.append(";");
+                activeState.append(index);
+                activatedIMFullNameList.add(fullNames[index]);
+                activatedIMShortNameList.add(shortNames[index]);
+                activatedIMList.add(IMs[index]);
+            }
+
+            String liveState = activeState.toString();
+            if (!liveState.equals(mIMActivatedState)) {
+                mIMActivatedState = liveState;
+                mLIMEPref.setIMActivatedState(liveState);
+            }
+            ensureActiveIMInActivatedList();
+            return;
+        }
 
         String pIMActiveState = mLIMEPref.getIMActivatedState();
 
@@ -2976,8 +3006,21 @@ public class LIMEService extends InputMethodService
                 }
             }
         }
+        ensureActiveIMInActivatedList();
+
+    }
+
+    private int indexOfIMCode(String[] imCodes, String code) {
+        for (int i = 0; i < imCodes.length; i++) {
+            if (imCodes[i].equals(code)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void ensureActiveIMInActivatedList() {
         if (DEBUG) Log.i(TAG, "current active IM:" + activeIM);
-        // check if the selected keyboard is in active keyboard list.
         boolean matched = false;
         for (int i = 0; i < activatedIMList.size(); i++) {
             if (activeIM.equals(activatedIMList.get(i))) {
@@ -2987,7 +3030,7 @@ public class LIMEService extends InputMethodService
                 break;
             }
         }
-        if (!matched && SearchSrv != null) {
+        if (!matched && SearchSrv != null && !activatedIMList.isEmpty()) {
             // if the selected keyboard is not in the active keyboard list.
             // set the keyboard to the first active keyboard
             try {
@@ -3048,6 +3091,9 @@ public class LIMEService extends InputMethodService
         if (DEBUG)
             Log.i(TAG, "showIMPicker()");
         buildActivatedIMList();
+        if (activatedIMFullNameList.isEmpty()) {
+            return;
+        }
 
         AlertDialog.Builder builder;
 
@@ -3145,6 +3191,28 @@ public class LIMEService extends InputMethodService
 
     private void updateCandidates() {
         this.updateCandidates(false);
+    }
+
+    static int adjustedEmojiInsertionPosition(List<Mapping> list, int requestedPosition) {
+        if (list == null || list.isEmpty()) {
+            return 0;
+        }
+
+        int position = Math.max(0, Math.min(requestedPosition, list.size()));
+        for (int candidateIndex = position; candidateIndex < list.size(); candidateIndex++) {
+            Mapping candidate = list.get(candidateIndex);
+            if (candidate != null && isChinesePeriodOrComma(candidate)) {
+                position = candidateIndex + 1;
+                break;
+            }
+        }
+        return position;
+    }
+
+    private static boolean isChinesePeriodOrComma(Mapping candidate) {
+        return candidate.isChinesePunctuationSymbolRecord()
+                || "，".equals(candidate.getWord())
+                || "。".equals(candidate.getWord());
     }
 
 
@@ -3313,6 +3381,7 @@ public class LIMEService extends InputMethodService
                                 }
 
                                 if (!emojiList.isEmpty()) {
+                                    insertPosition = adjustedEmojiInsertionPosition(list, insertPosition);
                                     list.addAll(insertPosition, emojiList);
                                 }
                             }
@@ -3472,6 +3541,7 @@ public class LIMEService extends InputMethodService
                                             }
 
                                             if (!emojiList.isEmpty()) {
+                                                insertPosition = adjustedEmojiInsertionPosition(list, insertPosition);
                                                 list.addAll(insertPosition, emojiList);
                                             }
                                         }
@@ -4503,6 +4573,21 @@ public class LIMEService extends InputMethodService
 
     public void swipeLeft() {
         handleBackspace();
+    }
+
+    @Override
+    public void moveCaretBy(int steps) {
+        if (steps == 0 || mComposing == null || mComposing.length() > 0) {
+            return;
+        }
+
+        final int keyCode = steps < 0
+                ? KeyEvent.KEYCODE_DPAD_LEFT
+                : KeyEvent.KEYCODE_DPAD_RIGHT;
+        final int count = Math.abs(steps);
+        for (int i = 0; i < count; i++) {
+            keyDownUp(keyCode, false);
+        }
     }
 
     public void swipeDown() {

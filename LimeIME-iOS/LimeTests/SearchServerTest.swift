@@ -878,6 +878,59 @@ final class SearchServerTest: XCTestCase {
         XCTAssertTrue(result.count >= list.count)
     }
 
+    func test_3_6_4_5_emojiInsertionSkipsChinesePunctuationAtRequestedSlot() throws {
+        let ss = try makeSearchServer()
+        let list = [
+            Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.composingCode),
+            Mapping(id: 1, code: ",", word: "甲", score: 0, baseScore: 0),
+            Mapping(id: 2, code: ",", word: "乙", score: 0, baseScore: 0),
+            Mapping(id: 3, code: ",", word: "，", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.chinesePunctuation),
+            Mapping(id: 4, code: ",", word: "丙", score: 0, baseScore: 0)
+        ]
+
+        XCTAssertEqual(ss.adjustedEmojiInsertionIndex(in: list, requestedIndex: 3), 4)
+    }
+
+    func test_3_6_4_6_emojiInsertionSkipsUntypedChineseCommaPeriodAtRequestedSlot() throws {
+        let ss = try makeSearchServer()
+        let commaList = [
+            Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.composingCode),
+            Mapping(id: 1, code: ",", word: "甲", score: 0, baseScore: 0),
+            Mapping(id: 2, code: ",", word: "乙", score: 0, baseScore: 0),
+            Mapping(id: 3, code: ",", word: "，", score: 0, baseScore: 0),
+            Mapping(id: 4, code: ",", word: "丙", score: 0, baseScore: 0)
+        ]
+        let periodList = [
+            Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.composingCode),
+            Mapping(id: 1, code: ".", word: "甲", score: 0, baseScore: 0),
+            Mapping(id: 2, code: ".", word: "乙", score: 0, baseScore: 0),
+            Mapping(id: 3, code: ".", word: "。", score: 0, baseScore: 0),
+            Mapping(id: 4, code: ".", word: "丙", score: 0, baseScore: 0)
+        ]
+
+        XCTAssertEqual(ss.adjustedEmojiInsertionIndex(in: commaList, requestedIndex: 3), 4)
+        XCTAssertEqual(ss.adjustedEmojiInsertionIndex(in: periodList, requestedIndex: 3), 4)
+    }
+
+    func test_3_6_4_7_emojiInsertionYieldsToCommaPeriodShiftedByComposingEcho() throws {
+        let ss = try makeSearchServer()
+        let list = [
+            Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.composingCode),
+            Mapping(id: 1, code: ",", word: "力", score: 0, baseScore: 0),
+            Mapping(id: 2, code: ",", word: "犭", score: 0, baseScore: 0),
+            Mapping(id: 3, code: ",", word: "加", score: 0, baseScore: 0),
+            Mapping(id: 4, code: ",", word: "，", score: 0, baseScore: 0),
+            Mapping(id: 5, code: ",", word: "加速", score: 0, baseScore: 0)
+        ]
+
+        XCTAssertEqual(ss.adjustedEmojiInsertionIndex(in: list, requestedIndex: 3), 5)
+    }
+
     // MARK: - 3.7 Learning
 
     func test_3_7_1_1_learnRelatedPhraseAndUpdateScore_no_crash() throws {

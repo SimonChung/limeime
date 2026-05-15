@@ -68,7 +68,64 @@ public class LIMEServiceTest {
         assertEquals(-201, LIME.KEYCODE_EMOJI_PANEL);
         assertEquals(-202, LIME.KEYCODE_EMOJI_ABC);
         assertEquals(-203, LIME.KEYCODE_EMOJI_CATEGORY_RECENT);
-        assertEquals(-211, LIME.KEYCODE_EMOJI_CATEGORY_FLAGS);
+        assertEquals(-211, LIME.KEYCODE_EMOJI_CATEGORY_SYMBOLS);
+        assertEquals(-212, LIME.KEYCODE_EMOJI_CATEGORY_FLAGS);
+    }
+
+    @Test
+    public void emojiInsertionPositionSkipsChinesePunctuationAtRequestedSlot() {
+        List<Mapping> candidates = new ArrayList<>();
+        candidates.add(createCandidate("a", "a"));
+        candidates.add(createCandidate("a", "甲"));
+        candidates.add(createCandidate("a", "乙"));
+
+        Mapping punctuation = createCandidate(",", "，");
+        punctuation.setChinesePunctuationSymbolRecord();
+        candidates.add(punctuation);
+        candidates.add(createCandidate("a", "丙"));
+
+        assertEquals(4, LIMEService.adjustedEmojiInsertionPosition(candidates, 3));
+    }
+
+    @Test
+    public void emojiInsertionPositionSkipsUntypedChineseCommaPeriodAtRequestedSlot() {
+        List<Mapping> commaCandidates = new ArrayList<>();
+        commaCandidates.add(createCandidate(",", ","));
+        commaCandidates.add(createCandidate(",", "甲"));
+        commaCandidates.add(createCandidate(",", "乙"));
+        commaCandidates.add(createCandidate(",", "，"));
+        commaCandidates.add(createCandidate(",", "丙"));
+
+        List<Mapping> periodCandidates = new ArrayList<>();
+        periodCandidates.add(createCandidate(".", "."));
+        periodCandidates.add(createCandidate(".", "甲"));
+        periodCandidates.add(createCandidate(".", "乙"));
+        periodCandidates.add(createCandidate(".", "。"));
+        periodCandidates.add(createCandidate(".", "丙"));
+
+        assertEquals(4, LIMEService.adjustedEmojiInsertionPosition(commaCandidates, 3));
+        assertEquals(4, LIMEService.adjustedEmojiInsertionPosition(periodCandidates, 3));
+    }
+
+    @Test
+    public void emojiInsertionPositionYieldsToCommaPeriodShiftedByComposingEcho() {
+        List<Mapping> candidates = new ArrayList<>();
+        candidates.add(createCandidate(",", ","));
+        candidates.add(createCandidate(",", "力"));
+        candidates.add(createCandidate(",", "犭"));
+        candidates.add(createCandidate(",", "加"));
+        candidates.add(createCandidate(",", "，"));
+        candidates.add(createCandidate(",", "加速"));
+
+        assertEquals(5, LIMEService.adjustedEmojiInsertionPosition(candidates, 3));
+    }
+
+    private static Mapping createCandidate(String code, String word) {
+        Mapping mapping = new Mapping();
+        mapping.setCode(code);
+        mapping.setWord(word);
+        mapping.setExactMatchToCodeRecord();
+        return mapping;
     }
 
     /**
@@ -7403,6 +7460,48 @@ public class LIMEServiceTest {
         } catch (Exception e) {
             // Expected
         }
+    }
+
+    @Test
+    public void test_5_13_1_7_MoveCaretByDispatchesDpadOnlyWhenNotComposing() throws Exception {
+        class TestableLIMEService extends LIMEService {
+            private final InputConnection inputConnection;
+
+            TestableLIMEService(InputConnection inputConnection) {
+                this.inputConnection = inputConnection;
+            }
+
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.sendKeyEvent(any(android.view.KeyEvent.class))).thenReturn(true);
+        TestableLIMEService limeService = new TestableLIMEService(inputConnection);
+
+        Field composingField = LIMEService.class.getDeclaredField("mComposing");
+        composingField.setAccessible(true);
+        StringBuilder composing = (StringBuilder) composingField.get(limeService);
+        composing.setLength(0);
+
+        limeService.moveCaretBy(-2);
+        limeService.moveCaretBy(3);
+        limeService.moveCaretBy(0);
+
+        verify(inputConnection, times(10)).sendKeyEvent(any(android.view.KeyEvent.class));
+        verify(inputConnection, atLeastOnce()).sendKeyEvent(argThat(event ->
+                event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                        && event.getKeyCode() == android.view.KeyEvent.KEYCODE_DPAD_LEFT));
+        verify(inputConnection, atLeastOnce()).sendKeyEvent(argThat(event ->
+                event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                        && event.getKeyCode() == android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
+
+        composing.append("abc");
+        limeService.moveCaretBy(1);
+
+        verifyNoMoreInteractions(inputConnection);
     }
 
     // ============================================================
