@@ -1,4 +1,6 @@
 ﻿import XCTest
+import GRDB
+import ZIPFoundation
 @testable import LimeIME
 
 // MARK: - LIME Constants (mirrors Android LIME.java constants used in tests)
@@ -300,6 +302,19 @@ final class LimeDBTest: XCTestCase {
         XCTAssertTrue(soft != nil || true)
         let physical = db.getMappingByCode(code, softKeyboard: false, getAllRecords: false)
         XCTAssertTrue(physical != nil || true)
+    }
+
+    func testLimeDBCommaPeriodFullWidthPunctuationRecordsAreTypedForEmojiOrdering() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+
+        let commaResults = try XCTUnwrap(db.getMappingByCode(",", softKeyboard: true, getAllRecords: false))
+        let comma = try XCTUnwrap(commaResults.first { $0.word == "，" })
+        XCTAssertTrue(comma.isChinesePunctuationRecord)
+
+        let periodResults = try XCTUnwrap(db.getMappingByCode(".", softKeyboard: true, getAllRecords: false))
+        let period = try XCTUnwrap(periodResults.first { $0.word == "。" })
+        XCTAssertTrue(period.isChinesePunctuationRecord)
     }
 
     func testLimeDBGetMappingByCodeWithDifferentParameters() throws {
@@ -2038,5 +2053,182 @@ final class LimeDBTest: XCTestCase {
                        "label must come from the title='name' kv row, not seedRow.title")
         XCTAssertEqual(pinyin?.fullName, "拼音輸入法",
                        "fullName must equal the title='name' kv row desc")
+    }
+
+    // MARK: - 36. DB 103 integrated seed / upgrade / restore paths
+
+    func testDB103FreshBundledSeedRefreshesEmojiData() throws {
+        try copyBundledLimeSeed(to: tempURL)
+        let db = try makeLimeDB()
+
+        XCTAssertEqual(try db.databaseVersionForTest(), 103)
+        XCTAssertGreaterThan(db.countRecords("im", "title = ?", ["name"]), 0)
+        assertEmojiSchemaAndDataLoaded(db)
+    }
+
+    func testDB103OpeningVersion102DatabaseAddsEmojiSchemaAndData() throws {
+        tempURL = try makeDB103SeedVariant(name: "lime_ios_102_no_emoji.db",
+                                           userVersion: 102,
+                                           dropEmojiSchema: true,
+                                           insertCurrentEmojiVersion: false)
+        let db = try makeLimeDB()
+
+        XCTAssertEqual(try db.databaseVersionForTest(), 103)
+        assertEmojiSchemaAndDataLoaded(db)
+    }
+
+    func testDB103OpeningVersion103DatabaseRepairsMissingEmojiSchemaAndData() throws {
+        tempURL = try makeDB103SeedVariant(name: "lime_ios_103_no_emoji.db",
+                                           userVersion: 103,
+                                           dropEmojiSchema: true,
+                                           insertCurrentEmojiVersion: true)
+        let db = try makeLimeDB()
+
+        XCTAssertEqual(try db.databaseVersionForTest(), 103)
+        assertEmojiSchemaAndDataLoaded(db)
+    }
+
+    func testDB103EmojiRefreshPreservesValidUserUsageAndPrunesInvalidUsage() throws {
+        try copyBundledLimeSeed(to: tempURL)
+        var db = try makeLimeDB()
+        let emoji = try XCTUnwrap(db.firstEmojiValueForTest())
+        try db.setEmojiUserForTest(value: emoji, useCount: 7, lastUsed: 1000)
+        try db.setEmojiUserForTest(value: "not-an-emoji", useCount: 3, lastUsed: 1000)
+        try db.setEmojiVersionForTest("0.0")
+
+        db = try makeLimeDB()
+
+        XCTAssertEqual(try db.emojiUserCountForTest(value: emoji), 7)
+        XCTAssertEqual(try db.emojiUserCountForTest(value: "not-an-emoji"), 0)
+        assertEmojiSchemaAndDataLoaded(db)
+    }
+
+    func testDB103SecondOpenDoesNotDuplicateEmojiRows() throws {
+        try copyBundledLimeSeed(to: tempURL)
+        var db = try makeLimeDB()
+        let firstEmojiRows = try db.emojiDataCountForTest()
+        let firstEmojiImRows = try db.emojiImRowCountForTest()
+
+        db = try makeLimeDB()
+
+        XCTAssertEqual(try db.emojiDataCountForTest(), firstEmojiRows)
+        XCTAssertEqual(try db.emojiImRowCountForTest(), firstEmojiImRows)
+    }
+
+    func testDB103DBServerRestoreOldBackupRunsUpgradeRepairAndEmojiRefresh() throws {
+        let oldDb = try makeDB103SeedVariant(name: "lime_ios_restore_102_no_emoji.db",
+                                             userVersion: 102,
+                                             dropEmojiSchema: true,
+                                             insertCurrentEmojiVersion: false)
+        let restoreZip = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lime_ios_restore_102_no_emoji_\(UUID().uuidString).zip")
+        try createRestoreZip(databaseURL: oldDb, zipURL: restoreZip)
+        let liveDB = dbServerLiveDatabaseURLForTest()
+        let backup = try backupLiveDBForTest(liveDB)
+        defer { restoreLiveDBForTest(liveDB, backup: backup) }
+
+        DBServer().restoreDatabase(srcFilePath: restoreZip.path)
+
+        let stats = try rawDB103Stats(liveDB)
+        XCTAssertEqual(stats.version, 103)
+        XCTAssertGreaterThan(stats.emojiDataRows, 0)
+        XCTAssertGreaterThan(stats.emojiImRows, 0)
+    }
+
+    func testDB103DBServerFactoryResetCopiesBundled103SeedAndEmojiData() throws {
+        let liveDB = dbServerLiveDatabaseURLForTest()
+        let backup = try backupLiveDBForTest(liveDB)
+        defer { restoreLiveDBForTest(liveDB, backup: backup) }
+
+        try DBServer().restoreBundledDatabase()
+
+        let stats = try rawDB103Stats(liveDB)
+        XCTAssertEqual(stats.version, 103)
+        XCTAssertGreaterThan(stats.coreNameRows, 0)
+        XCTAssertGreaterThan(stats.emojiDataRows, 0)
+        XCTAssertGreaterThan(stats.emojiImRows, 0)
+    }
+
+    private func assertEmojiSchemaAndDataLoaded(_ db: LimeDB) {
+        XCTAssertTrue(db.tableExists("emoji_data"))
+        XCTAssertTrue(db.tableExists("emoji_user"))
+        XCTAssertTrue(db.tableExists("emoji_fts"))
+        XCTAssertGreaterThan((try? db.emojiDataCountForTest()) ?? 0, 0)
+        XCTAssertGreaterThan((try? db.emojiImRowCountForTest()) ?? 0, 0)
+    }
+
+    private func copyBundledLimeSeed(to target: URL) throws {
+        let seed = try XCTUnwrap(Bundle.main.url(forResource: "lime", withExtension: "db"))
+        try? FileManager.default.removeItem(at: target)
+        try FileManager.default.copyItem(at: seed, to: target)
+    }
+
+    private func makeDB103SeedVariant(name: String,
+                                      userVersion: Int,
+                                      dropEmojiSchema: Bool,
+                                      insertCurrentEmojiVersion: Bool) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(name)_\(UUID().uuidString)")
+        try copyBundledLimeSeed(to: url)
+        let queue = try DatabaseQueue(path: url.path)
+        try queue.write { db in
+            if dropEmojiSchema {
+                try db.execute(sql: "DROP TABLE IF EXISTS emoji_fts")
+                try db.execute(sql: "DROP TABLE IF EXISTS emoji_user")
+                try db.execute(sql: "DROP TABLE IF EXISTS emoji_data")
+                try db.execute(sql: "DELETE FROM im WHERE code = 'emoji'")
+            }
+            if insertCurrentEmojiVersion {
+                try db.execute(sql: """
+                    INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                    VALUES ('emoji', 'version', '17.0', '', 0, '', '', '')
+                """)
+            }
+            try db.execute(sql: "PRAGMA user_version = \(userVersion)")
+        }
+        return url
+    }
+
+    private func createRestoreZip(databaseURL: URL, zipURL: URL) throws {
+        try? FileManager.default.removeItem(at: zipURL)
+        let archive = try XCTUnwrap(Archive(url: zipURL, accessMode: .create))
+        try archive.addEntry(with: "databases/lime.db", fileURL: databaseURL)
+    }
+
+    private func dbServerLiveDatabaseURLForTest() -> URL {
+        let dataDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.net.toload.limeime")
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                .first!
+                .appendingPathComponent("LimeIME", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+        return dataDir.appendingPathComponent("lime.db")
+    }
+
+    private func backupLiveDBForTest(_ liveDB: URL) throws -> URL? {
+        guard FileManager.default.fileExists(atPath: liveDB.path) else { return nil }
+        let backup = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lime_ios_live_backup_\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: liveDB, to: backup)
+        return backup
+    }
+
+    private func restoreLiveDBForTest(_ liveDB: URL, backup: URL?) {
+        try? FileManager.default.removeItem(at: liveDB)
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: liveDB.path + "-wal"))
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: liveDB.path + "-shm"))
+        guard let backup = backup else { return }
+        try? FileManager.default.copyItem(at: backup, to: liveDB)
+        try? FileManager.default.removeItem(at: backup)
+    }
+
+    private func rawDB103Stats(_ dbURL: URL) throws -> (version: Int, coreNameRows: Int, emojiDataRows: Int, emojiImRows: Int) {
+        let queue = try DatabaseQueue(path: dbURL.path)
+        return try queue.read { db in
+            let version = try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+            let core = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM im WHERE title = 'name'") ?? 0
+            let emojiData = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM emoji_data") ?? 0
+            let emojiIm = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM im WHERE code = 'emoji'") ?? 0
+            return (version, core, emojiData, emojiIm)
+        }
     }
 }

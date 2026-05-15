@@ -403,7 +403,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
 
         // Jeremy '12,4,7 open DB connection in constructor
-        openDBConnection(true);
+        // Reuse a healthy shared connection; openDBConnection(false) now verifies
+        // the handle before reusing it and reopens stale handles.
+        openDBConnection(false);
+        ensureCurrentDatabase();
 
     }
 
@@ -823,25 +826,44 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         }
 
         if (!force_reload && db != null && db.isOpen()) {
-            return true;
-        } else {
-
-            // Reset related phrase score cache
-            relatedScore.clear();
-
-            if (force_reload) {
+            try (Cursor cursor = db.rawQuery("SELECT 1", null)) {
+                return true;
+            } catch (Exception e) {
+                Log.w(TAG, "openDBConnection(): existing database handle is stale, reopening", e);
                 try {
-                    if (db != null && db.isOpen()) {
-                        db.close();
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error in database operation", e);
+                    db.close();
+                } catch (Exception closeError) {
+                    Log.e(TAG, "Error closing stale database handle", closeError);
                 }
             }
-            db = this.getWritableDatabase();
-            databaseOnHold = false;
-            return db != null && db.isOpen();
         }
+
+        // Reset related phrase score cache
+        relatedScore.clear();
+
+        if (force_reload) {
+            try {
+                if (db != null && db.isOpen()) {
+                    db.close();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error in database operation", e);
+            }
+        }
+        db = this.getWritableDatabase();
+        databaseOnHold = false;
+        return db != null && db.isOpen();
+    }
+
+    public void ensureCurrentDatabase() {
+        if (checkDBConnection()) {
+            return;
+        }
+
+        if (db.getVersion() < DATABASE_VERSION) {
+            db.setVersion(DATABASE_VERSION);
+        }
+        refreshEmojiDataIfNeeded();
     }
 
     /**
@@ -2890,6 +2912,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 Mapping temp = new Mapping();
                 temp.setCode(query_code);
                 temp.setWord("，");
+                temp.setChinesePunctuationSymbolRecord();
                 if (result.size() > 3)
                     result.add(3, temp);
                 else
@@ -2899,6 +2922,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 Mapping temp = new Mapping();
                 temp.setCode(query_code);
                 temp.setWord("。");
+                temp.setChinesePunctuationSymbolRecord();
                 if (result.size() > 3)
                     result.add(3, temp);
                 else
@@ -4910,12 +4934,24 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     }
 
     private boolean isEmojiDataCurrent() {
+        if (!hasEmojiDataRows()) {
+            return false;
+        }
         try (Cursor cursor = db.rawQuery(
                 "SELECT desc FROM " + LIME.DB_TABLE_IM + " WHERE code=? AND title=?",
                 new String[]{"emoji", "version"})) {
             return cursor != null && cursor.moveToFirst() && EMOJI_DATA_VERSION.equals(cursor.getString(0));
         } catch (Exception e) {
             Log.e(TAG, "Error checking emoji data version", e);
+            return false;
+        }
+    }
+
+    private boolean hasEmojiDataRows() {
+        try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + EMOJI_TABLE_DATA, null)) {
+            return cursor != null && cursor.moveToFirst() && cursor.getInt(0) > 0;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking emoji data row count", e);
             return false;
         }
     }
@@ -5594,7 +5630,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 record.setDesc(getCursorString(cursor, LIME.DB_IM_COLUMN_DESC));
                 record.setKeyboard(getCursorString(cursor, LIME.DB_IM_COLUMN_KEYBOARD));
                 String disableStr = getCursorString(cursor, LIME.DB_IM_COLUMN_DISABLE);
-                record.setDisable(Boolean.getBoolean(disableStr));
+                record.setDisable(Boolean.parseBoolean(disableStr));
                 record.setSelkey(getCursorString(cursor, LIME.DB_IM_COLUMN_SELKEY));
                 record.setEndkey(getCursorString(cursor, LIME.DB_IM_COLUMN_ENDKEY));
                 record.setSpacestyle(getCursorString(cursor, LIME.DB_IM_COLUMN_SPACESTYLE));
@@ -6177,9 +6213,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         if(dbFile.exists() && !dbFile.delete()) Log.w(TAG, "Failed to delete database file");
         LIMEUtilities.copyRAWFile(mContext.getResources().openRawResource(R.raw.lime), dbFile);
         openDBConnection(true);
-
-        createEmojiTables(db, true);
-        refreshEmojiDataIfNeeded();
+        ensureCurrentDatabase();
 
         if(hanConverter != null)
             hanConverter.close();

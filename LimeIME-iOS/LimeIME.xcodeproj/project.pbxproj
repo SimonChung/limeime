@@ -264,7 +264,6 @@
 		43AF70BA22361D8084D34B7F /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		45BBFE60A3BC8E3A9EFBFED2 /* lime_english_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_number_shift.json; sourceTree = "<group>"; };
 		46C07357EED170657A3BF133 /* LimeDBTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeDBTest.swift; sourceTree = "<group>"; };
-		8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewControllerTest.swift; sourceTree = "<group>"; };
 		47B9D489710C3F87093FD8EB /* PreferencesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesTabView.swift; sourceTree = "<group>"; };
 		48A1A8F3D03D778777ACC688 /* lime_array_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_number_shift.json; sourceTree = "<group>"; };
 		48FEB852B9A94B23940F61BF /* lime_dayi_sym_ipad_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi_sym_ipad_shift.json; sourceTree = "<group>"; };
@@ -307,6 +306,7 @@
 		86E3E355AECB6CF44FE1CB4F /* lime_array_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_shift.json; sourceTree = "<group>"; };
 		89D98FE64ECEC8DE0535C88A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8A142D8C48B8080CACC06BF5 /* lime_english_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_shift.json; sourceTree = "<group>"; };
+		8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewControllerTest.swift; sourceTree = "<group>"; };
 		8D98DEBE9E75F237BEC73B5B /* IMStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMStoreView.swift; sourceTree = "<group>"; };
 		8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageImController.swift; sourceTree = "<group>"; };
 		9144DD8AA02C0B8B5188F542 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
@@ -723,6 +723,7 @@
 			buildConfigurationList = 18F9B4C4E87B375A5284541D /* Build configuration list for PBXNativeTarget "LimeIME" */;
 			buildPhases = (
 				F5E01FBCA298C9F9AAE9A8A9 /* Copy lime.db to bundle */,
+				A103DBE00100000000000001 /* Copy emoji.db to bundle */,
 				A2A322193FD1089E054DCD60 /* Sources */,
 				5CDE9B03925CC3482ECA1228 /* Resources */,
 				34D06C4DC6A0297415E88E79 /* Frameworks */,
@@ -995,6 +996,25 @@
 			shellPath = /bin/sh;
 			shellScript = "SRC=\"${SRCROOT}/../Database/emoji.db\"\nDST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/emoji.db\"\nif [ -f \"$SRC\" ]; then\n  cp -f \"$SRC\" \"$DST\"\nfi\n";
 		};
+		A103DBE00100000000000001 /* Copy emoji.db to bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy emoji.db to bundle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/emoji.db",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SRC=\"${SRCROOT}/../Database/emoji.db\"\nDST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/emoji.db\"\nif [ -f \"$SRC\" ]; then\n  cp -f \"$SRC\" \"$DST\"\nfi\n";
+		};
 		F5E01FBCA298C9F9AAE9A8A9 /* Copy lime.db to bundle */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -1170,6 +1190,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -1330,6 +1351,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";

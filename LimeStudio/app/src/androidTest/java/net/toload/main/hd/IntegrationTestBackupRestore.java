@@ -554,11 +554,12 @@ public class IntegrationTestBackupRestore {
             // Clear all data using restoredToDefault
             setupController.restoredToDefault();
 
-            // All IM tables should be empty now
-            for (String im : imListBefore) {
-                int count = manageController.countRecords(im);
-                assertEquals("IM table should be empty after restoredToDefault: " + im, 0, count);
-            }
+            // Factory reset restores the bundled seed database; it must not leave
+            // users with a zero-IM database.
+            java.util.List<ImConfig> defaultImConfigList = setupController.getImConfigList();
+            assertFalse("Bundled default IM list should not be empty after restoredToDefault", defaultImConfigList.isEmpty());
+            assertTrue("Bundled dayi table should contain default records after restoredToDefault",
+                    manageController.countRecords("dayi") > 0);
 
             // Perform restore using performRestore(Uri)
             setupController.performRestore(backupUri);

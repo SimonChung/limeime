@@ -37,6 +37,15 @@ targets:
           fi
         outputFiles:
           - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/lime.db
+      - name: Copy emoji.db to bundle
+        script: |
+          SRC="${SRCROOT}/../Database/emoji.db"
+          DST="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/emoji.db"
+          if [ -f "$SRC" ]; then
+            cp -f "$SRC" "$DST"
+          fi
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/emoji.db
     dependencies:
       - package: GRDB
       - package: ZIPFoundation

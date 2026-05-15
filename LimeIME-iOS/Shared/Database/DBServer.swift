@@ -94,10 +94,11 @@ final class DBServer {
 
     // MARK: - Private helper: close / reopen database around backup-restore critical sections.
     private func closeDatabase() {
-        // GRDB manages its own connection pool; on iOS we simply hold the connection
-        // by keeping databaseOnHold = true (set by the caller via holdDBConnection()).
-        // No explicit close is needed; this stub preserves the Java API shape.
-        print("[DBServer] closeDatabase() — connection held via holdDBConnection()")
+        do {
+            try datasource?.closeForReplacement()
+        } catch {
+            print("[DBServer] closeDatabase() failed: \(error)")
+        }
     }
 
     // MARK: - 1. isDatabaseOnHold
@@ -228,7 +229,7 @@ final class DBServer {
         backupDefaultSharedPreference(file: fileSharedPrefsBackup)
 
         // Hold DB and close before zipping
-        ds.holdDBConnection()
+        datasource?.holdDBConnection()
         closeDatabase()
 
         // Use a unique temp file to avoid TOCTOU / concurrent-invocation races.
@@ -322,12 +323,12 @@ final class DBServer {
             print("[DBServer] restoreDatabase: file not found at \(srcFilePath)")
             return
         }
-        guard let ds = datasource else { return }
+        guard datasource != nil else { return }
 
         let dataDir = dataDirURL
         let sharedPrefBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
 
-        ds.holdDBConnection()
+        datasource?.holdDBConnection()
         closeDatabase()
 
         // Temp path: Android backup lands here during extraction, then swapped in after
@@ -337,7 +338,7 @@ final class DBServer {
 
         var restoreSucceeded = false
         defer {
-            ds.unHoldDBConnection()
+            datasource?.unHoldDBConnection()
             // Step 1: release old datasource — GRDB checkpoints its WAL into the OLD lime.db.
             // lime.db is still the pre-restore file at this point, so the checkpoint is safe.
             datasource = nil
@@ -360,6 +361,7 @@ final class DBServer {
                     try? FileManager.default.removeItem(at: sharedPrefBackup)
                 }
                 datasource?.checkAndUpdateRelatedTable()
+                datasource?.ensureCurrentDatabase()
             }
         }
 
@@ -406,18 +408,18 @@ final class DBServer {
         guard let bundledURL = Bundle.main.url(forResource: "lime", withExtension: "db") else {
             throw DBServerError.fileNotFound("lime.db (bundled)")
         }
-        guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
+        guard datasource != nil else { throw DBServerError.datasourceUnavailable }
 
         let dataDir = dataDirURL
         let dbURL = dataDir.appendingPathComponent(DBServer.databaseName)
         let tempDBPath = dataDir.appendingPathComponent(DBServer.databaseName + ".restore_tmp")
 
-        ds.holdDBConnection()
+        datasource?.holdDBConnection()
         closeDatabase()
 
         var restoreSucceeded = false
         defer {
-            ds.unHoldDBConnection()
+            datasource?.unHoldDBConnection()
             // Release old datasource — GRDB checkpoints its WAL into the OLD lime.db.
             datasource = nil
             if restoreSucceeded {
@@ -432,6 +434,7 @@ final class DBServer {
             datasource = try? LimeDB(path: dbURL.path)
             if restoreSucceeded {
                 datasource?.checkAndUpdateRelatedTable()
+                datasource?.ensureCurrentDatabase()
             }
         }
 

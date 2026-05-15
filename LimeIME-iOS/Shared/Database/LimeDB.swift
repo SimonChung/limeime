@@ -32,6 +32,7 @@ final class LimeDB {
 
     // MARK: - GRDB connection
     private let dbQueue: DatabaseQueue
+    private let databasePath: String
 
     // MARK: - State (mirroring Android's instance fields)
     private var currentTableName: String = "custom"
@@ -122,6 +123,7 @@ final class LimeDB {
 
     /// Opens (or creates) lime.db at the given path.
     init(path: String) throws {
+        databasePath = path
         var config = Configuration()
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA journal_mode = WAL")
@@ -130,6 +132,7 @@ final class LimeDB {
         }
         dbQueue = try DatabaseQueue(path: path, configuration: config)
         try migrate()
+        ensureCurrentDatabase()
     }
 
     // MARK: - Schema Migration
@@ -284,6 +287,21 @@ final class LimeDB {
         return true
     }
 
+    func ensureCurrentDatabase() {
+        do {
+            try dbQueue.write { db in
+                try LimeDB.createEmojiTables(db, forceRecreate: false)
+                let version = try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+                if version < LimeDB.CURRENT_DB_VERSION {
+                    try db.execute(sql: "PRAGMA user_version = \(LimeDB.CURRENT_DB_VERSION)")
+                }
+            }
+            refreshEmojiDataIfNeeded()
+        } catch {
+            NSLog("LimeDB current database check failed: \(error)")
+        }
+    }
+
     /// Parse a column that may be stored as either TEXT ("true"/"false") or
     /// INTEGER (0/1) — some legacy Android schemas mix both in the same column.
     /// Reading as a Swift-typed subscript crashes on the mismatched storage
@@ -315,6 +333,10 @@ final class LimeDB {
 
     func isDatabaseOnHold() -> Bool {
         return LimeDB._databaseOnHold
+    }
+
+    func closeForReplacement() throws {
+        try dbQueue.close()
     }
 
     /// Returns true if DB is unavailable (on hold). Mirrors Android's checkDBConnection().
@@ -610,11 +632,13 @@ final class LimeDB {
         // Add full shaped punctuation symbol to the third place , and . (mirrors Java lines 2837–2858)
         if queryCode.count == 1 {
             if (queryCode == "," || queryCode == "<"), duplicateCheck.insert("，").inserted {
-                let temp = Mapping(id: 0, code: queryCode, word: "，", score: 0, baseScore: 0)
+                let temp = Mapping(id: 0, code: queryCode, word: "，", score: 0, baseScore: 0,
+                                   recordType: Mapping.RecordType.chinesePunctuation)
                 result.insert(temp, at: min(3, result.count))
             }
             if (queryCode == "." || queryCode == ">"), duplicateCheck.insert("。").inserted {
-                let temp = Mapping(id: 0, code: queryCode, word: "。", score: 0, baseScore: 0)
+                let temp = Mapping(id: 0, code: queryCode, word: "。", score: 0, baseScore: 0,
+                                   recordType: Mapping.RecordType.chinesePunctuation)
                 result.insert(temp, at: min(3, result.count))
             }
         }
@@ -2268,18 +2292,24 @@ final class LimeDB {
 
     private func refreshEmojiDataIfNeeded() {
         do {
+            try dbQueue.write { db in
+                try LimeDB.createEmojiTables(db, forceRecreate: false)
+            }
             let current = try dbQueue.read { db in
                 try String.fetchOne(db,
                     sql: "SELECT desc FROM im WHERE code = ? AND title = ?",
                     arguments: ["emoji", "version"])
             }
-            guard current != LimeDB.EMOJI_DATA_VERSION else { return }
+            let hasIntegratedEmojiData = try dbQueue.read { db in
+                try (Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(LimeDB.EMOJI_TABLE_DATA)") ?? 0) > 0
+            }
+            guard current != LimeDB.EMOJI_DATA_VERSION || !hasIntegratedEmojiData else { return }
             guard let url = Bundle.main.url(forResource: "emoji", withExtension: "db") else { return }
             var sourceConfig = Configuration()
             sourceConfig.readonly = true
             let sourceQueue = try DatabaseQueue(path: url.path, configuration: sourceConfig)
-            let hasEmojiData = try sourceQueue.read { db in try db.tableExists(LimeDB.EMOJI_TABLE_DATA) }
-            guard hasEmojiData else { return }
+            let hasSourceEmojiData = try sourceQueue.read { db in try db.tableExists(LimeDB.EMOJI_TABLE_DATA) }
+            guard hasSourceEmojiData else { return }
             let sourceRows = try sourceQueue.read { db in
                 try Row.fetchAll(db, sql: """
                     SELECT value, cp, group_name, subgroup, sort_order, name_en, name_tw, tags_en, tags_tw, version
@@ -2295,6 +2325,11 @@ final class LimeDB {
             }
             try dbQueue.write { db in
                 try LimeDB.createEmojiTables(db, forceRecreate: false)
+                let usageRows = try Row.fetchAll(db, sql: """
+                    SELECT value, last_used, use_count
+                    FROM \(LimeDB.EMOJI_TABLE_USER)
+                """)
+                try db.execute(sql: "DELETE FROM \(LimeDB.EMOJI_TABLE_USER)")
                 try db.execute(sql: "DELETE FROM \(LimeDB.EMOJI_TABLE_DATA)")
                 for row in sourceRows {
                     try db.execute(sql: """
@@ -2331,10 +2366,21 @@ final class LimeDB {
                         row["spacestyle"] as String? ?? "",
                     ])
                 }
-                try db.execute(sql: """
-                    DELETE FROM \(LimeDB.EMOJI_TABLE_USER)
-                    WHERE value NOT IN (SELECT value FROM \(LimeDB.EMOJI_TABLE_DATA))
-                """)
+                for row in usageRows {
+                    let value = row["value"] as String? ?? ""
+                    try db.execute(sql: """
+                        INSERT OR IGNORE INTO \(LimeDB.EMOJI_TABLE_USER) (value, last_used, use_count)
+                        SELECT ?, ?, ?
+                        WHERE EXISTS (
+                            SELECT 1 FROM \(LimeDB.EMOJI_TABLE_DATA) WHERE value = ?
+                        )
+                    """, arguments: [
+                        value,
+                        row["last_used"] as Int64? ?? 0,
+                        row["use_count"] as Int? ?? 0,
+                        value,
+                    ])
+                }
             }
         } catch {
             NSLog("LimeDB emoji refresh failed: \(error)")
@@ -2454,6 +2500,57 @@ final class LimeDB {
                 INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
                 VALUES ('emoji', 'version', ?, '', 0, '', '', '')
             """, arguments: [emojiVersion])
+        }
+    }
+
+    func databaseVersionForTest() throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+        }
+    }
+
+    func emojiDataCountForTest() throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(LimeDB.EMOJI_TABLE_DATA)") ?? 0
+        }
+    }
+
+    func emojiImRowCountForTest() throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM im WHERE code = 'emoji'") ?? 0
+        }
+    }
+
+    func firstEmojiValueForTest() throws -> String? {
+        try dbQueue.read { db in
+            try String.fetchOne(db, sql: "SELECT value FROM \(LimeDB.EMOJI_TABLE_DATA) LIMIT 1")
+        }
+    }
+
+    func setEmojiVersionForTest(_ version: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE im SET desc = ? WHERE code = 'emoji' AND title = 'version'", arguments: [version])
+        }
+    }
+
+    func setEmojiUserForTest(value: String, useCount: Int, lastUsed: Int64) throws {
+        var config = Configuration()
+        config.foreignKeysEnabled = false
+        let rawQueue = try DatabaseQueue(path: databasePath, configuration: config)
+        try rawQueue.write { db in
+            try LimeDB.createEmojiTables(db, forceRecreate: false)
+            try db.execute(sql: """
+                INSERT OR REPLACE INTO \(LimeDB.EMOJI_TABLE_USER) (value, last_used, use_count)
+                VALUES (?, ?, ?)
+            """, arguments: [value, lastUsed, useCount])
+        }
+    }
+
+    func emojiUserCountForTest(value: String) throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db,
+                sql: "SELECT use_count FROM \(LimeDB.EMOJI_TABLE_USER) WHERE value = ?",
+                arguments: [value]) ?? 0
         }
     }
 

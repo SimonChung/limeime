@@ -496,20 +496,22 @@ public class  DBServer {
 				showNotificationMessage(appContext.getText(R.string.l3_initial_restore_end) + "");
 			}
 
-			datasource.unHoldDBConnection(); //Jeremy '15,5,23
-			datasource.openDBConnection(true);
+				datasource.unHoldDBConnection(); //Jeremy '15,5,23
+				datasource.openDBConnection(true);
+				datasource.ensureCurrentDatabase();
 
 
-			restoreDefaultSharedPreference(sharedPref);
+				restoreDefaultSharedPreference(sharedPref);
             //Delete the shared preference backup file after restored.
             if(sharedPref.exists() && !sharedPref.delete()) Log.w(TAG, "Failed to delete shared preferences backup file after restore");
 			//mLIMEPref.setResetCacheFlag(true);
             net.toload.main.hd.SearchServer.resetCache(true);
 
-			// Check and upgrade the database table
-			datasource.checkAndUpdateRelatedTable();
+				// Check and upgrade the database table
+				datasource.checkAndUpdateRelatedTable();
+				datasource.ensureCurrentDatabase();
 
-		}else{
+			}else{
 			showNotificationMessage(appContext.getText(R.string.error_restore_not_found) + "");
 
 		}
@@ -840,4 +842,3 @@ public class  DBServer {
 	}
 
 }
-
