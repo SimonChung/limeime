@@ -295,7 +295,7 @@
     <!-- Batch 4: toolbar titles -->
     <string name="title_im_list">管理輸入法</string>
     <string name="title_db_manager">資料庫管理</string>
-    <string name="title_lime_preference">鍵盤偏好設定</string>
+    <string name="title_lime_preference">喜好設定</string>
 
     <!-- Batch 5: edit sheet confirm dialogs -->
     <string name="dialog_update_title">確認更新</string>

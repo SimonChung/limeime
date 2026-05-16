@@ -32,7 +32,7 @@
 
     <!-- Title for Latin keyboard  -->
     <string name="ime_name">LIME-HD</string>
-    <string name="ime_setting">LIME-HD 設定</string>
+    <string name="ime_setting">喜好設定</string>
     <string name="input_method">系統輸入法切換</string>
     <string name="experienced_device">開發測試裝置</string>
     <string name="license">版權聲明</string>

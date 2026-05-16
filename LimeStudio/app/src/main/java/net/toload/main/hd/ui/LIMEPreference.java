@@ -33,6 +33,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.view.ViewCompat;
@@ -84,10 +85,41 @@ public class LIMEPreference extends AppCompatActivity {
 		androidx.appcompat.app.ActionBar actionBar = getSupportActionBar();
 		if (actionBar != null) {
 			actionBar.setDisplayShowTitleEnabled(true);
+			actionBar.setTitle(R.string.title_lime_preference);
+			actionBar.setDisplayHomeAsUpEnabled(false);
+			actionBar.setHomeButtonEnabled(false);
 		}
+		getSupportFragmentManager().addOnBackStackChangedListener(this::syncActionBarToBackStack);
 
 		// Handle window insets for edge-to-edge display
 		setupEdgeToEdge();
+	}
+
+	@Override
+	public boolean onSupportNavigateUp() {
+		if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+			getSupportFragmentManager().popBackStack();
+			return true;
+		}
+		finish();
+		return true;
+	}
+
+	private void syncActionBarToBackStack() {
+		ActionBar actionBar = getSupportActionBar();
+		if (actionBar == null) return;
+		boolean canGoBack = getSupportFragmentManager().getBackStackEntryCount() > 0;
+		actionBar.setDisplayHomeAsUpEnabled(canGoBack);
+		actionBar.setHomeButtonEnabled(canGoBack);
+
+		androidx.fragment.app.Fragment top =
+				getSupportFragmentManager().findFragmentById(android.R.id.content);
+		if (top instanceof PreferenceFragmentCompat) {
+			PreferenceFragmentCompat pf = (PreferenceFragmentCompat) top;
+			if (pf.getPreferenceScreen() != null && pf.getPreferenceScreen().getTitle() != null) {
+				actionBar.setTitle(pf.getPreferenceScreen().getTitle());
+			}
+		}
 	}
 
 	/**
@@ -244,9 +276,14 @@ public class LIMEPreference extends AppCompatActivity {
 			Bundle args = new Bundle();
 			args.putString(PreferenceFragmentCompat.ARG_PREFERENCE_ROOT, rootKey);
 			newFragment.setArguments(args);
+			int containerId = android.R.id.content;
+			View parent = (View) requireView().getParent();
+			if (parent != null && parent.getId() != View.NO_ID) {
+				containerId = parent.getId();
+			}
 			androidx.fragment.app.FragmentManager fm = getParentFragmentManager();
 			fm.beginTransaction()
-					.replace(net.toload.main.hd.R.id.lime_preference_host, newFragment)
+					.replace(containerId, newFragment)
 					.addToBackStack(null)
 					.commit();
 		}

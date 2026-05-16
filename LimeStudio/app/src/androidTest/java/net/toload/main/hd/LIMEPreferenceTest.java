@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceScreen;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -27,6 +28,16 @@ public class LIMEPreferenceTest {
         try (ActivityScenario<LIMEPreference> scenario = ActivityScenario.launch(LIMEPreference.class)) {
             // If no exception, activity launches
             assertTrue(true);
+        }
+    }
+
+    @Test
+    public void testStandalonePreferenceActivityTitleMatchesPreferenceTab() {
+        try (ActivityScenario<LIMEPreference> scenario = ActivityScenario.launch(LIMEPreference.class)) {
+            scenario.onActivity(activity -> {
+                assertNotNull("ActionBar should exist", activity.getSupportActionBar());
+                assertEquals("喜好設定", String.valueOf(activity.getSupportActionBar().getTitle()));
+            });
         }
     }
 
@@ -106,6 +117,44 @@ public class LIMEPreferenceTest {
                 } catch (Exception e) {
                     throw new AssertionError("PrefsFragment listener lifecycle crashed", e);
                 }
+            });
+        }
+    }
+
+    @Test
+    public void testReverseLookupNestedScreenOpensFromStandalonePreferenceActivity() {
+        try (ActivityScenario<LIMEPreference> scenario = ActivityScenario.launch(LIMEPreference.class)) {
+            scenario.onActivity(activity -> {
+                Fragment fragment = activity.getSupportFragmentManager().findFragmentById(android.R.id.content);
+                assertNotNull("PrefsFragment should be attached", fragment);
+
+                PreferenceScreen reverseLookupScreen =
+                        ((LIMEPreference.PrefsFragment) fragment).findPreference("reverse_lookup_screen");
+                assertNotNull("Reverse lookup screen should exist", reverseLookupScreen);
+
+                ((LIMEPreference.PrefsFragment) fragment).onNavigateToScreen(reverseLookupScreen);
+                activity.getSupportFragmentManager().executePendingTransactions();
+
+                Fragment nestedFragment = activity.getSupportFragmentManager().findFragmentById(android.R.id.content);
+                assertTrue("Nested reverse lookup screen should be shown",
+                        nestedFragment instanceof LIMEPreference.PrefsFragment);
+                assertEquals("reverse_lookup_screen",
+                        ((LIMEPreference.PrefsFragment) nestedFragment).getPreferenceScreen().getKey());
+                assertNotNull("ActionBar should exist", activity.getSupportActionBar());
+                assertTrue("Nested standalone preference screen should show a back chevron",
+                        (activity.getSupportActionBar().getDisplayOptions()
+                                & androidx.appcompat.app.ActionBar.DISPLAY_HOME_AS_UP) != 0);
+            });
+        }
+    }
+
+    @Test
+    public void testRootBackChevronFinishesStandalonePreferenceActivity() {
+        try (ActivityScenario<LIMEPreference> scenario = ActivityScenario.launch(LIMEPreference.class)) {
+            scenario.onActivity(activity -> {
+                assertEquals(0, activity.getSupportFragmentManager().getBackStackEntryCount());
+                assertTrue("Root up should be handled", activity.onSupportNavigateUp());
+                assertTrue("Root up should finish the standalone preference activity", activity.isFinishing());
             });
         }
     }
