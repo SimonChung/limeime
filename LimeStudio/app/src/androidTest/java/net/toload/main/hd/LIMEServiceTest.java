@@ -150,6 +150,33 @@ public class LIMEServiceTest {
         verify(candidateView).hideLimeToast();
     }
 
+    @Test
+    public void imPickerSelectionShowsSelectedImNameToast() {
+        MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
+        CandidateView candidateView = helper.injectMockCandidateView();
+        helper.initializeLIMEPref();
+
+        ArrayList<String> imList = new ArrayList<>();
+        imList.add("cj");
+        imList.add("dayi");
+        imList.add("phonetic");
+        helper.setField("activatedIMList", imList);
+
+        ArrayList<String> fullNameList = new ArrayList<>();
+        fullNameList.add("倉頡輸入法");
+        fullNameList.add("大易輸入法");
+        fullNameList.add("注音輸入法");
+        helper.setField("activatedIMFullNameList", fullNameList);
+
+        helper.setField("activeIM", "cj");
+        helper.setFieldBoolean("mEnglishOnly", true);
+
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                helper.invokeMethod("handleIMSelection", new Class<?>[]{int.class}, 1));
+
+        verify(candidateView).showLimeToast("大易輸入法");
+    }
+
     private static Mapping createCandidate(String code, String word) {
         Mapping mapping = new Mapping();
         mapping.setCode(code);

@@ -3142,6 +3142,7 @@ public class LIMEService extends InputMethodService
         if (DEBUG) Log.i(TAG, "handleIMSelection() position = " + position);
 
         activeIM = activatedIMList.get(position);
+        CharSequence activeIMName = activatedIMFullNameList.get(position);
 
         mLIMEPref.setActiveIM(activeIM);
         //spe.putString("keyboard_list", keyboardSelection);
@@ -3166,6 +3167,8 @@ public class LIMEService extends InputMethodService
         } catch (RemoteException e) {
             Log.e(TAG, "Error getting keyboard for active IM", e);
         }
+
+        showLimeToast(activeIMName);
 
     }
 

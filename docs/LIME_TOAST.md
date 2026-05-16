@@ -8,6 +8,16 @@ Chinese/English mode switching intentionally does not show a lime toast on eithe
 
 Voice input is excluded from this parity pass.
 
+## Summary Call Sites
+
+| Behavior | Android | iOS |
+|---|---|---|
+| Next/previous IM cycling | `LIMEService.switchToNextActivatedIM(boolean forward)` → `showLimeToast(activeIMName)`; message: `activeIMName`; short auto-hide. | `KeyboardViewController.switchToNextActivatedIM(forward:)` → `showLimeToast(displayName(for: im))`; message: `im.label`, else `im.tableNick`, else active IM id; short auto-hide. |
+| IM picker selection | `LIMEService.handleIMSelection(int position)` → `showLimeToast(activeIMName)`; message: selected IM full name from `activatedIMFullNameList`; short auto-hide. | `KeyboardViewController.switchIM(toIndex:)` → `showLimeToast(displayName(for: im))`; message: `im.label`, else `im.tableNick`, else active IM id; short auto-hide. |
+| Reverse lookup | `SearchServer.learnRelatedPhraseAndUpdateScore()` reverse lookup branch → `showReverseLookup(result)` → persistent lime toast; message: reverse lookup `result`; stays until next keystroke. | Reverse lookup callback in `KeyboardViewController` → `showLimeToast(result)`; message: reverse lookup `result`; short auto-hide. |
+| Voice input unavailable | `LIMEService.launchRecognizerIntent()` → `showLimeToast(...)`; messages: `Voice recognition not available on this device`, `Voice input activity not found`, `Cannot launch voice input (security restriction)`, or `Voice input unavailable: ` + exception message; short auto-hide. | Excluded from this parity pass; no iOS lime toast. |
+| Chinese/English mode switching | None; intentionally silent. | None; intentionally silent. |
+
 ## Android Current Behavior
 
 Android defines the service entry point in:
@@ -44,6 +54,7 @@ The visual implementation lives in:
 | Call site | File | Exact toast message | Behavior |
 |---|---|---|---|
 | `switchToNextActivatedIM(boolean forward)` | `LIMEService.java` | `activeIMName` | Shows the newly active IM display name after cycling to the next/previous activated IM. |
+| `handleIMSelection(int position)` | `LIMEService.java` | `activeIMName` from `activatedIMFullNameList.get(position)` | Shows the selected IM display name after choosing an IM from the picker dialog. |
 | `launchRecognizerIntent()` | `LIMEService.java` | `Voice recognition not available on this device` | Shows when no voice recognition activity is available. Excluded from iOS parity for this pass. |
 | `launchRecognizerIntent()` | `LIMEService.java` | `Voice input activity not found` | Shows when `VoiceInputActivity` cannot be launched. Excluded from iOS parity for this pass. |
 | `launchRecognizerIntent()` | `LIMEService.java` | `Cannot launch voice input (security restriction)` | Shows on `SecurityException`. Excluded from iOS parity for this pass. |
