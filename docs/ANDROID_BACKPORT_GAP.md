@@ -45,7 +45,7 @@ LimePreferenceFragment.java.
 | Setup tab heading | fragment_setup.xml:57-63 TextView `setup_im_system_settings` ("啟動萊姆輸入法", large) sits below the status banner — restored from prior Android implementation (see §1). | At parity with current direction. | - |
 | IM List `.navigationTitle("管理輸入法")` | fragment_im_list.xml has NO MaterialToolbar and NO title TextView. | MISSING. Add MaterialToolbar with `app:title="管理輸入法"` at the top, matching the drill-down toolbar pattern in fragment_im_install.xml. | P2 |
 | DB Manager `.navigationTitle("資料庫管理")` | fragment_db_manager.xml has NO MaterialToolbar (only inline section subtitles). | MISSING. Add MaterialToolbar with `app:title="資料庫管理"`. iOS spec hides the nav bar on iPad regular width and shows an inline `.title2.bold()`; for Android keep a single MaterialToolbar across screen sizes. | P2 |
-| Preferences `.navigationTitle` (e.g. "鍵盤偏好設定") | LimePreferenceFragment.java is a bare FrameLayout hosting LIMEPreference.PrefsFragment with no enclosing toolbar (LimePreferenceFragment.java:28-43). | MISSING. Wrap the PrefsFragment host in a layout that adds a MaterialToolbar at the top with the screen title. | P2 |
+| Preferences `.navigationTitle` (`喜好設定`) | LimePreferenceFragment.java is a bare FrameLayout hosting LIMEPreference.PrefsFragment with no enclosing toolbar (LimePreferenceFragment.java:28-43). | MISSING. Wrap the PrefsFragment host in a layout that adds a MaterialToolbar at the top with the screen title. | P2 |
 | Drill-down toolbars (IM Detail / IM Install / Record / Related editors) | All four have MaterialToolbar (fragment_im_detail.xml:8, fragment_im_install.xml:8, fragment_manage_im.xml:14, fragment_manage_related.xml:15). | At parity. | - |
 | IM Detail title source | ImDetailFragment.java:87 sets toolbar title to `imDesc` (IM display name) — matches iOS `.navigationTitle(im.label)`. | At parity. | - |
 
@@ -433,7 +433,7 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 
 ### P2 - UX divergence (visible mismatch)
 
-1. Top-of-screen titles missing on tab fragments — add MaterialToolbar with title to fragment_im_list.xml (管理輸入法), fragment_db_manager.xml (資料庫管理), and the preferences host (鍵盤偏好設定). See §0.1.
+1. Top-of-screen titles missing on tab fragments — add MaterialToolbar with title to fragment_im_list.xml (管理輸入法), fragment_db_manager.xml (資料庫管理), and the preferences host (喜好設定). See §0.1.
 2. Reverse-Lookup sub-screen; collapse 13 flat ListPreference into a single drill-down (preference.xml:236-327).
 3. Preferences re-sectioning into the 8-section layout from spec section 8.
 4. ~~Default mismatches~~ — RESOLVED 2026-05-14: `backup_on_delete_{*}`=true, `enable_emoji`=true, `keyboard_size`="1", `font_size`="1", `smart_chinese_input`=true, `auto_chinese_symbol`=false, `han_convert_option`=0 — all aligned on both platforms.
@@ -509,7 +509,7 @@ file path or layout block to touch.
 - [x] **§0.1 / P2.1** ~~Add MaterialToolbar titles to three tab fragments~~ — DONE 2026-05-13.
   - [ ] `fragment_im_list.xml` — title `管理輸入法`.
   - [ ] `fragment_db_manager.xml` — title `資料庫管理`.
-  - [ ] Wrap `LimePreferenceFragment` host in a layout with a `MaterialToolbar` titled `鍵盤偏好設定`.
+  - [ ] Wrap `LimePreferenceFragment` host in a layout with a `MaterialToolbar` titled `喜好設定`.
 - [x] **§5.9 / P2.2** ~~Reverse-Lookup sub-screen — nested PreferenceScreen~~ — DONE 2026-05-13.
 - [x] **§5 / P2.3** ~~Preferences re-sectioning into 8 (+1 physical-keyboard) categories~~ — DONE 2026-05-13.
 - [x] **§5 / P2.4** ~~Default mismatches (`enable_emoji`/`keyboard_size`/`font_size`/`backup_on_delete`/`smart_chinese_input`/`auto_chinese_symbol`)~~ — DONE 2026-05-14 (all sub-items resolved):

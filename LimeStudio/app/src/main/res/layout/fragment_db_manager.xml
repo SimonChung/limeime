@@ -55,7 +55,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="備份包含所有字根、關聯字及偏好設定。"
+            android:text="備份包含所有字根、關聯字及喜好設定。"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary"
             android:layout_marginTop="6dp"

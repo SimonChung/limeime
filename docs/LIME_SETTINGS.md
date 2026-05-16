@@ -744,7 +744,7 @@ NavigationStack
         │   // so the title is rendered here, left-aligned with the content column.
         │   // On iPhone the standard navigation large title is used instead.
         │
-        ├── formSection(header: "備份", footer: "備份包含所有字根、關聯字及偏好設定。")
+        ├── formSection(header: "備份", footer: "備份包含所有字根、關聯字及喜好設定。")
         │   └── Button "備份資料庫"  systemImage: "square.and.arrow.up"
         │       → performBackup() → UIActivityViewController (Files, AirDrop, Mail…)
         │
@@ -802,6 +802,8 @@ When backup export or restore copy is running, show a centred `ProgressView` ove
 ## 8. Feature: IM Preferences (喜好設定 Tab)
 
 **Purpose**: Replicate all settings from Android's `LIMEPreference` (`preference.xml`). All values persist to `UserDefaults(suiteName: "group.net.toload.limeime")` so the keyboard extension can read them without IPC.
+
+**Title**: The IM Preferences root screen title is always `喜好設定` on both platforms. This applies to the iOS tab/navigation title, the Android settings tab toolbar title, and the standalone Android `LIMEPreference` Activity launched from the keyboard long-press menu. Do not use an app-level settings title or old keyboard-preferences wording for this screen.
 
 | iOS | Android |
 |---|---|

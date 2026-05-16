@@ -329,7 +329,7 @@ fragment_db_manager.xml
         ├── SectionCard "備份"
         │   ├── MaterialButton "備份資料庫"
         │   │   → setupImController.backupLocal (existing) → ACTION_SEND share intent (system sheet)
-        │   └── TextView footnote "備份包含所有字根、關聯字及偏好設定。"
+        │   └── TextView footnote "備份包含所有字根、關聯字及喜好設定。"
         ├── SectionCard "還原"
         │   ├── MaterialButton "還原資料庫"
         │   │   → MaterialAlertDialog confirm → ACTION_OPEN_DOCUMENT → setupImController.restoreLocal (existing)

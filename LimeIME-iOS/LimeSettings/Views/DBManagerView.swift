@@ -36,7 +36,7 @@ struct DBManagerView: View {
                     }
                     formSection(
                         header: "備份",
-                        footer: "備份包含所有字根、關聯字及偏好設定。"
+                        footer: "備份包含所有字根、關聯字及喜好設定。"
                     ) {
                         Button { performBackup() } label: {
                             Label("備份資料庫", systemImage: "square.and.arrow.up")

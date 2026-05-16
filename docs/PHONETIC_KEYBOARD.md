@@ -8,14 +8,14 @@ The `phonetic_keyboard_type` preference controls three related behaviours on And
 2. **Dual-code query expansion** for keys that map to two possible phonetic codes (initial vs final) — `LimeDB.preProcessingForExtraQueryConditions()`.
 3. **Visible keyboard layout swap** — on pref change, the DB's `im.keyboard` column for the `phonetic` row is rewritten, and the next `onStartInput` re-reads it and loads the appropriate XML.
 
-The iOS port has all three data paths present, but each has a defect that makes the `_symbol` variants broken and the layout-swap non-live. The pref also sits in the global 偏好設定 tab even though it only affects the phonetic IM.
+The iOS port has all three data paths present, but each has a defect that makes the `_symbol` variants broken and the layout-swap non-live. The pref also sits in the global 喜好設定 tab even though it only affects the phonetic IM.
 
 This plan covers four tasks:
 
 - **T1** — fix remap to handle `eten26_symbol` / `hsu_symbol`
 - **T2** — fix dual-map to handle `eten26_symbol` / `hsu_symbol`
 - **T3** — make the layout switch live when the pref changes
-- **T4** — move the picker UI from 偏好設定 into the phonetic IM details page
+- **T4** — move the picker UI from 喜好設定 into the phonetic IM details page
 
 (A fifth gap — providing an English-label layout variant for ETEN26/HSU non-`_symbol` modes — is noted but deferred to a separate task; it requires new JSON layouts and is outside this plan's scope.)
 
@@ -50,7 +50,7 @@ Android's equivalent `onStartInput` re-reads the `im.keyboard` column every time
 
 ### T4 — Pref lives in the wrong settings page
 
-[PreferencesTabView.swift:159-169](../LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift#L159) hosts the "注音鍵盤 → 鍵盤類型" picker in the global 偏好設定 tab. Since it only affects the phonetic IM, it belongs on the phonetic IM's details page next to the existing `軟鍵盤配置 → 鍵盤佈局` row at [IMDetailView.swift:62-68](../LimeIME-iOS/LimeSettings/Views/IMDetailView.swift#L62).
+[PreferencesTabView.swift:159-169](../LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift#L159) hosts the "注音鍵盤 → 鍵盤類型" picker in the global 喜好設定 tab. Since it only affects the phonetic IM, it belongs on the phonetic IM's details page next to the existing `軟鍵盤配置 → 鍵盤佈局` row at [IMDetailView.swift:62-68](../LimeIME-iOS/LimeSettings/Views/IMDetailView.swift#L62).
 
 ## Plan
 
@@ -186,7 +186,7 @@ End-to-end tests with the keyboard extension running on a device or simulator. T
    - Confirm `phoneticKeyboardType` is pushed to `searchServer` so the first keystroke on the new layout produces correctly-remapped codes.
 
 4. **T4 UI move**
-   - Open the Settings app → 偏好設定: confirm the "注音鍵盤" section is gone.
+   - Open the Settings app → 喜好設定: confirm the "注音鍵盤" section is gone.
    - Navigate 輸入法 → 注音 detail page: confirm a "注音鍵盤類型" section with the same picker appears.
    - Change the picker value; verify via the existing `DBServer.setImConfigKeyboard` write (reuse KeyboardPickerView's existing handler or the migrated `updatePhoneticKeyboard`) that the DB is updated and T3 picks it up live.
    - Confirm the picker is absent for non-phonetic IMs (e.g. cangjie detail page).
