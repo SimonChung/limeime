@@ -97,6 +97,13 @@ public class MainActivityTest {
         }
     }
 
+    @Test
+    public void testInitialHelpDialogGateIsAlwaysDisabled() {
+        assertFalse(LIMESettings.shouldShowInitialHelpDialog("", "v6.1.0"));
+        assertFalse(LIMESettings.shouldShowInitialHelpDialog("old-version", "v6.1.0"));
+        assertFalse(LIMESettings.shouldShowInitialHelpDialog("v6.1.0", "v6.1.0"));
+    }
+
     /**
      * Test: Getter methods return non-null instances
      * 

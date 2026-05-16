@@ -244,7 +244,7 @@ public class LIMESettings extends AppCompatActivity implements LIMESettingsView 
         }
 
         String currentVersion = mLIMEPref.getParameterString("current_version", "");
-        if (currentVersion == null || currentVersion.isEmpty() || !currentVersion.equals(versionStr)) {
+        if (shouldShowInitialHelpDialog(currentVersion, versionStr)) {
             // Skip HelpDialog in test environment to prevent blocking startActivitySync()
             boolean isTest = isRunningInTestMode();
             Log.d(TAG, "isRunningInTestMode: " + isTest);
@@ -258,6 +258,10 @@ public class LIMESettings extends AppCompatActivity implements LIMESettingsView 
             mLIMEPref.setParameter("current_version", versionStr);
         }
 
+    }
+
+    public static boolean shouldShowInitialHelpDialog(String currentVersion, String versionStr) {
+        return false;
     }
 
 
