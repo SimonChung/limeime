@@ -117,6 +117,8 @@ final class KeyboardViewController: UIInputViewController {
     /// bar the first row stays pixel-identical (same composing keyname,
     /// same vertical offset for glyphs).
     private var expandedComposingLabel: UILabel?
+    private var limeToastState = LimeToastState()
+    private var limeToastTimer: Timer?
 
     // MARK: - Chinese Punctuation (spec §11)
     private var hasChineseSymbolCandidatesShown: Bool = false
@@ -1300,7 +1302,7 @@ final class KeyboardViewController: UIInputViewController {
 
     /// Cancel composing without touching the document (cursor moved externally).
     private func cancelComposing() {
-        isShowingReverseLookup = false
+        hideLimeToast()
         mComposing       = ""
         composingLength  = 0
         selectedCandidate = nil
@@ -1769,7 +1771,7 @@ final class KeyboardViewController: UIInputViewController {
     /// Only the label's text changes — the strip's height is fixed so the
     /// extension never grows/shrinks between compose and commit.
     private func showComposingPopup() {
-        isShowingReverseLookup = false
+        hideLimeToast()
         let raw = mComposing
         guard !raw.isEmpty, !mEnglishOnly else { hideComposingPopup(); return }
 
@@ -1789,7 +1791,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func hideComposingPopup() {
-        guard !isShowingReverseLookup else { return }
+        guard !limeToastState.isShowing else { return }
         candidateBar.composingText = nil
         expandedComposingLabel?.attributedText = nil
         expandedComposingLabel?.text = nil
@@ -1909,7 +1911,7 @@ final class KeyboardViewController: UIInputViewController {
             DispatchQueue.global(qos: .background).async { [weak self] in
                 guard let result = ss.getCodeListStringFromWord(word, usingTable: lookupTable),
                       !result.isEmpty else { return }
-                DispatchQueue.main.async { self?.showReverseLookup(result) }
+                DispatchQueue.main.async { self?.showLimeToast(result) }
             }
         }
     }
@@ -2054,6 +2056,7 @@ final class KeyboardViewController: UIInputViewController {
             keyboardView?.setLayout(currentLayout)
             applyHeight()
         }
+        showLimeToast(displayName(for: im))
     }
 
     // MARK: - Symbol Keyboard (spec §10)
@@ -2147,23 +2150,30 @@ final class KeyboardViewController: UIInputViewController {
         word.unicodeScalars.contains { $0.value > 0xFFFF }
     }
 
-    // MARK: - Reverse Lookup Display (spec §8, §13)
+    // MARK: - LIME Toast / Reverse Lookup Display (spec §8, §13)
 
-    // True while a reverse-lookup result occupies the composing strip.
-    // Cleared on any keystroke (keyboardView didPress) or explicit cancel.
-    // hideComposingPopup() is a no-op while this flag is set so that automatic
-    // post-commit cleanup (clearSuggestions, updateRelatedPhrase) never races
-    // away the result before the user has a chance to read it.
-    private var isShowingReverseLookup: Bool = false
-
-    private func showReverseLookup(_ message: String) {
-        isShowingReverseLookup = true
-        candidateBar.composingText = message
+    private func showLimeToast(_ message: String) {
+        guard limeToastState.show(message), let text = limeToastState.message else { return }
+        limeToastTimer?.invalidate()
+        candidateBar.composingText = text
         if let lbl = expandedComposingLabel {
             lbl.attributedText = CandidateBarView.attributedKeyname(
-                message, baseFont: candidateBar.composingStripFont,
+                text, baseFont: candidateBar.composingStripFont,
                 color: lbl.textColor ?? .label)
         }
+        limeToastTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+            self?.hideLimeToast()
+        }
+    }
+
+    private func hideLimeToast() {
+        limeToastTimer?.invalidate()
+        limeToastTimer = nil
+        guard limeToastState.isShowing else { return }
+        limeToastState.hide()
+        candidateBar.composingText = nil
+        expandedComposingLabel?.attributedText = nil
+        expandedComposingLabel?.text = nil
     }
 
     // MARK: - Chinese Punctuation List (spec §11)
@@ -2193,7 +2203,7 @@ final class KeyboardViewController: UIInputViewController {
 extension KeyboardViewController: KeyboardViewDelegate {
 
     func keyboardView(_ view: KeyboardView, didPress keyDef: KeyDef) {
-        isShowingReverseLookup = false
+        hideLimeToast()
         if emojiPanelView?.handleSearchKey(code: keyDef.code) == true {
             return
         }
@@ -2551,6 +2561,13 @@ extension KeyboardViewController: KeyboardViewDelegate {
             keyboardView?.setLayout(currentLayout)
             applyHeight()
         }
+        showLimeToast(displayName(for: im))
+    }
+
+    private func displayName(for im: ImConfig) -> String {
+        if !im.label.isEmpty { return im.label }
+        if !im.tableNick.isEmpty { return im.tableNick }
+        return activeIM
     }
 
     /// Show a globe-icon preview bubble above the keyboard key on long-press (spec §10).

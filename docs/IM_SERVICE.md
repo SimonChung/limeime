@@ -598,8 +598,9 @@ When `needsInputModeSwitchKey == false` (modern iPhones), the OS-switch entries 
 2. `mKeyboardSwitcher.toggleChinese()` — switch keyboard layout
 3. `mEnglishOnly = !mKeyboardSwitcher.isChinese()` — update mode flag
 4. `mLIMEPref.setLanguageMode(mEnglishOnly)` — persist if persistent mode enabled
-5. Show toast notification (Chinese/English)
-6. `clearSuggestions()` — clear candidate list
+5. `clearSuggestions()` — clear candidate list
+
+Chinese/English mode switching intentionally does not show a toast.
 
 ### Switch to Next/Previous IM (LIME-Internal)
 

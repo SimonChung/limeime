@@ -1885,6 +1885,8 @@ public class LIMEService extends InputMethodService
             Log.i(TAG, "OnKey(): primaryCode:" + primaryCode
                     + " hasShiftPress:" + hasShiftPress);
 
+        hideLimeToast();
+
         // Modified by Art
         // This is to fixed the CapsLock issue on Physical keyboard
         if (mCapsLock) {
@@ -3863,23 +3865,53 @@ public class LIMEService extends InputMethodService
     public void showLimeToast(CharSequence text) {
         if (text == null || text.length() == 0) return;
         try {
-            if (Looper.myLooper() != null && mCandidateView != null) {
-                mCandidateView.showLimeToast(text);
+            if (Looper.myLooper() != null) {
+                CandidateView toastTarget = mCandidateView;
+                if (mCandidateViewInInputView != null && mCandidateViewInInputView.getWindowToken() != null) {
+                    toastTarget = mCandidateViewInInputView;
+                }
+                if (toastTarget != null) {
+                    toastTarget.showLimeToast(text);
+                }
             }
         } catch (RuntimeException e) {
             Log.w(TAG, "Cannot show lime_toast: " + e.getMessage());
         }
     }
 
-    public void showReverseLookup(CharSequence text) {
+    private void showPersistentLimeToast(CharSequence text) {
         if (text == null || text.length() == 0) return;
         try {
-            if (Looper.myLooper() != null && mCandidateView != null) {
-                mCandidateView.setComposingText(text.toString());
+            if (Looper.myLooper() != null) {
+                CandidateView toastTarget = mCandidateView;
+                if (mCandidateViewInInputView != null && mCandidateViewInInputView.getWindowToken() != null) {
+                    toastTarget = mCandidateViewInInputView;
+                }
+                if (toastTarget != null) {
+                    toastTarget.showLimeToastUntilNextKey(text);
+                }
             }
         } catch (RuntimeException e) {
-            Log.w(TAG, "Cannot show reverse lookup: " + e.getMessage());
+            Log.w(TAG, "Cannot show persistent lime_toast: " + e.getMessage());
         }
+    }
+
+    private void hideLimeToast() {
+        try {
+            if (mCandidateView != null) {
+                mCandidateView.hideLimeToast();
+            }
+            if (mCandidateViewInInputView != null && mCandidateViewInInputView != mCandidateView) {
+                mCandidateViewInInputView.hideLimeToast();
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Cannot hide lime_toast: " + e.getMessage());
+        }
+    }
+
+    public void showReverseLookup(CharSequence text) {
+        if (text == null || text.length() == 0) return;
+        showPersistentLimeToast(text);
     }
 
 
@@ -4055,13 +4087,6 @@ public class LIMEService extends InputMethodService
 
         if (DEBUG)
             Log.i(TAG, "switchChiEng(): mEnglishOnly updated as " + mEnglishOnly);
-
-
-        if (mEnglishOnly) {
-            showLimeToast(getText(R.string.typing_mode_english));
-        } else {
-            showLimeToast(getText(R.string.typing_mode_mixed));
-        }
         clearSuggestions(); //Jeremy '11,9,5
     }
 

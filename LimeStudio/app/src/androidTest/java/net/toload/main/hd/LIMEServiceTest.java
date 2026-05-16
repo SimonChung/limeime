@@ -120,6 +120,36 @@ public class LIMEServiceTest {
         assertEquals(5, LIMEService.adjustedEmojiInsertionPosition(candidates, 3));
     }
 
+    @Test
+    public void reverseLookupUsesPersistentLimeToast() {
+        MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
+        CandidateView candidateView = helper.injectMockCandidateView();
+        LIMEService service = helper.getService();
+
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                service.showReverseLookup("大: k"));
+
+        verify(candidateView).showLimeToastUntilNextKey("大: k");
+        verify(candidateView, never()).setComposingText(anyString());
+    }
+
+    @Test
+    public void nextKeyClearsPersistentLimeToast() {
+        MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
+        CandidateView candidateView = helper.injectMockCandidateView();
+        helper.injectMockInputView();
+        helper.injectMockKeyboardSwitcher();
+        LIMEService service = helper.getService();
+
+        try {
+            service.onKey(LIMEBaseKeyboard.KEYCODE_SHIFT, null, 0, 0);
+        } catch (Exception ignored) {
+            // The service is not bound as a real IME in this focused test.
+        }
+
+        verify(candidateView).hideLimeToast();
+    }
+
     private static Mapping createCandidate(String code, String word) {
         Mapping mapping = new Mapping();
         mapping.setCode(code);
@@ -7555,22 +7585,22 @@ public class LIMEServiceTest {
             java.lang.reflect.Method switchChiEngMethod = LIMEService.class.getDeclaredMethod("switchChiEng");
             switchChiEngMethod.setAccessible(true);
             
-            // Test switchChiEng with mEnglishOnly = false (line 3112-3115 branch - shows "English" toast)
+            // Test switchChiEng with mEnglishOnly = false
             java.lang.reflect.Field englishOnlyField = LIMEService.class.getDeclaredField("mEnglishOnly");
             englishOnlyField.setAccessible(true);
             englishOnlyField.setBoolean(limeService, false);
             try {
                 switchChiEngMethod.invoke(limeService);
             } catch (Exception e) {
-                // Expected - toggleChinese, Toast may fail
+                // Expected - toggleChinese may fail
             }
             
-            // Test switchChiEng with mEnglishOnly = true (line 3116-3118 branch - shows "Mixed" toast)
+            // Test switchChiEng with mEnglishOnly = true
             englishOnlyField.setBoolean(limeService, true);
             try {
                 switchChiEngMethod.invoke(limeService);
             } catch (Exception e) {
-                // Expected - toggleChinese, Toast may fail
+                // Expected - toggleChinese may fail
             }
             
             // Test switchChiEng with mComposing.length() > 0 (line 3103 clearComposing branch)

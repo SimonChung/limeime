@@ -450,6 +450,18 @@ public class CandidateView extends View implements View.OnClickListener {
             sendMessageDelayed(obtainMessage(MSG_HIDE_LIME_TOAST, 0, 0, null), 1400);
         }
 
+        public void showLimeToastUntilNextKey(CharSequence text) {
+            removeMessages(MSG_SHOW_LIME_TOAST);
+            removeMessages(MSG_HIDE_LIME_TOAST);
+            sendMessage(obtainMessage(MSG_SHOW_LIME_TOAST, 0, 0, text));
+        }
+
+        public void hideLimeToast() {
+            removeMessages(MSG_SHOW_LIME_TOAST);
+            removeMessages(MSG_HIDE_LIME_TOAST);
+            sendMessage(obtainMessage(MSG_HIDE_LIME_TOAST, 0, 0, null));
+        }
+
     }
 
 
@@ -885,8 +897,21 @@ public class CandidateView extends View implements View.OnClickListener {
         mHandler.showLimeToast(text);
     }
 
+    public void showLimeToastUntilNextKey(CharSequence text) {
+        if (text == null || text.length() == 0) return;
+        mHandler.showLimeToastUntilNextKey(text);
+    }
+
+    public void hideLimeToast() {
+        mHandler.hideLimeToast();
+    }
+
+    static boolean shouldShowLimeToast(boolean hasWindowToken, CharSequence text) {
+        return hasWindowToken && text != null && text.length() > 0;
+    }
+
     private void doShowLimeToast(CharSequence text) {
-        if (!isShown() || text == null || text.length() == 0) return;
+        if (!shouldShowLimeToast(getWindowToken() != null, text)) return;
 
         if (mLimeToastTextView == null) {
             mLimeToastTextView = new TextView(mContext);

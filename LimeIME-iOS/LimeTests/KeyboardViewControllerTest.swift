@@ -99,6 +99,35 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(result.sourcePageIndexes, [0, 1, 1, 1])
     }
 
+    func testLimeToastStateShowsTrimmedNonEmptyMessage() {
+        var state = LimeToastState()
+
+        XCTAssertTrue(state.show("  大易  "))
+
+        XCTAssertEqual(state.message, "大易")
+        XCTAssertTrue(state.isShowing)
+    }
+
+    func testLimeToastStateRejectsEmptyMessageWithoutReplacingExistingToast() {
+        var state = LimeToastState()
+        XCTAssertTrue(state.show("大易"))
+
+        XCTAssertFalse(state.show("   "))
+
+        XCTAssertEqual(state.message, "大易")
+        XCTAssertTrue(state.isShowing)
+    }
+
+    func testLimeToastStateHideClearsMessage() {
+        var state = LimeToastState()
+        XCTAssertTrue(state.show("反查結果"))
+
+        state.hide()
+
+        XCTAssertNil(state.message)
+        XCTAssertFalse(state.isShowing)
+    }
+
     private func loadKeyboardLayoutFixture(_ layoutID: String) throws -> KeyboardLayoutFixture {
         let testFileURL = URL(fileURLWithPath: #filePath)
         let iosRoot = testFileURL.deletingLastPathComponent().deletingLastPathComponent()

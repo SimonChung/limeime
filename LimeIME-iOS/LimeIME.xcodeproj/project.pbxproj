@@ -92,6 +92,9 @@
 		8AC6B7DC76692A7FBFDDF3F9 /* ChineseSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C791A042EAF0B0D85E4AEC3 /* ChineseSymbol.swift */; };
 		8B72D83300CAD566BFCF3FE1 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51309BD0A4AEAF429010BB4F /* KeyboardViewController.swift */; };
 		8B72D83300CAD566BFCF3FE2 /* KeyboardViewControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */; };
+		8C4D2C17B8A1495297103E44 /* LimeToastState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C4D2C17B8A1495297103E43 /* LimeToastState.swift */; };
+		8C4D2C17B8A1495297103E45 /* LimeToastState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C4D2C17B8A1495297103E43 /* LimeToastState.swift */; };
+		8C4D2C17B8A1495297103E46 /* LimeToastState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C4D2C17B8A1495297103E43 /* LimeToastState.swift */; };
 		8B8D5CEFF8EB0D19EEB0F35C /* LimeDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = C413C5F3C96DA0D6411EAD4B /* LimeDB.swift */; };
 		8D62ED56761A14A0C42204A9 /* KeyLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1C7A1DEDC91A7AF8E2B3C4 /* KeyLayout.swift */; };
 		8EBAC89F106963E2B9A020A1 /* SearchServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD7B903A3658D6EBB77E60 /* SearchServer.swift */; };
@@ -307,6 +310,7 @@
 		89D98FE64ECEC8DE0535C88A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8A142D8C48B8080CACC06BF5 /* lime_english_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_shift.json; sourceTree = "<group>"; };
 		8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewControllerTest.swift; sourceTree = "<group>"; };
+		8C4D2C17B8A1495297103E43 /* LimeToastState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeToastState.swift; sourceTree = "<group>"; };
 		8D98DEBE9E75F237BEC73B5B /* IMStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMStoreView.swift; sourceTree = "<group>"; };
 		8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageImController.swift; sourceTree = "<group>"; };
 		9144DD8AA02C0B8B5188F542 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
@@ -509,6 +513,7 @@
 				2C0757CC0618D9DFE1917DB1 /* ImConfig.swift */,
 				43AF70BA22361D8084D34B7F /* Keyboard.swift */,
 				1F1C7A1DEDC91A7AF8E2B3C4 /* KeyLayout.swift */,
+				8C4D2C17B8A1495297103E43 /* LimeToastState.swift */,
 				D0956117FEB1C2F5C09EB5C5 /* Mapping.swift */,
 				91652FC0787DE834F53E57B3 /* Record.swift */,
 				14502A56A42472FB229360DB /* Related.swift */,
@@ -1051,6 +1056,7 @@
 				1DBB21F1304CE6388E830E57 /* LIMEPreferenceManager.swift in Sources */,
 				30A1639B07058FC030BD00CF /* LIMEPreferenceManagerTest.swift in Sources */,
 				8B72D83300CAD566BFCF3FE2 /* KeyboardViewControllerTest.swift in Sources */,
+				8C4D2C17B8A1495297103E44 /* LimeToastState.swift in Sources */,
 				E02BE727FF878D591A3D34B5 /* LimeDB.swift in Sources */,
 				BD134223224AF768213904BA /* LimeDBProtocol.swift in Sources */,
 				9B1ECA9BBCEE603587497032 /* LimeDBTest.swift in Sources */,
@@ -1089,6 +1095,7 @@
 				4C1012BD29921E3B0201DBBC /* Keyboard.swift in Sources */,
 				05655700F55F7F2F05431516 /* KeyboardPickerView.swift in Sources */,
 				A80635FAE2E8FE18ED2B15A4 /* LIMEPreferenceManager.swift in Sources */,
+				8C4D2C17B8A1495297103E45 /* LimeToastState.swift in Sources */,
 				F9D73852B20448B404C09BAB /* LimeDB.swift in Sources */,
 				60877D3DCDD874F7F0FE15A6 /* LimeDBProtocol.swift in Sources */,
 				D82AE1FA73F859BBABBF644C /* LimeSettingsView.swift in Sources */,
@@ -1126,6 +1133,7 @@
 				3E81089E57F6CB90A2BFF152 /* KeyboardView.swift in Sources */,
 				8B72D83300CAD566BFCF3FE1 /* KeyboardViewController.swift in Sources */,
 				273FC9499F6AFA5F033213D4 /* LIMEPreferenceManager.swift in Sources */,
+				8C4D2C17B8A1495297103E46 /* LimeToastState.swift in Sources */,
 				F96A2D8E2FA5B0A2004124A7 /* Profiling.swift in Sources */,
 				C29DD224E7D5797D71BFD56C /* LayoutLoader.swift in Sources */,
 				A1B2C3D40E5F6071829304A6 /* LayoutMetrics.swift in Sources */,
