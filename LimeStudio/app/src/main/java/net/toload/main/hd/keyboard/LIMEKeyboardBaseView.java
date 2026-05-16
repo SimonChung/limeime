@@ -280,9 +280,11 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
      */
     private final Rect mDirtyRect = new Rect();
     /**
-     * The keyboard bitmap for faster updates
+     * Front/back keyboard bitmaps for faster updates. Touch events only collect
+     * dirty regions; rendering happens on the next frame and swaps buffers.
      */
     private Bitmap mBuffer;
+    private Bitmap mBackBuffer;
     /**
      * Notes if the keyboard just changed, so that we could possibly reallocate the mBuffer.
      */
@@ -292,6 +294,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
      * The canvas for the above mutable keyboard bitmap
      */
     private Canvas mCanvas;
+    private Canvas mBackCanvas;
     private final Paint mPaint;
     private final Rect mPadding;
     private final Rect mClipRegion = new Rect(0, 0, 0, 0);
@@ -368,7 +371,8 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         public void showPreview(long delay, int keyIndex, PointerTracker tracker){
             if(DEBUG)
                 Log.i(TAG,"UIHandler.showPreview() delay = "+delay);
-            LIMEKeyboardBaseView mLIMEKeyboardBaseView = mLIMEKeyboardBaseViewWeakReference.get();
+            removeMessages(MSG_DISMISS_PREVIEW);
+            removeMessages(MSG_SHOW_PREVIEW);
             sendMessageDelayed(obtainMessage(MSG_SHOW_PREVIEW, keyIndex, 0, tracker), delay);
 
         }
@@ -378,6 +382,8 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
             LIMEKeyboardBaseView mLIMEKeyboardBaseView = mLIMEKeyboardBaseViewWeakReference.get();
             if(mLIMEKeyboardBaseView == null) return;
             removeMessages(MSG_POPUP_PREVIEW);
+            removeMessages(MSG_SHOW_PREVIEW);
+            removeMessages(MSG_DISMISS_PREVIEW);
             if (mLIMEKeyboardBaseView.mPreviewPopup.isShowing() && mLIMEKeyboardBaseView.mPreviewText.getVisibility() == VISIBLE) {
                 // Show right away, if it's already visible and finger is moving around
                 mLIMEKeyboardBaseView.showKey(keyIndex, tracker);
@@ -395,10 +401,31 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         public void dismissPreview(long delay) {
             if(DEBUG)
                 Log.i(TAG, "UIHandler.dismissPreview() delay=" + delay);
+            removeMessages(MSG_POPUP_PREVIEW);
+            removeMessages(MSG_SHOW_PREVIEW);
+            removeMessages(MSG_DISMISS_PREVIEW);
             LIMEKeyboardBaseView mLIMEKeyboardBaseView = mLIMEKeyboardBaseViewWeakReference.get();
             if(mLIMEKeyboardBaseView != null) mLIMEKeyboardBaseView.startKeyPreviewFadeOutAnimation();
             sendMessageDelayed(obtainMessage(MSG_DISMISS_PREVIEW), delay);
 
+        }
+
+        public void dismissPreviewNow() {
+            if(DEBUG)
+                Log.i(TAG, "UIHandler.dismissPreviewNow()");
+            removeMessages(MSG_POPUP_PREVIEW);
+            removeMessages(MSG_SHOW_PREVIEW);
+            removeMessages(MSG_DISMISS_PREVIEW);
+            LIMEKeyboardBaseView mLIMEKeyboardBaseView = mLIMEKeyboardBaseViewWeakReference.get();
+            if (mLIMEKeyboardBaseView == null) return;
+            if (mLIMEKeyboardBaseView.mPreviewText != null) {
+                mLIMEKeyboardBaseView.mPreviewText.clearAnimation();
+                mLIMEKeyboardBaseView.mPreviewText.setVisibility(INVISIBLE);
+            }
+            if (mLIMEKeyboardBaseView.mPreviewPopup != null
+                    && mLIMEKeyboardBaseView.mPreviewPopup.isShowing()) {
+                mLIMEKeyboardBaseView.mPreviewPopup.dismiss();
+            }
         }
 
         public void cancelDismissPreview() {
@@ -915,6 +942,9 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         super.onSizeChanged(w, h, oldw, oldh);
         // Release the buffer, if any and it will be reallocated on the next draw
         mBuffer = null;
+        mBackBuffer = null;
+        mCanvas = null;
+        mBackCanvas = null;
     }
 
     @Override
@@ -927,18 +957,30 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
     }
 
     private void onBufferDraw() {
-        if (mBuffer == null || mKeyboardChanged) {
-            if (mBuffer == null || (mBuffer.getWidth() != getWidth() || mBuffer.getHeight() != getHeight())) {
-                // Make sure our bitmap is at least 1x1
-                final int width = Math.max(1, getWidth());
-                final int height = Math.max(1, getHeight());
-                mBuffer = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                mCanvas = new Canvas(mBuffer);
-            }
-            invalidateAllKeys();
+        final int width = Math.max(1, getWidth());
+        final int height = Math.max(1, getHeight());
+        if (mBuffer == null || mBackBuffer == null
+                || mBuffer.getWidth() != width || mBuffer.getHeight() != height
+                || mBackBuffer.getWidth() != width || mBackBuffer.getHeight() != height) {
+            mBuffer = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            mBackBuffer = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            mCanvas = new Canvas(mBuffer);
+            mBackCanvas = new Canvas(mBackBuffer);
+            mDirtyRect.set(0, 0, width, height);
+            mInvalidatedKey = null;
+        }
+        if (mKeyboardChanged) {
+            mDirtyRect.set(0, 0, width, height);
+            mInvalidatedKey = null;
             mKeyboardChanged = false;
         }
-        final Canvas canvas = mCanvas;
+        if (mDirtyRect.isEmpty()) {
+            mDrawPending = false;
+            return;
+        }
+
+        final Canvas canvas = mBackCanvas;
+        canvas.drawBitmap(mBuffer, 0, 0, null);
         canvas.save();
         try {
             canvas.clipRect(mDirtyRect);
@@ -1216,6 +1258,13 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
 
         mDrawPending = false;
         mDirtyRect.setEmpty();
+        Bitmap drawnBuffer = mBackBuffer;
+        mBackBuffer = mBuffer;
+        mBuffer = drawnBuffer;
+
+        Canvas drawnCanvas = mBackCanvas;
+        mBackCanvas = mCanvas;
+        mCanvas = drawnCanvas;
     }
 
     // TODO: clean up this method.
@@ -1241,7 +1290,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         if (oldKeyIndex != keyIndex  && mShowPreview
                 || (hidePreviewOrShowSpaceKeyPreview)){
             if (keyIndex == NOT_A_KEY) {
-                mHandler.dismissPreview(mDelayAfterPreview);
+                mHandler.dismissPreviewNow();
             } else if (tracker != null) {
                 mHandler.popupPreview(0, keyIndex, tracker);
             }
@@ -1347,8 +1396,8 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
      */
     public void invalidateAllKeys() {
         mDirtyRect.union(0, 0, getWidth(), getHeight());
-        mDrawPending = true;
-        invalidate();
+        mInvalidatedKey = null;
+        scheduleBufferDraw();
     }
 
     /**
@@ -1362,13 +1411,22 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
     public void invalidateKey(Key key) {
         if (key == null)
             return;
-        mInvalidatedKey = key;
+        if (mDirtyRect.isEmpty() || mInvalidatedKey == key) {
+            mInvalidatedKey = key;
+        } else {
+            mInvalidatedKey = null;
+        }
         // TODO we should clean up this and record key's region to use in onBufferDraw.
         mDirtyRect.union(key.x + getPaddingLeft(), key.y + getPaddingTop(),
                 key.x + key.width + getPaddingLeft(), key.y + key.height + getPaddingTop());
-        onBufferDraw();
-        // Use invalidate() without parameters or invalidate(Rect) instead of deprecated invalidate(int, int, int, int)
-        invalidate();
+        scheduleBufferDraw();
+    }
+
+    private void scheduleBufferDraw() {
+        if (!mDrawPending) {
+            mDrawPending = true;
+            postInvalidateOnAnimation();
+        }
     }
 
     private void openPopupIfRequired(int keyIndex, PointerTracker tracker) {
@@ -1802,7 +1860,9 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         dismissKeyPreview();
         dismissPopupKeyboard();
         mBuffer = null;
+        mBackBuffer = null;
         mCanvas = null;
+        mBackCanvas = null;
         mMiniKeyboardCache.clear();
     }
 
