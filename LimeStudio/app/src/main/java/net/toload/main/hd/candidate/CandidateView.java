@@ -640,28 +640,14 @@ public class CandidateView extends View implements View.OnClickListener {
         int popHeight;
         int popupYOffset;
         if (expandUpward) {
-            // Expand upward: calculate height based on available space above
-            popHeight = popupHeight(availableSpaceAbove, mPopupCandidateView.getMeasuredHeight(), true);
-            // Offset to align popup bottom with CandidateView bottom
-            popupYOffset = popupYOffset(myHeight, popHeight, true);
+            // Physical keyboard path: the soft keyboard is hidden and only the candidate bar remains.
+            popHeight = popupHeight(mScreenHeight, mPopupCandidateView.getMeasuredHeight(), true);
+            popupYOffset = popupYOffset(myHeight, popHeight, false);
         } else {
             // Soft keyboard visible: cover the live candidate bar and keyboard view with one coherent popup.
             popHeight = popupHeight(visibleKeyboardPopupHeight(availableSpaceBelow, candidateViewHeight),
                     mPopupCandidateView.getMeasuredHeight(), false);
             popupYOffset = popupYOffset(myHeight, popHeight, false);
-        }
-
-        if (expandUpward && !hasRoomForExpanding(true)) {
-            popHeight = 3 * (configHeight + mVerticalPadding);
-
-            if (DEBUG)
-                Log.i(TAG, "doUpdateCandidatePopup(), " +
-                        "no enough room for expanded view, expand self first. newHeight:" + popHeight);
-
-            if (mPopupCandidateView.getMeasuredHeight() < popHeight)
-                popHeight = mPopupCandidateView.getMeasuredHeight();
-            this.setLayoutParams(
-                    new LinearLayout.LayoutParams(mScreenWidth - mExpandButtonWidth, popHeight));
         }
 
         if (DEBUG)
@@ -683,22 +669,13 @@ public class CandidateView extends View implements View.OnClickListener {
         if (mCandidatePopupWindow.isShowing()) {
             if (DEBUG)
                 Log.i(TAG, "doUpdateCandidatePopup(),mCandidatePopup.isShowing ");
-            // Update size only, position is controlled by showAsDropDown offsetY
-            // Update both size and y-offset (location) to reflect new popHeight
-            if (expandUpward) {
-                mCandidatePopupWindow.update(this, 0, popupYOffset, mScreenWidth, popHeight);
-            } else {
-                mCandidatePopupWindow.update(mScreenWidth, popHeight);
-            }
+            mCandidatePopupWindow.update(mScreenWidth, popHeight);
         } else {
             mCandidatePopupWindow.setWidth(mScreenWidth);
             mCandidatePopupWindow.setHeight(popHeight);
-            if (expandUpward) {
-                // Use offsetY to position popup above the candidate bar when the soft keyboard is hidden.
-                mCandidatePopupWindow.showAsDropDown(this, 0, popupYOffset);
-            } else {
-                mCandidatePopupWindow.showAtLocation(getRootView(), Gravity.BOTTOM | Gravity.START, 0, 0);
-            }
+            // Bottom-positioned popup covers the soft keyboard when present and pins to screen bottom
+            // when physical key events hide the soft keyboard.
+            mCandidatePopupWindow.showAtLocation(getRootView(), Gravity.BOTTOM | Gravity.START, 0, 0);
             mPopupScrollView.scrollTo(0, 0);
         }
 
@@ -1080,7 +1057,7 @@ public class CandidateView extends View implements View.OnClickListener {
     }
 
     static int popupYOffset(int candidateViewHeight, int popHeight, boolean keyboardViewHidden) {
-        return keyboardViewHidden ? -popHeight : 0;
+        return 0;
     }
 
     static int visibleKeyboardPopupY(int candidateTopOnScreen, int candidateViewHeight) {

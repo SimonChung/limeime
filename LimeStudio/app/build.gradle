@@ -114,6 +114,34 @@ androidComponents {
     }
 }
 
+def currentReleaseApkName = "LIMEHD${android.defaultConfig.versionCode}-${android.defaultConfig.versionName}.apk"
+
+tasks.register("preserveReleaseApks", Exec) {
+    workingDir(layout.projectDirectory)
+    commandLine("sh", "-c", "mkdir -p build/preserved-release-apks && find release -maxdepth 1 -type f -name '*.apk' ! -name '${currentReleaseApkName}' -exec cp -n {} build/preserved-release-apks/ \\; 2>/dev/null || true")
+}
+
+tasks.register("archiveReleaseApk", Exec) {
+    workingDir(layout.projectDirectory)
+    commandLine("sh", "-c", "mkdir -p release && find build/preserved-release-apks -maxdepth 1 -type f -name '*.apk' ! -name '${currentReleaseApkName}' -exec cp -n {} release/ \\; 2>/dev/null || true; cp build/outputs/apk/release/*.apk release/; cp build/outputs/apk/release/output-metadata.json release/ 2>/dev/null || true")
+}
+
+afterEvaluate {
+    tasks.named("createReleaseApkListingFileRedirect").configure {
+        dependsOn("preserveReleaseApks")
+        finalizedBy("archiveReleaseApk")
+    }
+    tasks.named("archiveReleaseApk").configure {
+        mustRunAfter("createReleaseApkListingFileRedirect")
+    }
+    tasks.named("assembleRelease").configure {
+        finalizedBy("archiveReleaseApk")
+    }
+    tasks.named("packageRelease").configure {
+        finalizedBy("archiveReleaseApk")
+    }
+}
+
 dependencies {
     // implementation fileTree(include: ['*.jar'], dir: 'libs')
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'

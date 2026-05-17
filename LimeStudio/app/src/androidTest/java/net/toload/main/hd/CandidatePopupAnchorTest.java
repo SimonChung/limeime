@@ -103,8 +103,8 @@ public class CandidatePopupAnchorTest {
     }
 
     @Test
-    public void popupYOffsetPlacesVisibleKeyboardPopupBelowCandidateBar() {
-        assertEquals(-90, CandidateView.popupYOffset(30, 90, true));
+    public void bottomAlignedPopupUsesNoAnchorYOffset() {
+        assertEquals(0, CandidateView.popupYOffset(30, 90, true));
         assertEquals(0, CandidateView.popupYOffset(30, 90, false));
     }
 
