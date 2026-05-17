@@ -43,10 +43,7 @@
 | `auto_chinese_symbol` | Toggle / CheckBox | false · 自動中文標點模式 · §8.4 輸入法行為 · subtext=無候選字詞時顯示中文標點選項 | false · 自動中文標點模式 · lime_im · summary=無候選字詞時顯示中文標點選項 | false · 自動中文標點模式 · pref_section_im_behaviour · summary=無候選字詞時顯示中文標點選項 | Auto-insert Chinese punctuation when no candidate. |
 | `candidate_switch` | Toggle / CheckBox | true · 滑動選取 · §8.4 輸入法行為 · subtext=滑動選取輸入法建議文字 | true · 滑動選取 · **lime_mapping (§8.6)** · summary=滑動選取輸入法建議文字 | true · 滑動選取 · pref_section_im_behaviour | Swipe vs paged candidate selection. Android current re-categorised from §8.6 to §8.4 to match iOS. |
 | `persistent_language_mode` | Toggle / CheckBox | false · 記憶中英模式 · §8.4 輸入法行為 · subtext=下次切換前保持中英模式 | false · 記憶中英模式 · **lime_keyboard (§8.1)** · summary=下次切換前保持中英模式 | false · 記憶中英模式 · pref_section_im_behaviour | Persist CN/EN mode across app focus. Re-classified from §8.8 to §8.4 (UI grouping). |
-| `enable_emoji` | Toggle / CheckBox | true · 開啟 EMOJI 顯示 · §8.4 輸入法行為 · subtext=依字根或中文組字顯示圖示, 由於字型支援的差異所以部份圖示可能無法正確顯示 | **false** · 開啟 EMOJI 顯示 · lime_keyboard | true · 開啟 EMOJI 顯示 · pref_section_im_behaviour | Show emoji candidates. Moved from §8.1 into §8.4 (IM behaviour grouping). |
-| `enable_emoji_button` | Toggle / CheckBox | *(no iOS row)* | *(new)* | true · 顯示 Emoji 鍵盤按鈕 · pref_section_im_behaviour · summary=在英文鍵盤顯示 😀 按鈕以開啟 Emoji 面板 | Android setting for showing the dedicated emoji panel button. iOS does not currently expose this as a separate Preferences row. |
-| `enable_emoji_position` | Picker / ListPreference | 3 · 設定 EMOJI 候選列顯示位置 · §8.4 輸入法行為 | "3" · 設定 EMOJI 候選列顯示位置 · lime_keyboard | "3" · 設定 EMOJI 候選列顯示位置 · pref_section_im_behaviour | Position index of emoji in candidate strip; default 3. When comma/period full-width Chinese punctuation is present at that slot, emoji insertion moves after it so punctuation stays before emoji. Gated by `enable_emoji`. Moved from §8.1 into §8.4. |
-| `reverse_lookup_notify` | Toggle / CheckBox | true · 啟用字根反查跳出提示 · §8.4 輸入法行為 | true · 啟用字根反查跳出提示 · lime_im | true · 啟用字根反查跳出提示 · pref_section_im_behaviour | Popup when a reverse-lookup candidate is committed. Re-classified from §8.8 to §8.4. |
+| `enable_emoji_position` | Picker / ListPreference | 6 · 設定 EMOJI 候選列顯示位置 · §8.4 輸入法行為 · options=0 不顯示, 2–10 第 N 候選字後顯示 | "3" · 設定 EMOJI 候選列顯示位置 · lime_keyboard | "6" · 設定 EMOJI 候選列顯示位置 · pref_section_im_behaviour | Position index of emoji in candidate strip; default 6. Value 0 disables inline emoji candidates. When comma/period full-width Chinese punctuation is present at that slot, emoji insertion moves after it so punctuation stays before emoji. |
 | `reverse_lookup_screen` | Drill-down / PreferenceScreen | *(screen)* · 字根反查設定 · §8.4.1 字根反查設定 | *(flat entries in lime_im; no wrapper)* | *(screen)* · 字根反查設定 · pref_section_im_behaviour | Opens the reverse-lookup sub-screen. Last item in §8.4 on both platforms. |
 
 ## 8.5 Han Conversion (簡繁轉換)
@@ -89,7 +86,7 @@
 
 In iOS this is a drill-down picker in the Preferences tab. In Android pre-back-port it was a flat list of 13 ListPreferences inside `lime_im`. In Android current the 13 entries are wrapped in `PreferenceScreen key="reverse_lookup_screen"` (title="字根反查設定", summary="輸入字根無候選字時，以其他輸入法字根標注說明。"); both wrapper strings are **NEW** in the back-port.
 
-Every entry below: type=`ListPreference`, `android:defaultValue="none"`, `entries=@array/im_reverse_lookup`, `entryValues=@array/im_reverse_lookup_codes`, `dialogTitle=@string/im_reverse_lookup_list` (輸入法字根反查). Same across all three sources.
+Every entry below: type=`ListPreference`, `android:defaultValue="none"`, `dialogTitle=@string/im_reverse_lookup_list` (輸入法字根反查). The XML keeps `entries=@array/im_reverse_lookup` / `entryValues=@array/im_reverse_lookup_codes` as a safe fallback, but runtime Android and iOS replace the picker choices with `無` plus the currently enabled IM display names. On iOS the visible rows are also limited to the enabled IMs from the IM list tab path. Stored values remain `none` or the matching IM table code (`cj`, `phonetic`, `dayi`, etc.), so the preference keys and reverse-lookup lookup tables do not change.
 
 | Pref Key | iOS picker label | Android title (both versions) |
 |---|---|---|
@@ -118,7 +115,6 @@ Every entry below: type=`ListPreference`, `android:defaultValue="none"`, `entrie
 | `switch_english_mode_shift` | CheckBox | true | lime_keyboard · 快速切換輸入模式2 · summary=單按 [SHIFT] 鍵切換輸入模式 (實體鍵盤) | pref_section_physical_keyboard · 快速切換輸入模式2 | Single SHIFT toggles CN/EN on HW kbd. |
 | `disable_physical_selkey` | CheckBox | false | **lime_im** · 關閉實體鍵盤選字鍵 | pref_section_physical_keyboard · 關閉實體鍵盤選字鍵 | Disable HW selection keys. |
 | `selkey_option` | ListPreference | "0" | lime_im · 設定選字鍵預選順序 | pref_section_physical_keyboard · 設定選字鍵預選順序 | Selection-key preselect order for physical-keyboard candidate labels/commits. Android-only, no iOS counterpart. |
-| `physical_keyboard_type` | ListPreference | "normal_keyboard" | **lime_im** · 實體鍵盤選項 | pref_section_physical_keyboard · 實體鍵盤選項 | HW keyboard layout type. |
 | `english_dictionary_physical_keyboard` | CheckBox | false | lime_mapping · 實體鍵盤啟用英文字典 · dependency=`english_dictionary_enable` | pref_section_physical_keyboard · 實體鍵盤啟用英文字典 | English dict for HW kbd typing. |
 | `physical_keyboard_sort` | CheckBox | true | lime_mapping · 啟動實體鍵盤選取排序 · summary=使用實體鍵鍵時依選取次數排序選字清單 | pref_section_physical_keyboard · 啟動實體鍵盤選取排序 | Sort candidates by frequency on HW kbd. |
 
@@ -146,7 +142,6 @@ Every entry below: type=`ListPreference`, `android:defaultValue="none"`, `entrie
 |---|---|---|---|---|
 | `keyboard_size` | "1" | "1" | "1" | All defaults are now `"1"` (一般). Re-aligned across both platforms 2026-05-14. |
 | `font_size` | "1" | **"1"** | "1" | All defaults are now `"1"` (一般). Re-aligned across both platforms 2026-05-14. |
-| `enable_emoji` | true | **false** | true | Aligned to iOS. |
 | `smart_chinese_input` | true | **false** | true | Aligned to iOS. `preference.xml` defaultValue flipped `false→true`; Java accessor `LIMEPreferenceManager.java:434` already returned `true` for unset key. |
 | `auto_chinese_symbol` | false | false | false | iOS reconciled to `false` (matches Android — no divergence). |
 | `backup_on_delete_{tableNick}` | true | *(runtime default false)* | true | At parity. `ImDetailFragment.java:169` reads with default `true`; the bug referenced at the stale line 121 has been fixed. |
@@ -159,12 +154,12 @@ Pre-back-port had **3 flat categories** (`lime_keyboard` / `lime_im` / `lime_map
 |---|---|---|
 | lime_keyboard (鍵盤) | pref_section_appearance (§8.1) | keyboard_theme, keyboard_size, font_size, number_row_in_english, show_arrow_key, split_keyboard_mode |
 | lime_keyboard | pref_section_feedback (§8.2) | vibrate_on_keypress, vibrate_level, sound_on_keypress |
-| lime_keyboard | pref_section_im_behaviour (§8.4) | enable_emoji, enable_emoji_button, enable_emoji_position, persistent_language_mode |
+| lime_keyboard | pref_section_im_behaviour (§8.4) | enable_emoji_position, persistent_language_mode |
 | lime_keyboard | pref_section_physical_keyboard | hide_software_keyboard_typing_with_physical, switch_english_mode, switch_english_mode_shift |
-| lime_im (輸入法) | pref_section_im_behaviour (§8.4) | smart_chinese_input, auto_chinese_symbol, reverse_lookup_notify |
+| lime_im (輸入法) | pref_section_im_behaviour (§8.4) | smart_chinese_input, auto_chinese_symbol |
 | lime_im | pref_section_han_convert (§8.5) | han_convert_option |
 | lime_im | reverse_lookup_screen (§8.4.1 sub-screen, nested as the last item inside pref_section_im_behaviour) | All 13 `*_im_reverselookup` |
-| lime_im | pref_section_physical_keyboard | disable_physical_selkey, selkey_option, physical_keyboard_type |
+| lime_im | pref_section_physical_keyboard | disable_physical_selkey, selkey_option |
 | lime_mapping (對應表) | pref_section_im_behaviour (§8.4) | candidate_switch |
 | lime_mapping | pref_section_related_learning (§8.6) | similiar_enable, similiar_list, candidate_suggestion, learn_phrase, learning_switch |
 | lime_mapping | pref_section_english_dictionary (§8.7) | english_dictionary_enable |

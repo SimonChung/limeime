@@ -188,62 +188,94 @@ The **Model and Controller layers must achieve the same testability goals** as t
 
 ### 4.1 Layout
 
-Inspired by Gboard's setup screen: a single scrollable screen with the LimeIME logo at top, a visual three-step instruction list, and **one CTA button** that opens the relevant iOS Settings page directly. The two-button (Step 1 / Step 2) layout is replaced by this unified design.
+Inspired by Gboard's setup screen: a single scrollable screen with the LimeIME logo at top, a visual three-step instruction list, and **one CTA button** that opens the app's system Settings page. The navigation bar is hidden; the screen has no title bar.
 
-**iPad / wide-screen layout cap.** The inner `VStack` is wrapped in `.frame(maxWidth: 560).frame(maxWidth: .infinity)` so on iPad (portrait and especially landscape) the content sits in a centered ~560pt column instead of stretching edge-to-edge. This fixes the uncomfortable far-left / far-right alignment of the status banner, step list, explanatory paragraph, and the `LabeledContent` rows in the About box (where `版本` and `6.0(1)` would otherwise sit at opposite edges of an 1100pt-wide row in iPad landscape). On iPhone the cap never engages because the screen is narrower than 560pt.
+**iPad / wide-screen layout cap.** The inner `VStack` is wrapped in `.frame(maxWidth: 560).frame(maxWidth: .infinity)` so on iPad the content sits in a centered ~560pt column. On iPhone the cap never engages.
 
-**Brand block under logo.** A `Text("萊姆輸入法")` wordmark is placed directly under the logo (28pt semibold) to fill the visual gap between the logo and the version block at the bottom of the screen, and to give the screen a clear identity. No English subtitle / tagline.
+#### iOS (`SetupTabView.swift`)
+
+**Brand block**: `VStack(spacing: 8)` — `appIconUIImage()` reads `CFBundleIcons → CFBundlePrimaryIcon → CFBundleIconFiles` from the bundle (80×80pt, `cornerRadius: 18`); fallback is `Image(systemName: "keyboard.fill")` in an accent-colored tile. Wordmark `Text("萊姆輸入法")` `.largeTitle.bold()` directly below.
+
+**Status banner**: color-coded `Label` in a `secondarySystemBackground` rounded card. See §4.2 for detection logic and exact text. Auto-refreshes on `.onAppear`, `scenePhase → .active`, and 1-second polling `Timer`.
+
+**Setup steps** — three `SetupStepRow` rows (icon 32pt left, label `.body` right):
+
+| Step | Icon | Label |
+| --- | --- | --- |
+| 1 | `Image(systemName: "keyboard")` `.title3` `.accentColor` | `"輕觸「鍵盤」"` |
+| 2 | `ToggleSwitchIcon()` (green capsule + white thumb) | `"開啟萊姆輸入法"` |
+| 3 | `ToggleSwitchIcon()` | `"開啟「允許完整取用」"` |
+
+**Explanatory note** (`.subheadline`, `.secondary`, centered): `"萊姆輸入法僅需完整取用以啟用按鍵震動回饋。若不需要此功能，可不開啟。萊姆輸入法不會收集或傳送任何個人資料。"`
+
+**CTA**: `Button("前往設定")` `.borderedProminent` `.large` → `openLimeKeyboardSettings()` (§4.1.2).
+
+**Invisible probe field**: 1×1pt `TextField`, opacity 0.01, `accessibilityHidden`. Auto-focused via `@FocusState` when `keyboardEnabled && !fullAccessEnabled`; causes the keyboard extension's `viewWillAppear` to write a fresh `keyboard_has_full_access` to the App Group.
+
+**About section** (`GroupBox` styled as form section): `LabeledContent("版本", value: appVersion())` — `CFBundleShortVersionString (build)`; `LabeledContent("授權", value: "GPL-3.0")`; `Link("原始碼 (GitHub)", destination: githubURL)`.
+
+Full layout structure:
 
 ```
-NavigationStack
+NavigationStack (.navigationBarHidden(true))
 └── ScrollView
     └── VStack(spacing: 24)
         │
-        ├── // ── Brand block (logo + wordmark) ───────────────────────
+        ├── // ── Brand block ──────────────────────────────────────────
         │   VStack(spacing: 8) {
-        │       Image("LimeLogo")      // Assets.xcassets app icon / logo asset
+        │       logoImage              // appIconUIImage() reads CFBundleIcons/CFBundlePrimaryIcon/
+        │                             // CFBundleIconFiles from bundle; fallback:
+        │                             // Image(systemName: "keyboard.fill") in accent-colored tile
         │           .resizable().scaledToFit()
         │           .frame(width: 80, height: 80)
         │           .clipShape(RoundedRectangle(cornerRadius: 18))
-        │       Text("萊姆輸入法")      // wordmark — fills the visual gap below the logo
-        │           .font(.system(size: 28, weight: .semibold))
+        │       Text("萊姆輸入法")
+        │           .font(.largeTitle).bold()
         │   }
         │   .padding(.top, 32)
         │
-        ├── // ── Status banner ─────────────────────────────────────────
-        │   StatusBannerView()         // see §4.2 — colour-coded; re-checked on .onAppear + scenePhase
+        ├── // ── Status banner ────────────────────────────────────────
+        │   statusBanner              // see §4.2
+        │       .padding(.horizontal, 24)
         │
-        ├── // ── Title ────────────────────────────────────────────────
-        │   Text("設定 LimeIME")
-        │       .font(.title2).bold()
+        ├── // ── Setup title ──────────────────────────────────────────
+        │   Text("設定萊姆輸入法")
+        │       .font(.largeTitle).bold()
+        │       .frame(maxWidth: .infinity, alignment: .leading)
+        │       .padding(.horizontal, 24)
         │
         ├── // ── Step list ────────────────────────────────────────────
         │   VStack(alignment: .leading, spacing: 16) {
-        │       SetupStepRow(text: "輕觸「鍵盤」")   { Image(systemName: "keyboard").font(.title3).foregroundColor(.accentColor) }
-        │       SetupStepRow(text: "開啟萊姆輸入法") { ToggleSwitchIcon() }   // green ON-state toggle
-        │       SetupStepRow(text: "開啟「允許完整取用」") { ToggleSwitchIcon() }
+        │       SetupStepRow(text: "輕觸「鍵盤」") {
+        │           Image(systemName: "keyboard")
+        │               .font(.title3).foregroundColor(.accentColor)
+        │       }
+        │       SetupStepRow(text: "開啟萊姆輸入法")         { ToggleSwitchIcon() }
+        │       SetupStepRow(text: "開啟「允許完整取用」")   { ToggleSwitchIcon() }
         │   }
         │   .padding(.horizontal, 24)
-        │   // SetupStepRow is generic (@ViewBuilder icon:); ToggleSwitchIcon is a
-        │   // green Capsule + white thumb (ON state) matching the iOS Settings toggle.
         │
         ├── // ── Explanatory note ─────────────────────────────────────
-        │   Text("允許完整取用後，萊姆輸入法才能存取使用者詞庫並提供候選字建議。萊姆輸入法不會收集或傳送您的輸入內容。")
-        │       .font(.footnote).foregroundColor(.secondary)
+        │   Text("萊姆輸入法僅需完整取用以啟用按鍵震動回饋。若不需要此功能，可不開啟。萊姆輸入法不會收集或傳送任何個人資料。")
+        │       .font(.subheadline).foregroundColor(.secondary)
         │       .multilineTextAlignment(.center)
         │       .padding(.horizontal, 24)
         │
         ├── // ── CTA button ───────────────────────────────────────────
-        │   Button("前往設定") {
-        │       openLimeKeyboardSettings()   // see §4.1.1
-        │   }
-        │   .buttonStyle(.borderedProminent)
-        │   .controlSize(.large)
-        │   .padding(.horizontal, 24)
+        │   Button("前往設定") { openLimeKeyboardSettings() }
+        │       .buttonStyle(.borderedProminent)
+        │       .controlSize(.large)
+        │       .padding(.horizontal, 24)
+        │
+        ├── // ── Invisible probe field ────────────────────────────────
+        │   TextField("", text: $probeText)   // 1×1 pt, opacity 0.01, accessibilityHidden
+        │       .focused($probeFocused)       // auto-focused when keyboard enabled but Full
+        │       .frame(width: 1, height: 1)   // Access not confirmed; causes LimeKeyboard's
+        │       .opacity(0.01)               // viewWillAppear to write keyboard_has_full_access
         │
         └── // ── About section ────────────────────────────────────────
             GroupBox {
-                LabeledContent("版本", value: appVersion())  // CFBundleShortVersionString + build
+                LabeledContent("版本", value: appVersion())   // CFBundleShortVersionString (build)
                     .padding(.vertical, 11)
                 Divider()
                 LabeledContent("授權", value: "GPL-3.0")
@@ -252,70 +284,79 @@ NavigationStack
                 Link("原始碼 (GitHub)", destination: githubURL)
                     .padding(.vertical, 11)
             }
-            .groupBoxStyle(FormSectionGroupBoxStyle())  // white fill, cornerRadius 10 — matches Form Section
+            .groupBoxStyle(FormSectionGroupBoxStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
-        // VStack modifiers (applied to the outer VStack(spacing: 24)):
+        // VStack modifiers:
         //   .frame(maxWidth: 560)        // iPad reading-width cap
         //   .frame(maxWidth: .infinity)  // center the column horizontally
 ```
 
 #### 4.1.1 SetupStepRow
 
-A reusable helper view — icon on the left, label on the right:
+A private generic `@ViewBuilder` helper — icon on the left, label on the right:
 
 ```swift
-struct SetupStepRow: View {
-    let icon: String
+private struct SetupStepRow<Icon: View>: View {
     let text: String
+    @ViewBuilder let icon: Icon
+
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.accentColor)
-                .frame(width: 32)
-            Text(text)
-                .font(.body)
+            icon.frame(width: 32, alignment: .center)
+            Text(text).font(.body)
             Spacer()
         }
     }
 }
 ```
 
+`ToggleSwitchIcon` is a green `Capsule` + white `Circle` thumb matching the iOS Settings ON-state toggle.
+
 #### 4.1.2 openLimeKeyboardSettings()
 
-The CTA button always opens the **LimeIME keyboard settings page** directly (where both the enable toggle and the Allow Full Access toggle live):
+Opens the app's own Settings page via `openSettingsURLString`. `App-Prefs:` deep links are intentionally not used — `canOpenURL` returns `true` for whitelisted schemes regardless of path, causing silent navigation to the wrong page.
 
 ```swift
-func openLimeKeyboardSettings() {
-    // Direct link to LimeIME's keyboard settings page (iOS 14+).
-    // Falls back to the Keyboards list, then to the generic Settings app.
-    let urls: [String] = [
-        "App-Prefs:root=General&path=Keyboard/net.toload.limeime.LimeKeyboard",
-        "App-Prefs:root=General&path=Keyboard",
-        UIApplication.openSettingsURLString
-    ]
-    for raw in urls {
-        if let url = URL(string: raw), UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
-            return
-        }
+private func openLimeKeyboardSettings() {
+    if let url = URL(string: UIApplication.openSettingsURLString) {
+        UIApplication.shared.open(url)
     }
 }
 ```
 
+#### Android (`fragment_setup.xml` + `SetupImFragment.java`)
+
+Layout: `NestedScrollView` → `LinearLayout`. Brand block is a horizontal row: `ImageView` (logo, 120×120dp) + `TextView("萊姆輸入法")`.
+
+**Status card** (`statusCard`): `MaterialCardView` with `statusIcon` + `statusText` set dynamically by Java based on IME state.
+
+**Three-state machine** (`refreshButtonState()`, driven by `LIMEUtilities.isLIMEEnabled()` / `isLIMEActive()`):
+
+| State | Visible elements |
+| --- | --- |
+| Not enabled | Heading `"啟動萊姆輸入法"`, description `"萊姆輸入法尚未啟用，請按下一步後，在系統鍵盤輸入法頁面啟用萊姆輸入法。完成後請按返回鍵繼續其他設定。"`, filled button `"下一步"` → `showInputMethodSettingsPage()` |
+| Enabled, not active | Description `"萊姆輸入法已啟用但尚未被選用，請按下方按鈕後，在系統鍵盤輸入法選擇頁選用萊姆輸入法。"`, outlined button `"選用萊姆輸入法"` → `showInputMethodPicker()` |
+| Enabled and active | Setup heading + buttons hidden; IM list (`SetupImList`) shown |
+
+**About card**: `"版本"` (right-aligned, `version_format` = `"v%1$s - %2$d"`), `"授權"` / `"GPL-3.0"`, `"原始碼"` (right-aligned clickable `txtGithubUrl`).
+
 ### 4.2 Status Banner
 
-- Re-checks on `.onAppear` and whenever `scenePhase` transitions to `.active`.
-- Reads two flags written by the keyboard extension to the shared App Group (`group.net.toload.limeime`):
-  - `keyboard_extension_loaded` (Bool) — written `true` in `viewDidLoad`; indicates the extension has been enabled and loaded at least once.
-  - `keyboard_has_full_access` (Bool) — written from `hasFullAccess` in `viewWillAppear`; reflects current Full Access state.
+Re-checks on `.onAppear`, on each `scenePhase → .active` transition, and via a 1-second polling `Timer` while the app is active. The invisible probe field (§4.1) is auto-focused when `keyboardEnabled && !fullAccessEnabled` to trigger the keyboard extension's `viewWillAppear`, which writes a fresh `keyboard_has_full_access` to the App Group.
 
-| Condition | Colour | Message |
-|---|---|---|
-| Keyboard enabled + Full Access on | Green | "LimeIME 鍵盤已啟用 ✓" |
-| Keyboard enabled, Full Access off | Yellow | "鍵盤已啟用，但尚未允許完整取用" |
-| Keyboard not in active list | Red | "尚未啟用 LimeIME 鍵盤" |
+**Detection logic** (`refreshStatus()`):
+
+- `keyboardEnabled`: `UITextInputMode.activeInputModes` filtered by private `identifier` KVC key matching prefix `"net.toload.limeime"`. Does not use `keyboard_extension_loaded`.
+- `fullAccessEnabled`: reads `keyboard_has_full_access` from `UserDefaults(suiteName: "group.net.toload.limeime")`. If the key is absent (extension has never run), assumes `true` to avoid a false-positive orange banner right after first enable.
+
+| State | Color | SF Symbol | Banner text |
+| --- | --- | --- | --- |
+| `fullyEnabled` | `.green` | `checkmark.circle.fill` | `"萊姆輸入法已啟用"` |
+| `enabledNoFullAccess` | `.orange` | `exclamationmark.triangle.fill` | `"鍵盤已啟用，但尚未允許完整取用"` |
+| `notEnabled` | `.red` | `xmark.circle.fill` | `"尚未啟用萊姆輸入法鍵盤"` |
+
+Banner renders as `Label(text, systemImage:)` in `.subheadline` font, inside a `secondarySystemBackground` rounded-rect card (`.cornerRadius(10)`).
 
 ---
 
@@ -844,14 +885,12 @@ Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime")
 | `Toggle` "自動中文標點" | `auto_chinese_symbol` | Bool | false | 無候選字詞時顯示中文標點選項. |
 | `Toggle` "滑動選取候選字" | `candidate_switch` | Bool | true | 開啟：跟手滑動 關閉：滑動翻頁 |
 | `Toggle` "記憶中英模式" | `persistent_language_mode` | Bool | false | 下次切換前保持中英模式. |
-| `Toggle` "顯示 Emoji" | `enable_emoji` | Bool | true | 依字根或中文組字顯示圖示，由於字型支援的差異所以部份圖示可能無法正確顯示 |
-| `Picker` "Emoji 顯示位置" | `enable_emoji_position` | Int | 3 | 2–10 (position after Nth candidate); disabled when `enable_emoji` = false |
-| `Toggle` "字根反查提示" | `reverse_lookup_notify` | Bool | true | Show popup when reverse lookup result is used. |
+| `Picker` "Emoji 顯示位置" | `enable_emoji_position` | Int | 6 | 0=不顯示 Emoji 候選字; 2–10=position after Nth candidate |
 | `NavigationLink` "字根反查設定" | `reverse_lookup_screen` | Screen | n/a | Opens §8.4.1. Last item in §8.4. |
 
 #### 8.4.1 字根反查設定 — Sub-screen
 
-A `NavigationLink` "字根反查設定" appears as the last row inside §8.4, after `reverse_lookup_notify`, and opens a dedicated sub-screen. Configures which IM provides the reverse-lookup annotation for each main IM when no candidate is found.
+A `NavigationLink` "字根反查設定" appears as the last row inside §8.4 and opens a dedicated sub-screen. Configures which IM provides the reverse-lookup annotation for each main IM when no candidate is found. The `none` option disables the popup for that IM.
 
 | iOS | Android |
 |---|---|
@@ -867,39 +906,11 @@ ReverseLookupSettingsView
     ├── Section "說明"
     │   └── Text "輸入字根無候選字時，以其他輸入法字根標注說明。"
     └── Section "各輸入法反查來源"
-        ├── Picker "自建"      pref: custom_im_reverselookup  style: .menu
-        ├── Picker "倉頡"      pref: cj_im_reverselookup
-        ├── Picker "快倉"      pref: scj_im_reverselookup
-        ├── Picker "倉頡五代"  pref: cj5_im_reverselookup
-        ├── Picker "速成"      pref: ecj_im_reverselookup
-        ├── Picker "大易"      pref: dayi_im_reverselookup
-        ├── Picker "注音"      pref: bpmf_im_reverselookup
-        ├── Picker "輕鬆"      pref: ez_im_reverselookup
-        ├── Picker "行列"      pref: array_im_reverselookup
-        ├── Picker "行列 10"   pref: array10_im_reverselookup
-        ├── Picker "筆順五碼"  pref: wb_im_reverselookup
-        ├── Picker "華象直覺"  pref: hs_im_reverselookup
-        └── Picker "拼音"      pref: pinyin_im_reverselookup
+        └── ForEach enabled IMs from the IM list tab path
+            └── Picker "<IM list display name>" pref: <table>_im_reverselookup style: .menu
 ```
 
-All pickers default to `"none"`. Available options (matching `im_reverse_lookup_codes`):
-
-| Value | Label |
-|---|---|
-| `none` | 無 |
-| `custom` | 自建 |
-| `cj` | 倉頡 |
-| `scj` | 快倉 |
-| `cj5` | 倉頡五代 |
-| `ecj` | 速成 |
-| `dayi` | 大易 |
-| `phonetic` | 注音 |
-| `ez` | 輕鬆 |
-| `array` | 行列 |
-| `array10` | 行列 10 |
-| `wb` | 筆順五碼 |
-| `hs` | 華象直覺 |
-| `pinyin` | 拼音 |
+All pickers default to `"none"`. Picker rows are dynamic: iOS loads the same enabled IM list used by the IM list tab (`ManageImController.loadIMList()`), preserving that tab's order and display-name fallback. Picker choices are also dynamic: `none` displays as `無`, followed by the same enabled IM display names. Picker tags / stored values remain the table codes (`cj`, `phonetic`, `dayi`, etc.), so existing preferences and reverse-lookup DB logic remain compatible. If the source-choice list is unavailable, the picker choices may fall back to the built-in IM code list, but the visible rows do not fall back to all IMs.
 
 ### 8.5 Section 漢字轉換 (Han Conversion)
 
@@ -936,8 +947,7 @@ All stored in `UserDefaults(suiteName: "group.net.toload.limeime")`.
 | Pref Key | Android Key | Type | Default |
 |---|---|---|---|
 | `keyboard_theme` | `keyboard_theme` | Int | 0 |
-| `enable_emoji` | `enable_emoji` | Bool | true |
-| `enable_emoji_position` | `enable_emoji_position` | Int | 3 |
+| `enable_emoji_position` | `enable_emoji_position` | Int | 6 |
 | `keyboard_size` | `keyboard_size` | String | "1" |
 | `font_size` | `font_size` | String | "1" |
 | `candidateFontSize` | *(derived)* | Double | 18 |
@@ -952,7 +962,6 @@ All stored in `UserDefaults(suiteName: "group.net.toload.limeime")`.
 | `auto_commit` | `auto_commit` | Int | 0 *(array10 IMDetailView only)* |
 | `phonetic_keyboard_type` | `phonetic_keyboard_type` | String | "standard" |
 | `han_convert_option` | `han_convert_option` | Int | 0 |
-| `reverse_lookup_notify` | `reverse_lookup_notify` | Bool | true |
 | `custom_im_reverselookup` | `custom_im_reverselookup` | String | "none" |
 | `cj_im_reverselookup` | `cj_im_reverselookup` | String | "none" |
 | `scj_im_reverselookup` | `scj_im_reverselookup` | String | "none" |
@@ -1110,14 +1119,14 @@ guard let db = openDB() else {
 ### IM Preferences (§8)
 - **Keyboard Appearance** (§8.1): `keyboard_theme` (values 0–5 + **6=系統設定** iOS-only — **§13.2 done**), `keyboard_size`, `font_size`, `number_row_in_english` (iPhone-only), `show_arrow_key`, `split_keyboard_mode` (iPad)
 - **Feedback** (§8.2): `vibrate_on_keypress`, `vibrate_level`, `sound_on_keypress`
-- **IM Behaviour** (§8.4): `smart_chinese_input`, `auto_chinese_symbol`, `candidate_switch`, `persistent_language_mode`, `enable_emoji`, `enable_emoji_position`, `reverse_lookup_notify`, `reverse_lookup_screen`
+- **IM Behaviour** (§8.4): `smart_chinese_input`, `auto_chinese_symbol`, `candidate_switch`, `persistent_language_mode`, `enable_emoji_position`, `reverse_lookup_screen`
 - **Array10 detail page** (§5.2): `auto_commit`
 - **Phonetic IM detail page** (§5.2.2): `phonetic_keyboard_type` (6 options) with live IM table update
 - **Han Conversion** (§8.5): `han_convert_option`
 - **Learning** (§8.6): `similiar_enable`, `similiar_list`, `candidate_suggestion`, `learn_phrase`, `learning_switch`
 - **English Dictionary** (§8.7): `english_dictionary_enable`
 - ~~**External Keyboard**: removed — iOS does not allow 3rd-party extensions to intercept physical keyboard input~~ — **§13.1 done**
-- **Reverse Lookup sub-screen** (§8.4.1): Drill-in from §8.4 with per-IM picker (13 IMs × 14 lookup source options)
+- **Reverse Lookup sub-screen** (§8.4.1): Drill-in from §8.4 with per-IM picker rows; each picker shows `無` plus the enabled IM display names while storing table-code values.
 
 ---
 

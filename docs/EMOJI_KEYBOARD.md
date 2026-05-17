@@ -1,6 +1,6 @@
-﻿# Emoji Keyboard — iOS + Android v1 (English layout first)
+﻿# Emoji Keyboard — iOS + Android v1 (candidate bar launcher)
 
-> **v1 scope** (this document): iOS + Android emoji keyboard panel, emoji-launcher key on the **English keyboard layout first**, target Emoji 17.0.
+> **v1 scope** (this document): iOS + Android emoji keyboard panel, emoji launcher in the **candidate bar left-end zone**, target Emoji 17.0.
 >
 > **v2 (deferred, separate plan)**: phonetic/symbol-page coverage and skin-tone picker. The data rebuild, search pipeline, and emoji recent-tab behavior below are platform-agnostic so both v1 platform implementations share one schema and behavior.
 
@@ -10,35 +10,35 @@ User asked whether LimeIME can add an emoji button on the keyboard that "links t
 
 > Add a dedicated emoji key on the LimeIME keyboard that opens an **in-keyboard emoji panel** rendered by LimeIME itself, using a freshly-rebuilt `emoji.db` as the data source.
 
-This is exactly what every third-party iOS keyboard does (Gboard, SwiftKey, etc.) and is the natural Android approach as well — Android has no separate "system emoji keyboard" to link to in the first place; emoji are emitted by whichever IME is active. So the universal design is: **same UX, same preference keys, same data source, parallel platform-native implementations.**
+This is exactly what every third-party iOS keyboard does (Gboard, SwiftKey, etc.) and is the natural Android approach as well — Android has no separate "system emoji keyboard" to link to in the first place; emoji are emitted by whichever IME is active. So the universal design is: **same UX, same data source, parallel platform-native implementations.**
 
 The current `emoji.db` is outdated (issue #29) — older Unicode/emoji version, no category data, and the `(tag, value)` keyword-row schema makes high-quality search hard. v1 therefore **rebuilds `emoji.db` from CLDR/emojibase up front**, including category, multilingual names, and keyword improvements for both iOS and Android.
 
 ### Why universal
 
 - Both platforms already inject emoji into the candidate bar from the same `emoji.db`.
-- Both platforms already share the `enable_emoji` / `enable_emoji_position` preference keys.
+- Both platforms share `enable_emoji_position`; value `0` disables inline emoji candidates, while values `2...10` place them after the chosen candidate index.
 - Replacing the data source benefits both candidate-bar injection and the new panel, with one rebuild and a thin migration shim.
 - Keeping the UX, preference names, and visual hierarchy identical reduces user confusion when switching devices and keeps the docs/screenshots reusable.
 
 ## Goal
 
-- Add a dedicated emoji key on the LimeIME **English keyboard** layout's bottom row on iOS and Android.
-- Tapping it opens an emoji picker panel that **replaces** the keys area (candidate bar stays visible where the platform normally shows it) — the regular keyboard rows (incl. space) are hidden while the emoji panel is shown.
+- Add a dedicated emoji launcher in the candidate bar's **left-end zone** on iOS and Android.
+- Tapping it opens an emoji picker panel that **replaces** the keys area — the regular keyboard rows (incl. space) are hidden while the emoji panel is shown.
 - Panel UX **mirrors the iOS system Emoji keyboard**:
   - **Search field at the top** of the emoji panel (filter emoji by tag/name).
   - **Horizontally scrollable/paged emoji grid** of large emoji glyphs, organized by category in one continuous surface.
   - **Icon-only category bookmark strip** at the bottom for quick jump (Recent, Smileys, People, Animals, Food, Travel, Activities, Objects, Symbols, Flags style icons; use the closest available SF Symbols / glyphs).
-  - **ABC** key at the bottom-left of the bookmark strip to dismiss the panel and return to the regular English keyboard.
+  - **ABC/中** key at the bottom-left of the bookmark strip to dismiss the panel and return to the source keyboard.
   - **Backspace** key at the bottom-right of the bookmark strip (so the user can correct a mistakenly inserted emoji without leaving the panel).
   - **No space key** while the emoji panel is active.
   - When the emoji search field is active, switch into iOS-style **emoji search mode**: show a regular English keyboard for typing the query, and show search results in a horizontally scrollable emoji candidate strip above that keyboard.
-- Visibility of the button is gated by a new preference `enable_emoji_button` (default `true`).
+- The candidate-bar emoji launcher is always enabled; there is no separate Settings preference for hiding it.
 - Data source is a rebuilt `emoji.db` (Emoji 17.0, see "Data rebuild" below). The same DB ships in `Database/` and is consumed unchanged by the existing candidate-injection path on both platforms.
 
 ## Non-goals (v1)
 
-- Emoji-launcher key on phonetic, symbol, or other non-English layouts — deferred to v2 unless a platform already has a low-risk existing slot.
+- Emoji-launcher key inside keyboard layouts. The launcher lives in the candidate bar left-end zone.
 - Switching to Apple's system Emoji keyboard (impossible from an iOS extension).
 - Skin-tone modifier picker — follow-up work after v1 ships.
 
@@ -46,15 +46,13 @@ The current `emoji.db` is outdated (issue #29) — older Unicode/emoji version, 
 
 | Concept | Value |
 |---|---|
-| Preference key (visibility) | `enable_emoji_button` (Bool, default `true`) |
 | Emoji-key special code | `-201` (opens the panel) |
-| Panel-internal special codes | `-202` ABC (dismiss panel), `-5` backspace (reuse existing), `-203..-212` icon category jump/bookmark buttons |
+| Panel-internal special codes | `-202` dismiss panel (label is **ABC** when entered from English layout, **中** when entered from Chinese IM — see [EMOJI_BAR.md](EMOJI_BAR.md) §Return keyboard routing), `-5` backspace (reuse existing), `-203..-212` icon category jump/bookmark buttons |
 | Commit method | Insert the emoji string at cursor (no composition) |
 | Button glyph | `😀` literal label (fallback SF Symbol `face.smiling` if the system font can't render it) |
-| Bottom-row position (iPhone) | English layout `lime_abc`: emoji key takes the **current `中` slot** (10% width, between `done` and `,`). The `中` key (`switchToIM = -10`) moves up to the home row (`k l m n o p q r s`) which currently ends at 90% width and has a 10% empty slot — `中` becomes the 10th key on that row. |
-| Bottom-row position (iPad) | English iPad layouts trim `space` and place the emoji key immediately **left of space** and the microphone key immediately **right of space**. |
-| Bottom-row position (Android phone/tablet) | English keyboard layout gets a `😀` launcher in the same role as iOS: a modifier-style bottom-row key that opens the panel. Prefer replacing an existing language-switch/emoji-capable modifier slot; otherwise trim `space` by one key width and place `😀` near the left of `space`, with `ABC` used only inside the emoji panel. |
-| Recent category | First emoji category/page. Shows recently committed emoji newest-first from `emoji_user`; if no usage exists yet, show the same default popular seed used by Android's current implementation. Android current behavior is the reference; iOS must match it. |
+| Launcher position | Candidate bar left-end zone. Empty bar shows 😀; candidates present show ✕ dismiss. |
+| Return routing | The panel captures the source keyboard. Bottom-left dismiss is `ABC` from English and `中` from Chinese IM, both using `-202`. |
+| Recent category | First emoji category/page. Shows recently committed emoji newest-first from `emoji_user`, then fills remaining visible slots with the default popular seed. If no usage exists yet, the seed is the whole Recent page. Seed entries are duplicate-collapsed behind real usage and naturally disappear as real recent usage reaches the page limit. |
 | Data source | New `emoji` table + `emoji_fts` index in rebuilt `emoji.db` (see [EMOJI_DB_V2.md](EMOJI_DB_V2.md)) |
 
 ## Current implementation gap — hardcoded category pages
@@ -104,19 +102,21 @@ Current behavior:
   - Flags
 - Each category is ordered by `sort_order ASC`.
 - User usage does not reorder normal category pages. Usage affects Recent and emoji search/candidate ranking only.
-- The first page remains Recent, backed by `emoji_user`; if no recent emoji exist, the fallback popular seed is used.
+- The first page remains Recent, backed by `emoji_user`; fallback popular seed entries fill behind real usage until naturally pushed out by the Recent limit.
 - Hardcoded fallback arrays remain only as offline/failure fallback data.
 
 ### iOS category expansion
 
-The iOS emoji panel now expands each DB category into as many pages as needed. This fixes the earlier bug where each category only rendered one hardcoded page even though the DB contained many more emoji.
+The iOS emoji panel now expands each DB category into a compact horizontal section sized by the number of columns it actually needs. This fixes the earlier bug where each category only rendered one hardcoded page even though the DB contained many more emoji, and avoids full-page blank tails at category boundaries.
 
 Implementation notes:
 
-- Category paging is calculated from the current emoji viewport and cell capacity.
-- The category bookmark strip still jumps by semantic category, not by individual physical page.
-- Swiping within a large category advances through that category's pages before moving into the next category.
-- The page/category highlighter maps the current physical page back to its semantic category.
+- Category layout is calculated from the current emoji viewport, visible row count, and cell capacity.
+- Each category lays out top-to-bottom by column, then the next category starts immediately after the last used column.
+- The category bookmark strip still jumps by semantic category, not by individual physical section width.
+- Swiping within a large category advances through that category's columns before moving into the next category.
+- The page/category highlighter maps the current scroll offset back to its semantic category.
+- The final partial column in every category is padded with invisible interactive filler cells. These cells have no tap action, but they participate in UIKit hit testing so dragging from blank category-tail space still scrolls.
 
 ### iOS prewarm and cache
 
@@ -159,14 +159,17 @@ Expected behavior:
 
 ### iOS rendering performance
 
-The iOS panel also uses virtual rendering for the horizontally paged surface:
+The iOS panel uses virtual rendering for the horizontally paged surface:
 
 - The scroll view keeps the full content width.
-- Only the visible/nearby page window is rendered.
+- Emoji cells are laid out in stable content coordinates (`x = pageOffset + columnOffset`).
+- `UIScrollView.contentOffset` performs the actual horizontal movement; the panel must not translate the content view on every `scrollViewDidScroll`.
+- Only the visible/nearby category-section window is rendered.
 - Reusable emoji labels are pooled to reduce allocation churn.
-- Pagination results are cached and invalidated only when the emoji pages or cell capacity change.
+- Category layout results are cached and invalidated only when the emoji pages or cell/row capacity change.
+- Category highlight updates are skipped unless the active semantic category changes.
 
-This makes paging smooth after the emoji panel is open. The remaining lag risk is first open before category prewarm has completed.
+This avoids the previous lag source where every scroll tick repositioned `emojiContentView`, rewrote scroll view geometry, and sometimes rebuilt labels while the finger was moving. The remaining lag risk is first open before category prewarm has completed.
 
 ## Concrete keyboard layout contract
 
@@ -241,15 +244,11 @@ What's deliberately out of scope here: Emoji 17.0 build script, FTS5 schema deta
 | Concern | File | Notes |
 |---|---|---|
 | Key code enum | `LimeIME-iOS/Shared/Models/KeyLayout.swift` (L8-L26) | Add `case emojiPanel = -201`, `case emojiABC = -202`, `case emojiCategoryJump0..9 = -203..-212` to `LimeKeyCode` |
-| iPhone English layout | `LimeIME-iOS/Shared/Models/KeyLayout.swift:158-198` (`static let english`) and `LimeIME-iOS/LimeKeyboard/Layouts/lime_abc.json` (+ `lime_abc_shift.json` to mirror) | (a) Append `中` (`switchToIM = -10`, label "中文", widthPercent 10) as the 10th key on the home/asdf row (currently `k l m n o p q r s` at 90% — the empty 10% slot at the right end). (b) Replace the bottom-row `中文` slot with the emoji launcher (`emojiPanel = -201`, label "😀", widthPercent 10, `isModifier: true`). All other bottom-row keys keep their current widths; total stays 100%. |
-| iPad English layout | `LimeIME-iOS/LimeKeyboard/Layouts/lime_abc_ipad.json`, `lime_english_ipad.json`, `lime_english_number_ipad.json` (+ shift variants) | Trim `space` width and place the emoji launcher immediately left of `space`; place the microphone key immediately right of `space`. The surrounding modifier keys keep their existing widths so each bottom row still totals 100%. |
+| Candidate bar launcher | `LimeIME-iOS/LimeKeyboard/CandidateBarView.swift` | Add an emoji button in the same left-end zone as the dismiss button. Empty bar shows 😀; candidates present show ✕. |
 | Key dispatch | `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift:1027` (`onKey`) | `case LimeKeyCode.emojiPanel.rawValue: showEmojiPanel()`; `case .emojiABC.rawValue: hideEmojiPanel()`; category jump cases scroll the grid to the matching category anchor; backspace reuses existing `handleBackspace` |
 | Panel container (new) | `LimeIME-iOS/LimeKeyboard/EmojiPanelView.swift` | Normal mode stack: search field (top) → horizontally scrollable/paged `UICollectionView` emoji grid → icon bookmark footer (`UIStackView` with ABC + category icons + backspace). Search-active mode stack: search field (top) → horizontal emoji result strip → English keyboard rows. |
-| Panel mount/dismiss | `LimeIME-iOS/LimeKeyboard/KeyboardView.swift` (mirror `expandedCandidatesPanel` ~L380) | When mounting: hide the keys-area `UIStackView`, add `EmojiPanelView` in the same slot so candidate bar stays anchored above. Restore on dismiss. |
+| Panel mount/dismiss | `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift` | Capture source keyboard before mounting. Hide the candidate bar/keys while the panel is shown; dismiss returns to English (`ABC`) or the active Chinese IM (`中`). |
 | Emoji loader / search APIs | `LimeIME-iOS/Shared/Database/LimeDB.swift` | `loadAllEmoji()`, `searchEmoji(_:locale:)`, `findEmojiForCandidate(_:locale:limit:)` — all FTS5-backed. Spec lives in [EMOJI_DB_V2.md](EMOJI_DB_V2.md); this UI plan only consumes them. |
-| Preference UI | `LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift:15` | `@AppStorage("enable_emoji_button") enableEmojiButton: Bool = true` toggle next to existing `enable_emoji` |
-| Preference read | `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift:640` | Read `enable_emoji_button` alongside `enable_emoji` |
-| Conditional render | `LimeIME-iOS/LimeKeyboard/KeyboardView.swift` (mirror `setGlobeKeyVisible` ~L380) | Hide the emoji-launcher key when toggle is off |
 | Encoding | All edited/new Swift files | UTF-8 with BOM (Chinese strings in Settings labels) |
 
 ## Android implementation
@@ -259,11 +258,10 @@ Android implements the same user-facing panel and shared key codes with native A
 | Concern | File | Notes |
 |---|---|---|
 | Key constants | `LimeStudio/app/src/main/java/net/toload/main/hd/LIME.java` or existing key-code constants owner | Add/reserve `-201` emoji panel, `-202` ABC, `-203..-212` category jump buttons; reuse existing delete/backspace code. |
-| English layout | Android English keyboard XML/layout source (current English keyboard definition) | Add `😀` launcher to the English bottom row. Keep the same visual role as iOS: modifier-style key, near the space/language area, no composition. |
-| Key dispatch | `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` | Dispatch `-201` to show the emoji panel; `-202` to hide it and restore English keyboard; category jump codes scroll the emoji grid to anchors; backspace delegates to existing delete handling. |
+| Candidate bar launcher | `LimeStudio/app/src/main/res/layout/inputcandidate.xml`, `CandidateInInputViewContainer.java` | Add `😀` to the left-end zone. Empty bar shows emoji; candidates present show dismiss. |
+| Key dispatch | `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` | Dispatch `-201` to show the emoji panel; `-202` hides it and restores the captured source keyboard; category jump codes scroll the emoji grid to anchors; backspace delegates to existing delete handling. |
 | Panel view | Existing Android keyboard view layer / new `EmojiPanelView` equivalent | Normal mode stack: search field (top) → horizontally scrollable/paged emoji grid → icon bookmark footer (`ABC + category icons + backspace`). Search-active mode stack: search field (top) → horizontal emoji result strip → English keyboard rows. |
 | Data/search APIs | `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java`, `SearchServer.java` | Use the same Emoji DB V2 APIs and FTS5 behavior as candidate injection. |
-| Preference UI/read | Android preferences screen + `LIMEService.java` | Add/read `enable_emoji_button` with default `true`, same key as iOS. |
 | Assets/icons | Android drawable/vector resources if needed | Prefer simple monochrome vector icons matching iOS category bookmark semantics. Text glyph fallback is acceptable when icons are not available. |
 
 ## Android implementation status
@@ -302,7 +300,7 @@ Android now implements the v1 emoji panel contract using the same DB-backed cate
 
 - Recent, category, search, and panel usage operations route through `SearchServer`.
 - `recordEmojiUsage()` is called for emoji committed from the full panel and emoji search result strip; inline candidate-bar emoji usage already routes through the shared emoji APIs where committed.
-- Recent is newest-first and duplicate-collapsed through the `emoji_user` table, with fallback seed data when empty.
+- Recent is newest-first and duplicate-collapsed through the `emoji_user` table, then padded with fallback seed entries behind real usage until real recents naturally push them out.
 
 ### Android UI polish
 
@@ -361,16 +359,15 @@ A platform-native `showEmojiPanel()` / `hideEmojiPanel()` pair:
 - **Grid**: horizontally scrollable/paged like the iOS Emoji keyboard, not independent per-category tab pages. Categories are laid out in one continuous collection view with category anchors (Recent, Smileys & Emotion, People & Body, Animals & Nature, Food & Drink, Travel & Places, Activities, Objects, Symbols, Flags). Swiping can move across category boundaries naturally.
 - **DB-backed category contents**: normal category pages must be loaded from `emoji_data`, not hardcoded arrays. For each category, query by `group_name` and order by `sort_order ASC`. The hardcoded arrays may only be used as an offline/failure fallback when the DB is unavailable or a group returns empty.
 - **Category sorting**: keep normal category pages in catalog order (`sort_order ASC`). Do not reorder category pages by user usage; usage belongs in Recent and in search/candidate ranking. Stable category ordering preserves browseability and muscle memory.
-- **Recent category/page**: first page and first bookmark after `ABC`. It is not a static category tab. It reads `emoji_user` and shows recently committed emoji newest-first, with duplicates collapsed to one glyph. Emoji committed from the panel, search result strip, or inline candidate bar all call `recordEmojiUsage(_:)` / Android equivalent and update this page. If there is no usage history yet, show the same default popular seed used by Android's current implementation. Current Android recent behavior is the expected behavior; current iOS behavior is not good enough until it matches this contract.
-- **Sparse Recent page hit area**: iOS Recent may contain only a few real emoji. The blank portion must still scroll exactly like a full category page. In the current iOS implementation, Recent fills unused visible cell slots with invisible interactive filler cells: same cell size and gesture path as real emoji cells, `tag = -1` so taps do nothing, near-transparent real glyph/background so UIKit hit-testing treats them like real cells. Do not replace this with inert empty labels, clear-only views, or a separate transparent page holder unless visual verification proves dragging from the blank Recent area still scrolls from Recent to Smileys.
+- **Recent category/page**: first page and first bookmark after `ABC`. It is not a static category tab. It reads `emoji_user` and shows recently committed emoji newest-first, with duplicates collapsed to one glyph. Emoji committed from the panel, search result strip, or inline candidate bar all call `recordEmojiUsage(_:)` / Android equivalent and update this page. The default popular seed fills behind real recent usage up to the page limit; if there is no usage history yet, the seed is the whole Recent page. As real recents accumulate, seed entries naturally fall off the end.
+- **Sparse category hit area**: iOS categories may end with only a few real emoji in the final column. The blank portion must still scroll exactly like a real emoji cell. The implementation fills unused visible cell slots with invisible interactive filler cells: same cell size and gesture path as real emoji cells, `tag = -1` so taps do nothing, near-transparent real glyph/background so UIKit hit-testing treats them like real cells. Recent keeps a full viewport of filler cells; other categories keep only the filler cells needed to complete their final column.
 - **Category bookmark strip** (always visible): leftmost = ABC (closes the panel and returns to the regular English keyboard), then icon-only category bookmarks (tap → scroll/jump the grid to that category's anchor), rightmost = backspace (`-5`, reuses existing backspace handler).
 - **Category icons**: these are jump bookmarks, not true tabs and not separate views. Use iOS-like simple monochrome icon buttons where possible. Suggested mapping: `clock`/recent, `face.smiling`, person/body, animal/paw, `apple.logo` or food glyph, car/travel, ball/activity, lightbulb/objects, heart/symbols, flag/flags. If an SF Symbol is unavailable in the extension target, fall back to a text glyph with the same visual role.
 - **No space key** is shown anywhere while the panel is mounted — matches the iOS system Emoji keyboard.
 - Tapping an emoji cell commits the glyph to the active editor and keeps the panel open (sticky) so users can pick multiple emoji.
 - **Adaptive grid sizing**: do not hard-code one final emoji cell size for all devices. Size from the actual emoji viewport. On iPhone, use 3-4 visible rows, 7-10 columns, and bounded phone cell/font sizes. On iPad, use 4-5 visible rows, 8-10 columns, and bounded tablet cell/font sizes.
 - **Current iOS sizing formula**: choose the visible row count from viewport height (`4` preferred on iPhone, `5` preferred on iPad, dropping one row when the viewport is too short). Compute `cellHeight = clamp(floor(viewportHeight / rows), platformMin, platformMax)`. Phone bounds are `46...54`; iPad bounds are `48...72`. Compute glyph size from the cell: phone `cellHeight * 0.90` capped to `30...36`, iPad `cellHeight * 0.78` capped to `40...56`. Compute columns from width: phone `7...10`; iPad `8...10` using a target cell width of `max(cellHeight * 1.95, 116)`.
-- **Sparse category sizing**: category pages are allowed to size cells from the number of rows they actually need, not only the global 5-row iPad grid. For example, a 4-row Animals page can use taller cells to avoid a large unused lower band. Dense pages still use the global row count.
-- **Recent filler exception**: Recent keeps invisible interactive filler cells so blank recent-page areas remain horizontally draggable; do not remove this to improve sparse-page sizing.
+- **Compact category sizing**: category sections are sized by `ceil(categoryCount / visibleRows)` columns, not by whole pages. Recent is the exception: it reserves at least one viewport of columns so sparse Recent blank areas remain horizontally draggable.
 
 ### 3a. Search-active layout
 
@@ -411,20 +408,19 @@ Keyword thresholds are intentionally different by entry point:
 - **Chinese IM keyboard / English keyboard inline suggestions**: passive suggestion, so English prefix matching starts from two characters (`cr*`, `cry*`) and bare `c` returns no emoji. Chinese/CJK candidates still match from one character.
 - **Chinese IM candidate broadening**: for multi-character Chinese candidates, also match the first Chinese character. Example: candidate `國旗` queries both `國旗*` and `國*`; candidate `日本` queries both `日本*` and `日*`.
 
-### 5. Preference toggle
+### 5. Launcher visibility
 
-- **iOS**: SwiftUI `@AppStorage("enable_emoji_button")` toggle in `PreferencesTabView.swift`, with bilingual label (English: "Show emoji panel button" / Traditional Chinese: "顯示 Emoji 鍵盤按鈕"). `KeyboardViewController` reads the preference at keyboard construction time and passes a flag to the layout-build step that hides the launcher key when `false`.
-- **Android**: add the same `enable_emoji_button` preference key to the Android preferences UI/storage. `LIMEService` reads it during keyboard construction and hides the launcher key when `false`.
-- Default is `true` on both platforms.
+- **iOS**: no Preferences row. `CandidateBarView` shows the launcher whenever the candidate bar is empty.
+- **Android**: no Preferences row. `CandidateInInputViewContainer` shows the launcher whenever the candidate bar is empty.
 
 ### 6. Encoding
 
-Any Swift source file added or edited must be saved as **UTF-8 with BOM** (Chinese strings appear in the Settings toggle label and panel placeholder text).
+Any Swift source file added or edited must be saved as **UTF-8 with BOM** (Chinese strings appear in panel labels and placeholder text).
 
 ## Risks / open questions
 
-- **iPhone home-row reflow**: moving `中文` from the bottom row to the home row changes a long-standing layout. Verify muscle memory isn't disrupted; the bottom-row `中文` slot is a natural visual home for the emoji modifier key (same width, same row, modifier-style chrome).
-- **iPad / Android tablet balance**: trimming `space` reduces typing area slightly. Verify the trimmed width still feels comfortable on portrait and landscape tablet sizes; if too narrow, fall back to replacing a side modifier slot instead.
+- **Left-zone discoverability**: the emoji launcher shares the existing dismiss-button zone, so verify users can see it in the empty-candidate state and that it never conflicts with candidate dismissal.
+- **Source restoration**: opening the emoji panel from Chinese IM must return to the same active IM via the `中` dismiss label; English must return via `ABC`.
 - **Panel height vs keyboard height**: the emoji panel (search + grid + bookmark strip) must match the keys-area height so the keyboard footprint doesn't jump. Verify on landscape iPad split keyboard and Android tablet landscape.
 - **Skin tones / fuzzy search**: explicit non-goals for v1; follow-ups.
 - Data-side risks (build reproducibility, FTS5 in GRDB, font fallback, CN drop) live in [EMOJI_DB_V2.md](EMOJI_DB_V2.md).
@@ -433,29 +429,26 @@ Any Swift source file added or edited must be saved as **UTF-8 with BOM** (Chine
 
 End-to-end manual test on iPhone (WJIP17 per `reference_ios_devices.md`), iPad, Android phone, and Android tablet/emulator:
 
-1. With `enable_emoji_button = true`, open LimeIME and switch to the **English** layout in a text field.
-   - **iPhone**: confirm the bottom row's `中文` slot now shows the 😀 emoji-launcher key, and `中文` has moved up to the right end of the home row (after `s`). All other key positions unchanged.
-   - **iPad**: confirm `space` is slightly narrower, the 😀 emoji-launcher is immediately left of `space`, and the microphone key is immediately right of `space`.
-   - **Android phone/tablet**: confirm the English layout shows the 😀 emoji-launcher in the agreed bottom-row modifier slot; non-English layouts are unchanged unless explicitly opted in.
-   - Phonetic / symbol-page layouts are unchanged (no emoji key).
-2. Tap the emoji key → the regular keys area is replaced by the emoji panel; candidate bar still visible above; **no space key is shown anywhere on screen**.
+1. Open LimeIME in a text field with no composing text.
+   - **iPhone/iPad/Android**: confirm the candidate bar's left-end zone shows the 😀 emoji launcher.
+   - Start composing: candidates appear and the same left-end zone switches to ✕ dismiss. Tap ✕: composing clears and 😀 returns.
+   - English keyboard layouts remain unchanged: iPhone keeps `中` in the bottom row; iPad keeps the untrimmed space key.
+2. Tap the candidate-bar emoji launcher → the regular keys area is replaced by the emoji panel; **no space key is shown anywhere on screen**.
 3. The panel shows: search field at the top, horizontally scrollable/paged iOS-style emoji grid in the middle, icon-only bookmark strip at the bottom (`ABC | category icons | backspace`). Search results use **English by default; Traditional Chinese (TW) labels appear** for users with a Chinese system locale (panel uses `name_tw` when locale is `zh-Hant`, otherwise `name_en`).
 4. Swipe horizontally through the emoji grid → scrolling crosses category boundaries in one continuous surface. Tap each category icon → the grid jumps to the corresponding category anchor.
 5. Tap the search field → the emoji grid/bookmark strip switches to search-active mode: English keyboard appears below; horizontal emoji result strip appears above it.
 6. Smoke-test that the panel search field wires up to the FTS5 backend: type `flag` → country flags, `國旗` → country flags, empty query → categorized view. In the emoji search box, verify English starts at one character (`c`, `cr`, `cry` all search as prefixes). (Full search-quality matrix is in [EMOJI_DB_V2.md](EMOJI_DB_V2.md) verification §5.)
 7. While the search field contains text, tap an emoji result in the horizontal strip → glyph is committed and search mode stays active; tap keyboard backspace → query text is edited, not the document.
 8. Clear the search field → full emoji grid and bottom bookmark strip return.
-9. On iOS, tap the new home-row `中文` key → keyboard switches back to phonetic IM (same behavior as before, just from a different position). On Android, verify the existing language-switch path still works from the English layout.
+9. Open the emoji panel from English and verify the bottom-left dismiss key says `ABC`; tapping it restores English. Open it from Chinese IM and verify the key says `中`; tapping it restores the same active Chinese IM.
 10. Tap several emoji in succession → each glyph is committed to the document; the panel stays open (sticky behavior).
 11. Tap the Recent bookmark → the just-committed emoji appear newest-first, with no duplicates. If no emoji has ever been committed, the page shows Android's current default popular seed. Android is the reference behavior; iOS must match it.
     - On iOS, verify sparse Recent explicitly: with only a few recent emoji visible, drag from the blank area below/right of the real emoji. It must scroll forward to the Smileys page, not only scroll when the drag starts on a real emoji glyph.
 12. In Chinese IM and English inline suggestion paths, verify English does not suggest emoji for bare `c`, but does for `cr` / `cry`; verify Chinese candidates also match by first Chinese character (`國旗` → `國旗*` + `國*`).
 13. Tap the bottom-right backspace key on the bookmark strip → last character of the document is deleted; panel stays open.
-14. Tap the bottom-left ABC key → panel dismisses; the regular English keys return; cursor position preserved.
+14. Tap the bottom-left ABC/中 key → panel dismisses; the source keyboard returns; cursor position preserved.
 15. Rotate to landscape (iPhone + iPad + Android tablet) → search field, horizontal grid/search-result strip, English search keyboard, and icon bookmark strip lay out without clipping; row/column count adjusts from the actual viewport. On iPad, sparse category pages should enlarge cells enough to avoid an obvious unused lower band while dense pages still fit.
-16. In Settings, toggle `enable_emoji_button` off → reopen the keyboard → emoji-launcher key gone. On iOS, the English layout still has `中文` on the home row (the home-row reflow is permanent in v1, not gated by the toggle). Toggle back on → emoji key reappears in the bottom row.
-17. Confirm preference `enable_emoji_button` persists across keyboard restarts.
-18. Issue #29 end-to-end test (candidate-bar broadening + cache wipe + Android upgrade) lives in [EMOJI_DB_V2.md](EMOJI_DB_V2.md) verification §6-13.
+16. Issue #29 end-to-end test (candidate-bar broadening + cache wipe + Android upgrade) lives in [EMOJI_DB_V2.md](EMOJI_DB_V2.md) verification §6-13.
 
 ## Decisions — resolved (UI side)
 
@@ -463,8 +456,8 @@ End-to-end manual test on iPhone (WJIP17 per `reference_ios_devices.md`), iPad, 
    - iPhone: move `中文` from bottom row to the home row's empty 10% slot (after `s`); emoji launcher takes the vacated bottom-row position.
    - iPad: trim `space`; emoji launcher immediately left of `space`, microphone immediately right of `space`.
    - Android: use the English bottom-row modifier/language area; prefer replacing an existing low-risk modifier slot, otherwise trim `space` by one key width.
-2. **Default for existing users** ✅ — `enable_emoji_button = true` (always visible).
-3. **Recent category behavior** ✅ — Recent is the first emoji page/bookmark, backed by `emoji_user` newest-first usage. Android current behavior is the reference; iOS must be fixed to match.
+2. **Default for existing users** ✅ — launcher is always visible when the candidate bar is empty; no preference.
+3. **Recent category behavior** ✅ — Recent is the first emoji page/bookmark, backed by `emoji_user` newest-first usage, then filled by duplicate-collapsed fallback seed entries until real recents push them out.
 4. **Keyword threshold split** ✅ — inline English emoji suggestions start at two characters; emoji search-box English search starts at one character; Chinese IM candidate matching also queries the first Chinese character.
 
 (Data-side decisions — locales, target version, FTS5, legacy views, upgrade paths — are in [EMOJI_DB_V2.md](EMOJI_DB_V2.md).)
@@ -474,10 +467,6 @@ End-to-end manual test on iPhone (WJIP17 per `reference_ios_devices.md`), iPad, 
 This UI plan and [EMOJI_DB_V2.md](EMOJI_DB_V2.md) ship in the same cross-platform release (single PR or two-PR sequence with DB landing first):
 
 1. **DB plan first** — build script, new schema, FTS5 APIs, candidate-bar rewiring, Android cache-wipe hook.
-2. **Shared UI contract** — key codes, preference key, panel states, category bookmark behavior, recent behavior, search-active behavior.
-3. **iOS UI** — iPhone home-row reflow, iPad space-trim, emoji-launcher key, panel view, preference toggle.
-4. **Android UI** — English layout launcher, panel view, preference toggle, Android FTS/search wiring.
-
-## Cleanup note
-
-This plan supersedes `docs/IOS_EMOJI_BUTTON_PLAN.md`. After exiting plan mode, that file should be deleted (I cannot delete files in plan mode).
+2. **Shared UI contract** — key codes, panel states, category bookmark behavior, recent behavior, search-active behavior.
+3. **iOS UI** — candidate-bar launcher, panel view, source-keyboard return routing.
+4. **Android UI** — candidate-bar launcher, panel view, Android FTS/search wiring.

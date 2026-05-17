@@ -40,7 +40,7 @@ This is a **view-layer-only** backport of the iOS LimeSettings UI ([LIME_SETTING
 | §6.2 RelatedList + Add/Edit | `RelatedListView` + sheets | Refactored `ManageRelatedFragment` + new `ManageRelatedAddSheet` / `ManageRelatedEditSheet` | **Refactor list, replace dialogs** |
 | §7 DB Manager | `DBManagerTabView` | New `DbManagerFragment` (extracts backup/restore from `SetupImFragment`) | **New** |
 | §8 Preferences | `PreferencesTabView` (Form sections) | Refactored `LIMEPreference` activity hosting a `PreferenceFragmentCompat` reskinned with Material 3 grouped sections (or a Compose-equivalent `Form` page) | **Refactor** |
-| §8.4.1 Reverse Lookup | Sub-screen | Add an `androidx.preference.PreferenceScreen` nested inside `pref_section_im_behaviour` as the last §8.4 item (after `reverse_lookup_notify`) | **Refactor** |
+| §8.4.1 Reverse Lookup | Sub-screen | Add an `androidx.preference.PreferenceScreen` nested inside `pref_section_im_behaviour` as the last §8.4 item | **Refactor** |
 
 > Android already has the entire 外接鍵盤 (External Keyboard) preferences group; the iOS spec drops it. Android **keeps** that group.
 

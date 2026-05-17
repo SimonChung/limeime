@@ -280,8 +280,7 @@ screens (section 2.2), not the global preferences screen.
 |---|---|---|---|
 | Section header | All under lime_keyboard (preference.xml:34). | Add dedicated category. | P2 |
 | keyboard_theme Picker (0-5; 6 iOS-only) | defaultValue=0 (preference.xml:35-41). | Verify 6 entries in @array/keyboard_themes_values. | P3 (verify) |
-| enable_emoji Toggle, default true | defaultValue=false (preference.xml:51-55). | DEFAULT MISMATCH; change to true. | P2 |
-| enable_emoji_position Picker, default 3 | defaultValue=3 (preference.xml:56-63). | At parity. | - |
+| enable_emoji_position Picker, default 6 | defaultValue=6; first option `0` disables inline emoji candidates. | At parity; replaces the removed emoji toggle. | - |
 | keyboard_size Picker, default 1.1 | defaultValue=1 (preference.xml:116-122). | DEFAULT MISMATCH; change to 1.1. | P2 |
 | show_arrow_key Picker, default 0 | defaultValue=0 (preference.xml:80-86). | At parity. | - |
 | split_keyboard_mode Picker (iPad only) | Present (preference.xml:89-95). | iOS-only hide rule; Android keep or product decision. | P3 |
@@ -344,7 +343,6 @@ screens (section 2.2), not the global preferences screen.
 | iOS Spec Item | Android Current | Gap | Severity |
 |---|---|---|---|
 | Section header | None. | Reorg. | P2 |
-| reverse_lookup_notify Toggle, default true | defaultValue=true (preference.xml:230-233). | At parity. | - |
 | persistent_language_mode Toggle, default false | defaultValue=false (preference.xml:65-69). | Move into new section. | P2 (reorg) |
 
 ### 5.9 Reverse Lookup (section 8.9) - Sub-screen
@@ -410,7 +408,7 @@ iOS spec section 10.1 drops these. Not automatic gaps; flagged for product revie
 | switch_english_mode_shift | preference.xml:150-154 | External keyboard | Keep on Android. |
 | disable_physical_selkey | preference.xml:175-178 | External keyboard | Keep on Android. |
 | selkey_option | preference.xml:350-356 | External keyboard; no iOS analogue | Keep on Android. |
-| physical_keyboard_type | preference.xml:208-214 | External keyboard | Keep on Android. |
+| physical_keyboard_type | preference.xml:208-214 | Legacy phone hardware keyboard layout type | Retired from visible Preferences; runtime default remains for legacy stored values. |
 | english_dictionary_physical_keyboard | preference.xml:352-357 | External keyboard | Keep on Android. |
 | physical_keyboard_sort | preference.xml:383-387 | External keyboard | Keep on Android. |
 | auto_cap | not in preference.xml | iOS reads autocapitalizationType directly | Verify no leftover references. |
@@ -436,7 +434,7 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 1. Top-of-screen titles missing on tab fragments — add MaterialToolbar with title to fragment_im_list.xml (管理輸入法), fragment_db_manager.xml (資料庫管理), and the preferences host (喜好設定). See §0.1.
 2. Reverse-Lookup sub-screen; collapse 13 flat ListPreference into a single drill-down (preference.xml:236-327).
 3. Preferences re-sectioning into the 8-section layout from spec section 8.
-4. ~~Default mismatches~~ — RESOLVED 2026-05-14: `backup_on_delete_{*}`=true, `enable_emoji`=true, `keyboard_size`="1", `font_size`="1", `smart_chinese_input`=true, `auto_chinese_symbol`=false, `han_convert_option`=0 — all aligned on both platforms.
+4. ~~Default mismatches~~ — RESOLVED 2026-05-14: `backup_on_delete_{*}`=true, `keyboard_size`="1", `font_size`="1", `smart_chinese_input`=true, `auto_chinese_symbol`=false, `han_convert_option`=0 — all aligned on both platforms. The old emoji toggle was later folded into `enable_emoji_position = 0`.
 5. ~~App Setup: revert step list / privacy note / inline title~~ — DONE 2026-05-13 (see §1).
 6. IM Detail: add Version row + share/export toolbar action.
 7. IM List: section headers, syncIMActivatedState after toggle.
@@ -512,8 +510,7 @@ file path or layout block to touch.
   - [ ] Wrap `LimePreferenceFragment` host in a layout with a `MaterialToolbar` titled `喜好設定`.
 - [x] **§5.9 / P2.2** ~~Reverse-Lookup sub-screen — nested PreferenceScreen~~ — DONE 2026-05-13.
 - [x] **§5 / P2.3** ~~Preferences re-sectioning into 8 (+1 physical-keyboard) categories~~ — DONE 2026-05-13.
-- [x] **§5 / P2.4** ~~Default mismatches (`enable_emoji`/`keyboard_size`/`font_size`/`backup_on_delete`/`smart_chinese_input`/`auto_chinese_symbol`)~~ — DONE 2026-05-14 (all sub-items resolved):
-  - [x] `enable_emoji` default → `true` (`preference.xml`).
+- [x] **§5 / P2.4** ~~Default mismatches (`keyboard_size`/`font_size`/`backup_on_delete`/`smart_chinese_input`/`auto_chinese_symbol`)~~ — DONE 2026-05-14 (all sub-items resolved):
   - [x] `keyboard_size` default → `"1"` (一般) on both iOS and Android — final product decision reverses prior `"1.1"` alignment.
   - [x] `font_size` default → `"1"` (一般) on both platforms — same.
   - [x] `backup_on_delete_{*}` runtime default `true` (`ImDetailFragment.java:169` — bug at old L121 was already fixed).
@@ -558,7 +555,7 @@ file path or layout block to touch.
   - [ ] `@array/im_reverse_lookup_codes` and `@array/im_reverse_lookup` each have 14 entries (`none` + 13 IMs).
   - [ ] `@array/han_convert_options_values` has 3 entries (0–2).
 - [ ] Status footer copy alignment (DB Manager + IM Install).
-- [ ] Product decision: keep or retire Android-only physical-keyboard prefs (`hide_software_keyboard_typing_with_physical`, `switch_english_mode*`, `disable_physical_selkey`, `selkey_option`, `physical_keyboard_type`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`).
+- [ ] Product decision: keep or retire Android-only physical-keyboard prefs (`hide_software_keyboard_typing_with_physical`, `switch_english_mode*`, `disable_physical_selkey`, `selkey_option`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`). `physical_keyboard_type` is retired from visible Preferences.
 - [ ] Initial score on `ManageImAddSheet.java:52` change `1` -> `0` to match iOS spec §6.1.1.
 - [ ] Replace `Toast(R.string.insert_error)` / `Toast(R.string.update_error)` with inline `TextInputLayout` `setError(...)` in all four sheets.
 - [ ] Verify pagination / search-filter / confirm-alert behaviour in `ManageImFragment` and `ManageRelatedFragment` bodies beyond line 200 (not sampled in this pass).

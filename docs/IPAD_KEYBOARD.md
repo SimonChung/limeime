@@ -38,6 +38,7 @@ Examples:
 | `;\n：` (65306, lp 65307) | `：` (65307) |
 | `。\\n，` (65292, lp 12290) | `，` (12290) |
 | `<\\n,` (44, lp 60) | `<` (60) — already in source shift |
+| `？\\n、` (12289, lp 65311) | `？` (65311) |
 
 ### Implemented ✅
 
@@ -52,7 +53,7 @@ Examples:
   - **Extended bottom-row exclusion list**: codes 58 (`:`), 59 (`;`), 95 (`_`), 43 (`+`) added to `exclude_codes` in `harvest_bottom_row_symbols`. Prevents IM colon/semicolon (asdf row keys) and shift-of-dash/equals from being promoted to zxcv. Fixes `cj_number_shift`, `et26_shift`, `hsu_shift` (zxcv 14→12) and `et_41_shift` (zxcv 15→12 together with the strip below).
   - **Non-QWERTY key strip in `ensure_zxcv_shifts`**: after removing the trailing delete, any printable key whose code is not in the standard QWERTY zxcv set (`_ZXCV_QWERTY_CODES`) is stripped. Removes native IM extras such as `_` (95/ㄦ) in `phonetic_shift` and `'` (39/ㄘ) in `et_41` that pushed the row to 13.
   - **Dedup filter when promoting extra_keys**: `,./` (44/46/47) from the source bottom row are skipped when their shift-layer equivalents `<>?` (60/62/63) are already in the zxcv row. Prevents double-counting for phonetic_shift (which has `<>?` as native IM keys).
-  - **No-digit qwerty restructured** (`lime_array`, `lime_cj`): `transform_no_digit_im_rows` row 0 changed from `q-p + ⌫(30%)` to `Tab + q-p + 『\n「 + 』\n」 + ⌫` = 14. The `|\n、` CJK backslash key is removed from both qwerty and asdf; bracket pair moves to qwerty.
+  - **No-digit qwerty restructured** (`lime_array`, `lime_cj`): `transform_no_digit_im_rows` row 0 changed from `q-p + ⌫(30%)` to `Tab + q-p + 『\n「 + 』\n」 + ⌫` = 14. The `？\n、` CJK punctuation key is removed from both qwerty and asdf; bracket pair moves to qwerty.
   - **No-digit asdf restructured**: row 1 changed from `Tab + letters + ；\n：+ {CJK brackets}` to `abc + letters + ；\n：(or IM key) + 。\n，+ ↩` = 13. Also handles `:` (58) as last asdf key (same logic as `;`/59 — leave unchanged if IM sublabel present).
   - **No-digit zxcv restructured**: row 2 `。\n，` removed; row ends with `abc + letters + ↩` = 12 (plus any `<\n,`/`>\n.`/`?\n/` fallbacks inserted by `apply_zxcv_punct_sliding`).
 
@@ -60,7 +61,7 @@ Examples:
 - **CJK number-row leftmost key**: direct input `` ` `` (backtick, code 96), sliding `~` (lp 126). Label `'~\\n\`'`. Shifted state shows `~` only.
 - **Phonetic r1 shifted**: shift symbol on TOP (small), BPMF character on BOTTOM (large). `mk(sc, label=_SHIFT_CHAR[sc], sublabel=bpmf_char)`.
 - **CJK digit row shifted**: shift symbol on TOP (small), CJK sublabel on BOTTOM (large). `mk(sc, label='!', sublabel='言')`.
-- **Bracket keys** above Enter: `「/『`, `」/』`, `、/|` — all using correct `'sliding\\ndirect'` format.
+- **Bracket keys** above Enter: `「/『`, `」/』`, `、/？` — all using correct `'sliding\\ndirect'` format.
 - **Colon key** left of Enter: `：/；`.
 - **Comma key** right of Space: `，/。`.
 - **Symbol keyboard row 4**: left spacer 7.5 to align ↑/↓ arrows.
@@ -109,12 +110,13 @@ For each existing keyboard layout that is exposed on iPad, ship a **separate `*_
 1. On iPad (`UIDevice.current.userInterfaceIdiom == .pad`), present a layout that **looks exactly like Apple's stock iPad keyboard** in the three attached screenshots:
    - English / ABC keyboard (§4.2.1 / §4.2.2): 5 rows; top row is the dual number+symbol row with `\n`-split labels and slide-down secondary entry; right edge gets the `{ [` / `} ]` / `| \` cluster; row 3 has a `注音` IM-toggle modifier; row 3 right is the blue `search` / `return` accent; row 4 has shift on **both** ends.
    - Symbols / `.?123` keyboard (§4.2.3): 5 rows; row-3 modifier is `undo`; row-4 modifier is `redo`; bottom row uses `ABC` on both sides of the spacebar.
-   - Phonetic / 注音 keyboard (§4.2.5): 5 rows; row-3 modifier is `abc`; right-edge cluster uses CJK corner brackets `『「` / `』」` / `| 、`; row-3 right is the magnifying-glass `search` icon.
+   - Phonetic / 注音 keyboard (§4.2.5): 5 rows; row-3 modifier is `abc`; right-edge cluster uses CJK corner brackets `『「` / `』」` / `？ 、`; row-3 right is the magnifying-glass `search` icon.
    - Every other Chinese IM (Array / CJ / Dayi / ET26 / ET41 / Hsu / EZ / HS / WB) inherits the same scaffolding (§4.2.6) — alpha keys come from the existing phone JSON, but the iPad-only number row, IM-toggle, search, dual punctuation cells, dual shift, and bottom-row template are all added; **no key is squeezed**, and rows that have fewer alpha keys than the iPad scaffold are padded with transparent spacers (§4.2.7) so each surviving key stays at iPad cell width.
 2. The English / ABC top row implements the **dual-character key** (§4.5): tap = primary symbol, slide-down = secondary number, long-press = preview shows secondary only. Encoded with the existing `\n`-split label + `longPressCode` field — no schema change.
 3. Larger candidate bar font and row height on iPad (§5).
-4. **Do not** alter existing JSON layouts, the `.limedb` keyboard / im tables, or the Android port. iPad uses parallel `_ipad.json` files only.
-5. Investigate whether the iPad system **shortcut bar** (the strip to the right of undo/redo/paste in the attached screenshots) can host LimeIME candidates. **Outcome (see §6): not feasible from a custom keyboard extension.** Therefore continue rendering candidates inside `CandidateBarView`, but enlarge it on iPad.
+4. Show the candidate-bar hamburger/options button on iPad when the candidate row is empty; tapping it opens the same menu as long-pressing the keyboard/dismiss key. The button stays on the right/backspace edge but uses a 7% normal-key-width frame instead of the wider backspace width, uses candidate text color for light/dark contrast, and keeps a full-height touch target.
+5. **Do not** alter existing JSON layouts, the `.limedb` keyboard / im tables, or the Android port. iPad uses parallel `_ipad.json` files only.
+6. Investigate whether the iPad system **shortcut bar** (the strip to the right of undo/redo/paste in the attached screenshots) can host LimeIME candidates. **Outcome (see §6): not feasible from a custom keyboard extension.** Therefore continue rendering candidates inside `CandidateBarView`, but enlarge it on iPad.
 
 ---
 
@@ -215,13 +217,12 @@ Geometric tokens used in the layouts below (each stays consistent across the thr
 | `MOD_RETURN`     | `9.5`          | `search` / `return` on row 3, right edge. |
 | `MOD_BACKSPACE`  | `7.5`          | `⌫` on row 1, right edge. |
 | `MOD_PUNCT`      | `6.0`          | `:`/`;`, `"`/`,`, `<`/`,` etc. dual-glyph cells. |
-| `MIC`            | `6.0`          | Microphone key. |
 | `SPACE`          | `≈ 56`         | Space — fills whatever is left after the bottom-row siblings. |
 
 Bottom-row template (every alpha layout, every IM):
 
 ```
-[ globe(KEY_NARROW) ][ .?123(KEY_NARROW) ][ mic(MIC) ][ space(SPACE) ][ .?123(KEY_NARROW) ][ dismiss(KEY_NARROW) ]
+[ globe(KEY_NARROW) ][ .?123(KEY_NARROW) ][ emoji ][ space(SPACE) ][ .?123(KEY_NARROW) ][ dismiss(KEY_NARROW) ]
 ```
 
 **Both `globe` and `dismiss` keys are always present** in the iPad bottom row — they coexist (visible in all three screenshots: globe icon at the far left, keyboard-with-down-arrow icon at the far right). This is different from the phone behavior where the globe key is conditional on `needsInputModeSwitchKey`:
@@ -315,7 +316,7 @@ redo  |  …  |  .  |  ,  |  ?  |  !  |  '  |  "  |  _  |  €
 
 Row 5 (bottom-row template, but both edge keys are `ABC` instead of `.?123`):
 ```
-[ globe ][ ABC ][ mic ][ space ][ ABC ][ dismiss ]
+[ globe ][ ABC ][ emoji ][ space ][ ABC ][ dismiss ]
 ```
 
 #### 4.2.4 `symbols2_ipad.json`, `symbols3_ipad.json`
@@ -333,9 +334,9 @@ Row 1 (15 cells, `KEY` × 14 + `MOD_BACKSPACE`):
 
 Row 2 (`MOD_TAB` + 10× `KEY` + 3× dual-glyph `KEY`):
 ```
-→  | ㄆ | ㄊ | ㄍ | ㄐ | ㄔ | ㄗ | ㄧ | ㄛ | ㄟ | ㄣ |  『 「  |  』 」  |  | 、
+→  | ㄆ | ㄊ | ㄍ | ㄐ | ㄔ | ㄗ | ㄧ | ㄛ | ㄟ | ㄣ |  『 「  |  』 」  |  ？ 、
 ```
-- `『 「`, `』 」`, `| 、` are dual-glyph cells (corner-bracket primary, regular bracket secondary).
+- `『 「`, `』 」`, `？ 、` are dual-glyph cells (corner-bracket primary, regular bracket secondary).
 
 Row 3 (`MOD_IM`("abc") + 11× `KEY` + `MOD_RETURN`(🔍 search-icon)):
 ```
@@ -583,14 +584,15 @@ Manual (no automated coverage in `LimeTests/` for layout JSON):
 2. iPad portrait — open each IM (phonetic / array / cj / dayi / et26 / hsu / wb / ez / hs / english) and confirm the new wider layout renders, top row visible, bottom row icon set correct.
 3. iPad landscape — same, plus split-keyboard mode 2 (landscape-only) renders the new layout split.
 4. iPad with `font_size` pref at min and max — candidate bar fonts scale.
-5. Numeric textfields (`.numberPad`, `.phonePad`) on iPad — fall back to existing `phone*.json` (no `_ipad` variant by design).
-6. Popup keyboards — long-press a key with `popup_punctuation`, confirm popup either loads `_ipad` variant or falls back to phone variant.
-7. **iPad top-row dual key (§4.5)**:
+5. iPad with empty candidate row — right side of candidate bar shows hamburger/options button on the right/backspace edge, sized to normal-key width rather than the wider backspace key. Verify light/dark contrast, full-height top/bottom touch area, and tapping it opens the same menu as long-pressing keyboard/dismiss.
+6. Numeric textfields (`.numberPad`, `.phonePad`) on iPad — fall back to existing `phone*.json` (no `_ipad` variant by design).
+7. Popup keyboards — long-press a key with `popup_punctuation`, confirm popup either loads `_ipad` variant or falls back to phone variant.
+8. **iPad top-row dual key (§4.5)**:
    - Tap `! 1` key → emits `!` (primary code).
    - Press, slide finger down off the key, release → emits `1` (secondary `longPressCode`); during the slide the key's label morphs to show only `1`; **no preview popup appears**.
    - Long-press `! 1` key for ~0.4s without releasing → preview popup appears showing **only `1`**; release commits `1`.
-8. **iPad preview suppression (§4.6)**: tap any non-top-row key (e.g. `q`, `a`, `z`) → only the press-state color change fires; no preview popup appears.
-9. DB sanity — verify both DBs are byte-identical to the previous build:
+9. **iPad preview suppression (§4.6)**: tap any non-top-row key (e.g. `q`, `a`, `z`) → only the press-state color change fires; no preview popup appears.
+10. DB sanity — verify both DBs are byte-identical to the previous build:
    - Import seeds: `shasum Database/array.limedb Database/array10.limedb` unchanged.
    - Runtime `lime.db` in the App Group container: schema and `keyboard` / `im` table contents unchanged after a fresh install + first-launch import.
 

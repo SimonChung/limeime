@@ -636,7 +636,7 @@ int maxCandidateWidth = containerWidth - dismissWidth - rightWidth;
 
 The row should still use the existing right-side logic:
 
-- empty candidate row: right button can remain voice input;
+- empty candidate row: right button remains voice input;
 - non-empty row: right button remains expand/collapse;
 - keyboard-hidden row: `candidate_keyboard` remains the restore-keyboard
   button.
@@ -674,6 +674,10 @@ Its click behavior mirrors the same state split:
 | Non-empty, keyboard visible | Expand-down icon | Opens the expanded candidate popup through `CandidateView.showCandidatePopup()`. |
 | Non-empty, keyboard hidden | Expand-up icon | Opens the expanded candidate popup upward; `candidate_keyboard` remains the separate restore-keyboard action. |
 
+The microphone key should not clear composing, replace existing candidates,
+or delete document text by itself; it only starts voice input. Any text commit
+happens later when the recognizer returns a non-empty result.
+
 `LIMEService.startVoiceInput()` first tries to switch to Google's voice IME
 when `LIMEUtilities.isVoiceSearchServiceExist(...)` finds one. If that
 switch does not take, or no voice IME is available, it falls back to a
@@ -690,9 +694,6 @@ Recognized text returns to the service through two paths:
    `LIMEService` receives it and calls `commitVoiceTextWithRetry(...)`.
 
 Both paths commit the recognized text through `InputConnection.commitText`.
-The microphone key should not clear composing, replace existing candidates,
-or delete document text by itself; it only starts voice input. Any text commit
-happens later when the recognizer returns a non-empty result.
 
 ### Replace system IME toasts with `lime_toast`
 
@@ -764,3 +765,217 @@ candidateView.showLimeToast(text);
 5. Expand candidates while keyboard is hidden → popup may render above the
    candidate row; no extra iOS-style asymmetric row math is required.
 6. Confirm settings/import/activity screens still use normal Android toasts.
+
+---
+
+## 9. Emoji icon in the candidate bar
+
+### Design rationale
+
+The emoji panel launcher is surfaced from the phone candidate bar's existing left-end zone rather than from inside the English keyboard layout. This avoids any keyboard layout changes:
+
+- iPhone English layout keeps `中` in the bottom row — no home-row reflow.
+- iPad English layout keeps the full-width space key — no trimming.
+- Android English layout is unchanged.
+
+The left-end zone already belongs to the dismiss (✕) button when candidates are present. When the bar is empty the dismiss button is already hidden, leaving that zone free. The emoji icon fills it.
+
+The iOS matching right-end zone uses an options hamburger when the row is empty and the expand chevron when candidates are present. The earlier iOS microphone plan is removed from the candidate-bar slot because iOS cannot record audio or launch system dictation from a custom keyboard extension. Android keeps its existing right-side microphone icon.
+
+### Left-end zone state machine
+
+| Candidate bar state | Left zone |
+|---|---|
+| Empty | 😀 emoji button |
+| Candidates present | ✕ dismiss button |
+
+Only one of {emojiButton, dismissButton} is ever visible at a time. The `scrollView.leadingAnchor` stays pinned to `dismissButton.trailingAnchor` unchanged — this works because both buttons occupy the same zone with the same width.
+
+### iOS geometry
+
+`emojiButton` is a new `UIButton(type: .system)` sibling of `dismissButton` in `CandidateBarView`. It is iPhone-only; iPad keeps the keyboard-level emoji key.
+
+**Constraints** — centered in the first key column guide:
+
+```swift
+emojiButton.centerXAnchor.constraint(equalTo: firstColumnGuide.centerXAnchor),
+emojiButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+emojiButton.heightAnchor.constraint(equalTo: heightAnchor,
+    constant: -composingStripHeight),
+emojiButton.widthAnchor.constraint(equalTo: firstColumnGuide.widthAnchor,
+    multiplier: 0.80),
+```
+
+**Dimensions** (at fontScale 1.0):
+
+| Idiom | Width | Height | Center offset |
+| --- | --- | --- | --- |
+| iPhone | 20 pt | 36 pt | +11 pt from bar center |
+
+**Glyph**: SF Symbol `face.smiling` at the same configuration as the `xmark` glyph used by dismiss. Literal `😀` label as a fallback if the symbol is unavailable in the extension target.
+
+**Background**: transparent.
+
+**Visibility toggle in `rebuildButtons()`**:
+
+```swift
+let hasCandidates = !candidates.isEmpty
+dismissButton.isHidden = !hasCandidates
+moreButton.isHidden    = !hasCandidates
+moreSep.isHidden       = !hasCandidates
+let allowEmoji = !isPad
+emojiButton.isHidden   = hasCandidates || !allowEmoji
+```
+The launcher is always enabled; there is no preference gate.
+
+**Delegate**:
+
+```swift
+protocol CandidateBarViewDelegate: AnyObject {
+    // ... existing methods ...
+    func candidateBarViewDidRequestEmoji(_ view: CandidateBarView)
+    func candidateBarViewDidRequestOptions(_ view: CandidateBarView)
+}
+```
+
+`emojiTapped()` fires `delegate?.candidateBarViewDidRequestEmoji(self)`.
+`optionsTapped()` fires `delegate?.candidateBarViewDidRequestOptions(self)`.
+
+**Action in `KeyboardViewController`**:
+
+```swift
+func candidateBarViewDidRequestEmoji(_ view: CandidateBarView) {
+    showEmojiPanel()
+}
+
+func candidateBarViewDidRequestOptions(_ view: CandidateBarView) {
+    showGlobeMenu(from: view)
+}
+```
+
+**Invariants preserved**:
+
+- `scrollView.leadingAnchor == dismissButton.trailingAnchor` — unchanged. Works because emoji and dismiss buttons share the same zone.
+- Row-1 parity with the expanded panel — unchanged; the left zone width is the same whether emoji or dismiss is showing.
+- Font-scale live tracking — `rebuildButtons()` already responds to `fontScale` changes.
+
+### iOS right-end options zone
+
+The empty-row right-end button is `optionsButton`, a `UIButton(type: .system)` sibling of `moreButton`. It uses SF Symbol `line.3.horizontal` with fallback text `☰`. It is shown on both iPhone and iPad.
+
+The glyph color follows `effectiveCandiText`, so it is dark on the light system candidate-bar backdrop and light on the dark backdrop. The button background remains the same near-transparent touch-trap fill used by candidate buttons; there is no visible key cap behind the hamburger.
+
+Geometry is idiom-specific:
+
+| Idiom | Horizontal target | Touch target |
+|---|---|---|
+| iPhone | trailing 10% column, centered | Full candidate-bar height |
+| iPad | right-edge/backspace zone, but only 7% normal-key width, centered in that normal-width frame | Full candidate-bar height |
+
+The iPad target intentionally does **not** use the top-row backspace width or center, because backspace is wider than a normal key. The button still sits at the right edge over the backspace area, but its frame is the normal key width. The button frame spans the full candidate-bar height, and its content uses the same `composingStripHeight / 2` vertical inset bias as `moreButton`, so taps in the top/bottom padding fire while the glyph still sits on the candidate glyph axis.
+
+**State machine**:
+
+| Candidate bar state | Right zone |
+|---|---|
+| Empty | Hamburger/options button |
+| Candidates present | Expand chevron |
+
+Only one of {optionsButton, moreButton} is ever visible at a time on iOS. The hamburger opens the same inline menu as long-pressing the keyboard/dismiss key:
+
+- Reverse lookup source for the current active IM.
+- Han conversion picker.
+- LIME IM picker.
+- System input-mode switch only when no visible globe key already handles it.
+- Cancel.
+
+### Android geometry
+
+**Layout** (`res/layout/inputcandidate.xml`): Add an `ImageButton` for the emoji launcher immediately before `candidatesView`, in the same left-side position as the existing dismiss button:
+
+```xml
+<ImageButton
+    android:id="@+id/candidate_emoji"
+    android:layout_width="@dimen/candidate_dismiss_button_width"
+    android:layout_height="fill_parent"
+    android:visibility="gone"
+    android:contentDescription="@string/emoji_panel" />
+```
+
+Width matches `candidate_dismiss_button_width` (21 sp) so the two left-zone buttons are interchangeable in the layout calculation.
+
+**Visibility logic in `CandidateInInputViewContainer.requestLayout()`**:
+
+```java
+boolean isEmpty = mCandidateView.isEmpty();
+
+if (mDismissButton != null) {
+    mDismissButton.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+}
+if (mEmojiButton != null) {
+    mEmojiButton.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+}
+```
+
+**Width accounting in `updateCandidateViewWidthConstraint()`**: Include emoji button width when `VISIBLE` — same calculation already done for the dismiss button.
+
+**Click handler**: emoji button click dispatches key code `-201` through `LIMEService`, the same emoji-panel open code used internally by the emoji panel spec.
+
+### Preference gating
+
+There is no preference gate. The emoji launcher is always visible when the candidate bar is empty.
+
+### Emoji button file changes
+
+| File | Change |
+|---|---|
+| `LimeIME-iOS/LimeKeyboard/CandidateBarView.swift` | Add `emojiButton` and right-side `optionsButton`; delegate methods for emoji/options; visibility in `rebuildButtons()` |
+| `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift` | Implement `candidateBarViewDidRequestEmoji` and `candidateBarViewDidRequestOptions`; route options to `showGlobeMenu(from:)` |
+| `LimeStudio/app/src/main/res/layout/inputcandidate.xml` | Add `candidate_emoji` ImageButton (21 sp, GONE) before `candidatesView` |
+| `LimeStudio/app/src/main/java/net/toload/main/hd/candidate/CandidateInInputViewContainer.java` | Emoji/dismiss visibility toggle; width accounting; existing empty-row microphone button unchanged |
+| `LimeStudio/app/src/main/java/net/toload/main/hd/candidate/CandidateView.java` | Programmatic dismiss glyph |
+| `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` | Dispatch `-201` on emoji click |
+| `docs/EMOJI_KEYBOARD.md` | Update English keyboard launcher section; remove keyboard-layout changes; update shared contract and verification |
+
+English keyboard layout files (`lime_abc.json`, `lime_abc_shift.json`, `lime_abc_ipad.json`, `lime_abc_ipad_shift.json`, Android English layout XML) **require no changes**.
+
+### Emoji button verification
+
+1. Open any text field with LimeIME active, no composing → candidate bar empty → 😀 appears at left on iPhone and Android.
+2. Start composing → candidates appear → left zone switches to ✕; 😀 is gone.
+3. Tap ✕ → composing cleared, bar empties → 😀 reappears.
+4. Tap 😀 → emoji panel opens; candidate bar remains anchored above the panel.
+5. On iPhone, empty-row right hamburger opens the same options menu as long-pressing keyboard/dismiss.
+6. iPhone English keyboard: `中` is in the bottom row (unchanged). iPad keeps its keyboard-level emoji key and also shows the candidate-bar hamburger.
+7. Android English keyboard: bottom row unchanged; no extra key added.
+
+---
+
+## TODO
+
+### iOS
+
++ [ ] **`CandidateBarView.swift`**: Add iPhone-only `emojiButton: UIButton(type: .system)` centered in the first key column guide, width around 80% of that guide, transparent background.
++ [ ] **`CandidateBarView.swift`**: Add iOS `optionsButton: UIButton(type: .system)` centered in the right-side guide, transparent background, SF Symbol `line.3.horizontal` with `☰` fallback.
++ [ ] **`CandidateBarView.swift`**: For iPad options geometry, keep the button on the right/backspace edge but size it to a 7% normal-key frame; use `effectiveCandiText` for light/dark contrast and a full-height touch target with vertical content bias.
++ [ ] **`CandidateBarView.swift`**: In `rebuildButtons()`, add `emojiButton.isHidden = hasCandidates` alongside the existing dismiss/more/moreSep toggles.
++ [ ] **`CandidateBarView.swift`**: Add `candidateBarViewDidRequestEmoji(_ view: CandidateBarView)` to `CandidateBarViewDelegate`; wire `emojiButton` tap to fire it.
++ [ ] **`CandidateBarView.swift`**: Add `candidateBarViewDidRequestOptions(_ view: CandidateBarView)` to `CandidateBarViewDelegate`; wire `optionsButton` tap to fire it.
++ [ ] **`KeyboardViewController.swift`**: Implement `candidateBarViewDidRequestEmoji` to call `showEmojiPanel()`.
++ [ ] **`KeyboardViewController.swift`**: Implement `candidateBarViewDidRequestOptions` to call `showGlobeMenu(from:)`.
++ [ ] No changes to any keyboard layout JSON files.
+
+### Android
+
++ [ ] **`inputcandidate.xml`**: Add `ImageButton` id=`candidate_emoji`, width=`@dimen/candidate_dismiss_button_width` (21 sp), height=`fill_parent`, visibility=`gone`, before `candidatesView`.
++ [ ] **`CandidateInInputViewContainer.java`**: In `requestLayout()`, toggle `mEmojiButton` visibility: `VISIBLE` when `isEmpty`, `GONE` otherwise.
++ [ ] **`CandidateInInputViewContainer.java`**: In `updateCandidateViewWidthConstraint()`, add emoji button width to `buttonsWidth` when emoji button is `VISIBLE`.
++ [ ] **`CandidateInInputViewContainer.java`**: Wire `mEmojiButton.setOnClickListener` to dispatch key code `-201` through `LIMEService`.
++ [ ] No changes to Android English keyboard layout XML.
+
+### Shared
+
++ [ ] **`docs/EMOJI_KEYBOARD.md`**: Update "English keyboard launcher placement" section — remove keyboard-layout changes; replace with candidate-bar approach (reference §9 of this document).
++ [ ] **`docs/EMOJI_KEYBOARD.md`**: Update "Shared contract" table — remove bottom-row position rows for iPhone/iPad/Android; add candidate-bar emoji button row.
++ [ ] **`docs/EMOJI_KEYBOARD.md`**: Update verification step 1 (keyboard layout check) to match new design; remove step 9 iPhone home-row `中` check.
++ [ ] Verify all TODO items above with manual test on WJIP17 (iPhone), iPad, and Android emulator.

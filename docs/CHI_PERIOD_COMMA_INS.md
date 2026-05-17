@@ -13,9 +13,9 @@ This punctuation must appear immediately before emoji candidates when both are p
 
 ## Position Rule
 
-Keep `enable_emoji_position` default at `3`.
+Keep `enable_emoji_position` default at `6`.
 
-Do not move the default to `4` or `5` just to work around punctuation ordering. The preference should continue to mean the normal emoji insertion slot.
+Do not move emoji around just to work around punctuation ordering. The preference should continue to mean the normal emoji insertion slot.
 
 For comma/period queries, `，` or `。` is inserted into the candidate stream before emoji candidates.
 
@@ -50,10 +50,10 @@ This handles both cases:
 - Punctuation is exactly at visible index `3`.
 - Punctuation is shifted later, for example to visible index `4`, because the composing-code echo was prepended at index `0`.
 
-Android default remains:
+Android default is:
 
 ```text
-enable_emoji_position = "3"
+enable_emoji_position = "6"
 ```
 
 ## iOS Implementation
@@ -86,10 +86,10 @@ This forward scan is required because `SearchServer` prepends the composing-code
 
 With `enable_emoji_position = 3`, emoji must be inserted at index `5`, not index `3`.
 
-iOS default remains:
+iOS default is:
 
 ```text
-enable_emoji_position = 3
+enable_emoji_position = 6
 ```
 
 ## Tests
@@ -125,4 +125,4 @@ xcodebuild -project LimeIME-iOS/LimeIME.xcodeproj \
 
 ## Related Preference Doc
 
-`docs/PREFS_TABLE.md` documents `enable_emoji_position` as default `3` and notes that Chinese punctuation at the insertion slot stays before emoji.
+`docs/PREFS_TABLE.md` documents `enable_emoji_position` as default `6` and notes that Chinese punctuation at the insertion slot stays before emoji.

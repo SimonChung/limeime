@@ -34,7 +34,7 @@ This document plans the rebuild plus the cross-platform upgrade path. The keyboa
 This DB plan is an **independent, self-contained PR** — it solves issue #29 on both platforms by itself, no UI changes required. The keyboard-UI work in [docs/EMOJI_KEYBOARD.md](EMOJI_KEYBOARD.md) is a follow-up PR built on top.
 
 1. **PR 1 (this plan)**: build script + new `emoji.db` + FTS5-primary schema with FTS4 fallback on old Android devices + `findEmojiForCandidate` APIs on both platforms + candidate-bar rewiring + Android cache-wipe hook.
-2. **PR 2 ([EMOJI_KEYBOARD.md](EMOJI_KEYBOARD.md))**: iOS + Android emoji keyboard UI — English-keyboard launcher placement, `中` key relocation where applicable, emoji panel, emoji search mode, recent category, category bookmarks, backspace, and preference toggle.
+2. **PR 2 ([EMOJI_KEYBOARD.md](EMOJI_KEYBOARD.md))**: iOS + Android emoji keyboard UI — candidate-bar launcher, emoji panel, emoji search mode, recent category, category bookmarks, and backspace.
 
 Splitting this way:
 

@@ -301,7 +301,7 @@ When composing finally finishes (no remaining code):
    - If no English match, try Traditional Chinese (TW) lookup on second candidate
    - If no TW match, try Simplified Chinese (CN) lookup
    - Deduplicate emoji by word
-   - Insert at configurable position (`getEmojiDisplayPosition()`, default: 3)
+   - Insert at configurable position (`getEmojiDisplayPosition()`, default: 6)
 6. **Display candidates**: `setSuggestions(list, hasPhysicalKeyPressed, selkey)`
 7. **Keyname display**: Convert code to display symbols via `keyToKeyname()`, show in composing bar if different from raw code
 
@@ -889,7 +889,7 @@ getCodeListStringFromWord(word: String) → String
 |-----------|------|-------------|
 | `word` | String | Word to reverse-look up |
 
-**Returns**: Comma-separated string of all codes that produce `word`. Used to build the reverse-lookup notification shown after commit when `reverse_lookup_notify` is enabled.
+**Returns**: Comma-separated string of all codes that produce `word`. Used to build the reverse-lookup notification shown after commit when the active IM's reverse-lookup table is not `none`.
 
 ---
 
@@ -1009,8 +1009,7 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 
 | Setting | Pref Key | Type | Default | Affects |
 |---------|----------|------|---------|---------|
-| Emoji mode | `enable_emoji` | boolean | true | Emoji injection in candidate list (both Chinese and English flows) |
-| Emoji display position | `enable_emoji_position` | int | 3 | Insert position in candidate list |
+| Emoji display position | `enable_emoji_position` | int | 6 | `0` disables inline emoji candidates; `2`–`10` inserts after that candidate index |
 
 ### English
 
@@ -1042,7 +1041,6 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 
 | Setting | Pref Key | Type | Default | Affects |
 |---------|----------|------|---------|---------|
-| Reverse lookup notify | `reverse_lookup_notify` | boolean | true | Show code lookup notification after commit |
 | Reverse lookup table | `{table}_im_reverselookup` | String | "none" | Which IM to use for reverse lookup display |
 
 ### Custom IM
@@ -1055,7 +1053,9 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 ### Physical Keyboard (exclude from iOS port)
 
 These settings are not applicable to iOS keyboard extensions:
-`physical_keyboard_enable`, `physical_keyboard_type`, `disable_physical_selkey`, `disable_physical_selkey_option`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`, `switch_english_mode`, `switch_english_mode_shift`, `hide_software_keyboard_typing_with_physical`, `three_rows_remapping`
+`physical_keyboard_enable`, `disable_physical_selkey`, `disable_physical_selkey_option`, `english_dictionary_physical_keyboard`, `physical_keyboard_sort`, `switch_english_mode`, `switch_english_mode_shift`, `hide_software_keyboard_typing_with_physical`, `three_rows_remapping`
+
+`physical_keyboard_type` is a legacy Android phone hardware-keyboard value retained only as a runtime default/backward-compatibility key, not a visible preference.
 
 ### Per-Table Metadata (managed by DBServer, not user-facing)
 
