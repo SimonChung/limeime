@@ -67,11 +67,10 @@ final class LIMEPreferenceManager {
 
     /// Keyboard colour palette index.
     /// Values 0–5 are explicit palettes (淺色/深色/粉紅/科技藍/時尚紫/放鬆綠).
-    /// Value 6 is iOS-only "系統設定": callers in the keyboard extension must map it to 0 (light)
-    /// or 1 (dark) based on `UITraitCollection.current.userInterfaceStyle`.
-    /// Do NOT sync value 6 back to the Android preference store.
+    /// Value 6 is "系統設定": callers in the keyboard extension must map it to 0 (light)
+    /// or 1 (dark) based on the current system appearance.
     var keyboardTheme: Int {
-        get { intValue("keyboard_theme", default: 0) }
+        get { intValue("keyboard_theme", default: 6) }
         set { defaults.set(newValue, forKey: "keyboard_theme") }
     }
 

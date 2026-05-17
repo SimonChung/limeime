@@ -1026,7 +1026,7 @@ All user-adjustable settings from `LIMEPreferenceManager`, grouped by category w
 | Keyboard size | `keyboard_size` | float | 1.0 | Key size scale multiplier |
 | Show arrow keys | `show_arrow_key` | int | 0 | Arrow key row visibility mode |
 | Split keyboard | `split_keyboard_mode` | int | 0 | Split keyboard layout mode |
-| Keyboard theme | `keyboard_theme` | int | 0 | Theme index — triggers input view recreation on change |
+| Keyboard theme | `keyboard_theme` | int | 6 | Theme index; 6 follows system light/dark and triggers input view recreation on change |
 | Number row in English | `number_row_in_english` | boolean | true | Number row in English keyboard |
 
 ### Feedback

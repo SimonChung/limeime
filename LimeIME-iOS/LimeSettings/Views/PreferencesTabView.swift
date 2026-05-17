@@ -1,33 +1,17 @@
-// PreferencesTabView.swift
+﻿// PreferencesTabView.swift
 // LimeIME-iOS
 //
 // IM Preferences — all 11 sections with @AppStorage(store: sharedDefaults).
 // Spec §8.
 
-import AVFoundation
-import Speech
 import SwiftUI
-
-// Keyboard extensions cannot reliably trigger
-// `SFSpeechRecognizer.requestAuthorization` or
-// `AVAudioSession.requestRecordPermission` — the system prompts are
-// owned by the host-app process. The Voice Input section's
-// "授權麥克風與語音辨識" button calls this from the LimeSettings (host)
-// app so both dialogs render. See docs/IOS_VOICE_INPUT.md §5.1.
-private enum VoiceInputPermissionPrimer {
-    static func requestAll() {
-        SFSpeechRecognizer.requestAuthorization { _ in
-            AVAudioSession.sharedInstance().requestRecordPermission { _ in }
-        }
-    }
-}
 
 // MARK: - PreferencesTabView
 
 struct PreferencesTabView: View {
 
     // MARK: §8.1 Keyboard Appearance
-    @AppStorage("keyboard_theme",          store: sharedDefaults) private var keyboardTheme: Int = 0
+    @AppStorage("keyboard_theme",          store: sharedDefaults) private var keyboardTheme: Int = 6
     @AppStorage("keyboard_size",           store: sharedDefaults) private var keyboardSize: String = "1"
     @AppStorage("font_size",               store: sharedDefaults) private var fontSize: String = "1"
     @AppStorage("number_row_in_english",   store: sharedDefaults) private var numberRowInEnglish: Bool = true
@@ -62,12 +46,9 @@ struct PreferencesTabView: View {
     // MARK: §8.7 English Dictionary
     @AppStorage("english_dictionary_enable", store: sharedDefaults) private var englishDictEnable: Bool = true
 
-    // MARK: Voice Input (docs/IOS_VOICE_INPUT.md §3.3)
-    @AppStorage("voice_input_locale", store: sharedDefaults) private var voiceInputLocale: String = "zh-TW"
-
     // MARK: Options
 
-    // iOS-only value 6 = 系統設定 (follows UITraitCollection); must not be synced to Android pref store.
+    // Value 6 = 系統設定 (follows system light/dark appearance).
     private let themeOptions    = [0, 1, 2, 3, 4, 5, 6]
     private let themeLabels     = ["淺色", "深色", "粉紅", "科技藍", "時尚紫", "放鬆綠", "系統設定"]
     private let sizeOptions     = ["1.2", "1.1", "1", "0.9", "0.8"]
@@ -81,12 +62,6 @@ struct PreferencesTabView: View {
     private let hanOptions      = [0, 1, 2]
     private let hanLabels       = ["無", "繁轉簡", "簡轉繁"]
     private let similiarOpts    = [0, 10, 20, 30, 40, 50]
-    // Voice-input locale picker. Only locales supported by on-device
-    // SFSpeechRecognizer are useful at runtime; if a locale becomes
-    // unavailable, the keyboard mic falls back to a "not supported" toast
-    // (docs/IOS_VOICE_INPUT.md §4).
-    private let voiceLocaleOptions = ["zh-TW", "zh-CN", "zh-HK", "en-US", "en-GB", "ja-JP"]
-    private let voiceLocaleLabels  = ["繁體中文（台灣）", "簡體中文（中國）", "繁體中文（香港）", "English (US)", "English (UK)", "日本語"]
 
     @ViewBuilder
     private func prefRow(_ title: String, _ desc: String) -> some View {
@@ -177,18 +152,6 @@ struct PreferencesTabView: View {
                     .pickerStyle(.segmented)
                 }
 
-                // MARK: Voice Input (docs/IOS_VOICE_INPUT.md)
-                Section(header: Text("語音輸入"), footer: voiceInputFooter) {
-                    Picker("辨識語言", selection: $voiceInputLocale) {
-                        ForEach(0..<voiceLocaleOptions.count, id: \.self) { i in
-                            Text(voiceLocaleLabels[i]).tag(voiceLocaleOptions[i])
-                        }
-                    }
-                    Button("授權麥克風與語音辨識") {
-                        VoiceInputPermissionPrimer.requestAll()
-                    }
-                }
-
                 // MARK: §8.6
                 Section(header: Text("關聯字與學習")) {
                     Toggle(isOn: $similiarEnable) { prefRow("啟用關聯字庫", "啟用關聯字庫功能") }
@@ -225,12 +188,6 @@ struct PreferencesTabView: View {
             emojiPosition = 0
         }
         sharedDefaults.removeObject(forKey: "enable_emoji")
-    }
-
-    private var voiceInputFooter: some View {
-        Text("語音輸入需要允許完整取用,並於系統設定中授權麥克風與語音辨識權限。所有辨識皆在裝置內離線完成,不會上傳音訊或文字。")
-            .font(.footnote)
-            .foregroundColor(.secondary)
     }
 
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <!--
   ~ /*
@@ -36,7 +36,7 @@
         android:key="pref_section_appearance"
         android:title="@string/pref_section_appearance">
         <ListPreference
-            android:defaultValue="0"
+            android:defaultValue="6"
             android:dialogTitle="@string/keyboard_themes"
             android:entries="@array/keyboard_themes_options"
             android:entryValues="@array/keyboard_themes_values"

@@ -856,7 +856,7 @@ Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime")
 
 | UI Control | Pref Key | Type | Default | Values / Notes |
 |---|---|---|---|---|
-| `Picker` "鍵盤樣式" | `keyboard_theme` | Int | 0 | 0=淺色 1=深色 2=粉紅 3=科技藍 4=時尚紫 5=放鬆綠 6=系統設定 *(iOS only)* |
+| `Picker` "鍵盤樣式" | `keyboard_theme` | Int | 6 | 0=淺色 1=深色 2=粉紅 3=科技藍 4=時尚紫 5=放鬆綠 6=系統設定 |
 | `Picker` "鍵盤大小" | `keyboard_size` | String | "1" | "1.2"=特大 "1.1"=大 "1"=一般 "0.9"=小 "0.8"=特小 |
 | `Picker` "候選字字型大小" | `font_size` | String | "1" | Scale string, same values as `keyboard_size`; also exposed as raw `candidateFontSize` Double (14–28 pt) |
 | `Toggle` "數字列英文鍵盤" | `number_row_in_english` | Bool | true | 在英文鍵盤顯示數字列(5列鍵盤); **iPhone only** — hidden on iPad (`PreferencesTabView.swift` gates with `userInterfaceIdiom != .pad`) |
@@ -865,7 +865,7 @@ Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime")
 
 > The keyboard extension reads `keyboard_theme` at `viewDidLoad`.
 > - Values **0–5**: fixed colour themes regardless of system appearance. 0=淺色, 1=深色, 2=粉紅, 3=科技藍, 4=時尚紫, 5=放鬆綠.
-> - Value **6** *(iOS only)*: follows the system Light/Dark appearance (`UITraitCollection.current.userInterfaceStyle`). When the system switches between light and dark the keyboard re-renders accordingly. This value does not exist on Android.
+> - Value **6**: follows the system Light/Dark appearance (`UITraitCollection.current.userInterfaceStyle` on iOS; `Configuration.UI_MODE_NIGHT_MASK` on Android). When the system switches between light and dark the keyboard re-renders accordingly.
 
 ### 8.2 Section 鍵盤回饋 (Keyboard Feedback)
 
@@ -946,7 +946,7 @@ All stored in `UserDefaults(suiteName: "group.net.toload.limeime")`.
 
 | Pref Key | Android Key | Type | Default |
 |---|---|---|---|
-| `keyboard_theme` | `keyboard_theme` | Int | 0 |
+| `keyboard_theme` | `keyboard_theme` | Int | 6 |
 | `enable_emoji_position` | `enable_emoji_position` | Int | 6 |
 | `keyboard_size` | `keyboard_size` | String | "1" |
 | `font_size` | `font_size` | String | "1" |
@@ -1117,7 +1117,7 @@ guard let db = openDB() else {
 - [ ] Progress overlay during backup / restore
 
 ### IM Preferences (§8)
-- **Keyboard Appearance** (§8.1): `keyboard_theme` (values 0–5 + **6=系統設定** iOS-only — **§13.2 done**), `keyboard_size`, `font_size`, `number_row_in_english` (iPhone-only), `show_arrow_key`, `split_keyboard_mode` (iPad)
+- **Keyboard Appearance** (§8.1): `keyboard_theme` (values 0–5 + **6=系統設定** on both platforms — **§13.2 done**), `keyboard_size`, `font_size`, `number_row_in_english` (iPhone-only), `show_arrow_key`, `split_keyboard_mode` (iPad)
 - **Feedback** (§8.2): `vibrate_on_keypress`, `vibrate_level`, `sound_on_keypress`
 - **IM Behaviour** (§8.4): `smart_chinese_input`, `auto_chinese_symbol`, `candidate_switch`, `persistent_language_mode`, `enable_emoji_position`, `reverse_lookup_screen`
 - **Array10 detail page** (§5.2): `auto_commit`
@@ -1143,12 +1143,12 @@ iOS does not allow 3rd-party keyboard extensions to intercept physical/Bluetooth
 
 ### 13.2 Implement `keyboard_theme` Value 6 (系統設定)
 
-Spec §8.1 adds value `6=系統設定` (iOS only). The following code changes are required:
+Spec §8.1 adds value `6=系統設定` on both platforms. The following code changes are required:
 
-- `PreferencesTabView.swift`: Add `6` to the `keyboard_theme` Picker with label "系統設定". Annotate with a comment that this option is iOS-only and must not be synced back to the Android pref store.
+- `PreferencesTabView.swift`: Add `6` to the `keyboard_theme` Picker with label "系統設定".
 - `KeyboardViewController.swift` (or the theme-application helper): In the function that applies `keyboard_theme`, add a `case 6` branch that reads `UITraitCollection.current.userInterfaceStyle` and maps `.light` → theme 0 (淺色) and `.dark` → theme 1 (深色). Also override `traitCollectionDidChange(_:)` (or use `registerForTraitChanges` on iOS 17+) so the keyboard re-applies the theme automatically when the system appearance changes at runtime.
-- `LIMEPreferenceManager.swift`: Update the `getKeyboardTheme()` getter's documentation comment to note that value `6` is valid on iOS only; callers in the keyboard extension must handle it.
-- `LIMEPreferenceManagerTest.swift`: Add `testKeyboardThemeSystemValue()` asserting default is `0` and that setting `6` round-trips correctly.
+- `LIMEPreferenceManager.swift`: Update the `getKeyboardTheme()` getter's documentation comment to note that value `6` is valid; callers in the keyboard extension must handle it.
+- `LIMEPreferenceManagerTest.swift`: Add `testKeyboardThemeSystemValue()` asserting default is `6` and that setting `6` round-trips correctly.
 
 ### 13.3 Implement Custom IM (自建輸入法) Support
 

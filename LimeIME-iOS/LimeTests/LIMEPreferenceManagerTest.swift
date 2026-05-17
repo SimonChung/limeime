@@ -30,7 +30,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     // MARK: - Default values
 
     func testDefaultKeyboardTheme() {
-        XCTAssertEqual(prefs.keyboardTheme, 0)
+        XCTAssertEqual(prefs.keyboardTheme, 6)
     }
 
     func testDefaultEnableEmojiPosition() {
@@ -159,9 +159,9 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     // MARK: - Round-trip setters
 
     func testKeyboardThemeSystemValue() {
-        // Default should be 0 (淺色)
-        XCTAssertEqual(prefs.keyboardTheme, 0)
-        // Value 6 (系統設定, iOS-only) must round-trip correctly
+        // Default should be 6 (系統設定)
+        XCTAssertEqual(prefs.keyboardTheme, 6)
+        // Value 6 (系統設定) must round-trip correctly
         prefs.keyboardTheme = 6
         XCTAssertEqual(prefs.keyboardTheme, 6)
     }
@@ -280,7 +280,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
 
         prefs.keyboardTheme = 5
         XCTAssertEqual(prefs.keyboardTheme, 5)
-        XCTAssertEqual(prefs2.keyboardTheme, 0) // default, not 5
+        XCTAssertEqual(prefs2.keyboardTheme, 6) // default, not 5
 
         defaults2.removePersistentDomain(forName: suite2)
     }
