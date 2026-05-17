@@ -1,4 +1,4 @@
-// SetupImController.swift
+﻿// SetupImController.swift
 // LimeIME-iOS
 //
 // Orchestrates IM import, backup/restore, seeding.
@@ -60,7 +60,7 @@ final class SetupImController: BaseController {
     func importTxtFile(url: URL, tableName: String, restoreLearning: Bool = false) async -> Result<Int, Error> {
         await MainActor.run { progress.show(status: "匯入中…") }
         let server = self.dbServer
-        return await Task.detached(priority: .userInitiated) {
+        let result: Result<Int, Error> = await Task.detached(priority: .userInitiated) {
             do {
                 var lastCount = 0
                 try server.importTxtFile(at: url.path, tableName: tableName) { count in
@@ -77,6 +77,8 @@ final class SetupImController: BaseController {
                 return .failure(error)
             }
         }.value
+        await MainActor.run { progress.dismiss() }
+        return result
     }
 
     // MARK: - Import binary DB file (.db / .limedb)
@@ -87,7 +89,7 @@ final class SetupImController: BaseController {
         let safeTable = server.isValidTableName(tableName) ? tableName : "custom"
         Task.detached(priority: .userInitiated) {
             do {
-                try server.importFromAttachedDB(sourcePath: url.path, tableName: safeTable)
+                try importDatabaseFile(server: server, url: url, tableName: safeTable)
                 await MainActor.run {
                     self.progress.dismiss()
                     view?.onProgress(100, status: "已成功匯入 \(safeTable)")
@@ -109,9 +111,9 @@ final class SetupImController: BaseController {
         await MainActor.run { progress.show(status: "匯入中…") }
         let server = self.dbServer
         let safeTable = server.isValidTableName(tableName) ? tableName : "custom"
-        return await Task.detached(priority: .userInitiated) {
+        let result: Result<String, Error> = await Task.detached(priority: .userInitiated) {
             do {
-                try server.importFromAttachedDB(sourcePath: url.path, tableName: safeTable)
+                try importDatabaseFile(server: server, url: url, tableName: safeTable)
                 if restoreLearning {
                     if let ss = server.makeSearchServer() {
                         let restored = ss.restoreUserRecords(safeTable)
@@ -123,6 +125,8 @@ final class SetupImController: BaseController {
                 return .failure(error)
             }
         }.value
+        await MainActor.run { progress.dismiss() }
+        return result
     }
 
     // MARK: - Restore bundled database (factory reset)
@@ -270,4 +274,18 @@ final class SetupImController: BaseController {
     func syncIMActivatedState() {
         prefs.syncIMActivatedState(dbServer: dbServer)
     }
+}
+
+private func importDatabaseFile(server: DBServer, url: URL, tableName: String) throws {
+    if isZipArchive(at: url) {
+        try server.importFromZip(at: url, tableName: tableName)
+    } else {
+        try server.importFromAttachedDB(sourcePath: url.path, tableName: tableName)
+    }
+}
+
+private func isZipArchive(at url: URL) -> Bool {
+    guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+    defer { try? handle.close() }
+    return (try? handle.read(upToCount: 4))?.starts(with: [0x50, 0x4B]) == true
 }

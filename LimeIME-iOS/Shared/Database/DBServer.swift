@@ -89,7 +89,14 @@ final class DBServer {
     // DBServer creates its own LimeDB backed by the shared lime.db in the App Group container.
     private lazy var datasource: LimeDB? = {
         let dbURL = dataDirURL.appendingPathComponent(DBServer.databaseName)
-        return try? LimeDB(path: dbURL.path)
+        if !FileManager.default.fileExists(atPath: dbURL.path) {
+            try? copyBundledDatabase(to: dbURL)
+        }
+        guard let db = try? LimeDB(path: dbURL.path) else { return nil }
+        if let bundledURL = Bundle.main.url(forResource: "lime", withExtension: "db") {
+            db.repairKeyboardCatalogIfNeeded(from: bundledURL)
+        }
+        return db
     }()
 
     // MARK: - Private helper: close / reopen database around backup-restore critical sections.
@@ -593,7 +600,7 @@ final class DBServer {
 
     // MARK: - 16. exportZippedDb
     /// Exports a single IM table to a zipped .db file.
-    /// Requires `blank.db` to be bundled as a resource; returns nil otherwise.
+    /// Uses bundled `blank.db` when available, otherwise creates a temporary blank schema.
     @discardableResult
     func exportZippedDb(tableName: String?, targetDbFile: URL?, progressCallback: (() -> Void)? = nil) -> URL? {
         guard let tableName = tableName, let targetDbFile = targetDbFile else {
@@ -604,11 +611,6 @@ final class DBServer {
             print("[DBServer] exportZippedDb: datasource is nil")
             return nil
         }
-        guard let template = bundledBlankTemplateURL(named: "blank") else {
-            print("[DBServer] exportZippedDb: blank.db template not bundled; cannot export")
-            return nil
-        }
-
         do {
             let cacheDir = FileManager.default.temporaryDirectory
             let dbFile = cacheDir.appendingPathComponent(tableName + DBServer.databaseExt)
@@ -618,8 +620,11 @@ final class DBServer {
 
             progressCallback?()
 
-            // Copy the bundled blank SQLite template so prepareBackup has valid schema to attach.
-            try FileManager.default.copyItem(at: template, to: dbFile)
+            if let template = bundledBlankTemplateURL(named: "blank") {
+                try FileManager.default.copyItem(at: template, to: dbFile)
+            } else {
+                _ = try LimeDB(path: dbFile.path)
+            }
 
             ds.prepareBackup(targetFile: dbFile, tableNames: [tableName], includeRelated: false)
 
@@ -638,7 +643,7 @@ final class DBServer {
 
     // MARK: - 17. exportZippedDbRelated
     /// Exports the related-phrase table to a zipped .db file.
-    /// Requires `blankrelated.db` to be bundled as a resource; returns nil otherwise.
+    /// Uses bundled `blankrelated.db` when available, otherwise creates a temporary blank schema.
     @discardableResult
     func exportZippedDbRelated(targetFile: URL?, progressCallback: (() -> Void)? = nil) -> URL? {
         guard let targetFile = targetFile else {
@@ -649,11 +654,6 @@ final class DBServer {
             print("[DBServer] exportZippedDbRelated: datasource is nil")
             return nil
         }
-        guard let template = bundledBlankTemplateURL(named: "blankrelated") else {
-            print("[DBServer] exportZippedDbRelated: blankrelated.db template not bundled; cannot export")
-            return nil
-        }
-
         do {
             let cacheDir = FileManager.default.temporaryDirectory
             let dbFile = cacheDir.appendingPathComponent(DBServer.dbTableRelated + DBServer.databaseExt)
@@ -663,7 +663,11 @@ final class DBServer {
 
             progressCallback?()
 
-            try FileManager.default.copyItem(at: template, to: dbFile)
+            if let template = bundledBlankTemplateURL(named: "blankrelated") {
+                try FileManager.default.copyItem(at: template, to: dbFile)
+            } else {
+                _ = try LimeDB(path: dbFile.path)
+            }
 
             ds.prepareBackup(targetFile: dbFile, tableNames: [], includeRelated: true)
 
@@ -754,6 +758,10 @@ final class DBServer {
     func getAllImConfigs() throws -> [ImConfig] {
         guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
         return try ds.getAllImConfigs()
+    }
+
+    func getImConfig(_ imCode: String, _ field: String) -> String {
+        datasource?.getImConfig(imCode, field) ?? ""
     }
 
     func updateIMEnabled(imName: String, enabled: Bool) {

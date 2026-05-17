@@ -1,4 +1,4 @@
-// IMDetailView.swift
+﻿// IMDetailView.swift
 // LimeIME-iOS
 //
 // IM detail drill-down showing metadata, keyboard picker, and table editor link.
@@ -57,7 +57,19 @@ struct IMDetailView: View {
     }
 
     private var mappingVersion: String {
-        sharedUD?.string(forKey: im.tableNick + "mapping_version") ?? "—"
+        let table = im.tableNick
+        let server = DBServer.shared
+        let version = server.getImConfig(table, "version")
+        if !version.isEmpty { return version }
+
+        let legacy = sharedUD?.string(forKey: table + "mapping_version") ?? ""
+        if !legacy.isEmpty { return legacy }
+
+        let source = server.getImConfig(table, "source")
+        if !source.isEmpty { return source }
+
+        let name = server.getImConfig(table, "name")
+        return name.isEmpty ? "—" : name
     }
 
     @State private var totalRecord: String = "—"

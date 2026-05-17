@@ -1,4 +1,4 @@
-// IMInstallView.swift
+﻿// IMInstallView.swift
 // LimeIME-iOS
 //
 // IM install screen — local file import + cloud download.
@@ -20,6 +20,7 @@ struct IMInstallView: View {
     @State private var pickerType: ImportType = .db
     @State private var pendingTableName: String = ""  // §13.3: fixed tableName for the pending import
     @State private var isImporting = false
+    @State private var showsLocalImportOverlay = false
     @State private var statusMessage = ""
 
     // Cloud download state
@@ -153,7 +154,7 @@ struct IMInstallView: View {
             handleFileImport(result: result)
         }
         .overlay {
-            if isImporting {
+            if showsLocalImportOverlay {
                 ZStack {
                     Color.black.opacity(0.3).ignoresSafeArea()
                     ProgressView("匯入中…")
@@ -197,9 +198,22 @@ struct IMInstallView: View {
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 
         isImporting = true
+        showsLocalImportOverlay = pickerType == .relatedDb
         statusMessage = ""
 
         let ext = url.pathExtension.lowercased()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString)_\(url.lastPathComponent)")
+        do {
+            try? FileManager.default.removeItem(at: importURL)
+            try FileManager.default.copyItem(at: url, to: importURL)
+        } catch {
+            statusMessage = "匯入失敗：\(error.localizedDescription)"
+            isImporting = false
+            showsLocalImportOverlay = false
+            pendingTableName = ""
+            return
+        }
         // Use pendingTableName (set by the import button that launched the picker);
         // fall back to deriving from filename for any legacy generic picker path.
         let tableName = pendingTableName.isEmpty
@@ -209,17 +223,23 @@ struct IMInstallView: View {
         let seedCustomAfter = (tableName == "custom")
 
         Task {
+            defer {
+                try? FileManager.default.removeItem(at: importURL)
+                isImporting = false
+                showsLocalImportOverlay = false
+                pendingTableName = ""
+            }
             if pickerType == .relatedDb {
                 let server = DBServer.shared
                 await Task.detached(priority: .userInitiated) {
-                    server.importDbRelated(sourcedb: url)
+                    server.importDbRelated(sourcedb: importURL)
                 }.value
                 statusMessage = "關聯字庫匯入完成"
                 manageRelatedController.invalidate()
             } else if ext == "db" || ext == "limedb" {
                 let restoreLearning = UserDefaults.standard.object(
                     forKey: "restore_on_import_\(tableName)") as? Bool ?? true
-                let r = await setupController.importDBFile(url: url, tableName: tableName,
+                let r = await setupController.importDBFile(url: importURL, tableName: tableName,
                                                            restoreLearning: restoreLearning)
                 switch r {
                 case .success(let table):
@@ -233,7 +253,7 @@ struct IMInstallView: View {
             } else {
                 let restoreLearning = UserDefaults.standard.object(
                     forKey: "restore_on_import_\(tableName)") as? Bool ?? true
-                let r = await setupController.importTxtFile(url: url, tableName: tableName,
+                let r = await setupController.importTxtFile(url: importURL, tableName: tableName,
                                                             restoreLearning: restoreLearning)
                 switch r {
                 case .success(let count):
@@ -245,8 +265,6 @@ struct IMInstallView: View {
                     statusMessage = "匯入失敗：\(error.localizedDescription)"
                 }
             }
-            isImporting = false
-            pendingTableName = ""
         }
     }
 }

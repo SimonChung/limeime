@@ -302,6 +302,49 @@ final class LimeDB {
         }
     }
 
+    func repairKeyboardCatalogIfNeeded(from bundledDatabaseURL: URL) {
+        guard !checkDBConnection() else { return }
+        do {
+            try dbQueue.write { db in
+                let hasPhonetic = (try Int.fetchOne(db,
+                    sql: "SELECT COUNT(*) FROM keyboard WHERE code = 'phonetic'") ?? 0) > 0
+                guard !hasPhonetic else { return }
+
+                try db.execute(sql: "ATTACH DATABASE ? AS bundled_keyboard_seed",
+                               arguments: [bundledDatabaseURL.path])
+                defer {
+                    try? db.execute(sql: "DETACH DATABASE bundled_keyboard_seed")
+                }
+
+                let seedHasKeyboard = (try Int.fetchOne(db,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM bundled_keyboard_seed.sqlite_master
+                        WHERE type = 'table' AND name = 'keyboard'
+                    """) ?? 0) > 0
+                guard seedHasKeyboard else { return }
+
+                try db.execute(sql: "DELETE FROM keyboard")
+                try db.execute(sql: """
+                    INSERT INTO keyboard (
+                        code, name, desc, type, image,
+                        imkb, imshiftkb, engkb, engshiftkb,
+                        symbolkb, symbolshiftkb, defaultkb, defaultshiftkb,
+                        extendedkb, extendedshiftkb, disable
+                    )
+                    SELECT
+                        code, name, desc, type, image,
+                        imkb, imshiftkb, engkb, engshiftkb,
+                        symbolkb, symbolshiftkb, defaultkb, defaultshiftkb,
+                        extendedkb, extendedshiftkb, disable
+                    FROM bundled_keyboard_seed.keyboard
+                """)
+            }
+        } catch {
+            NSLog("LimeDB keyboard catalog repair failed: \(error)")
+        }
+    }
+
     /// Parse a column that may be stored as either TEXT ("true"/"false") or
     /// INTEGER (0/1) — some legacy Android schemas mix both in the same column.
     /// Reading as a Swift-typed subscript crashes on the mismatched storage
@@ -2822,13 +2865,23 @@ final class LimeDB {
             lines.append("%chardef end")
         } else {
             if let configs = imConfig {
+                var version = ""
+                var name = ""
+                var selkey = ""
+                var endkey = ""
+                var spacestyle = ""
                 for c in configs {
-                    let t = c.title
-                    if t == "name"       { lines.append("@version@|\(c.desc)") }
-                    if t == "selkey"     { lines.append("@selkey@|\(c.desc)") }
-                    if t == "endkey"     { lines.append("@endkey@|\(c.desc)") }
-                    if t == "spacestyle" { lines.append("@spacestyle@|\(c.desc)") }
+                    if c.title == "version" { version = c.desc }
+                    if c.title == "name" { name = c.desc }
+                    if c.title == "selkey" { selkey = c.desc }
+                    if c.title == "endkey" { endkey = c.desc }
+                    if c.title == "spacestyle" { spacestyle = c.desc }
                 }
+                let exportVersion = version.isEmpty ? name : version
+                if !exportVersion.isEmpty { lines.append("@version@|\(exportVersion)") }
+                if !selkey.isEmpty { lines.append("@selkey@|\(selkey)") }
+                if !endkey.isEmpty { lines.append("@endkey@|\(endkey)") }
+                if !spacestyle.isEmpty { lines.append("@spacestyle@|\(spacestyle)") }
             }
             lines.append("%chardef begin")
             let records = getRecordList(table, nil, searchByCode: false, 0, 0)
@@ -2855,6 +2908,13 @@ final class LimeDB {
         guard let reader = StreamReader(path: path) else { throw LimeDBError.fileNotFound(path) }
         importCancelled = false
 
+        let sourceName = URL(fileURLWithPath: path).lastPathComponent
+        var version = ""
+        var name = ""
+        var selkey = ""
+        var endkey = ""
+        var spacestyle = ""
+
         // Auto-detect delimiter from the first non-comment data line (mirrors Java identifyDelimiter())
         var detectedDelimiter: Character = "\t"
         var inChardef = false
@@ -2868,6 +2928,27 @@ final class LimeDB {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.lowercased().hasPrefix("%chardef begin") { inChardef = true;  continue }
             if trimmed.lowercased().hasPrefix("%chardef end")   { inChardef = false; continue }
+            if let meta = parseMetadataLine(trimmed, delimiter: delimiterDetected ? detectedDelimiter : nil) {
+                switch meta.key {
+                case "version":
+                    version = meta.value
+                    if name.isEmpty { name = meta.value }
+                case "cname":
+                    if name.isEmpty { name = meta.value }
+                    if version.isEmpty { version = meta.value }
+                case "name":
+                    name = meta.value
+                case "selkey":
+                    selkey = meta.value
+                case "endkey":
+                    endkey = meta.value
+                case "spacestyle":
+                    spacestyle = meta.value
+                default:
+                    break
+                }
+                continue
+            }
             // Skip .cin comment lines starting with '#' (e.g. "# Begin" inside the
             // %chardef begin/end block). Without this, comments would be imported
             // as mappings where code="#" and word="Begin"/"End"/etc.
@@ -2890,6 +2971,16 @@ final class LimeDB {
             totalInserted += try flushBatch(&batch, tableName: tableName)
             progress?(totalInserted)
         }
+        if !importCancelled {
+            setImConfig(tableName, "source", sourceName)
+            setImConfig(tableName, "version", version.isEmpty ? sourceName : version)
+            setImConfig(tableName, "name", name.isEmpty ? sourceName : name)
+            setImConfig(tableName, "amount", String(totalInserted))
+            setImConfig(tableName, "import", Date().description)
+            if !selkey.isEmpty { setImConfig(tableName, "selkey", selkey) }
+            if !endkey.isEmpty { setImConfig(tableName, "endkey", endkey) }
+            if !spacestyle.isEmpty { setImConfig(tableName, "spacestyle", spacestyle) }
+        }
     }
 
     /// Auto-detect field delimiter from a data line (mirrors Java identifyDelimiter()).
@@ -2899,6 +2990,30 @@ final class LimeDB {
         if line.contains("\t") { return "\t" }
         if line.contains(",") { return "," }
         return " "
+    }
+
+    private func parseMetadataLine(_ trimmed: String, delimiter: Character?) -> (key: String, value: String)? {
+        if trimmed.hasPrefix("@") {
+            let delimiterString = String(delimiter ?? (trimmed.contains("|") ? "|" : "\t"))
+            let parts = trimmed.components(separatedBy: delimiterString)
+            guard parts.count >= 2 else { return nil }
+            let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+                .lowercased()
+            let value = parts.dropFirst().joined(separator: delimiterString)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.isEmpty ? nil : (key, value)
+        }
+
+        let lower = trimmed.lowercased()
+        for prefix in ["%version", "%cname", "%selkey", "%endkey", "%spacestyle"] where lower.hasPrefix(prefix) {
+            let rawValue = String(trimmed.dropFirst(prefix.count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = String(prefix.dropFirst())
+            return rawValue.isEmpty ? nil : (key, rawValue)
+        }
+
+        return nil
     }
 
     /// Async variant with background dispatch and main-queue completion (mirrors Java Thread spawn).

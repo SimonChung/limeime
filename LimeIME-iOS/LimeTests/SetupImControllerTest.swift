@@ -1,10 +1,11 @@
-// SetupImControllerTest.swift
+﻿// SetupImControllerTest.swift
 // LimeIMETests
 //
 // Tests for SetupImController: import, backup/restore, seed, sync.
 // Uses real LimeDB temp fixtures and a MockSetupImView.
 
 import XCTest
+import ZIPFoundation
 @testable import LimeIME
 
 // MARK: - MockSetupImView
@@ -42,6 +43,38 @@ final class SetupImControllerTest: XCTestCase {
         return LimeIME.LIMEPreferenceManager(defaults: ud)
     }
 
+    private func makeZippedCustomLimedb() throws -> (dbURL: URL, zipURL: URL) {
+        let dbURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".db")
+        let zipURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".limedb")
+        let sourceDB = try LimeIME.LimeDB(path: dbURL.path)
+        _ = sourceDB.openDBConnection(false)
+        sourceDB.addOrUpdateMappingRecord("custom", "abc", "測試", 0)
+
+        let archive = try Archive(url: zipURL, accessMode: .create)
+        try archive.addEntry(with: "custom.db", fileURL: dbURL)
+        return (dbURL, zipURL)
+    }
+
+    private func seedCustomRoundTripRecords(_ db: LimeIME.LimeDB, prefix: String,
+                                            scores: [Int]) {
+        for (index, score) in scores.enumerated() {
+            db.addOrUpdateMappingRecord("custom",
+                                        "\(prefix)_\(index)",
+                                        "回復測試\(index)",
+                                        score)
+        }
+    }
+
+    private func customRecordSnapshot(_ db: LimeIME.LimeDB,
+                                      prefix: String) -> [String] {
+        db.getRecordList("custom", nil, searchByCode: true, 0, 0)
+            .filter { $0.code.hasPrefix(prefix + "_") }
+            .map { "\($0.code)|\($0.word)|\($0.score)|\($0.baseScore)|\($0.code3r)" }
+            .sorted()
+    }
+
     // MARK: - importDBFile
 
     func testImportDBFileInvalidPathReportsError() async throws {
@@ -60,6 +93,115 @@ final class SetupImControllerTest: XCTestCase {
         await MainActor.run {
             XCTAssertFalse(mock.errors.isEmpty, "Expected an error for invalid path")
         }
+    }
+
+    func testAsyncImportDBFileDismissesProgressOnFailure() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let progress = await LimeIME.ProgressManager()
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: progress
+        )
+        let badURL = URL(fileURLWithPath: "/tmp/nonexistent_\(UUID().uuidString).db")
+
+        let result = await controller.importDBFile(url: badURL, tableName: "custom")
+
+        if case .success = result {
+            XCTFail("Expected import failure for invalid path")
+        }
+        await MainActor.run {
+            XCTAssertFalse(progress.isVisible, "Async DB import must dismiss progress after failure")
+        }
+    }
+
+    func testAsyncImportDBFileImportsZippedLimedb() async throws {
+        let (url, db) = try makeDB()
+        let zipped = try makeZippedCustomLimedb()
+        defer {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItem(at: zipped.dbURL)
+            try? FileManager.default.removeItem(at: zipped.zipURL)
+        }
+        let progress = await LimeIME.ProgressManager()
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: progress
+        )
+
+        let result = await controller.importDBFile(url: zipped.zipURL, tableName: "custom")
+
+        if case .failure(let error) = result {
+            XCTFail("Expected zipped .limedb import to succeed, got \(error)")
+        }
+        XCTAssertGreaterThan(db.countRecords("custom", nil, nil), 0)
+        await MainActor.run {
+            XCTAssertFalse(progress.isVisible, "Async DB import must dismiss progress after success")
+        }
+    }
+
+    func testExportLimedbRemoveAndReimportRestoresSameCustomEntries() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: LimeIME.ProgressManager()
+        )
+        let prefix = "limedb_roundtrip_\(UUID().uuidString)"
+        seedCustomRoundTripRecords(db, prefix: prefix, scores: [10, 20, 30])
+        let before = customRecordSnapshot(db, prefix: prefix)
+        XCTAssertEqual(before.count, 3)
+
+        let exportURL = await controller.exportIMAsLimedb(tableNick: "custom")
+        defer {
+            if let exportURL { try? FileManager.default.removeItem(at: exportURL) }
+        }
+        guard let exportURL else {
+            XCTFail("Expected .limedb export URL")
+            return
+        }
+
+        db.clearTable("custom")
+        XCTAssertTrue(customRecordSnapshot(db, prefix: prefix).isEmpty)
+
+        let result = await controller.importDBFile(url: exportURL, tableName: "custom")
+
+        if case .failure(let error) = result {
+            XCTFail("Expected .limedb re-import to succeed, got \(error)")
+        }
+        XCTAssertEqual(customRecordSnapshot(db, prefix: prefix), before)
+    }
+
+    func testExportLimeRemoveAndReimportRestoresSameCustomEntries() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: LimeIME.ProgressManager()
+        )
+        let prefix = "lime_roundtrip_\(UUID().uuidString)"
+        seedCustomRoundTripRecords(db, prefix: prefix, scores: [0, 0, 0])
+        let before = customRecordSnapshot(db, prefix: prefix)
+        XCTAssertEqual(before.count, 3)
+
+        let exportURL = await controller.exportIMAsText(tableNick: "custom")
+        defer {
+            if let exportURL { try? FileManager.default.removeItem(at: exportURL) }
+        }
+        guard let exportURL else {
+            XCTFail("Expected .lime export URL")
+            return
+        }
+
+        db.clearTable("custom")
+        XCTAssertTrue(customRecordSnapshot(db, prefix: prefix).isEmpty)
+
+        let result = await controller.importTxtFile(url: exportURL, tableName: "custom")
+
+        if case .failure(let error) = result {
+            XCTFail("Expected .lime re-import to succeed, got \(error)")
+        }
+        XCTAssertEqual(customRecordSnapshot(db, prefix: prefix), before)
     }
 
     // MARK: - importTxtFile

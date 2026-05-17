@@ -253,10 +253,39 @@ public class ImDetailFragment extends Fragment {
         MaterialButton btnRemove = rootView.findViewById(R.id.btn_remove_im);
         btnRemove.setOnClickListener(v -> showRemoveConfirmDialog());
 
-        // Load version from SharedPreferences
+        // Load version from IM metadata, retaining legacy SharedPreferences fallback.
         if (tableCode != null) {
-            android.content.SharedPreferences versionSp = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
-            String version = versionSp.getString(tableCode + "mapping_version", "-");
+            String version = "";
+            try {
+                if (manageImController != null && manageImController.getSearchServer() != null) {
+                    net.toload.main.hd.SearchServer searchServer = manageImController.getSearchServer();
+                    version = searchServer.getImConfig(tableCode, "version");
+                }
+            } catch (Exception ignored) {
+                version = "";
+            }
+            if (version == null || version.isEmpty()) {
+                android.content.SharedPreferences versionSp = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
+                version = versionSp.getString(tableCode + "mapping_version", "");
+            }
+            if (version == null || version.isEmpty()) {
+                try {
+                    if (manageImController != null && manageImController.getSearchServer() != null) {
+                        version = manageImController.getSearchServer().getImConfig(tableCode, "source");
+                    }
+                } catch (Exception ignored) {
+                    version = "";
+                }
+            }
+            if (version == null || version.isEmpty()) {
+                try {
+                    if (manageImController != null && manageImController.getSearchServer() != null) {
+                        version = manageImController.getSearchServer().getImConfig(tableCode, "name");
+                    }
+                } catch (Exception ignored) {
+                    version = "";
+                }
+            }
             if (version == null || version.isEmpty()) version = "-";
             if (txtImVersion != null) txtImVersion.setText(version);
         }

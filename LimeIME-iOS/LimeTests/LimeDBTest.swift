@@ -569,6 +569,93 @@ final class LimeDBTest: XCTestCase {
         XCTAssertTrue(after == nil || after!.isEmpty)
     }
 
+    func testImportTxtFileStoresVersionMetadataFromLimeHeader() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        @version@|My Custom Table 2026.05
+        @selkey@|123456789
+        %chardef begin
+        aa|測
+        ab|試
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "My Custom Table 2026.05")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"), "123456789")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "2")
+    }
+
+    func testImportTxtFileStoresVersionMetadataFromCinVersion() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".cin")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        %version 大易測試版 1.2.3
+        %cname 大易測試表
+        %selkey 123456789
+        %chardef begin
+        a 測
+        b 試
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "大易測試版 1.2.3")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "大易測試表")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"), "123456789")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "2")
+    }
+
+    func testImportTxtFileUsesCinCnameAsVersionFallbackWhenVersionMissing() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".cin")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        %cname 舊格式輸入法名稱
+        %chardef begin
+        a 測
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "舊格式輸入法名稱")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "舊格式輸入法名稱")
+    }
+
+    func testExportTxtTableUsesVersionMetadataForVersionHeader() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord("aa", "測")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Name")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Version 2.0")
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        let configs = db.getImConfigList(LIME.DB_TABLE_CUSTOM, nil)
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL, imConfig: configs))
+
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertTrue(output.contains("@version@|Version 2.0"))
+        XCTAssertFalse(output.contains("@version@|Friendly Name"))
+    }
+
     func testLimeDBResetImConfig() throws {
         let db = try makeLimeDB()
         let im = "test_reset_\(Date().timeIntervalSince1970)"
@@ -2147,6 +2234,18 @@ final class LimeDBTest: XCTestCase {
         XCTAssertGreaterThan(stats.coreNameRows, 0)
         XCTAssertGreaterThan(stats.emojiDataRows, 0)
         XCTAssertGreaterThan(stats.emojiImRows, 0)
+    }
+
+    func testDBServerMissingLiveDatabaseOpensBundledKeyboardCatalog() throws {
+        let liveDB = dbServerLiveDatabaseURLForTest()
+        let backup = try backupLiveDBForTest(liveDB)
+        defer { restoreLiveDBForTest(liveDB, backup: backup) }
+        restoreLiveDBForTest(liveDB, backup: nil)
+
+        let keyboards = try XCTUnwrap(DBServer().getKeyboardConfigList())
+
+        XCTAssertGreaterThan(keyboards.count, 10)
+        XCTAssertTrue(keyboards.contains { $0.code == "phonetic" && $0.desc == "注音輸入法鍵盤" })
     }
 
     private func assertEmojiSchemaAndDataLoaded(_ db: LimeDB) {

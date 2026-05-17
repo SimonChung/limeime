@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make DB version 103 reliable for fresh installs, app upgrades, and user restores on Android and iOS without losing IM data or emoji data.
+**Goal:** Make DB version 103 reliable for fresh installs, app upgrades, and user restores on Android and iOS without losing user-restored IM data or emoji data.
 
-**Architecture:** `lime.db` remains the main application database and fresh-install seed. `emoji.db` remains the bundled emoji data upgrade payload so existing and restored user databases can refresh emoji data non-destructively when the app ships a newer emoji version.
+**Architecture:** `lime.db` remains the main application database and fresh-install seed, but the bundled seed is schema-only for input methods. The seed keeps the IM table schemas needed by runtime install/import paths, while all bundled IM metadata and mapping rows are cleared. Users install IM data later by download, import, or restore. `emoji.db` remains the bundled emoji data upgrade payload so existing and restored user databases can refresh emoji data non-destructively when the app ships a newer emoji version.
 
 **Tech Stack:** Android Java + SQLite, iOS Swift + GRDB, bundled SQLite resources, `.Codex/scripts` verification scripts.
 
@@ -13,7 +13,9 @@
 ## Decisions
 
 - `lime.db` must be upgraded to `PRAGMA user_version = 103` on both Android and iOS bundled seeds.
-- Bundled `lime.db` must include the 103 emoji schema, but it does not need to include emoji data.
+- Bundled `lime.db` must not include installed IM metadata or bundled IM mapping data. The `im`, `dayi`, and `phonetic` tables exist but are empty.
+- Bundled `lime.db` must keep the `dayi` and `phonetic` table indexes so post-install imports use the same schema shape as a populated runtime DB.
+- Bundled `lime.db` must include the 103 emoji schema, but it must not include emoji data.
 - `emoji.db` must stay bundled. It is the authoritative emoji data payload for runtime refresh and future Emoji 18.0+ upgrades.
 - Runtime DB open must repair old databases:
   - DBs older than 102 get the 102 migrations.
@@ -25,7 +27,7 @@
 
 ## Current Problem
 
-Android fresh installs copy `LimeStudio/app/src/main/res/raw/lime.db` when the app-private DB file is missing. If that bundled seed is version 102 and has no installed IM metadata or no 103 schema, APK reinstall can produce a DB that looks valid but has zero usable IM entries.
+Android fresh installs copy `LimeStudio/app/src/main/res/raw/lime.db` when the app-private DB file is missing. The seed must be a valid DB 103 schema-only database: no preinstalled IM metadata, no bundled IM data rows, and no old DB 102 emoji-schema gaps. The `dayi` and `phonetic` tables remain present as empty schema because the Android IM install/import implementation expects those target tables to exist.
 
 The same class of problem exists after restore: a user may restore an old backup from before DB 103. That restored `lime.db` may have no emoji tables at all. Therefore fresh-install seed correctness is not enough; every restore must run the migration and emoji refresh gate too.
 
@@ -35,16 +37,19 @@ Main `lime.db` must satisfy:
 
 - `PRAGMA integrity_check` returns `ok`.
 - `PRAGMA user_version` returns `103`.
-- Core tables exist, including `im`, `keyboard`, `related`, and mapping tables.
-- Default IM metadata remains present, especially rows like:
-  - `im.code='dayi' AND im.title='name'`
-  - `im.code='phonetic' AND im.title='name'`
+- Core tables exist, including `im`, `keyboard`, `related`, and generic mapping tables.
+- The bundled seed is schema-only for IMs:
+  - `im` exists and has zero rows.
+  - `dayi` exists and has zero rows.
+  - `phonetic` exists and has zero rows.
+  - `dayi_idx_code`, `phonetic_idx_code`, and `phonetic_idx_code3r` exist.
+  - No installed IM metadata or IM mapping data is bundled in `lime.db`.
 - Emoji schema exists:
   - `emoji_data`
   - `emoji_fts`
   - `emoji_user`
   - `idx_emoji_group`
-- Emoji data may be empty in bundled `lime.db`; runtime refresh fills it from bundled `emoji.db`.
+- Emoji data is empty in bundled `lime.db`; runtime refresh fills it from bundled `emoji.db`.
 
 Bundled `emoji.db` must satisfy:
 
@@ -72,7 +77,44 @@ ensureCurrentDatabase()
     preserve emoji_user rows that still reference existing emoji_data values
 ```
 
-This algorithm must be idempotent. Running it on an already-current DB must not duplicate keyboard rows, IM rows, indexes, or emoji metadata.
+This algorithm must be idempotent. Running it on an already-current DB must not duplicate keyboard rows, IM rows, indexes, or emoji metadata. It may import `code='emoji'` metadata from bundled `emoji.db`, but it must not auto-install user-facing IM metadata or IM mapping rows into a fresh schema-only bundled seed.
+
+## Prepared Seed DB State
+
+Current prepared seed files:
+
+- Android seed: `LimeStudio/app/src/main/res/raw/lime.db`
+- Shared/iOS seed: `Database/lime.db`
+- Emoji payload: `LimeStudio/app/src/main/res/raw/emoji.db` and `Database/emoji.db`
+
+The prepared `lime.db` seed state is:
+
+| Object | Seed state |
+| --- | --- |
+| `PRAGMA user_version` | `103` |
+| `im` | table exists, zero rows |
+| `dayi` | table exists, zero rows |
+| `phonetic` | table exists, zero rows |
+| `dayi_idx_code` | exists |
+| `phonetic_idx_code` | exists |
+| `phonetic_idx_code3r` | exists |
+| `emoji_data` | table exists, zero rows |
+| `emoji_fts` | virtual table exists |
+| `emoji_user` | table exists, zero rows |
+| `idx_emoji_group` | exists |
+
+The prepared `emoji.db` payload state is:
+
+| Object | Payload state |
+| --- | --- |
+| `emoji_data` | populated, currently 1707 rows |
+| `im WHERE code='emoji'` | contains emoji metadata rows |
+| `emoji/version` | currently `17.0` |
+
+Do not add bundled user-facing IM metadata rows to `lime.db`. Do not prefill `dayi`, `phonetic`, or `emoji_data` in `lime.db`. Runtime install/import/refresh paths are responsible for those rows:
+
+- IM rows come from user download, import, or restore.
+- Emoji rows come from bundled `emoji.db` through the runtime emoji refresh path.
 
 ## Required Integrated Test Matrix
 
@@ -80,14 +122,14 @@ Every row below must be covered by an integrated test on Android and iOS. Unit t
 
 | Path | Android integrated test | iOS integrated test | Required assertions |
 | --- | --- | --- | --- |
-| Fresh app DB creation from bundled `lime.db` | `LimeDBTest` or `DBServerTest` creates app DB from raw resource | `DBServerTest` creates shared DB from bundled resource | `user_version=103`, IM metadata present, emoji schema present, emoji data refresh succeeds |
-| Existing DB upgrade from version `<102` | Open a real copied old DB through production DB layer | Open a real copied old DB through `LimeDB(path:)` or `DBServer` | 102 rows repaired, 103 schema present, IM metadata preserved |
+| Fresh app DB creation from bundled `lime.db` | `LimeDBTest` or `DBServerTest` creates app DB from raw resource | `DBServerTest` creates shared DB from bundled resource | `user_version=103`, bundled seed `im`, `dayi`, and `phonetic` exist and are empty, required `dayi`/`phonetic` indexes exist, emoji schema present, emoji data refresh succeeds without adding user-facing IMs |
+| Existing DB upgrade from version `<102` | Open a real copied old DB through production DB layer | Open a real copied old DB through `LimeDB(path:)` or `DBServer` | 102 rows repaired, 103 schema present, user/restored IM metadata preserved |
 | Existing DB upgrade from version `102` | Open real 102 DB through production DB layer | Open real 102 DB through production DB layer | emoji schema created, emoji data imported, version stamped 103 |
 | Version `103` DB missing emoji schema | Open damaged 103 DB through production DB layer | Open damaged 103 DB through production DB layer | missing emoji tables repaired even though version is already 103 |
 | Emoji data refresh | Open DB with old/missing `emoji/version` | Open DB with old/missing `emoji/version` | `emoji_data` populated from `emoji.db`, `im code='emoji'` metadata replaced once |
 | Emoji user preservation | Refresh DB with existing `emoji_user` rows | Refresh DB with existing `emoji_user` rows | valid usage rows remain, invalid rows are pruned |
 | User restore from old backup | Restore real backup archive through UI/server restore path | Restore real backup archive through `DBServer.restoreDatabase` | restored DB repaired, emoji data imported, original IM/user data preserved |
-| Factory reset / restore bundled DB | Trigger production factory-reset path | Trigger `restoreBundledDatabase()` | reset DB is 103, schema present, emoji refresh succeeds |
+| Factory reset / restore bundled DB | Trigger production factory-reset path | Trigger `restoreBundledDatabase()` | reset DB is 103, `im`, `dayi`, and `phonetic` exist and are empty, no user-facing IM metadata exists, emoji schema present, emoji refresh succeeds |
 | Idempotent second open | Open repaired DB twice | Open repaired DB twice | no duplicate `keyboard` rows, no duplicate `im code='emoji'` rows, no data loss |
 
 ## Android Plan
@@ -105,7 +147,10 @@ Every row below must be covered by an integrated test on Android and iOS. Unit t
 - [ ] Create missing emoji tables in `lime.db`.
 - [ ] Create `idx_emoji_group`.
 - [ ] Create/rebuild `emoji_fts`.
-- [ ] Delete only `im WHERE code='emoji'` from `lime.db`.
+- [ ] Clear all rows from `im` in bundled `lime.db`.
+- [ ] Keep `dayi` and `phonetic` table schemas in `lime.db`.
+- [ ] Clear all rows from `dayi` and `phonetic` in bundled `lime.db`.
+- [ ] Keep `dayi_idx_code`, `phonetic_idx_code`, and `phonetic_idx_code3r`.
 - [ ] Set `PRAGMA user_version = 103`.
 - [ ] Do not import emoji data into bundled `lime.db` unless explicitly requested later.
 - [ ] Run `PRAGMA integrity_check`.
@@ -115,7 +160,9 @@ Expected script checks:
 ```sh
 sqlite3 LimeStudio/app/src/main/res/raw/lime.db "PRAGMA integrity_check;"
 sqlite3 LimeStudio/app/src/main/res/raw/lime.db "PRAGMA user_version;"
-sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT COUNT(*) FROM im WHERE title='name';"
+sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT COUNT(*) FROM im;"
+sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT 'dayi', COUNT(*) FROM dayi UNION ALL SELECT 'phonetic', COUNT(*) FROM phonetic;"
+sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN ('dayi','phonetic') ORDER BY name;"
 sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT name FROM sqlite_master WHERE name IN ('emoji_data','emoji_fts','emoji_user','idx_emoji_group') ORDER BY name;"
 ```
 
@@ -130,6 +177,7 @@ sqlite3 LimeStudio/app/src/main/res/raw/lime.db "SELECT name FROM sqlite_master 
 - [ ] Move the `oldVersion < 103` emoji schema creation into a method that also checks for missing emoji tables, not only `PRAGMA user_version`.
 - [ ] Ensure `refreshEmojiDataIfNeeded()` runs after schema repair.
 - [ ] Keep `refreshEmojiDataIfNeeded()` importing from `R.raw.emoji`.
+- [ ] Do not auto-install IM metadata or IM mapping data during fresh DB open. IM data is installed only by download, import, or restore.
 - [ ] Preserve `emoji_user` during refresh:
 
 ```sql
@@ -205,7 +253,7 @@ cp LimeStudio/app/src/main/res/raw/lime.db Database/lime.db
 shasum -a 256 LimeStudio/app/src/main/res/raw/lime.db Database/lime.db
 ```
 
-- [ ] Leave emoji data refresh source as `Database/emoji.db`; do not duplicate emoji data into the seed unless explicitly requested later.
+- [ ] Leave emoji data refresh source as `Database/emoji.db`; do not duplicate emoji data or IM data into the seed unless explicitly requested later.
 - [ ] Verify iOS bundled `emoji.db` still copies into the app bundle.
 
 ### Task 6: Strengthen iOS Runtime Migration
@@ -219,6 +267,7 @@ shasum -a 256 LimeStudio/app/src/main/res/raw/lime.db Database/lime.db
 - [ ] Make migration check missing emoji tables even when `PRAGMA user_version` is already `103`.
 - [ ] Ensure `refreshEmojiDataIfNeeded()` runs after schema migration on every `LimeDB(path:)` initialization.
 - [ ] Keep `Bundle.main.url(forResource: "emoji", withExtension: "db")` as the data source.
+- [ ] Do not auto-install IM metadata or IM mapping data during fresh DB open. IM data is installed only by download, import, or restore.
 - [ ] Preserve `emoji_user` on refresh.
 - [ ] Add tests for:
   - DB `102` without emoji tables migrates to `103`.
@@ -250,6 +299,9 @@ shasum -a 256 LimeStudio/app/src/main/res/raw/lime.db Database/lime.db
 
 ```sh
 sqlite3 Database/lime.db "PRAGMA integrity_check; PRAGMA user_version;"
+sqlite3 Database/lime.db "SELECT COUNT(*) FROM im;"
+sqlite3 Database/lime.db "SELECT 'dayi', COUNT(*) FROM dayi UNION ALL SELECT 'phonetic', COUNT(*) FROM phonetic;"
+sqlite3 Database/lime.db "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN ('dayi','phonetic') ORDER BY name;"
 sqlite3 Database/lime.db "SELECT name FROM sqlite_master WHERE name IN ('emoji_data','emoji_fts','emoji_user','idx_emoji_group') ORDER BY name;"
 sqlite3 Database/emoji.db "SELECT COUNT(*) FROM emoji_data; SELECT desc FROM im WHERE code='emoji' AND title='version';"
 ```
@@ -280,8 +332,9 @@ When a new emoji release ships:
 
 ## Acceptance Criteria
 
-- Fresh Android install never produces zero IM rows.
-- Fresh iOS install never produces zero IM rows.
+- Fresh Android install uses a schema-only bundled seed: `im`, `dayi`, and `phonetic` exist with zero rows before runtime import/refresh, and required IM indexes exist.
+- Fresh iOS install uses the same schema-only bundled seed as Android: `im`, `dayi`, and `phonetic` exist with zero rows before runtime import/refresh, and required IM indexes exist.
+- User-facing IM rows and IM mapping data appear only after user download, import, or restore.
 - Restoring a pre-103 DB on Android creates emoji schema and imports emoji data.
 - Restoring a pre-103 DB on iOS creates emoji schema and imports emoji data.
 - Every Required Integrated Test Matrix row has Android integrated coverage.

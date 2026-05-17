@@ -20,7 +20,7 @@
 
 | Pref Key | Type | iOS (default · label · category) | Android pre-back-port (default · label · category) | Android current (default · label · category) | Function |
 |---|---|---|---|---|---|
-| `keyboard_theme` | Picker / ListPreference | 0 · 鍵盤樣式 · §8.1 鍵盤外觀 | "0" · 鍵盤樣式 · lime_keyboard | "0" · 鍵盤樣式 · pref_section_appearance | Light / dark / coloured keyboard theme. iOS adds value 6 (system follow). |
+| `keyboard_theme` | Picker / ListPreference | 6 · 鍵盤樣式 · §8.1 鍵盤外觀 | "0" · 鍵盤樣式 · lime_keyboard | "6" · 鍵盤樣式 · pref_section_appearance | Light / dark / coloured keyboard theme. Value 6 follows the system Light/Dark appearance on both iOS and Android current. |
 | `keyboard_size` | Picker / ListPreference | "1" · 鍵盤大小 · §8.1 鍵盤外觀 | "1" · 鍵盤大小 · lime_keyboard | "1" · 鍵盤大小 · pref_section_appearance | Scale factor for keyboard layout. Default `"1"` (一般) on both iOS and Android. |
 | `font_size` | Picker / ListPreference | "1" · 字型大小 · §8.1 鍵盤外觀 | **"1"** · 字型大小 · lime_keyboard | "1" · 字型大小 · pref_section_appearance | Candidate-strip font scale. Moved from §8.3 into §8.1 (UI grouping). |
 | `number_row_in_english` | Toggle / CheckBox | true · 數字列英文鍵盤 · §8.1 鍵盤外觀 (**iPhone-only** — hidden on iPad) | true · 數字列英文鍵盤 · lime_keyboard | true · 數字列英文鍵盤 · pref_section_appearance | Digit row in English layout. Moved from §8.3 into §8.1 (UI grouping). iOS gates to iPhone in `PreferencesTabView.swift`. |
@@ -72,6 +72,7 @@
 ## 5.2 IMDetailView — per-IM prefs (cross-listed)
 
 > These prefs are not in the Preferences tab. They live inside the IM Detail page, gated by `tableNick`. Listed here for completeness.
+> IM Detail `版本` is canonical in the `im` table as `title = "version"` and `desc = <version text>`. The legacy `{table}mapping_version` preference is retained only as a display fallback for older installs, followed by `im.source` and then `im.name`. New `.lime` and `.cin` imports populate `im.version` from `@version@` and `%version`; legacy `%cname` is used only as a fallback when `%version` is missing.
 
 | Pref Key | Type | iOS (default · label · gating) | Android pre-back-port (default · label · category) | Android current (default · label · placement) | Function |
 |---|---|---|---|---|---|
@@ -140,6 +141,7 @@ Every entry below: type=`ListPreference`, `android:defaultValue="none"`, `dialog
 
 | Pref | iOS default | Pre-back-port default | Current default | Status |
 |---|---|---|---|---|
+| `keyboard_theme` | 6 | **"0"** | "6" | Defaults now use value 6 (系統設定 / system follow) on both iOS and Android current. Android current includes value 6 and resolves it to light/dark at runtime. |
 | `keyboard_size` | "1" | "1" | "1" | All defaults are now `"1"` (一般). Re-aligned across both platforms 2026-05-14. |
 | `font_size` | "1" | **"1"** | "1" | All defaults are now `"1"` (一般). Re-aligned across both platforms 2026-05-14. |
 | `smart_chinese_input` | true | **false** | true | Aligned to iOS. `preference.xml` defaultValue flipped `false→true`; Java accessor `LIMEPreferenceManager.java:434` already returned `true` for unset key. |

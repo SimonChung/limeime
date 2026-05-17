@@ -112,6 +112,38 @@ public class LimeDBTest {
         return result;
     }
 
+    private void writeUtf8(File file, String content) throws java.io.IOException {
+        try (java.io.Writer writer = new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
+            writer.write(content);
+        }
+    }
+
+    private String readUtf8(File file) throws java.io.IOException {
+        byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private void waitForImportThread(LimeDB limeDB) throws Exception {
+        int waitCount = 0;
+        int maxWait = 100;
+        while (waitCount < maxWait) {
+            Thread.sleep(100);
+            waitCount++;
+            try {
+                java.lang.reflect.Field importThreadField = LimeDB.class.getDeclaredField("importThread");
+                importThreadField.setAccessible(true);
+                Thread importThread = (Thread) importThreadField.get(limeDB);
+                if (importThread == null || !importThread.isAlive()) {
+                    break;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to inspect import thread", e);
+            }
+        }
+        Thread.sleep(200);
+    }
+
     @Test
     public void testLimeDBInitialization() {
         // Test LimeDB initialization
@@ -5068,6 +5100,139 @@ public class LimeDBTest {
             }
         } finally {
             // Clean up
+            if (exportFile.exists() && !exportFile.delete()) {
+                Log.e(TAG, "Failed to delete export file");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void testImportTxtTableStoresVersionMetadataFromLimeHeader() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        File file = File.createTempFile("lime-version", ".lime", appContext.getCacheDir());
+        try {
+            String content = "@version@|My Android Table 2026.05\n"
+                    + "@selkey@|123456789\n"
+                    + "%chardef begin\n"
+                    + "aa|測\n"
+                    + "ab|試\n"
+                    + "%chardef end\n";
+            writeUtf8(file, content);
+
+            limeDB.setFilename(file);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("My Android Table 2026.05",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("123456789",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"));
+            assertEquals("2",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"));
+        } finally {
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete temp import file");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void testImportTxtTableStoresVersionMetadataFromCinVersion() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        File file = File.createTempFile("lime-version", ".cin", appContext.getCacheDir());
+        try {
+            String content = "%version 大易測試版 1.2.3\n"
+                    + "%cname 大易測試表\n"
+                    + "%selkey 123456789\n"
+                    + "%chardef begin\n"
+                    + "a 測\n"
+                    + "b 試\n"
+                    + "%chardef end\n";
+            writeUtf8(file, content);
+
+            limeDB.setFilename(file);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("大易測試版 1.2.3",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("大易測試表",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
+            assertEquals("123456789",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"));
+        } finally {
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete temp import file");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void testImportTxtTableUsesCinCnameAsVersionFallbackWhenVersionMissing() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        File file = File.createTempFile("lime-version-legacy", ".cin", appContext.getCacheDir());
+        try {
+            String content = "%cname 舊格式輸入法名稱\n"
+                    + "%chardef begin\n"
+                    + "a 測\n"
+                    + "%chardef end\n";
+            writeUtf8(file, content);
+
+            limeDB.setFilename(file);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("舊格式輸入法名稱",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("舊格式輸入法名稱",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
+        } finally {
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete temp import file");
+            }
+        }
+    }
+
+    @Test(timeout = 10000)
+    public void testExportTxtTableUsesVersionMetadataForVersionHeader() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+        limeDB.addOrUpdateMappingRecord("custom", "version_test", "測", 10);
+        limeDB.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Name");
+        limeDB.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Version 2.0");
+
+        List<ImConfig> imConfigInfo = limeDB.getImConfigList(LIME.DB_TABLE_CUSTOM, null);
+        File exportFile = new File(appContext.getCacheDir(), "test_export_version_" + System.currentTimeMillis() + ".lime");
+
+        try {
+            boolean success = limeDB.exportTxtTable(LIME.DB_TABLE_CUSTOM, exportFile, imConfigInfo);
+            assertTrue("exportTxtTable should succeed", success);
+            String output = readUtf8(exportFile);
+            assertTrue("Export file should contain dedicated version header",
+                    output.contains("@version@|Version 2.0"));
+            assertFalse("Export file should not use name when version exists",
+                    output.contains("@version@|Friendly Name"));
+        } finally {
             if (exportFile.exists() && !exportFile.delete()) {
                 Log.e(TAG, "Failed to delete export file");
             }

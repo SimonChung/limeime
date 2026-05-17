@@ -3622,6 +3622,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     return;
                 }
 
+                String version = "";
                 String imname = "";
                 String line;
                 String endkey = "";
@@ -3745,7 +3746,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 // Add by Jeremy '10, 3 , 27
                                 // use %cname as mapping_version of .cin
                                 // Jeremy '11,6,5 add selkey, endkey and spacestyle support
-                                if (!(line.trim().toLowerCase(Locale.US).startsWith("%cname")
+                                if (!(line.trim().toLowerCase(Locale.US).startsWith("%version")
+                                        || line.trim().toLowerCase(Locale.US).startsWith("%cname")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%selkey")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%endkey")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%spacestyle")
@@ -3967,7 +3969,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                             String codeLower = code.toLowerCase(Locale.US);
                             if (codeLower.startsWith("@")) {
                                 if (codeLower.contains("@version@")) {
-                                    imname = word.trim();
+                                    version = word.trim();
+                                    if (imname.isEmpty()) imname = version;
                                 } else if (codeLower.contains("@selkey@")) {
                                     selkey = word.trim();
                                 } else if (codeLower.contains("@endkey@")) {
@@ -3978,19 +3981,29 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 continue; // do not insert meta into table
                             }
 
-                            if (codeLower.contains("%cname")) {
-                                imname = word.trim();
+                            String metadataWord = word.trim();
+                            if (codeLower.startsWith("%") && line.length() > code.length()) {
+                                metadataWord = line.substring(code.length()).trim();
+                            }
+
+                            if (codeLower.contains("%version")) {
+                                version = metadataWord;
+                                if (imname.isEmpty()) imname = version;
+                                continue;
+                            } else if (codeLower.contains("%cname")) {
+                                imname = metadataWord;
+                                if (version.isEmpty()) version = imname;
                                 continue;
                             } else if (codeLower.contains("%selkey")) {
-                                selkey = word.trim();
+                                selkey = metadataWord;
                                 if (DEBUG) Log.i(TAG, "loadfile(): selkey:" + selkey);
                                 continue;
                             } else if (codeLower.contains("%endkey")) {
-                                endkey = word.trim();
+                                endkey = metadataWord;
                                 if (DEBUG) Log.i(TAG, "loadfile(): endkey:" + endkey);
                                 continue;
                             } else if (codeLower.contains("%spacestyle")) {
-                                spacestyle = word.trim();
+                                spacestyle = metadataWord;
                                 continue;
                             } else {
                                 code = codeLower;
@@ -4055,6 +4068,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     mLIMEPref.setParameter("_table", "");
 
                     setImConfig(table, "source", filename.getName());
+                    if (version.isEmpty()) {
+                        version = filename.getName();
+                    }
+                    setImConfig(table, "version", version);
                     if (imname.isEmpty()) {
                         setImConfig(table, "name", filename.getName());
                     } else {
@@ -5401,29 +5418,36 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                             // Write IM info headers if provided
                             if (imConfig != null && !imConfig.isEmpty()) {
 
+                                String version = "";
+                                String name = "";
+                                String selkey = "";
+                                String endkey = "";
+                                String spacestyle = "";
                                 for (ImConfig i : imConfig) {
                                     if (threadAborted) break;
-                                    
-                                    if (i.getTitle().equals(LIME.IM_FULL_NAME)) {
-                                        String s = "@version@|" + i.getDesc();
-                                        fout.write(s);
-                                        fout.newLine();
-                                    }
-                                    if (i.getTitle().equals(LIME.IM_SELKEY)) {
-                                        String s = "@selkey@|" + i.getDesc();
-                                        fout.write(s);
-                                        fout.newLine();
-                                    }
-                                    if (i.getTitle().equals(LIME.IM_ENDKEY)) {
-                                        String s = "@endkey@|" + i.getDesc();
-                                        fout.write(s);
-                                        fout.newLine();
-                                    }
-                                    if (i.getTitle().equals(LIME.IM_SPACESTYLE)) {
-                                        String s = "@spacestyle@|" + i.getDesc();
-                                        fout.write(s);
-                                        fout.newLine();
-                                    }
+
+                                    if ("version".equals(i.getTitle())) version = i.getDesc();
+                                    else if (LIME.IM_FULL_NAME.equals(i.getTitle()) || "name".equals(i.getTitle())) name = i.getDesc();
+                                    else if (LIME.IM_SELKEY.equals(i.getTitle())) selkey = i.getDesc();
+                                    else if (LIME.IM_ENDKEY.equals(i.getTitle())) endkey = i.getDesc();
+                                    else if (LIME.IM_SPACESTYLE.equals(i.getTitle())) spacestyle = i.getDesc();
+                                }
+                                String exportVersion = !version.isEmpty() ? version : name;
+                                if (!exportVersion.isEmpty()) {
+                                    fout.write("@version@|" + exportVersion);
+                                    fout.newLine();
+                                }
+                                if (!selkey.isEmpty()) {
+                                    fout.write("@selkey@|" + selkey);
+                                    fout.newLine();
+                                }
+                                if (!endkey.isEmpty()) {
+                                    fout.write("@endkey@|" + endkey);
+                                    fout.newLine();
+                                }
+                                if (!spacestyle.isEmpty()) {
+                                    fout.write("@spacestyle@|" + spacestyle);
+                                    fout.newLine();
                                 }
                             }
 
