@@ -32,10 +32,23 @@ import androidx.preference.PreferenceManager;
 
 import net.toload.main.hd.data.ImConfig;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class LIMEPreferenceManager {
+
+	public static class ReverseLookupOption {
+		public final String label;
+		public final String value;
+
+		public ReverseLookupOption(String label, String value) {
+			this.label = label;
+			this.value = value;
+		}
+	}
 	
 	private final Context ctx;
 	
@@ -147,13 +160,145 @@ public class LIMEPreferenceManager {
 		
 	}
 
-	public String getRerverseLookupTable(String table){
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		if(table.equals(LIME.DB_TABLE_PHONETIC)){
-			return sp.getString("bpmf_im_reverselookup", "none");
-		}else{
-			return sp.getString(table + "_im_reverselookup", "none");
+	private String getReverseLookupPreferenceKey(String table) {
+		if (table == null || table.isEmpty()) {
+			table = LIME.DB_TABLE_PHONETIC;
 		}
+		if (table.equals(LIME.DB_TABLE_PHONETIC)) {
+			return "bpmf_im_reverselookup";
+		}
+		return table + "_im_reverselookup";
+	}
+
+	public String getReverseLookupTable(String table){
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
+		return sp.getString(getReverseLookupPreferenceKey(table), "none");
+	}
+
+	public String getRerverseLookupTable(String table){
+		return getReverseLookupTable(table);
+	}
+
+	public void setReverseLookupTable(String table, String lookupTable){
+		if (lookupTable == null || lookupTable.isEmpty()) {
+			lookupTable = "none";
+		}
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
+		sp.edit().putString(getReverseLookupPreferenceKey(table), lookupTable).apply();
+	}
+
+	public static List<ReverseLookupOption> buildReverseLookupOptions(List<ImConfig> imList, String noneLabel) {
+		List<String> codes = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		if (imList != null) {
+			for (ImConfig im : imList) {
+				if (im == null || im.getCode() == null || im.isDisable()) continue;
+				String code = im.getCode();
+				if ("emoji".equals(code) || indexOfIMCode(code) < 0) continue;
+				codes.add(code);
+				String label = im.getDesc();
+				labels.add(label == null || label.isEmpty() ? fallbackIMLabel(code) : label);
+			}
+		}
+		return buildReverseLookupOptions(codes, labels, noneLabel);
+	}
+
+	public static List<ReverseLookupOption> buildReverseLookupOptions(List<String> codes,
+			List<String> labels, String noneLabel) {
+		List<ReverseLookupOption> options = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		String safeNoneLabel = noneLabel == null || noneLabel.isEmpty() ? "none" : noneLabel;
+		options.add(new ReverseLookupOption(safeNoneLabel, "none"));
+		seen.add("none");
+		if (codes != null) {
+			for (int i = 0; i < codes.size(); i++) {
+				String code = codes.get(i);
+				if (code == null || code.isEmpty() || seen.contains(code) || indexOfIMCode(code) < 0) {
+					continue;
+				}
+				String label = labels != null && i < labels.size() ? labels.get(i) : null;
+				if (label == null || label.isEmpty()) {
+					label = fallbackIMLabel(code);
+				}
+				options.add(new ReverseLookupOption(label, code));
+				seen.add(code);
+			}
+		}
+		return options.size() > 1 ? options : fallbackReverseLookupOptions(safeNoneLabel);
+	}
+
+	public static List<ReverseLookupOption> buildReverseLookupOptions(String activeState, String noneLabel) {
+		List<String> codes = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		if (activeState != null && !activeState.trim().isEmpty()) {
+			for (String raw : activeState.split(";")) {
+				if (raw == null || raw.isEmpty()) continue;
+				try {
+					int index = Integer.parseInt(raw);
+					if (index < 0 || index >= LIME.IM_CODES.length) continue;
+					codes.add(LIME.IM_CODES[index]);
+					labels.add(index < LIME.IM_FULL_NAMES.length ? LIME.IM_FULL_NAMES[index] : LIME.IM_SHORT_NAMES[index]);
+				} catch (NumberFormatException ignored) {
+				}
+			}
+		}
+		return buildReverseLookupOptions(codes, labels, noneLabel);
+	}
+
+	public List<ReverseLookupOption> getReverseLookupOptions() {
+		return buildReverseLookupOptions(getIMActivatedState(), "無");
+	}
+
+	public static String[] reverseLookupLabels(List<ReverseLookupOption> options) {
+		List<ReverseLookupOption> safeOptions = ensureOptions(options, "無");
+		String[] labels = new String[safeOptions.size()];
+		for (int i = 0; i < safeOptions.size(); i++) {
+			labels[i] = safeOptions.get(i).label;
+		}
+		return labels;
+	}
+
+	public static String[] reverseLookupValues(List<ReverseLookupOption> options) {
+		List<ReverseLookupOption> safeOptions = ensureOptions(options, "無");
+		String[] values = new String[safeOptions.size()];
+		for (int i = 0; i < safeOptions.size(); i++) {
+			values[i] = safeOptions.get(i).value;
+		}
+		return values;
+	}
+
+	private static List<ReverseLookupOption> ensureOptions(List<ReverseLookupOption> options, String noneLabel) {
+		return options == null || options.isEmpty() ? fallbackReverseLookupOptions(noneLabel) : options;
+	}
+
+	private static List<ReverseLookupOption> fallbackReverseLookupOptions(String noneLabel) {
+		List<ReverseLookupOption> options = new ArrayList<>();
+		options.add(new ReverseLookupOption(noneLabel, "none"));
+		for (int i = 0; i < LIME.IM_CODES.length && i < LIME.IM_FULL_NAMES.length; i++) {
+			options.add(new ReverseLookupOption(LIME.IM_FULL_NAMES[i], LIME.IM_CODES[i]));
+		}
+		return options;
+	}
+
+	private static String fallbackIMLabel(String code) {
+		int index = indexOfIMCode(code);
+		if (index >= 0 && index < LIME.IM_FULL_NAMES.length) {
+			return LIME.IM_FULL_NAMES[index];
+		}
+		if (index >= 0 && index < LIME.IM_SHORT_NAMES.length) {
+			return LIME.IM_SHORT_NAMES[index];
+		}
+		return code;
+	}
+
+	private static int indexOfIMCode(String code) {
+		if (code == null) return -1;
+		for (int i = 0; i < LIME.IM_CODES.length; i++) {
+			if (code.equals(LIME.IM_CODES[i])) {
+				return i;
+			}
+		}
+		return -1;
 	}
 	
 	
@@ -236,25 +381,16 @@ public class LIMEPreferenceManager {
 		return sp.getBoolean("sound_on_keypress", false);
 	}
 
-	public boolean getEmojiMode(){
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		//Jeremy '16,7,30 Emoji support is limited before API 16
-		return sp.getBoolean("enable_emoji", true);
-	}
-
-	public boolean getEmojiButtonEnabled(){
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		return sp.getBoolean("enable_emoji_button", true);
-	}
-
 	public Integer getEmojiDisplayPosition(){
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		return Integer.parseInt(sp.getString("enable_emoji_position", "3"));
-	}
-
-	public boolean getReverseLookupNotify(){
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		return sp.getBoolean("reverse_lookup_notify", true);
+		if (sp.contains("enable_emoji")) {
+			SharedPreferences.Editor editor = sp.edit().remove("enable_emoji");
+			if (!sp.getBoolean("enable_emoji", true)) {
+				editor.putString("enable_emoji_position", "0");
+			}
+			editor.apply();
+		}
+		return Integer.parseInt(sp.getString("enable_emoji_position", "6"));
 	}
 
 	public boolean getPersistentLanguageMode(){

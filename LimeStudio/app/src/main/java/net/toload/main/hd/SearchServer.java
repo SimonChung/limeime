@@ -298,12 +298,10 @@ public class SearchServer {
             LIMEUtilities.showNotification(
                     mContext, true, mContext.getText(R.string.ime_setting), result, new Intent(mContext, LIMESettings.class));
 
-            if(mLIMEPref.getReverseLookupNotify()){
-                if (mContext instanceof LIMEService) {
-                    ((LIMEService) mContext).showReverseLookup(result);
-                } else {
-                    Toast.makeText(mContext, result, Toast.LENGTH_SHORT).show();
-                }
+            if (mContext instanceof LIMEService) {
+                ((LIMEService) mContext).showReverseLookup(result);
+            } else {
+                Toast.makeText(mContext, result, Toast.LENGTH_SHORT).show();
             }
         }
 

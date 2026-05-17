@@ -4939,26 +4939,19 @@ public class SearchServerTest {
     }
 
     /**
-     * Test getCodeListStringFromWord() with valid result and notifications
-     * Covers the notification branches (result not null/empty)
+     * Test getCodeListStringFromWord() with valid result.
+     * Covers the reverse-lookup display branches (result not null/empty).
      */
     @Test(timeout = 5000)
     public void test_3_2_5_3_getCodeListStringFromWord_with_notification() throws Exception {
         Object original = getStatic("dbadapter", Object.class);
         try {
-            // Enable reverse lookup notification
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
-            prefs.edit().putBoolean("reverse_lookup_notify", true).apply();
-            
             // Call method - should trigger notification logic if result is not empty
             // Note: actual notification depends on dbadapter implementation
             searchServer.getCodeListStringFromWord("測試");
             
             // Verify method completed without exception
             assertTrue("getCodeListStringFromWord should complete", true);
-            
-            // Restore preference
-            prefs.edit().putBoolean("reverse_lookup_notify", false).apply();
         } finally {
             setStatic("dbadapter", original);
         }

@@ -122,28 +122,13 @@
             android:key="persistent_language_mode"
             android:summary="@string/persistent_language_mode_summary"
             android:title="@string/persistent_language_mode" />
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="enable_emoji"
-            android:summary="@string/enable_emoji_summary"
-            android:title="@string/enable_emoji" />
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="enable_emoji_button"
-            android:summary="@string/enable_emoji_button_summary"
-            android:title="@string/enable_emoji_button" />
         <ListPreference
-            android:defaultValue="3"
-            android:dependency="enable_emoji"
+            android:defaultValue="6"
             android:dialogTitle="@string/enable_emoji_position_dialog_title"
             android:entries="@array/emoji_display_position_title"
             android:entryValues="@array/emoji_display_position"
             android:key="enable_emoji_position"
             android:title="@string/enable_emoji_position" />
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="reverse_lookup_notify"
-            android:title="@string/reverse_lookup_notify" />
         <PreferenceScreen
             android:key="reverse_lookup_screen"
             android:title="@string/im_reverse_lookup_screen_title">
@@ -359,13 +344,6 @@
             android:entryValues="@array/selkey_options_values"
             android:key="selkey_option"
             android:title="@string/selkey_option_list" />
-        <ListPreference
-            android:defaultValue="normal_keyboard"
-            android:dialogTitle="@string/physical_keyboard"
-            android:entries="@array/physical_keyboard_options"
-            android:entryValues="@array/physical_keyboard_options_values"
-            android:key="physical_keyboard_type"
-            android:title="@string/physical_keyboard" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:dependency="english_dictionary_enable"

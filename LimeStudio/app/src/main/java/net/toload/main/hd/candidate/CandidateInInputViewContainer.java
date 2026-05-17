@@ -1,4 +1,3 @@
-
 /*
  *
  *  *
@@ -35,12 +34,14 @@ import android.widget.LinearLayout;
 
 import net.toload.main.hd.LIMEService;
 import net.toload.main.hd.R;
+import net.toload.main.hd.global.LIME;
 
 public class CandidateInInputViewContainer extends LinearLayout  implements View.OnClickListener {
 
     private static final boolean DEBUG = false;
     private static final String TAG = "CandiInputViewContainer";
     private ImageButton mDismissButton;
+    private ImageButton mEmojiButton;
     private ImageButton mRightButton;
     private ImageButton mKeyboardButton;
     private CandidateView mCandidateView;
@@ -72,11 +73,15 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 vg.setClipToPadding(false);
             }
             mDismissButton = findViewById(R.id.candidate_dismiss);
+            mEmojiButton = findViewById(R.id.candidate_emoji);
             mRightButton = findViewById(R.id.candidate_right);
             mKeyboardButton = findViewById(R.id.candidate_keyboard);
 
             if (mDismissButton != null) {
                 mDismissButton.setOnClickListener(this);
+            }
+            if (mEmojiButton != null) {
+                mEmojiButton.setOnClickListener(this);
             }
             if (mRightButton != null) {
                 mRightButton.setOnClickListener(this);
@@ -104,6 +109,14 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 mDismissButton.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
                 mDismissButton.setBackground(mCandidateView.makeDismissButtonBackground());
                 mDismissButton.post(() -> mCandidateView.storePopupDismissButtonWidth(mDismissButton));
+            }
+            if (mEmojiButton != null) {
+                mEmojiButton.setPadding(0, 0, 0, 0);
+                mEmojiButton.setScaleType(ImageButton.ScaleType.CENTER);
+                mEmojiButton.setMinimumWidth(0);
+                mEmojiButton.setMinimumHeight(0);
+                mEmojiButton.setColorFilter(mCandidateView.mColorNormalText);
+                mEmojiButton.setBackgroundColor(android.graphics.Color.TRANSPARENT);
             }
             if (mRightButton != null) {
                 mRightButton.setBackgroundColor(mCandidateView.mColorBackground);
@@ -174,6 +187,9 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             if (mDismissButton != null) {
                 mDismissButton.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
             }
+            if (mEmojiButton != null) {
+                mEmojiButton.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+            }
 
             // Update keyboard button visibility
             if (mKeyboardButton != null) {
@@ -209,6 +225,9 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 if (mDismissButton != null) {
                     mDismissButton.setVisibility(mCandidateView.isEmpty() ? View.GONE : View.VISIBLE);
                 }
+                if (mEmojiButton != null) {
+                    mEmojiButton.setVisibility(mCandidateView.isEmpty() ? View.VISIBLE : View.GONE);
+                }
                 ViewGroup.LayoutParams params = mCandidateView.getLayoutParams();
                 if (params instanceof LinearLayout.LayoutParams) {
                     LinearLayout.LayoutParams llParams = (LinearLayout.LayoutParams) params;
@@ -218,6 +237,7 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                     int buttonWidth = getResources().getDimensionPixelSize(R.dimen.candidate_expand_button_width);
                     int dismissWidth = getResources().getDimensionPixelSize(R.dimen.candidate_dismiss_button_width);
                     boolean dismissVisible = mDismissButton != null && mDismissButton.getVisibility() == View.VISIBLE;
+                    boolean emojiVisible = mEmojiButton != null && mEmojiButton.getVisibility() == View.VISIBLE;
                     boolean keyboardVisible = mKeyboardButton != null && mKeyboardButton.getVisibility() == View.VISIBLE;
                     boolean rightVisible = mRightButton != null && mRightButton.getVisibility() == View.VISIBLE;
                     
@@ -225,12 +245,16 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                         Log.i(TAG, "Width constraint: containerWidth=" + containerWidth + 
                               ", keyboardVisible=" + keyboardVisible + 
                               ", dismissVisible=" + dismissVisible +
+                              ", emojiVisible=" + emojiVisible +
                               ", rightVisible=" + rightVisible +
                               ", buttonWidth=" + buttonWidth);
                     }
                     
                     if (dismissVisible) {
                         buttonsWidth += dismissWidth;
+                    }
+                    if (emojiVisible) {
+                        buttonsWidth += buttonWidth;
                     }
                     if (keyboardVisible) {
                         buttonsWidth += buttonWidth;
@@ -278,6 +302,10 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
         if (v == mDismissButton) {
             if (mCandidateView != null) {
                 mCandidateView.dismissComposingFromCandidate();
+            }
+        } else if (v == mEmojiButton) {
+            if (mService != null) {
+                mService.onKey(LIME.KEYCODE_EMOJI_PANEL, null, 0, 0);
             }
         } else if (v == mKeyboardButton) {
             // Restore keyboard view when keyboard button is clicked

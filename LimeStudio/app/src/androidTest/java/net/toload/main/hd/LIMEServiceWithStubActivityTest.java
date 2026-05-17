@@ -188,20 +188,20 @@ public class LIMEServiceWithStubActivityTest {
     }
 
     /**
-     * Test launchSettings() method with proper Context.
+     * Test launchPreference() method with proper Context.
      * This method launches the LIMEPreference activity.
      * Covers lines 2023-2032 in LIMEService.java
      */
     @Test
-    public void test_5_24_5_LaunchSettingsWithContext() {
+    public void test_5_24_5_LaunchPreferenceWithContext() {
         try {
-            // Call launchSettings() using reflection (it's private)
-            Method launchSettingsMethod = LIMEService.class.getDeclaredMethod("launchSettings");
-            launchSettingsMethod.setAccessible(true);
-            launchSettingsMethod.invoke(limeService);
+            // Call launchPreference() using reflection (it's private)
+            Method launchPreferenceMethod = LIMEService.class.getDeclaredMethod("launchPreference");
+            launchPreferenceMethod.setAccessible(true);
+            launchPreferenceMethod.invoke(limeService);
 
             // Method executed successfully, covered Intent creation and startActivity
-            assertTrue("launchSettings() executed", true);
+            assertTrue("launchPreference() executed", true);
 
         } catch (java.lang.reflect.InvocationTargetException e) {
             // May throw if activity can't be started in test environment

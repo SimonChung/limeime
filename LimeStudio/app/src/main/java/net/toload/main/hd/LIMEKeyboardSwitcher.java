@@ -25,7 +25,6 @@
 package net.toload.main.hd;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -33,7 +32,6 @@ import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Keyboard;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
-import net.toload.main.hd.keyboard.LIMEBaseKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboardView;
 
@@ -90,7 +88,6 @@ public class LIMEKeyboardSwitcher {
     private int mCurrentSymbolsKeyboard = SYMBOLS_KEYBOARD_1;
 
     private int mLastDisplayWidth;
-    private boolean mLastEmojiButtonEnabled = true;
     
     private String ImCode = null;
     
@@ -261,11 +258,6 @@ public class LIMEKeyboardSwitcher {
     		clearKeyboards();
     		mKeySizeScale = mLIMEPref.getKeyboardSize();
     	}
-		boolean emojiButtonEnabled = mLIMEPref.getEmojiButtonEnabled();
-		if (emojiButtonEnabled != mLastEmojiButtonEnabled) {
-			clearKeyboards();
-			mLastEmojiButtonEnabled = emojiButtonEnabled;
-		}
 	    if(id != null){
 	        if (!mKeyboards.containsKey(id)) {
 				if(DEBUG)
@@ -279,34 +271,12 @@ public class LIMEKeyboardSwitcher {
 	            if (id.mEnableShiftLock) {
 	                keyboard.enableShiftLock();
 	            }
-				applyEmojiButtonVisibility(keyboard);
 	            mKeyboards.put(id, keyboard);
 	        }
 	        return mKeyboards.get(id);
 	    }
 	    return null;
     }
-
-	private void applyEmojiButtonVisibility(LIMEKeyboard keyboard) {
-		if (keyboard == null || mLIMEPref.getEmojiButtonEnabled()) {
-			return;
-		}
-		removeEmojiKeys(keyboard.getKeys());
-		removeEmojiKeys(keyboard.getModifierKeys());
-	}
-
-	private void removeEmojiKeys(List<LIMEBaseKeyboard.Key> keys) {
-		if (keys == null) {
-			return;
-		}
-		for (Iterator<LIMEBaseKeyboard.Key> iterator = keys.iterator(); iterator.hasNext(); ) {
-			LIMEBaseKeyboard.Key key = iterator.next();
-			if (key != null && key.codes != null && key.codes.length > 0
-					&& key.codes[0] == LIME.KEYCODE_EMOJI_PANEL) {
-				iterator.remove();
-			}
-		}
-	}
     
     /**
      * Get XML resource ID for keyboard layout.

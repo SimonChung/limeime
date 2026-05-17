@@ -5784,6 +5784,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         Cursor cursor;
 
         StringBuilder queryBuilder = new StringBuilder();
+        List<String> queryArgs = new ArrayList<>();
         String cword = "";
 
         if (pword != null && pword.length() > 1) {
@@ -5791,10 +5792,12 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             pword = pword.substring(0, 1);
         }
         if (pword != null && !pword.isEmpty()) {
-            queryBuilder.append(LIME.DB_RELATED_COLUMN_PWORD).append(" = '").append(pword).append("' AND ");
+            queryBuilder.append(LIME.DB_RELATED_COLUMN_PWORD).append(" = ? AND ");
+            queryArgs.add(pword);
         }
         if (!cword.isEmpty()) {
-            queryBuilder.append(LIME.DB_RELATED_COLUMN_CWORD).append(" LIKE '").append(cword).append("%' AND ");
+            queryBuilder.append(LIME.DB_RELATED_COLUMN_CWORD).append(" LIKE ? AND ");
+            queryArgs.add(cword + "%");
         }
 
         queryBuilder.append("ifnull(").append(LIME.DB_RELATED_COLUMN_CWORD).append(", '') <> ''");
@@ -5810,7 +5813,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
         cursor = db.query(LIME.DB_TABLE_RELATED,
                 null, query,
-                null, null, null, order);
+                queryArgs.isEmpty() ? null : queryArgs.toArray(new String[0]),
+                null, null, order);
 
         cursor.moveToFirst();
         while (!cursor.isAfterLast()) {

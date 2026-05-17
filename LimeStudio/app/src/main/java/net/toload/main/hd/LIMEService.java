@@ -96,7 +96,6 @@ import net.toload.main.hd.ui.LIMEPreference;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -141,6 +140,7 @@ public class LIMEService extends InputMethodService
     private boolean mEnglishOnly;
     private boolean mEnglishFlagShift;
     private boolean mEmojiKeyboardShown;
+    private boolean mEmojiSourceWasEnglish = true;
     private View mEmojiKeyboardView = null;
     private HorizontalScrollView mEmojiScroll = null;
     private LinearLayout mEmojiPages = null;
@@ -148,6 +148,7 @@ public class LIMEService extends InputMethodService
     private LinearLayout mEmojiBottomBar = null;
     private LinearLayout mEmojiCategoryBar = null;
     private TextView mEmojiSearchField = null;
+    private TextView mEmojiAbcButton = null;
     private int mEmojiCategoryIndex = 1;
     private int mInputCandidateStripVisibilityBeforeEmoji = View.VISIBLE;
     private boolean mEmojiSearchMode = false;
@@ -945,9 +946,8 @@ public class LIMEService extends InputMethodService
         }
 
 
-        if (mEnglishOnly && !mPredictionOn) //Jeremy '12,5,20 Only hide candidateview when prediction mode is not on.
-            //Jeremy '12,5,6 clear internal composing buffer in forceHideCandiateView
-            forceHideCandidateView();  //Jeremy '12,5,6 zero the canidateView height to force hide it for eng/numeric keyboard
+        if (mEnglishOnly && !mPredictionOn) // Keep toolbar visible for mic/emoji in no-prediction English fields.
+            showEmptyCandidateToolbar();
         else {
             clearComposing(false);//Jeremy '12,5,24 clear the suggesions and also restore the height of fixed candaiteview if it's hide before
             //clearSuggestions();  // do this in clearcomposing already.
@@ -2006,12 +2006,14 @@ public class LIMEService extends InputMethodService
     }
 
     private void showEmojiKeyboard() {
+        mEmojiSourceWasEnglish = mEnglishOnly;
         mEmojiKeyboardShown = true;
         mEmojiSearchFocused = false;
         mEmojiSearchQuery.setLength(0);
         if (mEmojiSearchField != null) {
             mEmojiSearchField.setText("");
         }
+        updateEmojiAbcButtonLabel();
         clearComposing(true);
         hideCandidateView();
         mInputCandidateStripVisibilityBeforeEmoji = getInputCandidateStripVisibility();
@@ -2031,6 +2033,7 @@ public class LIMEService extends InputMethodService
         }
         if (mInputView != null) {
             mInputView.setVisibility(View.VISIBLE);
+            restoreEmojiSourceKeyboard();
             mInputView.invalidateAllKeys();
         }
         setInputCandidateStripVisibility(mInputCandidateStripVisibilityBeforeEmoji);
@@ -2120,6 +2123,7 @@ public class LIMEService extends InputMethodService
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(54)));
 
         TextView abc = createEmojiControl("ABC", 17);
+        mEmojiAbcButton = abc;
         abc.setOnClickListener(v -> hideEmojiKeyboard());
         mEmojiBottomBar.addView(abc, new LinearLayout.LayoutParams(dp(48), dp(46)));
 
@@ -2135,6 +2139,22 @@ public class LIMEService extends InputMethodService
 
         renderEmojiContent("");
         mEmojiKeyboardView.setVisibility(mEmojiKeyboardShown ? View.VISIBLE : View.GONE);
+    }
+
+    private void updateEmojiAbcButtonLabel() {
+        if (mEmojiAbcButton != null) {
+            mEmojiAbcButton.setText(mEmojiSourceWasEnglish ? "ABC" : "中");
+        }
+    }
+
+    private void restoreEmojiSourceKeyboard() {
+        if (mEmojiSourceWasEnglish) {
+            if (!mEnglishOnly && mInputView != null) {
+                switchKeyboard(KEYCODE_SWITCH_TO_ENGLISH_MODE);
+            }
+        } else if (mEnglishOnly && mInputView != null) {
+            switchKeyboard(KEYCODE_SWITCH_TO_IM_MODE);
+        }
     }
 
     private void renderEmojiContent(String query) {
@@ -2418,6 +2438,8 @@ public class LIMEService extends InputMethodService
             List<String> fallback = emojiArrayToList(FALLBACK_EMOJI_CATEGORIES[i]);
             if (i >= categories.size()) {
                 categories.add(fallback);
+            } else if (i == 0) {
+                categories.set(i, mergeEmojiRecentSeedQueue(categories.get(i), fallback, EMOJI_PAGE_CAPACITY));
             } else if (categories.get(i) == null || categories.get(i).isEmpty()) {
                 categories.set(i, fallback);
             }
@@ -2426,6 +2448,31 @@ public class LIMEService extends InputMethodService
             categories.remove(categories.size() - 1);
         }
         return categories;
+    }
+
+    private List<String> mergeEmojiRecentSeedQueue(List<String> recent, List<String> fallback, int limit) {
+        int safeLimit = Math.max(1, limit);
+        List<String> merged = new ArrayList<>();
+        if (recent != null) {
+            for (String emoji : recent) {
+                addEmojiSeedIfRoom(merged, emoji, safeLimit);
+            }
+        }
+        if (fallback != null) {
+            for (String emoji : fallback) {
+                addEmojiSeedIfRoom(merged, emoji, safeLimit);
+            }
+        }
+        return merged;
+    }
+
+    private void addEmojiSeedIfRoom(List<String> merged, String emoji, int limit) {
+        if (merged == null || emoji == null || emoji.isEmpty() || merged.contains(emoji)) {
+            return;
+        }
+        if (merged.size() < Math.max(1, limit)) {
+            merged.add(emoji);
+        }
     }
 
     private List<List<String>> paginateEmojiCategories(List<List<String>> categories) {
@@ -2750,14 +2797,14 @@ public class LIMEService extends InputMethodService
 
 
     private AlertDialog mOptionsDialog;
-    // Contextual menu positions
-
-    private static final int POS_SETTINGS = 0;
-    private static final int POS_HANCONVERT = 1;  //Jeremy '11,9,17
-    private static final int POS_KEYBOARD = 2;
-    private static final int POS_METHOD = 3;
-    private static final int POS_SPLIT_KEYBOARD = 4;
-    private static final int POS_VOICEINPUT = 5;
+    // Contextual menu actions
+    private static final int ACTION_SETTINGS = 0;
+    private static final int ACTION_REVERSE_LOOKUP = 1;
+    private static final int ACTION_HANCONVERT = 2;  //Jeremy '11,9,17
+    private static final int ACTION_KEYBOARD = 3;
+    private static final int ACTION_METHOD = 4;
+    private static final int ACTION_SPLIT_KEYBOARD = 5;
+    private static final int ACTION_VOICEINPUT = 6;
 
 
     /**
@@ -2785,6 +2832,9 @@ public class LIMEService extends InputMethodService
         builder.setTitle(getResources().getString(R.string.ime_name));
 
         CharSequence itemSettings = getString(R.string.lime_setting_preference);
+        List<LIMEPreferenceManager.ReverseLookupOption> reverseLookupOptions = getActiveReverseLookupOptions();
+        CharSequence itemReverseLookup = getString(R.string.keyboard_menu_reverse_lookup,
+                getReverseLookupLabel(mLIMEPref.getReverseLookupTable(activeIM), reverseLookupOptions));
         CharSequence hanConvert = getString(R.string.han_convert_option_list);
 
         CharSequence itemSwitchIM = getString(R.string.keyboard_list);
@@ -2801,65 +2851,72 @@ public class LIMEService extends InputMethodService
             itemSplitKeyboard = getString(R.string.merge_keyboard);
 
 
-        CharSequence[] options;
         CharSequence itemVoiceInput = getString(R.string.voice_input);
-
-
-        final boolean hasSplitOption;
+        List<CharSequence> options = new ArrayList<>();
+        List<Integer> actions = new ArrayList<>();
 
         //Jeremy '12,5,27 do not show split/merge keyboard option if in landscape mode and show arrow keys is on
-        if (isLandScape && mShowArrowKeys > 0) {
-            hasSplitOption = false;
-            options = new CharSequence[]
-                    {itemSettings, hanConvert, itemSwitchIM, itemSwitchSytemIM, itemVoiceInput};
-        } else {
-            hasSplitOption = true;
-            options = new CharSequence[]
-                    {itemSettings, hanConvert, itemSwitchIM, itemSwitchSytemIM, itemSplitKeyboard, itemVoiceInput};
+        final boolean hasSplitOption = !(isLandScape && mShowArrowKeys > 0);
 
+        options.add(itemSettings);
+        actions.add(ACTION_SETTINGS);
+        options.add(itemReverseLookup);
+        actions.add(ACTION_REVERSE_LOOKUP);
+        options.add(hanConvert);
+        actions.add(ACTION_HANCONVERT);
+        options.add(itemSwitchIM);
+        actions.add(ACTION_KEYBOARD);
+        options.add(itemSwitchSytemIM);
+        actions.add(ACTION_METHOD);
+        if (hasSplitOption) {
+            options.add(itemSplitKeyboard);
+            actions.add(ACTION_SPLIT_KEYBOARD);
         }
+        options.add(itemVoiceInput);
+        actions.add(ACTION_VOICEINPUT);
 
 
-        builder.setItems(options, (di, position) -> {
+        builder.setItems(options.toArray(new CharSequence[0]), (di, position) -> {
             di.dismiss();
-            switch (position) {
+            switch (actions.get(position)) {
 
-                case POS_SETTINGS:
-                    launchSettings();
+                case ACTION_SETTINGS:
+                    launchPreference();
                     break;
-                case POS_HANCONVERT:  //Jeremy '11,9,17
+                case ACTION_REVERSE_LOOKUP:
+                    showReverseLookupPicker();
+                    break;
+                case ACTION_HANCONVERT:  //Jeremy '11,9,17
                     showHanConvertPicker();
                     break;
-                case POS_KEYBOARD:
+                case ACTION_KEYBOARD:
                     showIMPicker();
                     break;
-                case POS_METHOD:
+                case ACTION_METHOD:
                     ((InputMethodManager) Objects.requireNonNull(getSystemService(INPUT_METHOD_SERVICE))).showInputMethodPicker();
                     break;
-                case POS_SPLIT_KEYBOARD: //Jeremy '12,5,27 new option to split keyboard; '12,6,9 add orientation consideration on split keyboard
-                    if (hasSplitOption) {
-                        if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_NEVER) {
-                            if (isLandScape)
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
-                            else
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
-                        } else if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS) {
-                            if (isLandScape)
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
-                            else
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
-                        } else {// LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY
-                            if (isLandScape)
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
-                            else
-                                mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
-                        }
-
-                        handleClose();
-                        mKeyboardSwitcher.resetKeyboards(true);
-                        break;
+                case ACTION_SPLIT_KEYBOARD: //Jeremy '12,5,27 new option to split keyboard; '12,6,9 add orientation consideration on split keyboard
+                    if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_NEVER) {
+                        if (isLandScape)
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
+                        else
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
+                    } else if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS) {
+                        if (isLandScape)
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
+                        else
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
+                    } else {// LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY
+                        if (isLandScape)
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
+                        else
+                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
                     }
-                case POS_VOICEINPUT:
+
+                    handleClose();
+                    mKeyboardSwitcher.resetKeyboards(true);
+                    break;
+                case ACTION_VOICEINPUT:
                     startVoiceInput();
                     break;
 
@@ -2877,7 +2934,63 @@ public class LIMEService extends InputMethodService
         mOptionsDialog.show();
     }
 
-    private void launchSettings() {
+    private List<LIMEPreferenceManager.ReverseLookupOption> getActiveReverseLookupOptions() {
+        buildActivatedIMList();
+        return LIMEPreferenceManager.buildReverseLookupOptions(
+                activatedIMList,
+                activatedIMFullNameList,
+                "無");
+    }
+
+    private String getReverseLookupLabel(String value, List<LIMEPreferenceManager.ReverseLookupOption> options) {
+        String[] labels = LIMEPreferenceManager.reverseLookupLabels(options);
+        String[] values = LIMEPreferenceManager.reverseLookupValues(options);
+        for (int i = 0; i < values.length && i < labels.length; i++) {
+            if (values[i].equals(value)) {
+                return labels[i];
+            }
+        }
+        return labels.length > 0 ? labels[0] : "none";
+    }
+
+    private void showReverseLookupPicker() {
+        List<LIMEPreferenceManager.ReverseLookupOption> options = getActiveReverseLookupOptions();
+        String[] labels = LIMEPreferenceManager.reverseLookupLabels(options);
+        String[] values = LIMEPreferenceManager.reverseLookupValues(options);
+        String current = mLIMEPref.getReverseLookupTable(activeIM);
+        int selected = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(current)) {
+                selected = i;
+                break;
+            }
+        }
+
+        AlertDialog.Builder builder = createDialogBuilder();
+        builder.setCancelable(true);
+        builder.setIcon(R.drawable.logo);
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.setTitle(getString(R.string.im_reverse_lookup_screen_title));
+        builder.setSingleChoiceItems(labels, selected, (di, which) -> {
+            di.dismiss();
+            if (which >= 0 && which < values.length) {
+                mLIMEPref.setReverseLookupTable(activeIM, values[which]);
+                showLimeToast(getString(R.string.keyboard_menu_reverse_lookup, labels[which]));
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        Window window = dialog.getWindow();
+        assert window != null;
+        WindowManager.LayoutParams lp = window.getAttributes();
+        lp.token = mInputView.getWindowToken();
+        lp.type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
+        window.setAttributes(lp);
+        window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+        dialog.show();
+    }
+
+    private void launchPreference() {
         handleClose();
         Intent intent = new Intent();
         /*if(android.os.Build.VERSION.SDK_INT < 11)  //Jeremy '12,4,30 Add for deprecated preferenceActivity after API 11 (HC)
@@ -3328,7 +3441,8 @@ public class LIMEService extends InputMethodService
 
                         // Emoji Control
                         // Check the Emoji parameter setting and load icons into the suggestions list
-                        if (mLIMEPref.getEmojiMode()) {
+                        int insertPosition = mLIMEPref.getEmojiDisplayPosition();
+                        if (insertPosition > 0) {
                             HashMap<String, String> emojiCheck = new HashMap<>();
                             List<Mapping> emojiList = new LinkedList<>();
 
@@ -3336,7 +3450,6 @@ public class LIMEService extends InputMethodService
 
                                 List<Mapping> item1 = null, item2, item3;
 
-                                int insertPosition = mLIMEPref.getEmojiDisplayPosition();
                                 if (list.size() <= insertPosition) {
                                     insertPosition = list.size();
                                 }
@@ -3523,14 +3636,14 @@ public class LIMEService extends InputMethodService
 
                                     // Emoji Control
                                     // Check the Emoji parameter setting and load icons into the suggestions list
-                                    if (mLIMEPref.getEmojiMode()) {
+                                    int insertPosition = mLIMEPref.getEmojiDisplayPosition();
+                                    if (insertPosition > 0) {
                                         HashMap<String, String> emojiCheck = new HashMap<>();
                                         List<Mapping> emojiList = new LinkedList<>();
 
                                         if (!list.isEmpty()) {
 
                                             List<Mapping> item1;
-                                            int insertPosition = mLIMEPref.getEmojiDisplayPosition();
                                             if (list.size() <= insertPosition) {
                                                 insertPosition = list.size();
                                             }
@@ -3738,6 +3851,26 @@ public class LIMEService extends InputMethodService
 
         mCandidateViewHandler.hideCandidateViewDelayed();
 
+    }
+
+    private void showEmptyCandidateToolbar() {
+        if (DEBUG) Log.i(TAG, "showEmptyCandidateToolbar()");
+
+        if (mComposing != null && mComposing.length() > 0)
+            mComposing.setLength(0);
+
+        selectedCandidate = null;
+
+        if (mCandidateList != null)
+            mCandidateList.clear();
+
+        if (mCandidateViewInInputView == null)
+            return;
+
+        mCandidateViewInInputView.setSuggestions(null, false);
+        mCandidateViewHandler.showCandidateView();
+        mCandidateInInputView.requestLayout();
+        mCandidateInInputView.updateCandidateViewWidthConstraint();
     }
 
     private void forceHideCandidateView() {
@@ -4052,7 +4185,7 @@ public class LIMEService extends InputMethodService
             mKeyboardSwitcher.toggleChinese();
             // mFixedCandidateViewOn is always true
             if (!mPredictionOn) {
-                forceHideCandidateView();
+                showEmptyCandidateToolbar();
             } else {
                 mCandidateViewInInputView.setSuggestions(null, false);  // reset the candidate view if it's force hided before
             }

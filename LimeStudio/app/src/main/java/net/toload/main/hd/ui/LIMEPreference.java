@@ -43,13 +43,17 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
+import androidx.preference.ListPreference;
 
 import net.toload.main.hd.R;
 import net.toload.main.hd.SearchServer;
+import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Keyboard;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -219,6 +223,7 @@ public class LIMEPreference extends AppCompatActivity {
 			}
 			mLIMEPref = new LIMEPreferenceManager(ctx);
 			SearchSrv = new SearchServer(ctx);
+			configureReverseLookupPreferenceEntries();
 
 			// On API 31+, vibration intensity is controlled by the system via performHapticFeedback.
 			// The vibrate_level duration preference has no effect, so hide it to avoid confusion.
@@ -288,12 +293,60 @@ public class LIMEPreference extends AppCompatActivity {
 					.commit();
 		}
 
+		private void configureReverseLookupPreferenceEntries() {
+			List<LIMEPreferenceManager.ReverseLookupOption> options = loadReverseLookupOptions();
+			CharSequence[] labels = LIMEPreferenceManager.reverseLookupLabels(options);
+			CharSequence[] values = LIMEPreferenceManager.reverseLookupValues(options);
+			PreferenceGroup root = getPreferenceScreen();
+			applyReverseLookupEntries(root, labels, values);
+		}
+
+		private List<LIMEPreferenceManager.ReverseLookupOption> loadReverseLookupOptions() {
+			try {
+				if (SearchSrv != null) {
+					List<ImConfig> all = SearchSrv.getImConfigList(null, LIME.IM_FULL_NAME);
+					List<ImConfig> active = new ArrayList<>();
+					for (ImConfig im : all) {
+						if (im != null && !"emoji".equals(im.getCode()) && !im.isDisable()) {
+							active.add(im);
+						}
+					}
+					return LIMEPreferenceManager.buildReverseLookupOptions(active, "無");
+				}
+			} catch (Exception e) {
+				Log.w(TAG, "loadReverseLookupOptions(): fallback to saved active IM state", e);
+			}
+			return mLIMEPref != null
+					? mLIMEPref.getReverseLookupOptions()
+					: LIMEPreferenceManager.buildReverseLookupOptions((String) null, "無");
+		}
+
+		private void applyReverseLookupEntries(PreferenceGroup group,
+				CharSequence[] labels, CharSequence[] values) {
+			if (group == null) return;
+			for (int i = 0; i < group.getPreferenceCount(); i++) {
+				Preference pref = group.getPreference(i);
+				if (pref instanceof ListPreference && isReverseLookupPreference(pref.getKey())) {
+					ListPreference listPreference = (ListPreference) pref;
+					listPreference.setEntries(labels);
+					listPreference.setEntryValues(values);
+				}
+				if (pref instanceof PreferenceGroup) {
+					applyReverseLookupEntries((PreferenceGroup) pref, labels, values);
+				}
+			}
+		}
+
+		private boolean isReverseLookupPreference(String key) {
+			return key != null && key.endsWith("_im_reverselookup");
+		}
+
 		@Override
 		public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
 			if(DEBUG)
 				Log.i(TAG,"onSharedPreferenceChanged(), key:" + key);
 
-			if(key.equals("phonetic_keyboard_type")){
+			if("phonetic_keyboard_type".equals(key)){
 				String selectedPhoneticKeyboardType = mLIMEPref.getPhoneticKeyboardType();
 				//PreferenceManager.getDefaultSharedPreferences(ctx).getString("phonetic_keyboard_type", "");
 				try {

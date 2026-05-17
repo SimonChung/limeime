@@ -2336,25 +2336,7 @@ public class LIMEServiceTest {
     }
 
     /**
-     * Tests emoji mode enable/disable setting.
-     */
-    @Test
-    public void test_5_6_2_1_EmojiModeSetting() {
-        // Test emoji mode setting (used by LIMEService)
-        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
-        
-        boolean emojiMode = prefManager.getEmojiMode();
-        // Value can be true or false, just verify it's accessible
-        assertTrue("Emoji mode should be accessible", true);
-        
-        // Note: setEmojiMode() method doesn't exist in LIMEPreferenceManager
-        // Only getter is available, so we just verify the getter works
-        assertTrue("Emoji mode getter should work", true);
-    }
-
-    /**
-     * Tests emoji display position preference (inline, separate).
+     * Tests emoji display position preference. Value 0 disables inline emoji.
      */
     @Test
     public void test_5_6_2_2_EmojiDisplayPositionSetting() {
@@ -2364,8 +2346,18 @@ public class LIMEServiceTest {
         
         Integer emojiDisplayPosition = prefManager.getEmojiDisplayPosition();
         assertNotNull("Emoji display position should not be null", emojiDisplayPosition);
+        assertEquals("Emoji display position should default to sixth candidate slot",
+                6, (int) emojiDisplayPosition);
         assertTrue("Emoji display position should be valid", emojiDisplayPosition >= 0);
-        
+
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext)
+                .edit()
+                .putBoolean("enable_emoji", false)
+                .putString("enable_emoji_position", "3")
+                .commit();
+        assertEquals("Old disabled emoji pref should migrate to position none",
+                0, (int) prefManager.getEmojiDisplayPosition());
+
         // Note: setEmojiDisplayPosition() method doesn't exist in LIMEPreferenceManager
         // Only getter is available, so we just verify the getter works
         assertTrue("Emoji display position getter should work", true);
@@ -2652,12 +2644,9 @@ public class LIMEServiceTest {
         assertTrue("Selkey option should have valid default", 
                   selkeyOption >= 0 && selkeyOption <= 2);
         
-        boolean emojiMode = prefManager.getEmojiMode();
-        // Value can be true or false, just verify it's accessible
-        assertTrue("Emoji mode should have valid default", true);
-        
         int emojiDisplayPosition = prefManager.getEmojiDisplayPosition();
-        assertTrue("Emoji display position should have valid default", emojiDisplayPosition >= 0);
+        assertEquals("Emoji display position should default to sixth candidate slot",
+                6, emojiDisplayPosition);
         
         Integer hanConvertOption = prefManager.getHanCovertOption();
         assertNotNull("Han convert option should not be null", hanConvertOption);
@@ -8149,18 +8138,18 @@ public class LIMEServiceTest {
 
     /**
      * Test settings menu item selection
-     * Tests launchSettings() opens LIMEPreference activity
+     * Tests launchPreference() opens LIMEPreference activity
      * Note: Requires full service lifecycle - expects exception in unit test context
      */
     @Test
     public void test_5_21_3_SettingsMenuItemSelection() throws Exception {
         LIMEService limeService = new LIMEService();
         try {
-            java.lang.reflect.Method launchSettings = LIMEService.class.getDeclaredMethod("launchSettings");
-            launchSettings.setAccessible(true);
+            java.lang.reflect.Method launchPreference = LIMEService.class.getDeclaredMethod("launchPreference");
+            launchPreference.setAccessible(true);
 
             try {
-                launchSettings.invoke(limeService);
+                launchPreference.invoke(limeService);
                 assertTrue("Settings launch invoked (may be stubbed)", true);
             } catch (java.lang.reflect.InvocationTargetException e) {
                 // Expected: requires Context to create Intent with setClass()

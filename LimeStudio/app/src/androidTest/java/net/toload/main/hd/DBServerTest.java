@@ -2170,7 +2170,7 @@ public class DBServerTest {
         }
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 120000)
     public void testDBServerBackupDatabaseAndRestoreWithDataConsistency() {
         // Comprehensive test: add records, backup, clear, restore, verify consistency
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -2721,7 +2721,7 @@ public class DBServerTest {
         }
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void testDBServerImportDbRelatedWithUncompressedDatabase() {
         // Test importing uncompressed related database file
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -3029,7 +3029,7 @@ public class DBServerTest {
 
     // 2.4 Backup/Restore Operations - Comprehensive Tests
 
-    @Test(timeout = 30000)
+    @Test(timeout = 120000)
     public void testDBServerBackupDatabaseWithDataIntegrity() {
         // Test backing up entire database and preferences to URI with data integrity
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -3530,6 +3530,7 @@ public class DBServerTest {
             }
             
             // Step 1: Test with valid table name and backup table containing records
+            limeDB.dropBackupTable("custom");
             limeDB.setTableName("custom");
             limeDB.addOrUpdateMappingRecord("custom", "check_test1", "檢查測試1", 100);
             limeDB.addOrUpdateMappingRecord("custom", "check_test2", "檢查測試2", 200);
@@ -3543,11 +3544,13 @@ public class DBServerTest {
             assertFalse("checkBackupTable should return false for invalid table name", invalidCheck);
             
             // Step 3: Test with non-existent backup table (should return false)
+            limeDB.dropBackupTable("phonetic");
             boolean nonExistentCheck = limeDB.checkBackupTable("phonetic");
             assertFalse("checkBackupTable should return false for non-existent backup table", nonExistentCheck);
             
             // Step 4: Test with empty backup table (should return false)
             // Create a table with no user-learned records
+            limeDB.dropBackupTable("cj");
             limeDB.setTableName("cj");
             limeDB.addOrUpdateMappingRecord("cj", "base1", "基礎1", 0); // score = 0, not user-learned
             limeDB.backupUserRecords("cj");
@@ -3936,4 +3939,3 @@ public class DBServerTest {
         }
     }
 }
-

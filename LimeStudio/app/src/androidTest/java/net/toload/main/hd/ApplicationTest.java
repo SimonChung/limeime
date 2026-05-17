@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.ui.LIMESettings;
 
@@ -43,6 +44,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -158,6 +161,54 @@ public class ApplicationTest {
         android.content.SharedPreferences prefs = 
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext);
         prefs.edit().remove(testKey).apply();
+    }
+
+    @Test
+    public void testLIMEPreferenceManagerReverseLookupRoundTrip() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
+
+        prefManager.setReverseLookupTable("phonetic", "cj");
+        prefManager.setReverseLookupTable("dayi", "array");
+
+        assertEquals("Phonetic should use the legacy bpmf reverse lookup key",
+                "cj", prefManager.getReverseLookupTable("phonetic"));
+        assertEquals("Non-phonetic IMs should use table_im_reverselookup",
+                "array", prefManager.getReverseLookupTable("dayi"));
+
+        android.content.SharedPreferences prefs =
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext);
+        prefs.edit()
+                .remove("bpmf_im_reverselookup")
+                .remove("dayi_im_reverselookup")
+                .apply();
+    }
+
+    @Test
+    public void testReverseLookupOptionsUseEnabledIMLabelsButKeepTableCodes() {
+        ImConfig cj = new ImConfig();
+        cj.setCode("cj");
+        cj.setDesc("倉頡輸入法");
+        cj.setDisable(false);
+
+        ImConfig dayi = new ImConfig();
+        dayi.setCode("dayi");
+        dayi.setDesc("大易輸入法");
+        dayi.setDisable(false);
+
+        ImConfig array = new ImConfig();
+        array.setCode("array");
+        array.setDesc("行列輸入法");
+        array.setDisable(true);
+
+        List<LIMEPreferenceManager.ReverseLookupOption> options =
+                LIMEPreferenceManager.buildReverseLookupOptions(
+                        Arrays.asList(cj, dayi, array), "無");
+
+        assertEquals(Arrays.asList("無", "倉頡輸入法", "大易輸入法"),
+                Arrays.asList(LIMEPreferenceManager.reverseLookupLabels(options)));
+        assertEquals(Arrays.asList("none", "cj", "dayi"),
+                Arrays.asList(LIMEPreferenceManager.reverseLookupValues(options)));
     }
 
     @Test

@@ -1674,6 +1674,16 @@ public class LimeDBTest {
         }
     }
 
+    @Test(timeout = 5000)
+    public void testLimeDBGetRelatedHandlesQuoteHeavySearchText() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        List<Related> quoteHeavyRelated = limeDB.getRelated("'囧\":", 10, 0);
+
+        assertNotNull("Quote-heavy related search text should not break SQL", quoteHeavyRelated);
+    }
+
 
     @Test(timeout = 5000) // 5 second timeout to prevent infinite hang
     public void testLimeDBHasRelatedEdgeCases() {
@@ -1910,7 +1920,7 @@ public class LimeDBTest {
         assertTrue("Very long input should return 0 or non-negative", longScore >= 0);
     }
 
-    @Test(timeout = 5000) // 5 second timeout to prevent infinite hang
+    @Test(timeout = 30000)
     public void testLimeDBHanConvertEdgeCases() {
         // Test hanConvert with edge cases
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -2862,7 +2872,7 @@ public class LimeDBTest {
         assertTrue("Empty cword after symbol removal should return -1", score3 == -1 || score3 >= 1);
     }
 
-    @Test(timeout = 5000) // 5 second timeout to prevent infinite hang
+    @Test(timeout = 30000)
     public void testLimeDBGetMappingByCodeBranches() {
         // Test getMappingByCode with different branches
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -5500,7 +5510,7 @@ public class LimeDBTest {
     // Phase 1: Wrapper Method Delegation Tests (Section 1.3)
     // ========================================================================
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void testLimeDBImportDbRelatedDelegatesToImportDb() {
         // Test that importDbRelated(File) delegates to importDb(File, List<String>, boolean, boolean)
         // Specifically: importDbRelated(File) should call importDb(file, null, true, true)

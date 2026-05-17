@@ -78,10 +78,7 @@
 
     <string name="keyboard_list">LIME 輸入法切換</string>
 
-    <string name="enable_emoji">開啟 EMOJI 顯示</string>
-    <string name="enable_emoji_summary">依字根或中文組字顯示圖示, 由於字型支援的差異所以部份圖示可能無法正確顯示</string>
-    <string name="enable_emoji_button">顯示 Emoji 鍵盤按鈕</string>
-    <string name="enable_emoji_button_summary">在英文鍵盤顯示 😀 按鈕以開啟 Emoji 面板</string>
+    <string name="candidate_emoji_button">開啟 Emoji 面板</string>
     <string name="enable_emoji_position">設定 EMOJI 候選列顯示位置</string>
     <string name="enable_emoji_position_dialog_title">設定顯示位置</string>
     <string name="persistent_language_mode">記憶中英模式</string>
@@ -112,6 +109,7 @@
     <string name="enable_english_dictionary_physical_keyboard">實體鍵盤啟用英文字典</string>
     <string name="enable_english_dictionary_physical_keyboard_summary">實體鍵盤使用英文輸入模式時，顯示英文建議字</string>
     <string name="im_reverse_lookup_list">輸入法字根反查</string>
+    <string name="keyboard_menu_reverse_lookup">字根反查：%1$s</string>
     <string name="default_reverse_lookup_list">自建</string>
     <string name="cj_reverse_lookup_list">倉頡</string>
     <string name="scj_reverse_lookup_list">快倉</string>
@@ -125,8 +123,6 @@
     <string name="wb_reverse_lookup_list">筆順五碼</string>
     <string name="hs_reverse_lookup_list">華象直覺</string>
     <string name="pinyin_reverse_lookup_list">拼音</string>
-
-    <string name="reverse_lookup_notify">啟用字根反查跳出提示</string>
 
     <string name="han_convert_option_list">中文簡/繁體字碼轉換</string>
     <string name="selkey_option_list">設定選字鍵預選順序</string>
@@ -233,6 +229,7 @@
     </string-array>
 
     <string-array name="emoji_display_position_title">
+        <item>不顯示 Emoji 候選字</item>
         <item>第 2 候選字後顯示</item>
         <item>第 3 候選字後顯示</item>
         <item>第 4 候選字後顯示</item>
@@ -245,6 +242,7 @@
     </string-array>
 
     <string-array name="emoji_display_position">
+        <item>0</item>
         <item>2</item>
         <item>3</item>
         <item>4</item>

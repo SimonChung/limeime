@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ /*
   ~  *
@@ -63,11 +63,10 @@
     </Row>
     
     <Row>
-        <Key limehd:codes="-10" limehd:keyLabel="中" limehd:isModifier="true"
-                limehd:keyEdgeFlags="left"/>
         <Key limehd:codes="97" limehd:keyLabel="a"
                  limehd:popupKeyboard="@xml/popup_template"
-                limehd:popupCharacters="@string/alternates_for_a"/>
+                limehd:popupCharacters="@string/alternates_for_a"
+                limehd:keyEdgeFlags="left"/>
         <Key limehd:codes="115" limehd:keyLabel="s"
                  limehd:popupKeyboard="@xml/popup_template"
                 limehd:popupCharacters="@string/alternates_for_s"
@@ -114,7 +113,7 @@
 
        <Row limehd:keyboardMode="@+id/mode_normal" limehd:rowEdgeFlags="bottom">
     	<Key limehd:codes="-3"  limehd:keyIcon="@drawable/sym_keyboard_done_light" limehd:isModifier="true" limehd:keyWidth="15%p" limehd:keyEdgeFlags="left"/>
-        <Key limehd:codes="-201" limehd:keyLabel="😀" limehd:isModifier="true" limehd:keyWidth="10%p" />
+        <Key limehd:codes="-10" limehd:keyLabel="中" limehd:isModifier="true" limehd:keyWidth="10%p" />
         <Key limehd:codes="60" limehd:keyLabel="&lt;" limehd:keyWidth="10%p"/>
         <Key limehd:codes="32" limehd:keyIcon="@drawable/sym_keyboard_space_light"
 
@@ -128,7 +127,7 @@
 
     <Row limehd:keyboardMode="@+id/mode_url" limehd:rowEdgeFlags="bottom">
         <Key limehd:codes="-3"  limehd:keyIcon="@drawable/sym_keyboard_done_light" limehd:isModifier="true" limehd:keyWidth="15%p" limehd:keyEdgeFlags="left"/>
-        <Key limehd:codes="-201" limehd:keyLabel="😀" limehd:isModifier="true" limehd:keyWidth="10%p" />
+        <Key limehd:codes="-10" limehd:keyLabel="中" limehd:isModifier="true" limehd:keyWidth="10%p" />
         <Key limehd:keyLabel="@string/popular_domain_0"
                 limehd:keyOutputText="@string/popular_domain_0"
                  limehd:popupKeyboard="@xml/popup_domains"
@@ -146,7 +145,7 @@
 
     <Row limehd:keyboardMode="@+id/mode_email" limehd:rowEdgeFlags="bottom">
     	<Key limehd:codes="-3"  limehd:keyIcon="@drawable/sym_keyboard_done_light" limehd:isModifier="true" limehd:keyWidth="15%p" limehd:keyEdgeFlags="left"/>
-        <Key limehd:codes="-201" limehd:keyLabel="😀" limehd:isModifier="true" limehd:keyWidth="10%p" />
+        <Key limehd:codes="-10" limehd:keyLabel="中" limehd:isModifier="true" limehd:keyWidth="10%p" />
         <Key limehd:keyLabel="/" limehd:keyWidth="10%p"/>
         <Key limehd:keyLabel="@string/popular_domain_0"
                 limehd:keyOutputText="@string/popular_domain_0"
@@ -167,7 +166,7 @@
 
     <Row limehd:keyboardMode="@+id/mode_im" limehd:rowEdgeFlags="bottom">
     	<Key limehd:codes="-3"  limehd:keyIcon="@drawable/sym_keyboard_done_light" limehd:isModifier="true" limehd:keyWidth="15%p" limehd:keyEdgeFlags="left"/>
-        <Key limehd:codes="-201" limehd:keyLabel="😀" limehd:isModifier="true" limehd:keyWidth="10%p" />
+        <Key limehd:codes="-10" limehd:keyLabel="中" limehd:isModifier="true" limehd:keyWidth="10%p" />
         <Key limehd:codes="60" limehd:keyLabel="&lt;" limehd:keyWidth="10%p" />
         <Key limehd:codes="32" limehd:keyIcon="@drawable/sym_keyboard_space_light"
 
