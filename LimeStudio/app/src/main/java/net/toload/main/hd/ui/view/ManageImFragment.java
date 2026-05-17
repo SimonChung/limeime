@@ -44,9 +44,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
-import android.util.TypedValue;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.MaterialColors;
 
 import net.toload.main.hd.data.Record;
 import net.toload.main.hd.global.LIME;
@@ -287,9 +287,7 @@ public class ManageImFragment extends Fragment implements ManageImView {
     }
 
     private void tintToolbarMenuIcons(MaterialToolbar toolbar) {
-        TypedValue typedValue = new TypedValue();
-        requireContext().getTheme().resolveAttribute(android.R.attr.textColorSecondary, typedValue, true);
-        int tint = typedValue.data;
+        int tint = MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnSurface);
         for (int i = 0; i < toolbar.getMenu().size(); i++) {
             Drawable icon = toolbar.getMenu().getItem(i).getIcon();
             if (icon != null) {

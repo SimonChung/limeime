@@ -30,7 +30,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -44,6 +43,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.color.MaterialColors;
 
 
 import net.toload.main.hd.global.LIME;
@@ -236,9 +236,7 @@ public class ManageRelatedFragment extends Fragment implements ManageRelatedView
     }
 
     private void tintToolbarMenuIcons(MaterialToolbar toolbar) {
-        TypedValue typedValue = new TypedValue();
-        requireContext().getTheme().resolveAttribute(android.R.attr.textColorSecondary, typedValue, true);
-        int tint = typedValue.data;
+        int tint = MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnSurface);
         for (int i = 0; i < toolbar.getMenu().size(); i++) {
             Drawable icon = toolbar.getMenu().getItem(i).getIcon();
             if (icon != null) {
