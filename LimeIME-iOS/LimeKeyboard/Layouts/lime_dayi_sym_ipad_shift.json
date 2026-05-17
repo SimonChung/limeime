@@ -362,8 +362,8 @@
           "longPressCode": 0
         },
         {
-          "code": 124,
-          "label": "|",
+          "code": 65311,
+          "label": "？",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -510,8 +510,8 @@
           "longPressCode": 0
         },
         {
-          "code": 59,
-          "label": ";",
+          "code": 58,
+          "label": ":",
           "sublabel": "虫",
           "widthPercent": 7.0,
           "icon": "",
@@ -658,8 +658,8 @@
           "longPressCode": 0
         },
         {
-          "code": 44,
-          "label": ",",
+          "code": 60,
+          "label": "<",
           "sublabel": "力",
           "widthPercent": 7.0,
           "icon": "",
@@ -671,8 +671,8 @@
           "longPressCode": 0
         },
         {
-          "code": 46,
-          "label": ".",
+          "code": 62,
+          "label": ">",
           "sublabel": "舟",
           "widthPercent": 7.0,
           "icon": "",
@@ -684,8 +684,8 @@
           "longPressCode": 0
         },
         {
-          "code": 47,
-          "label": "/",
+          "code": 63,
+          "label": "?",
           "sublabel": "竹",
           "widthPercent": 7.0,
           "icon": "",
@@ -729,7 +729,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -741,11 +741,11 @@
           "longPressCode": 0
         },
         {
-          "code": -99,
+          "code": -201,
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "mic",
+          "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
@@ -768,7 +768,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

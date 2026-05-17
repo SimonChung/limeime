@@ -938,20 +938,17 @@
           "popupCharacters": ""
         },
         {
-          "code": -99,
-          "codes": [
-            -99
-          ],
+          "code": -201,
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "mic",
+          "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 32,

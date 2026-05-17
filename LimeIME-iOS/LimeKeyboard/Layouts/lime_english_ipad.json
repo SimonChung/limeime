@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "lime_english_ipad",
   "defaultWidthPercent": 7.15,
   "rows": [
@@ -470,7 +470,7 @@
           ],
           "label": "中",
           "sublabel": "",
-          "widthPercent": 9.0,
+          "widthPercent": 11.5,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
@@ -662,7 +662,7 @@
           ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 14.0,
+          "widthPercent": 11.5,
           "icon": "return",
           "isModifier": true,
           "isRepeatable": false,
@@ -907,19 +907,16 @@
         },
         {
           "code": -201,
-          "codes": [
-            -201
-          ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 8.0,
+          "widthPercent": 7.0,
           "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
-          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": ""
+          "popupCharacters": "",
+          "longPressCode": 0
         },
         {
           "code": 32,
@@ -928,25 +925,9 @@
           ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 49.0,
+          "widthPercent": 57.0,
           "icon": "space.bar",
           "isModifier": false,
-          "isRepeatable": false,
-          "isSticky": false,
-          "longPressCode": 0,
-          "popupKeyboard": "",
-          "popupCharacters": ""
-        },
-        {
-          "code": -99,
-          "codes": [
-            -99
-          ],
-          "label": "",
-          "sublabel": "",
-          "widthPercent": 7.0,
-          "icon": "mic",
-          "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
           "longPressCode": 0,

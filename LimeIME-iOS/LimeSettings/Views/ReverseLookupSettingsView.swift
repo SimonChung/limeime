@@ -1,4 +1,4 @@
-// ReverseLookupSettingsView.swift
+﻿// ReverseLookupSettingsView.swift
 // LimeIME-iOS
 //
 // Per-IM reverse lookup source pickers.
@@ -10,28 +10,12 @@ import SwiftUI
 
 struct ReverseLookupSettingsView: View {
 
-    // All 13 reverse-lookup preference keys
-    @AppStorage("custom_im_reverselookup",  store: sharedDefaults) private var custom: String  = "none"
-    @AppStorage("cj_im_reverselookup",      store: sharedDefaults) private var cj: String      = "none"
-    @AppStorage("scj_im_reverselookup",     store: sharedDefaults) private var scj: String     = "none"
-    @AppStorage("cj5_im_reverselookup",     store: sharedDefaults) private var cj5: String     = "none"
-    @AppStorage("ecj_im_reverselookup",     store: sharedDefaults) private var ecj: String     = "none"
-    @AppStorage("dayi_im_reverselookup",    store: sharedDefaults) private var dayi: String    = "none"
-    @AppStorage("phonetic_im_reverselookup", store: sharedDefaults) private var bpmf: String    = "none"
-    @AppStorage("ez_im_reverselookup",      store: sharedDefaults) private var ez: String      = "none"
-    @AppStorage("array_im_reverselookup",   store: sharedDefaults) private var array: String   = "none"
-    @AppStorage("array10_im_reverselookup", store: sharedDefaults) private var array10: String = "none"
-    @AppStorage("wb_im_reverselookup",      store: sharedDefaults) private var wb: String      = "none"
-    @AppStorage("hs_im_reverselookup",      store: sharedDefaults) private var hs: String      = "none"
-    @AppStorage("pinyin_im_reverselookup",  store: sharedDefaults) private var pinyin: String  = "none"
+    @EnvironmentObject private var manageImController: ManageImController
 
-    // Available lookup source options (spec §8.4.1)
-    private let lookupValues = ["none", "custom", "cj", "scj", "cj5", "ecj",
-                                 "dayi", "phonetic", "ez", "array", "array10",
-                                 "wb", "hs", "pinyin"]
-    private let lookupLabels = ["無", "自建", "倉頡", "快倉", "倉頡五代", "速成",
-                                 "大易", "注音", "輕鬆", "行列", "行列 10",
-                                 "筆順五碼", "華象直覺", "拼音"]
+    private let prefs = LIMEPreferenceManager.shared
+    @State private var lookupTargets: [LIMEPreferenceManager.ReverseLookupOption] = []
+    @State private var lookupOptions = LIMEPreferenceManager.fallbackReverseLookupOptions
+    @State private var selections: [String: String] = [:]
 
     var body: some View {
         Form {
@@ -42,30 +26,46 @@ struct ReverseLookupSettingsView: View {
             }
 
             Section(header: Text("各輸入法反查來源")) {
-                lookupPicker("自建",     selection: $custom)
-                lookupPicker("倉頡",     selection: $cj)
-                lookupPicker("快倉",     selection: $scj)
-                lookupPicker("倉頡五代", selection: $cj5)
-                lookupPicker("速成",     selection: $ecj)
-                lookupPicker("大易",     selection: $dayi)
-                lookupPicker("注音",     selection: $bpmf)
-                lookupPicker("輕鬆",     selection: $ez)
-                lookupPicker("行列",     selection: $array)
-                lookupPicker("行列 10",  selection: $array10)
-                lookupPicker("筆順五碼", selection: $wb)
-                lookupPicker("華象直覺", selection: $hs)
-                lookupPicker("拼音",     selection: $pinyin)
+                if lookupTargets.isEmpty {
+                    Text("尚未啟用任何輸入法")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(lookupTargets, id: \.value) { target in
+                        lookupPicker(target)
+                    }
+                }
             }
         }
         .navigationTitle("字根反查設定")
+        .task { await loadLookupOptions() }
     }
 
-    private func lookupPicker(_ label: String, selection: Binding<String>) -> some View {
-        Picker(label, selection: selection) {
-            ForEach(0..<lookupValues.count, id: \.self) { i in
-                Text(lookupLabels[i]).tag(lookupValues[i])
+    private func lookupPicker(_ target: LIMEPreferenceManager.ReverseLookupOption) -> some View {
+        Picker(target.label, selection: binding(for: target.value)) {
+            ForEach(lookupOptions, id: \.value) { option in
+                Text(option.label).tag(option.value)
             }
         }
         .pickerStyle(.menu)
+    }
+
+    private func binding(for tableNick: String) -> Binding<String> {
+        Binding(
+            get: { selections[tableNick] ?? prefs.reverseLookup(for: tableNick) },
+            set: { value in
+                selections[tableNick] = value
+                prefs.setReverseLookup(value, for: tableNick)
+            }
+        )
+    }
+
+    private func loadLookupOptions() async {
+        let configs = await manageImController.loadIMList()
+        let options = LIMEPreferenceManager.reverseLookupOptions(from: configs)
+        lookupOptions = options
+        lookupTargets = LIMEPreferenceManager.reverseLookupTargets(from: configs)
+        selections = Dictionary(uniqueKeysWithValues: lookupTargets.map { target in
+            (target.value, prefs.reverseLookup(for: target.value))
+        })
     }
 }

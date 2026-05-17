@@ -1,4 +1,4 @@
-// SetupTabView.swift
+﻿// SetupTabView.swift
 // LimeIME-iOS
 //
 // App Setup tab — keyboard activation guide, status detection, about.
@@ -124,8 +124,8 @@ struct SetupTabView: View {
                     .padding(.horizontal, 24)
 
                     // ── Explanatory note ──────────────────────────────────
-                    Text("允許完整取用後，萊姆輸入法才能存取使用者詞庫並提供候選字建議。萊姆輸入法不會收集或傳送您的輸入內容。")
-                        .font(.footnote)
+                    Text("萊姆輸入法僅需完整取用以啟用按鍵震動回饋。若不需要此功能，可不開啟。萊姆輸入法不會收集或傳送任何個人資料。")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)

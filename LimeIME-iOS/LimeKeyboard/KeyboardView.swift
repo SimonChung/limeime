@@ -124,6 +124,8 @@ struct KeyboardPalette {
 
 protocol KeyboardViewDelegate: AnyObject {
     func keyboardView(_ view: KeyboardView, didPress keyDef: KeyDef)
+    func keyboardView(_ view: KeyboardView, didRelease keyDef: KeyDef)
+    func keyboardView(_ view: KeyboardView, didUpdateShiftHoldActive active: Bool)
     func keyboardView(_ view: KeyboardView, didLongPress keyDef: KeyDef)
     /// Called when a key with a non-empty `popupKeyboard` is long-pressed.
     /// `sourceRect` is the key's frame in the KeyboardView's coordinate space.
@@ -143,6 +145,19 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     /// The system only plays the click sound when the visible input view returns true here.
     var enableInputClicksWhenVisible: Bool { true }
 
+    static func shouldUseDualRowGesture(isPad: Bool, layoutId: String, keyDef: KeyDef) -> Bool {
+        isPad
+            && layoutId.contains("_ipad")
+            && keyDef.longPressCode != 0
+            && keyDef.longPressCode != LimeKeyCode.keyboardOptionsMenu.rawValue
+            && keyDef.popupKeyboard.isEmpty
+    }
+
+    static func shouldUseLimeOptionsMenuGesture(keyDef: KeyDef) -> Bool {
+        keyDef.code == LimeKeyCode.done.rawValue
+            || (keyDef.longPressCode == LimeKeyCode.keyboardOptionsMenu.rawValue
+                && keyDef.code != LimeKeyCode.globe.rawValue)
+    }
 
     weak var delegate: KeyboardViewDelegate?
 
@@ -152,8 +167,11 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private var repeatTimer: Timer?
     private var repeatKeyDef: KeyDef?
     private weak var globeButton: UIButton?
+    private var shiftHoldTrackingActive = false
     /// Set by KeyboardViewController so globe button uses the system keyboard picker.
-    weak var inputModeViewController: UIInputViewController?
+    weak var inputModeViewController: UIInputViewController? {
+        didSet { configureGlobeButtonForSystemPicker() }
+    }
 
     // MARK: - Feedback settings (spec §15)
     var feedbackVibration: Bool = false
@@ -381,6 +399,20 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         globeButton?.isHidden = !visible
     }
 
+    private func configureGlobeButtonForSystemPicker() {
+        guard let btn = globeButton,
+              let ivc = inputModeViewController else { return }
+
+        btn.removeTarget(self, action: #selector(keyboardKeyTapped(_:)), for: .touchUpInside)
+        btn.removeTarget(nil, action: #selector(UIInputViewController.handleInputModeList(from:with:)),
+                         for: .allTouchEvents)
+        btn.gestureRecognizers?
+            .filter { $0 is UILongPressGestureRecognizer }
+            .forEach { btn.removeGestureRecognizer($0) }
+        btn.addTarget(ivc, action: #selector(UIInputViewController.handleInputModeList(from:with:)),
+                      for: .allTouchEvents)
+    }
+
     // MARK: - Build
     private func buildKeys() {
         var prevRow: UIView? = nil
@@ -570,11 +602,15 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
         let btn = KeyButton(keyDef: keyDef)
 
-        // Keyboard dismiss key (code -3):
-        //   - single tap (touchUpInside): dismiss keyboard
-        //   - long press: show options menu (globe preview, spec §10)
-        // MUST use touchUpInside so the long-press GR can fire before the keyboard is dismissed.
-        if keyDef.code == LimeKeyCode.done.rawValue {
+        let isKeyboardOptionsKey = Self.shouldUseLimeOptionsMenuGesture(keyDef: keyDef)
+        let isSystemGlobe = keyDef.code == LimeKeyCode.globe.rawValue
+            && inputModeViewController != nil
+
+        // Keyboard options keys:
+        //   - single tap (touchUpInside): primary key action
+        //   - long press: show LIME options menu (globe preview, spec §10)
+        // MUST use touchUpInside so the long-press GR can fire before the primary action runs.
+        if isKeyboardOptionsKey {
             let lp = UILongPressGestureRecognizer(target: self, action: #selector(specialLongPressed(_:)))
             lp.minimumPressDuration = LayoutMetrics.Gesture.specialKeyHoldDuration
             btn.addGestureRecognizer(lp)
@@ -585,17 +621,13 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             shiftKeyButtons.append(btn)
         }
 
-        // Legacy globe key (code -200): use system keyboard picker when inputModeViewController
-        // is set (handleInputModeList handles both tap-advance and long-press-picker natively).
+        // Globe key (code -200): iPad JSONs still carry longPressCode=-100 for
+        // compatibility, but globe long-press belongs to iOS' input-mode picker.
         if keyDef.code == LimeKeyCode.globe.rawValue {
             globeButton = btn
-            if let ivc = inputModeViewController {
+            if isSystemGlobe, let ivc = inputModeViewController {
                 btn.addTarget(ivc, action: #selector(UIInputViewController.handleInputModeList(from:with:)),
                               for: .allTouchEvents)
-            } else {
-                let lp = UILongPressGestureRecognizer(target: self, action: #selector(specialLongPressed(_:)))
-                lp.minimumPressDuration = LayoutMetrics.Gesture.specialKeyHoldDuration
-                btn.addGestureRecognizer(lp)
             }
         }
 
@@ -609,12 +641,14 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         applyButtonStyle(btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: totalPercent)
 
         btn.addTarget(self, action: #selector(keyDown(_:event:)), for: .touchDown)
-        btn.addTarget(self, action: #selector(keyUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        btn.addTarget(self, action: #selector(keyUp(_:)), for: [.touchUpInside, .touchUpOutside])
+        btn.addTarget(self, action: #selector(keyCancel(_:)), for: .touchCancel)
         // Done, globe, and popup keys fire didPress on touchUpInside (deferred so long-press can intercept)
-        let isDualRowIPadKey = isPad && keyDef.longPressCode != 0 && keyDef.popupKeyboard.isEmpty
-                            && layout.id.hasSuffix("_ipad")
-        let isSystemGlobe = keyDef.code == LimeKeyCode.globe.rawValue && inputModeViewController != nil
+        let isDualRowIPadKey = Self.shouldUseDualRowGesture(isPad: isPad,
+                                                             layoutId: layout.id,
+                                                             keyDef: keyDef)
         if keyDef.code == LimeKeyCode.done.rawValue
+            || isKeyboardOptionsKey
             || (keyDef.code == LimeKeyCode.globe.rawValue && !isSystemGlobe)
             || !keyDef.popupKeyboard.isEmpty || isDualRowIPadKey {
             btn.addTarget(self, action: #selector(keyboardKeyTapped(_:)), for: .touchUpInside)
@@ -742,6 +776,9 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             // Single label key
             btn.setTitle(keyDef.label, for: .normal)
             btn.titleLabel?.font = keySingleLabelFont
+            btn.titleLabel?.adjustsFontSizeToFitWidth = true
+            btn.titleLabel?.minimumScaleFactor = 0.5
+            btn.titleLabel?.lineBreakMode = .byClipping
             btn.setTitleColor(keyLabel, for: .normal)
         }
 
@@ -870,6 +907,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         btn.backgroundColor = pressedKeyColor
 
         let keyDef = keyBtn.keyDef
+        updateShiftHoldTracking(for: keyDef, event: event)
 
         // Haptic / audio feedback (spec §15)
         if feedbackVibration { impactFeedback.impactOccurred() }
@@ -892,8 +930,9 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         // before the primary action fires (prevents double-insert on non-modifier popup keys).
         // iPad dual-row top keys: deferred so slide-down gesture can intercept and commit
         // the secondary glyph (longPressCode) instead of the primary.
-        let isDualRowIPad = isPad && keyDef.longPressCode != 0 && keyDef.popupKeyboard.isEmpty
-                         && layout.id.hasSuffix("_ipad")
+        let isDualRowIPad = Self.shouldUseDualRowGesture(isPad: isPad,
+                                                          layoutId: layout.id,
+                                                          keyDef: keyDef)
         let deferToTouchUp = keyDef.code == LimeKeyCode.done.rawValue
                           || keyDef.code == LimeKeyCode.globe.rawValue
                           || !keyDef.popupKeyboard.isEmpty
@@ -924,11 +963,42 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
     @objc private func keyUp(_ btn: UIButton) {
         guard let keyBtn = btn as? KeyButton else { return }
+        if keyBtn.keyDef.code == LimeKeyCode.shift.rawValue {
+            shiftHoldTrackingActive = false
+        }
+        let isModifier = keyBtn.keyDef.isModifier
+        btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor
+        delegate?.keyboardViewDismissPreview(self)
+        delegate?.keyboardView(self, didRelease: keyBtn.keyDef)
+        stopRepeating()
+        keyBtn.wasSlideDown = false
+    }
+
+    @objc private func keyCancel(_ btn: UIButton) {
+        guard let keyBtn = btn as? KeyButton else { return }
         let isModifier = keyBtn.keyDef.isModifier
         btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor
         delegate?.keyboardViewDismissPreview(self)
         stopRepeating()
         keyBtn.wasSlideDown = false
+    }
+
+    private func updateShiftHoldTracking(for keyDef: KeyDef, event: UIEvent) {
+        if keyDef.code == LimeKeyCode.shift.rawValue {
+            shiftHoldTrackingActive = true
+            delegate?.keyboardView(self, didUpdateShiftHoldActive: true)
+            return
+        }
+
+        guard shiftHoldTrackingActive else { return }
+        let activeTouchCount = event.allTouches?
+            .filter { $0.phase != .ended && $0.phase != .cancelled }
+            .count ?? 1
+        let active = ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: activeTouchCount)
+        if !active {
+            shiftHoldTrackingActive = false
+        }
+        delegate?.keyboardView(self, didUpdateShiftHoldActive: active)
     }
 
     private func startRepeating() {

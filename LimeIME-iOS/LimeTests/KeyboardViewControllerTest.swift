@@ -14,7 +14,10 @@ final class KeyboardViewControllerTest: XCTestCase {
 
     private struct KeyboardKeyFixture: Decodable {
         let code: Int
+        let label: String
+        let sublabel: String
         let widthPercent: Double
+        let longPressCode: Int?
     }
 
     func testEmojiKeyboardKeyCodesUseReservedCrossPlatformRange() {
@@ -27,39 +30,189 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(LimeKeyCode.emojiCategoryFlags.rawValue, -212)
     }
 
-    func testEnglishLayoutHasEmojiLauncherOnBottomRowAndChineseSwitchAboveIt() {
+    func testEnglishLayoutHasChineseSwitchOnBottomRow() {
         let rows = LimeKeyLayout.english.rows
         let bottomCodes = rows.last?.keys.map(\.code) ?? []
-        let allNonBottomCodes = rows.dropLast().flatMap { $0.keys.map(\.code) }
 
-        XCTAssertTrue(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue))
-        XCTAssertFalse(bottomCodes.contains(LimeKeyCode.switchToIM.rawValue))
-        XCTAssertTrue(allNonBottomCodes.contains(LimeKeyCode.switchToIM.rawValue))
+        XCTAssertTrue(bottomCodes.contains(LimeKeyCode.switchToIM.rawValue))
+        XCTAssertFalse(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue))
     }
 
-    func testIPhoneEnglishJsonLayoutsExposeEmojiLauncher() throws {
+    func testIPhoneEnglishJsonLayoutsHaveChineseSwitchOnBottomRow() throws {
         for layoutID in ["lime_english", "lime_english_number"] {
             let layout = try loadKeyboardLayoutFixture(layoutID)
             let bottomCodes = layout.rows.first(where: { $0.isBottomRow })?.keys.map(\.code) ?? []
-            XCTAssertTrue(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue),
-                          "\(layoutID) should expose the emoji launcher")
+            XCTAssertTrue(bottomCodes.contains(LimeKeyCode.switchToIM.rawValue),
+                          "\(layoutID) should have 中 on the bottom row")
         }
     }
 
-    func testIPhoneEnglishJsonLayoutsKeepChineseSwitchOnHomeRowAndFullSpaceWidth() throws {
+    func testIPhoneEnglishJsonLayoutsHaveChineseSwitchOnBottomRowAndFullSpaceWidth() throws {
         for layoutID in ["lime_english", "lime_english_number"] {
             let layout = try loadKeyboardLayoutFixture(layoutID)
-            let homeCodes = layout.rows[layout.rows.count - 3].keys.map(\.code)
             let bottom = try XCTUnwrap(layout.rows.first(where: { $0.isBottomRow }))
             let bottomCodes = bottom.keys.map(\.code)
             let space = try XCTUnwrap(bottom.keys.first(where: { $0.code == 32 }))
 
-            XCTAssertEqual(homeCodes.first, LimeKeyCode.switchToIM.rawValue,
-                           "\(layoutID) should place 中 as the leftmost asdf-row key")
-            XCTAssertFalse(bottomCodes.contains(LimeKeyCode.switchToIM.rawValue),
-                           "\(layoutID) should not place 中 on the bottom row")
+            XCTAssertTrue(bottomCodes.contains(LimeKeyCode.switchToIM.rawValue),
+                          "\(layoutID) should place 中 on the bottom row")
+            XCTAssertFalse(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue),
+                           "\(layoutID) should not have emoji launcher on the bottom row")
             XCTAssertEqual(space.widthPercent, 30.0, "\(layoutID) should keep the full-width space key")
         }
+    }
+
+    func testIPhoneEnglishJsonLayoutsHaveNoEmojiLauncherKeyEmojiAccessedViaCandidateBar() throws {
+        for layoutID in ["lime_english", "lime_english_number"] {
+            let layout = try loadKeyboardLayoutFixture(layoutID)
+            let allCodes = layout.rows.flatMap { $0.keys.map(\.code) }
+            XCTAssertFalse(allCodes.contains(LimeKeyCode.emojiPanel.rawValue),
+                           "\(layoutID): emoji launcher was moved to the candidate bar")
+        }
+    }
+
+    // MARK: - iPad bottom-row tests (docs/IOS_KB_GAP.md §3.4)
+
+    private let iPadLayoutsForBottomRowAudit: [String] = [
+        "lime_english_ipad", "lime_english_ipad_shift",
+        "lime_english_number_ipad", "lime_english_number_ipad_shift",
+        "lime_abc_ipad", "lime_abc_ipad_shift",
+        "lime_phonetic_ipad", "lime_phonetic_ipad_shift",
+        "lime_array_ipad", "lime_cj_ipad",
+        "lime_dayi_ipad", "lime_et26_ipad", "lime_et_41_ipad",
+        "lime_ez_ipad", "lime_hs_ipad", "lime_hsu_ipad", "lime_wb_ipad",
+        "symbols1_ipad", "symbols2_ipad", "symbols3_ipad",
+        "lime_email_ipad", "lime_url_ipad",
+        "lime_number_ipad", "lime_shift_ipad",
+    ]
+
+    func testIPadBottomRowHasEmojiLeftOfSpaceAndNoVoiceKey() throws {
+        for id in iPadLayoutsForBottomRowAudit {
+            let layout = try loadKeyboardLayoutFixture(id)
+            let bottom = try XCTUnwrap(layout.rows.first(where: { $0.isBottomRow }),
+                                       "\(id): missing isBottomRow")
+            let codes = bottom.keys.map(\.code)
+            let spaceIx = try XCTUnwrap(codes.firstIndex(of: 32),
+                                        "\(id): no space key in bottom row")
+            XCTAssertEqual(codes[spaceIx - 1], LimeKeyCode.emojiPanel.rawValue,
+                           "\(id): emoji (-201) must be immediately left of space")
+            XCTAssertFalse(codes.contains(LimeKeyCode.voiceInput.rawValue),
+                           "\(id): iOS layouts must not expose voiceInput (-220)")
+        }
+    }
+
+    func testIPadBottomRowSumsToHundredPercent() throws {
+        for id in iPadLayoutsForBottomRowAudit {
+            let layout = try loadKeyboardLayoutFixture(id)
+            let bottom = try XCTUnwrap(layout.rows.first(where: { $0.isBottomRow }))
+            let sum = bottom.keys.map(\.widthPercent).reduce(0, +)
+            XCTAssertEqual(sum, 100.0, accuracy: 0.01,
+                           "\(id): bottom row widthPercent should sum to 100")
+        }
+    }
+
+    func testIPadBottomRowGlobeAndKeyboardKeysExposeOptionsMenuLongPress() throws {
+        for id in iPadLayoutsForBottomRowAudit {
+            let layout = try loadKeyboardLayoutFixture(id)
+            let bottom = try XCTUnwrap(layout.rows.first(where: { $0.isBottomRow }))
+            let globe = try XCTUnwrap(bottom.keys.first(where: { $0.code == LimeKeyCode.globe.rawValue }),
+                                      "\(id): missing globe key")
+            let keyboard = try XCTUnwrap(bottom.keys.first(where: { $0.code == LimeKeyCode.done.rawValue }),
+                                         "\(id): missing keyboard dismiss/options key")
+
+            XCTAssertEqual(globe.longPressCode, LimeKeyCode.keyboardOptionsMenu.rawValue,
+                           "\(id): globe carries the legacy options sentinel but must route to the iOS picker")
+            XCTAssertEqual(keyboard.longPressCode, LimeKeyCode.keyboardOptionsMenu.rawValue,
+                           "\(id): keyboard key long press should open the keyboard options menu")
+        }
+    }
+
+    func testIPadOptionsMenuKeysAreNotTreatedAsDualRowSecondaryGlyphKeys() {
+        let keyboardKey = KeyDef(code: LimeKeyCode.done.rawValue,
+                                 widthPercent: 8,
+                                 icon: "keyboard.chevron.compact.down",
+                                 isModifier: true,
+                                 longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue)
+        let globeKey = KeyDef(code: LimeKeyCode.globe.rawValue,
+                              widthPercent: 8,
+                              icon: "globe",
+                              isModifier: true,
+                              longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue)
+        let dualGlyphKey = KeyDef(code: 49,
+                                  label: "!\n1",
+                                  widthPercent: 6.6,
+                                  longPressCode: 33)
+
+        XCTAssertFalse(KeyboardView.shouldUseDualRowGesture(isPad: true,
+                                                            layoutId: "lime_english_ipad",
+                                                            keyDef: keyboardKey))
+        XCTAssertFalse(KeyboardView.shouldUseDualRowGesture(isPad: true,
+                                                            layoutId: "lime_english_ipad",
+                                                            keyDef: globeKey))
+        XCTAssertTrue(KeyboardView.shouldUseDualRowGesture(isPad: true,
+                                                           layoutId: "lime_english_ipad",
+                                                           keyDef: dualGlyphKey))
+        XCTAssertTrue(KeyboardView.shouldUseDualRowGesture(isPad: true,
+                                                           layoutId: "lime_english_ipad_shift",
+                                                           keyDef: dualGlyphKey))
+    }
+
+    func testDayiSymbolIPadShiftQuestionKeyKeepsRootSublabel() throws {
+        let layout = try loadKeyboardLayoutFixture("lime_dayi_sym_ipad_shift")
+        let keys = layout.rows.flatMap(\.keys)
+        let question = try XCTUnwrap(keys.first { $0.code == 63 },
+                                     "Dayi symbol iPad shift layout should keep the shifted ? key")
+
+        XCTAssertEqual(question.label, "?")
+        XCTAssertEqual(question.sublabel, "竹")
+    }
+
+    func testGlobeRoutesToSystemPickerWhileKeyboardKeyRoutesToLimeOptionsMenu() {
+        let keyboardKey = KeyDef(code: LimeKeyCode.done.rawValue,
+                                 widthPercent: 8,
+                                 icon: "keyboard.chevron.compact.down",
+                                 isModifier: true,
+                                 longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue)
+        let globeKey = KeyDef(code: LimeKeyCode.globe.rawValue,
+                              widthPercent: 8,
+                              icon: "globe",
+                              isModifier: true,
+                              longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue)
+
+        XCTAssertTrue(KeyboardView.shouldUseLimeOptionsMenuGesture(keyDef: keyboardKey))
+        XCTAssertFalse(KeyboardView.shouldUseLimeOptionsMenuGesture(keyDef: globeKey))
+    }
+
+    func testKeyLayoutHasVoiceInputCode() {
+        XCTAssertEqual(LimeKeyCode.voiceInput.rawValue, -220)
+    }
+
+    func testMomentaryShiftDoesNotResetAfterCharacterWhileShiftKeyIsHeld() {
+        XCTAssertFalse(ShiftResetPolicy.shouldResetAfterCharacter(isShiftOn: true,
+                                                                  capsLock: false,
+                                                                  shiftKeyIsHeld: true))
+        XCTAssertTrue(ShiftResetPolicy.shouldResetAfterCharacter(isShiftOn: true,
+                                                                 capsLock: false,
+                                                                 shiftKeyIsHeld: false))
+    }
+
+    func testHeldShiftOnlyResetsOnReleaseAfterItModifiedACharacter() {
+        XCTAssertTrue(ShiftResetPolicy.shouldResetAfterShiftRelease(capsLock: false,
+                                                                    holdModifiedCharacter: true))
+        XCTAssertFalse(ShiftResetPolicy.shouldResetAfterShiftRelease(capsLock: false,
+                                                                     holdModifiedCharacter: false))
+        XCTAssertFalse(ShiftResetPolicy.shouldResetAfterShiftRelease(capsLock: true,
+                                                                     holdModifiedCharacter: true))
+    }
+
+    func testShiftHoldTouchPolicyRequiresAnotherActiveTouch() {
+        XCTAssertTrue(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 2))
+        XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 1))
+        XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 0))
+    }
+
+    func testKeyboardExtensionDoesNotAttemptDirectVoiceAudioCapture() {
+        XCTAssertFalse(VoiceInputController.canCaptureAudioInKeyboardExtension)
     }
 
     func testCandidateChevronExpansionAllowsEnglishSuggestionsWithoutComposingBuffer() {
@@ -78,7 +231,7 @@ final class KeyboardViewControllerTest: XCTestCase {
         ))
     }
 
-    func testEmojiPanelPaginatorSplitsLargeCategoriesIntoDisplayPages() {
+    func testEmojiPanelPaginatorKeepsCategoryCompactAndColumnPacked() {
         let category = (0..<75).map { index in
             Mapping(id: index, code: "", word: "e\(index)",
                     score: 0, baseScore: 0,
@@ -87,16 +240,65 @@ final class KeyboardViewControllerTest: XCTestCase {
 
         let result = EmojiPanelPaginator.displayPages(sourcePages: [[], category],
                                                       cellsPerPage: 28,
+                                                      rowsPerPage: 4,
                                                       categoryButtonCount: 3)
 
         XCTAssertEqual(result.pages.map { $0.map(\.word) }, [
             [],
-            Array(0..<28).map { "e\($0)" },
-            Array(28..<56).map { "e\($0)" },
-            Array(56..<75).map { "e\($0)" },
+            Array(0..<75).map { "e\($0)" },
         ])
         XCTAssertEqual(result.categoryStartDisplayPageIndexes, [0, 0, 1])
-        XCTAssertEqual(result.sourcePageIndexes, [0, 1, 1, 1])
+        XCTAssertEqual(result.sourcePageIndexes, [0, 1])
+        XCTAssertEqual(result.columnCounts, [7, 19])
+        XCTAssertEqual(EmojiPanelScrollLayout.cellPosition(index: 5, rows: 4).column, 1)
+        XCTAssertEqual(EmojiPanelScrollLayout.cellPosition(index: 5, rows: 4).row, 1)
+    }
+
+    func testEmojiRecentSeedQueueKeepsFallbackBehindRealRecent() {
+        let recent = ["🎯", "😀"].map { emojiMapping($0) }
+        let fallback = ["😀", "😂", "😍"].map { emojiMapping($0) }
+
+        let merged = EmojiRecentSeedQueue.merged(recent: recent,
+                                                 fallback: fallback,
+                                                 limit: 4)
+
+        XCTAssertEqual(merged.map(\.word), ["🎯", "😀", "😂", "😍"])
+    }
+
+    func testEmojiRecentSeedQueueLetsRealRecentKickOutFallbackByLimit() {
+        let recent = ["1", "2", "3"].map { emojiMapping($0) }
+        let fallback = ["4", "5", "6"].map { emojiMapping($0) }
+
+        let merged = EmojiRecentSeedQueue.merged(recent: recent,
+                                                 fallback: fallback,
+                                                 limit: 4)
+
+        XCTAssertEqual(merged.map(\.word), ["1", "2", "3", "4"])
+    }
+
+    func testEmojiPanelScrollLayoutKeepsContentCoordinatesStableWhileScrolling() {
+        let contentFrame = EmojiPanelScrollLayout.contentFrame(viewportWidth: 390,
+                                                               contentWidth: 1400,
+                                                               contentHeight: 180)
+        let firstCellX = EmojiPanelScrollLayout.cellX(pageOffsetX: 390,
+                                                      column: 0,
+                                                      cellWidth: 52,
+                                                      horizontalInset: 12)
+        let laterCellX = EmojiPanelScrollLayout.cellX(pageOffsetX: 390,
+                                                      column: 3,
+                                                      cellWidth: 52,
+                                                      horizontalInset: 12)
+
+        XCTAssertEqual(contentFrame.origin.x, 0)
+        XCTAssertEqual(contentFrame.width, 1400)
+        XCTAssertEqual(firstCellX, 402)
+        XCTAssertEqual(laterCellX, 558)
+    }
+
+    private func emojiMapping(_ word: String) -> Mapping {
+        Mapping(id: 0, code: "", word: word,
+                score: 0, baseScore: 0,
+                recordType: Mapping.RecordType.emoji)
     }
 
     func testLimeToastStateShowsTrimmedNonEmptyMessage() {

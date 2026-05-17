@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # Generate iPad keyboard layout JSON files for LimeIME.
 # See docs/IPAD_KEYBOARD.md §4.2 for specifications.
 #
@@ -630,6 +630,8 @@ def build_cjk_ipad(lid, phone_name):
     # Digit → shift-symbol mapping for number-row shift layout.
     _DIGIT_SHIFT = {49:33, 50:64, 51:35, 52:36, 53:37, 54:94, 55:38, 56:42, 57:40, 48:41}
     _SHIFT_CHAR  = {33:'!', 64:'@', 35:'#', 36:'$', 37:'%', 94:'^', 38:'&', 42:'*', 40:'(', 41:')'}
+    _PUNCT_SHIFT = {44:60, 46:62, 47:63, 59:58}
+    _PUNCT_SHIFT_CHAR = {60:'<', 62:'>', 63:'?', 58:':'}
 
     def _row(tuples):
         """Normal row: preserve original codes and labels."""
@@ -642,6 +644,9 @@ def build_cjk_ipad(lid, phone_name):
             if c in _DIGIT_SHIFT:
                 sc = _DIGIT_SHIFT[c]
                 keys.append(mk(sc, label=_SHIFT_CHAR[sc], sublabel=sub, width=KEY_W))
+            elif c in _PUNCT_SHIFT and sub:
+                sc = _PUNCT_SHIFT[c]
+                keys.append(mk(sc, label=_PUNCT_SHIFT_CHAR[sc], sublabel=sub, width=KEY_W))
             elif 97 <= c <= 122:  # lowercase ASCII letter → uppercase
                 keys.append(mk(c - 32, label=lbl.upper(), sublabel=sub, width=KEY_W))
             else:

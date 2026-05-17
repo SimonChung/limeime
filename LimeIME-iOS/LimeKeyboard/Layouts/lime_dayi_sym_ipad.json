@@ -363,7 +363,7 @@
         },
         {
           "code": 12289,
-          "label": "|\\n、",
+          "label": "？\\n、",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -372,7 +372,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 124
+          "longPressCode": 65311
         }
       ]
     },
@@ -729,7 +729,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -741,11 +741,11 @@
           "longPressCode": 0
         },
         {
-          "code": -99,
+          "code": -201,
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "mic",
+          "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
@@ -768,7 +768,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

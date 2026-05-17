@@ -113,6 +113,8 @@ IM_KEY_SUBLABELS = {
 
 def build_sublabel_map(layout_id):
     """Return a char→sublabel dict for the given layout id, or empty dict."""
+    if layout_id == "lime_dayi":
+        return {}
     for prefix, (keys, chars) in IM_KEY_SUBLABELS.items():
         if layout_id.startswith(prefix):
             char_list = chars.split("|")

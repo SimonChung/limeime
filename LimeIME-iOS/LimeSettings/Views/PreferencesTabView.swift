@@ -4,7 +4,23 @@
 // IM Preferences — all 11 sections with @AppStorage(store: sharedDefaults).
 // Spec §8.
 
+import AVFoundation
+import Speech
 import SwiftUI
+
+// Keyboard extensions cannot reliably trigger
+// `SFSpeechRecognizer.requestAuthorization` or
+// `AVAudioSession.requestRecordPermission` — the system prompts are
+// owned by the host-app process. The Voice Input section's
+// "授權麥克風與語音辨識" button calls this from the LimeSettings (host)
+// app so both dialogs render. See docs/IOS_VOICE_INPUT.md §5.1.
+private enum VoiceInputPermissionPrimer {
+    static func requestAll() {
+        SFSpeechRecognizer.requestAuthorization { _ in
+            AVAudioSession.sharedInstance().requestRecordPermission { _ in }
+        }
+    }
+}
 
 // MARK: - PreferencesTabView
 
@@ -28,9 +44,7 @@ struct PreferencesTabView: View {
     @AppStorage("auto_chinese_symbol",      store: sharedDefaults) private var autoChineseSymbol: Bool = false
     @AppStorage("candidate_switch",         store: sharedDefaults) private var candidateSwitch: Bool = true
     @AppStorage("persistent_language_mode", store: sharedDefaults) private var persistentLanguageMode: Bool = false
-    @AppStorage("reverse_lookup_notify",    store: sharedDefaults) private var reverseLookupNotify: Bool = true
-    @AppStorage("enable_emoji",             store: sharedDefaults) private var enableEmoji: Bool = true
-    @AppStorage("enable_emoji_position",    store: sharedDefaults) private var emojiPosition: Int = 3
+    @AppStorage("enable_emoji_position",    store: sharedDefaults) private var emojiPosition: Int = 6
 
     // §5.2.2 "鍵盤類型" (phonetic_keyboard_type) is IM-specific — rendered in
     // IMDetailView for the phonetic IM only, not in the Preferences tab.
@@ -48,6 +62,9 @@ struct PreferencesTabView: View {
     // MARK: §8.7 English Dictionary
     @AppStorage("english_dictionary_enable", store: sharedDefaults) private var englishDictEnable: Bool = true
 
+    // MARK: Voice Input (docs/IOS_VOICE_INPUT.md §3.3)
+    @AppStorage("voice_input_locale", store: sharedDefaults) private var voiceInputLocale: String = "zh-TW"
+
     // MARK: Options
 
     // iOS-only value 6 = 系統設定 (follows UITraitCollection); must not be synced to Android pref store.
@@ -64,6 +81,12 @@ struct PreferencesTabView: View {
     private let hanOptions      = [0, 1, 2]
     private let hanLabels       = ["無", "繁轉簡", "簡轉繁"]
     private let similiarOpts    = [0, 10, 20, 30, 40, 50]
+    // Voice-input locale picker. Only locales supported by on-device
+    // SFSpeechRecognizer are useful at runtime; if a locale becomes
+    // unavailable, the keyboard mic falls back to a "not supported" toast
+    // (docs/IOS_VOICE_INPUT.md §4).
+    private let voiceLocaleOptions = ["zh-TW", "zh-CN", "zh-HK", "en-US", "en-GB", "ja-JP"]
+    private let voiceLocaleLabels  = ["繁體中文（台灣）", "簡體中文（中國）", "繁體中文（香港）", "English (US)", "English (UK)", "日本語"]
 
     @ViewBuilder
     private func prefRow(_ title: String, _ desc: String) -> some View {
@@ -131,14 +154,12 @@ struct PreferencesTabView: View {
                     Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點模式", "無候選字詞時顯示中文標點選項") }
                     Toggle(isOn: $candidateSwitch) { prefRow("滑動選取", "滑動選取輸入法建議文字") }
                     Toggle(isOn: $persistentLanguageMode) { prefRow("記憶中英模式", "下次切換前保持中英模式") }
-                    Toggle(isOn: $enableEmoji) { prefRow("開啟 EMOJI 顯示", "依字根或中文組字顯示圖示, 由於字型支援的差異所以部份圖示可能無法正確顯示") }
                     Picker("設定 EMOJI 候選列顯示位置", selection: $emojiPosition) {
+                        Text("不顯示 Emoji 候選字").tag(0)
                         ForEach(2...10, id: \.self) { pos in
                             Text("第 \(pos) 候選字後顯示").tag(pos)
                         }
                     }
-                    .disabled(!enableEmoji)
-                    Toggle("啟用字根反查跳出提示", isOn: $reverseLookupNotify)
                     NavigationLink(destination: ReverseLookupSettingsView()) {
                         Label("字根反查設定", systemImage: "magnifyingglass")
                     }
@@ -154,6 +175,18 @@ struct PreferencesTabView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+
+                // MARK: Voice Input (docs/IOS_VOICE_INPUT.md)
+                Section(header: Text("語音輸入"), footer: voiceInputFooter) {
+                    Picker("辨識語言", selection: $voiceInputLocale) {
+                        ForEach(0..<voiceLocaleOptions.count, id: \.self) { i in
+                            Text(voiceLocaleLabels[i]).tag(voiceLocaleOptions[i])
+                        }
+                    }
+                    Button("授權麥克風與語音辨識") {
+                        VoiceInputPermissionPrimer.requestAll()
+                    }
                 }
 
                 // MARK: §8.6
@@ -178,11 +211,26 @@ struct PreferencesTabView: View {
             }
             .navigationTitle("喜好設定")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear(perform: migrateRemovedPreferences)
         } detail: {
             Text("選擇設定項目")
                 .font(.title3)
                 .foregroundColor(.secondary)
         }
+    }
+
+    private func migrateRemovedPreferences() {
+        guard sharedDefaults.object(forKey: "enable_emoji") != nil else { return }
+        if sharedDefaults.bool(forKey: "enable_emoji") == false {
+            emojiPosition = 0
+        }
+        sharedDefaults.removeObject(forKey: "enable_emoji")
+    }
+
+    private var voiceInputFooter: some View {
+        Text("語音輸入需要允許完整取用,並於系統設定中授權麥克風與語音辨識權限。所有辨識皆在裝置內離線完成,不會上傳音訊或文字。")
+            .font(.footnote)
+            .foregroundColor(.secondary)
     }
 
 }

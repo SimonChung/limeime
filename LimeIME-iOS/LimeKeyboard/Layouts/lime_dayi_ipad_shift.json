@@ -362,8 +362,8 @@
           "longPressCode": 0
         },
         {
-          "code": 124,
-          "label": "|",
+          "code": 65311,
+          "label": "？",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -729,7 +729,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -741,11 +741,11 @@
           "longPressCode": 0
         },
         {
-          "code": -99,
+          "code": -201,
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "mic",
+          "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
@@ -768,7 +768,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

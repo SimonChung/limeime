@@ -33,12 +33,14 @@ final class LIMEPreferenceManagerTest: XCTestCase {
         XCTAssertEqual(prefs.keyboardTheme, 0)
     }
 
-    func testDefaultEnableEmoji() {
-        XCTAssertTrue(prefs.enableEmoji)
+    func testDefaultEnableEmojiPosition() {
+        XCTAssertEqual(prefs.enableEmojiPosition, 6)
     }
 
-    func testDefaultEnableEmojiPosition() {
-        XCTAssertEqual(prefs.enableEmojiPosition, 3)
+    func testMigratesDisabledEnableEmojiToPositionNone() {
+        testDefaults.set(false, forKey: "enable_emoji")
+        XCTAssertEqual(prefs.enableEmojiPosition, 0)
+        XCTAssertNil(testDefaults.object(forKey: "enable_emoji"))
     }
 
     func testDefaultKeyboardSize() {
@@ -99,10 +101,6 @@ final class LIMEPreferenceManagerTest: XCTestCase {
 
     func testDefaultHanConvertOption() {
         XCTAssertEqual(prefs.hanConvertOption, 0)
-    }
-
-    func testDefaultReverseLookupNotify() {
-        XCTAssertTrue(prefs.reverseLookupNotify)
     }
 
     func testDefaultSimiliarEnable() {
@@ -173,11 +171,6 @@ final class LIMEPreferenceManagerTest: XCTestCase {
         XCTAssertEqual(prefs.keyboardTheme, 3)
     }
 
-    func testRoundTripEnableEmoji() {
-        prefs.enableEmoji = false
-        XCTAssertFalse(prefs.enableEmoji)
-    }
-
     func testRoundTripKeyboardSize() {
         prefs.keyboardSize = "0.9"
         XCTAssertEqual(prefs.keyboardSize, "0.9")
@@ -221,6 +214,50 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     func testRoundTripReverseLookupBpmf() {
         prefs.phoneticImReverselookup = "phonetic"
         XCTAssertEqual(prefs.phoneticImReverselookup, "phonetic")
+    }
+
+    func testRoundTripReverseLookupByTableNick() {
+        prefs.setReverseLookup("cj", for: "phonetic")
+        prefs.setReverseLookup("array", for: "dayi")
+
+        XCTAssertEqual(prefs.reverseLookup(for: "phonetic"), "cj")
+        XCTAssertEqual(prefs.reverseLookup(for: "dayi"), "array")
+    }
+
+    func testReverseLookupOptionsUseEnabledIMLabelsButKeepTableNickValues() {
+        let configs = [
+            ImConfig(id: 1, imName: "cj", tableNick: "cj", label: "倉頡輸入法",
+                     fullName: "", keyboardId: "", keyboardLandscapeId: "",
+                     enabled: true, sortOrder: 0),
+            ImConfig(id: 2, imName: "dayi", tableNick: "dayi", label: "大易輸入法",
+                     fullName: "", keyboardId: "", keyboardLandscapeId: "",
+                     enabled: true, sortOrder: 1),
+            ImConfig(id: 3, imName: "array", tableNick: "array", label: "行列輸入法",
+                     fullName: "", keyboardId: "", keyboardLandscapeId: "",
+                     enabled: false, sortOrder: 2)
+        ]
+
+        let options = LIMEPreferenceManager.reverseLookupOptions(from: configs)
+
+        XCTAssertEqual(options.map(\.label), ["無", "倉頡輸入法", "大易輸入法"])
+        XCTAssertEqual(options.map(\.value), ["none", "cj", "dayi"])
+        XCTAssertEqual(LIMEPreferenceManager.reverseLookupTargets(from: configs).map(\.value), ["cj", "dayi"])
+    }
+
+    func testReverseLookupOptionsUseIMListLabelFallback() {
+        let configs = [
+            ImConfig(id: 1, imName: "phonetic", tableNick: "phonetic", label: "",
+                     fullName: "注音輸入法", keyboardId: "", keyboardLandscapeId: "",
+                     enabled: true, sortOrder: 0),
+            ImConfig(id: 2, imName: "custom", tableNick: "", label: "",
+                     fullName: "", keyboardId: "", keyboardLandscapeId: "",
+                     enabled: true, sortOrder: 1)
+        ]
+
+        let options = LIMEPreferenceManager.reverseLookupOptions(from: configs)
+
+        XCTAssertEqual(options.map(\.label), ["無", "phonetic", "custom"])
+        XCTAssertEqual(options.map(\.value), ["none", "phonetic", "custom"])
     }
 
     func testRoundTripKeyboardList() {

@@ -69,15 +69,17 @@ final class LayoutLoader {
         if let cached = cache[id] { lock.unlock(); return cached }
         lock.unlock()
 
-        // On iPad, try the "_ipad" variant first; fall back to the phone layout.
+        // On iPad, try the generated iPad variants first; fall back to the phone layout.
         // Use the host app's idiom (set by the controller), not UIDevice — an
         // iPhone-only app running on iPad must use the iPhone layout.
         if hostIsPad, !id.contains("_ipad") {
-            if let padLayout = parseFromBundle(id: id + "_ipad") {
-                lock.lock()
-                cache[id] = padLayout
-                lock.unlock()
-                return padLayout
+            for candidate in iPadVariantCandidates(for: id) {
+                if let padLayout = parseFromBundle(id: candidate) {
+                    lock.lock()
+                    cache[id] = padLayout
+                    lock.unlock()
+                    return padLayout
+                }
             }
         }
 
@@ -87,6 +89,14 @@ final class LayoutLoader {
         cache[id] = layout
         lock.unlock()
         return layout
+    }
+
+    static func iPadVariantCandidates(for id: String) -> [String] {
+        if id.hasSuffix("_shift") {
+            let base = String(id.dropLast(6))
+            return [base + "_ipad_shift"]
+        }
+        return [id + "_ipad"]
     }
 
     // MARK: - Private

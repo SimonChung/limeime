@@ -12,6 +12,11 @@ import Foundation
 
 final class LIMEPreferenceManager {
 
+    struct ReverseLookupOption: Equatable {
+        let value: String
+        let label: String
+    }
+
     // MARK: - Singleton
 
     static let shared = LIMEPreferenceManager()
@@ -140,18 +145,16 @@ final class LIMEPreferenceManager {
         set { defaults.set(newValue, forKey: "persistent_language_mode") }
     }
 
-    var reverseLookupNotify: Bool {
-        get { boolValue("reverse_lookup_notify", default: true) }
-        set { defaults.set(newValue, forKey: "reverse_lookup_notify") }
-    }
-
-    var enableEmoji: Bool {
-        get { boolValue("enable_emoji", default: true) }
-        set { defaults.set(newValue, forKey: "enable_emoji") }
-    }
-
     var enableEmojiPosition: Int {
-        get { intValue("enable_emoji_position", default: 3) }
+        get {
+            if defaults.object(forKey: "enable_emoji") != nil {
+                if defaults.bool(forKey: "enable_emoji") == false {
+                    defaults.set(0, forKey: "enable_emoji_position")
+                }
+                defaults.removeObject(forKey: "enable_emoji")
+            }
+            return intValue("enable_emoji_position", default: 6)
+        }
         set { defaults.set(newValue, forKey: "enable_emoji_position") }
     }
 
@@ -240,6 +243,50 @@ final class LIMEPreferenceManager {
 
     // MARK: - §8.4.1 Reverse Lookup (sub-screen)
 
+    static let fallbackReverseLookupOptions: [ReverseLookupOption] = [
+        ReverseLookupOption(value: "none", label: "無"),
+        ReverseLookupOption(value: "custom", label: "自建"),
+        ReverseLookupOption(value: "cj", label: "倉頡"),
+        ReverseLookupOption(value: "scj", label: "快倉"),
+        ReverseLookupOption(value: "cj5", label: "倉頡五代"),
+        ReverseLookupOption(value: "ecj", label: "速成"),
+        ReverseLookupOption(value: "dayi", label: "大易"),
+        ReverseLookupOption(value: "phonetic", label: "注音"),
+        ReverseLookupOption(value: "ez", label: "輕鬆"),
+        ReverseLookupOption(value: "array", label: "行列"),
+        ReverseLookupOption(value: "array10", label: "行列 10"),
+        ReverseLookupOption(value: "wb", label: "筆順五碼"),
+        ReverseLookupOption(value: "hs", label: "華象直覺"),
+        ReverseLookupOption(value: "pinyin", label: "拼音")
+    ]
+
+    static func reverseLookupOptions(from imConfigs: [ImConfig]) -> [ReverseLookupOption] {
+        let targets = reverseLookupTargets(from: imConfigs)
+        return targets.isEmpty
+            ? fallbackReverseLookupOptions
+            : [ReverseLookupOption(value: "none", label: "無")] + targets
+    }
+
+    static func reverseLookupTargets(from imConfigs: [ImConfig]) -> [ReverseLookupOption] {
+        var seen = Set<String>()
+        var targets: [ReverseLookupOption] = []
+        for config in imConfigs where config.enabled {
+            let value = config.tableNick.isEmpty ? config.imName : config.tableNick
+            guard !value.isEmpty, value != "emoji", !seen.contains(value) else { continue }
+            let label = config.label.isEmpty ? config.imName : config.label
+            targets.append(ReverseLookupOption(value: value, label: label))
+            seen.insert(value)
+        }
+        return targets
+    }
+
+    static func reverseLookupLabel(for value: String, options: [ReverseLookupOption]) -> String {
+        if let label = options.first(where: { $0.value == value })?.label {
+            return label
+        }
+        return fallbackReverseLookupOptions.first(where: { $0.value == value })?.label ?? "無"
+    }
+
     var customImReverselookup: String {
         get { stringValue("custom_im_reverselookup", default: "none") }
         set { defaults.set(newValue, forKey: "custom_im_reverselookup") }
@@ -303,6 +350,19 @@ final class LIMEPreferenceManager {
     var pinyinImReverselookup: String {
         get { stringValue("pinyin_im_reverselookup", default: "none") }
         set { defaults.set(newValue, forKey: "pinyin_im_reverselookup") }
+    }
+
+    func reverseLookup(for tableNick: String) -> String {
+        return stringValue(reverseLookupKey(for: tableNick), default: "none")
+    }
+
+    func setReverseLookup(_ value: String, for tableNick: String) {
+        defaults.set(value.isEmpty ? "none" : value, forKey: reverseLookupKey(for: tableNick))
+    }
+
+    private func reverseLookupKey(for tableNick: String) -> String {
+        let table = tableNick.isEmpty ? "phonetic" : tableNick
+        return "\(table)_im_reverselookup"
     }
 
     // MARK: - Navigation state

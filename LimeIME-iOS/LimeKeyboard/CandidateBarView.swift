@@ -7,6 +7,8 @@ protocol CandidateBarViewDelegate: AnyObject {
     func candidateBarView(_ view: CandidateBarView, didSelect mapping: Mapping)
     func candidateBarViewDidRequestMore(_ view: CandidateBarView)
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView)
+    func candidateBarViewDidRequestEmoji(_ view: CandidateBarView)
+    func candidateBarViewDidRequestOptions(_ view: CandidateBarView)
 }
 
 final class CandidateBarView: UIView {
@@ -19,6 +21,12 @@ final class CandidateBarView: UIView {
     private let moreButton    = UIButton(type: .system)
     private let moreSep       = UIView()          // fixed separator left of chevron
     private let dismissButton = UIButton(type: .system)
+    private let emojiButton   = UIButton(type: .system)
+    private let optionsButton = UIButton(type: .system)
+    /// Host-class snapshot. Set by `KeyboardViewController` after init.
+    var deviceCapabilities: DeviceCapabilities? {
+        didSet { rebuildButtons() }
+    }
     /// Leading region that displays the composing keyname. iPad uses this
     /// in lieu of the in-keyboard composingPopupLabel strip (which wastes
     /// vertical space). iPhone keeps the strip and leaves this collapsed.
@@ -166,6 +174,11 @@ final class CandidateBarView: UIView {
         moreSep.backgroundColor = effectiveCandiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
         dismissButton.tintColor = palette.label
         dismissButton.backgroundColor = palette.normalKey.withAlphaComponent(0.15)
+        emojiButton.tintColor = palette.label
+        emojiButton.backgroundColor = LayoutMetrics.TouchTrap.fill
+        optionsButton.tintColor = effectiveCandiText
+        optionsButton.setTitleColor(effectiveCandiText, for: .normal)
+        optionsButton.backgroundColor = LayoutMetrics.TouchTrap.fill
         composingLabel.font = composingStripFont
         composingLabel.textColor = effectiveCandiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         applyComposingText()
@@ -226,6 +239,55 @@ final class CandidateBarView: UIView {
         dismissButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(dismissButton)
 
+        let emojiConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.35, weight: .regular)
+        if let image = UIImage(systemName: "face.smiling", withConfiguration: emojiConfig) {
+            emojiButton.setImage(image, for: .normal)
+        } else {
+            emojiButton.setTitle("😀", for: .normal)
+            emojiButton.titleLabel?.font = UIFont.systemFont(
+                ofSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.35, weight: .regular)
+        }
+        emojiButton.tintColor = palette.label
+        emojiButton.imageView?.contentMode = .scaleAspectFit
+        emojiButton.isHidden = true
+        emojiButton.addTarget(self, action: #selector(emojiTapped), for: .touchUpInside)
+        emojiButton.backgroundColor = LayoutMetrics.TouchTrap.fill
+        emojiButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(emojiButton)
+
+        // Right-edge options button (trailing column mirror of emojiButton).
+        // Empty candidate bars use this to expose the same menu as a long press
+        // on the keyboard/dismiss key.
+        let optionsConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.10, weight: .regular)
+        if let image = UIImage(systemName: "line.3.horizontal", withConfiguration: optionsConfig) {
+            optionsButton.setImage(image, for: .normal)
+        } else {
+            optionsButton.setTitle("☰", for: .normal)
+            optionsButton.titleLabel?.font = UIFont.systemFont(
+                ofSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.10, weight: .regular)
+        }
+        optionsButton.tintColor = effectiveCandiText
+        optionsButton.setTitleColor(effectiveCandiText, for: .normal)
+        optionsButton.imageView?.contentMode = .scaleAspectFit
+        optionsButton.contentHorizontalAlignment = .center
+        optionsButton.contentVerticalAlignment = .center
+        optionsButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: chevronBias, left: 0,
+                                                                  bottom: -chevronBias, right: 0)),
+                               forKey: "contentEdgeInsets")
+        optionsButton.isHidden = true
+        optionsButton.addTarget(self, action: #selector(optionsTapped), for: .touchUpInside)
+        optionsButton.backgroundColor = LayoutMetrics.TouchTrap.fill
+        optionsButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(optionsButton)
+
+        let firstColumnGuide = UILayoutGuide()
+        addLayoutGuide(firstColumnGuide)
+        let lastColumnGuide = UILayoutGuide()
+        addLayoutGuide(lastColumnGuide)
+        let optionsColumnWidth: CGFloat = isPad ? 0.07 : 0.10
+
         composingLabel.font = composingStripFont
         composingLabel.textColor = effectiveCandiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
         composingLabel.textAlignment = .left
@@ -271,6 +333,23 @@ final class CandidateBarView: UIView {
             dismissButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
             dismissButton.heightAnchor.constraint(equalTo: heightAnchor, constant: -composingStripHeight),
             dismissButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isPad) / 2),
+
+            firstColumnGuide.leadingAnchor.constraint(equalTo: leadingAnchor),
+            firstColumnGuide.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.10),
+            emojiButton.centerXAnchor.constraint(equalTo: firstColumnGuide.centerXAnchor),
+            emojiButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
+            emojiButton.heightAnchor.constraint(equalTo: heightAnchor, constant: -composingStripHeight),
+            emojiButton.widthAnchor.constraint(equalTo: firstColumnGuide.widthAnchor, multiplier: 0.80),
+
+            // Options column. On iPhone this mirrors the trailing column.
+            // On iPad, the button still sits on the right/backspace edge,
+            // but its frame is normal-key width instead of backspace width.
+            lastColumnGuide.trailingAnchor.constraint(equalTo: trailingAnchor),
+            lastColumnGuide.widthAnchor.constraint(equalTo: widthAnchor, multiplier: optionsColumnWidth),
+            optionsButton.centerXAnchor.constraint(equalTo: lastColumnGuide.centerXAnchor),
+            optionsButton.topAnchor.constraint(equalTo: topAnchor),
+            optionsButton.bottomAnchor.constraint(equalTo: bottomAnchor),
+            optionsButton.widthAnchor.constraint(equalTo: lastColumnGuide.widthAnchor),
 
             // chevron flush to trailing edge. Width is an explicit constant
             // (chevronButtonWidth) — independent of bar height — so the
@@ -322,6 +401,12 @@ final class CandidateBarView: UIView {
             stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             stackView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
         ])
+
+        // The scroll view is added after the emoji button and spans the same
+        // leading/trailing regions when the candidate list is empty. Keep
+        // the launchers above it so their full-height touch traps receive taps.
+        bringSubviewToFront(emojiButton)
+        bringSubviewToFront(optionsButton)
     }
 
     // MARK: - Public API
@@ -512,10 +597,16 @@ final class CandidateBarView: UIView {
         }
 
         // Show/hide the fixed chevron and dismiss button with the candidate list.
+        // Left zone: emoji ↔ dismiss swap (per CANDI_LAYOUT.md §9). Right zone:
+        // options ↔ chevron swap.
         let hasCandidates = !candidates.isEmpty
+        let allowEmoji    = !isPad
+        let allowOptions  = true
         moreButton.isHidden    = !hasCandidates
         moreSep.isHidden       = !hasCandidates
         dismissButton.isHidden = !hasCandidates
+        emojiButton.isHidden   = hasCandidates  || !allowEmoji
+        optionsButton.isHidden = hasCandidates  || !allowOptions
     }
 
     private func makeCandidateButton(mapping: Mapping, index: Int) -> CandidateButton {
@@ -622,6 +713,16 @@ final class CandidateBarView: UIView {
     @objc private func dismissTapped() {
         if feedbackVibration { impactFeedback.impactOccurred() }
         delegate?.candidateBarViewDidRequestDismiss(self)
+    }
+
+    @objc private func emojiTapped() {
+        if feedbackVibration { impactFeedback.impactOccurred() }
+        delegate?.candidateBarViewDidRequestEmoji(self)
+    }
+
+    @objc private func optionsTapped() {
+        if feedbackVibration { impactFeedback.impactOccurred() }
+        delegate?.candidateBarViewDidRequestOptions(self)
     }
 
     @objc private func moreTapped() {

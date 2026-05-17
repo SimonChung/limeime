@@ -44,6 +44,8 @@
 		392E253AEF3B73034F19766E /* IMStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D98DEBE9E75F237BEC73B5B /* IMStoreView.swift */; };
 		394FDBA2792355ADDE3ADDB2 /* ShareManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D9C2FB678210C7B4C64424 /* ShareManager.swift */; };
 		3A2F164CC78CD804C67805DE /* SetupTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41390FAC918F440A66942DF3 /* SetupTabView.swift */; };
+		3B6595B6D8A74D15B0AC2459 /* VoiceInputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E287080DB9B74FB39DA48D30 /* VoiceInputController.swift */; };
+		3B6595B6D8A74D15B0AC2460 /* VoiceInputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E287080DB9B74FB39DA48D30 /* VoiceInputController.swift */; };
 		3E33AD4714204B45807AC470 /* lime_english_ipad.json in Resources */ = {isa = PBXBuildFile; fileRef = 7D40CF2999E24C0E8B7A0FCA /* lime_english_ipad.json */; };
 		3E81089E57F6CB90A2BFF152 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75E50434E278FAEF4A4654C /* KeyboardView.swift */; };
 		41CFFB478874C876C611CC47 /* ManageRelatedControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0595186AC824BB0CCF9D15EF /* ManageRelatedControllerTest.swift */; };
@@ -66,6 +68,7 @@
 		59E842FEFEFEA6FEAF6EE663 /* popup_domains.json in Resources */ = {isa = PBXBuildFile; fileRef = 868BBFF2AF500C4B76479AA6 /* popup_domains.json */; };
 		5D1920F9FEA04D59A8EE5F23 /* lime_phonetic_ipad.json in Resources */ = {isa = PBXBuildFile; fileRef = 086EF4DE9DDC4C8FAB4060D9 /* lime_phonetic_ipad.json */; };
 		60877D3DCDD874F7F0FE15A6 /* LimeDBProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBC0913BEADBB79C0E0CBBB /* LimeDBProtocol.swift */; };
+		6661D9C895564BE1A3E8DDC1 /* DeviceCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02FBE5C0A3EA4658979AEA30 /* DeviceCapabilities.swift */; };
 		65B48ECD66FBB98FA64DE8CD /* popup_punctuation.json in Resources */ = {isa = PBXBuildFile; fileRef = F04435F2855594DD68DDAB57 /* popup_punctuation.json */; };
 		6A2B456E9E54D00FE08276CB /* lime_dayi_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = FCCC8E71C5E48A1A81AB896E /* lime_dayi_shift.json */; };
 		6B4236631D644D17D3FF0FFC /* popup_c_punctuation.json in Resources */ = {isa = PBXBuildFile; fileRef = F6CE80A85C6FB759A9C33E95 /* popup_c_punctuation.json */; };
@@ -240,6 +243,7 @@
 		0CE58AA4A8D7C8C7CAB2DD1B /* BaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseController.swift; sourceTree = "<group>"; };
 		0D119F9E017971393DE59BAF /* ManageRelatedController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageRelatedController.swift; sourceTree = "<group>"; };
 		0E65C45A1A2A4198A114D792 /* lime_shift_ipad.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_shift_ipad.json; sourceTree = "<group>"; };
+		02FBE5C0A3EA4658979AEA30 /* DeviceCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCapabilities.swift; sourceTree = "<group>"; };
 		101C9BA303F749C293FD77C3 /* lime_et_41_ipad.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et_41_ipad.json; sourceTree = "<group>"; };
 		134DA71217154B688820EDB4 /* lime_ez_ipad.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_ez_ipad.json; sourceTree = "<group>"; };
 		14502A56A42472FB229360DB /* Related.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Related.swift; sourceTree = "<group>"; };
@@ -367,6 +371,7 @@
 		DC93E8CE0357F72516F8621F /* PopupKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupKeyboardView.swift; sourceTree = "<group>"; };
 		DD94A60A323D4F42A29D307E /* lime_abc_ipad.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_abc_ipad.json; sourceTree = "<group>"; };
 		E291FC497AF0014D898E57FA /* lime_et26.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_et26.json; sourceTree = "<group>"; };
+		E287080DB9B74FB39DA48D30 /* VoiceInputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputController.swift; sourceTree = "<group>"; };
 		E84CB76CFC92DAA008483771 /* LayoutLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutLoader.swift; sourceTree = "<group>"; };
 		E95F4D38E0DC06E619BAC1EE /* LimeKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LimeKeyboard.entitlements; sourceTree = "<group>"; };
 		ECF3F8B20C28BBE4D97C3104 /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
@@ -501,6 +506,7 @@
 				A1B2C3D40E5F6071829304A5 /* LayoutMetrics.swift */,
 				E95F4D38E0DC06E619BAC1EE /* LimeKeyboard.entitlements */,
 				DC93E8CE0357F72516F8621F /* PopupKeyboardView.swift */,
+				E287080DB9B74FB39DA48D30 /* VoiceInputController.swift */,
 				C0A9736D68847FDA38616DD6 /* Layouts */,
 			);
 			path = LimeKeyboard;
@@ -690,6 +696,7 @@
 		FAE59527757C912D6D45DF23 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				02FBE5C0A3EA4658979AEA30 /* DeviceCapabilities.swift */,
 				AD656E8960176F318C303682 /* Database */,
 				9C1506ACA815880475569550 /* Models */,
 				52229CF7656ADB872BEA5ADE /* Preferences */,
@@ -1057,6 +1064,7 @@
 				30A1639B07058FC030BD00CF /* LIMEPreferenceManagerTest.swift in Sources */,
 				8B72D83300CAD566BFCF3FE2 /* KeyboardViewControllerTest.swift in Sources */,
 				8C4D2C17B8A1495297103E44 /* LimeToastState.swift in Sources */,
+				3B6595B6D8A74D15B0AC2460 /* VoiceInputController.swift in Sources */,
 				E02BE727FF878D591A3D34B5 /* LimeDB.swift in Sources */,
 				BD134223224AF768213904BA /* LimeDBProtocol.swift in Sources */,
 				9B1ECA9BBCEE603587497032 /* LimeDBTest.swift in Sources */,
@@ -1134,7 +1142,9 @@
 				8B72D83300CAD566BFCF3FE1 /* KeyboardViewController.swift in Sources */,
 				273FC9499F6AFA5F033213D4 /* LIMEPreferenceManager.swift in Sources */,
 				8C4D2C17B8A1495297103E46 /* LimeToastState.swift in Sources */,
+				6661D9C895564BE1A3E8DDC1 /* DeviceCapabilities.swift in Sources */,
 				F96A2D8E2FA5B0A2004124A7 /* Profiling.swift in Sources */,
+				3B6595B6D8A74D15B0AC2459 /* VoiceInputController.swift in Sources */,
 				C29DD224E7D5797D71BFD56C /* LayoutLoader.swift in Sources */,
 				A1B2C3D40E5F6071829304A6 /* LayoutMetrics.swift in Sources */,
 				8B8D5CEFF8EB0D19EEB0F35C /* LimeDB.swift in Sources */,

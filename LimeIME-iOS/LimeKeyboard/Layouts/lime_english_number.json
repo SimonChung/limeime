@@ -256,18 +256,6 @@
       "isBottomRow": false,
       "keys": [
         {
-          "code": -10,
-          "label": "中",
-          "sublabel": "",
-          "widthPercent": 10.0,
-          "icon": "",
-          "isModifier": true,
-          "isRepeatable": false,
-          "isSticky": false,
-          "popupKeyboard": "",
-          "popupCharacters": ""
-        },
-        {
           "code": 97,
           "label": "a",
           "sublabel": "",
@@ -506,11 +494,11 @@
           "popupCharacters": ""
         },
         {
-          "code": -201,
-          "label": "",
+          "code": -10,
+          "label": "中",
           "sublabel": "",
           "widthPercent": 10.0,
-          "icon": "face.smiling",
+          "icon": "",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,

@@ -21,7 +21,7 @@
         {
           "code": 49,
           "label": "1",
-          "sublabel": "言",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -34,7 +34,7 @@
         {
           "code": 50,
           "label": "2",
-          "sublabel": "牛",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -47,7 +47,7 @@
         {
           "code": 51,
           "label": "3",
-          "sublabel": "目",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -60,7 +60,7 @@
         {
           "code": 52,
           "label": "4",
-          "sublabel": "四",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -73,7 +73,7 @@
         {
           "code": 53,
           "label": "5",
-          "sublabel": "王",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -86,7 +86,7 @@
         {
           "code": 54,
           "label": "6",
-          "sublabel": "門",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -99,7 +99,7 @@
         {
           "code": 55,
           "label": "7",
-          "sublabel": "田",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -112,7 +112,7 @@
         {
           "code": 56,
           "label": "8",
-          "sublabel": "米",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -125,7 +125,7 @@
         {
           "code": 57,
           "label": "9",
-          "sublabel": "足",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -138,7 +138,7 @@
         {
           "code": 48,
           "label": "0",
-          "sublabel": "金",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -208,7 +208,7 @@
         {
           "code": 113,
           "label": "q",
-          "sublabel": "石",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -221,7 +221,7 @@
         {
           "code": 119,
           "label": "w",
-          "sublabel": "山",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -234,7 +234,7 @@
         {
           "code": 101,
           "label": "e",
-          "sublabel": "一",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -247,7 +247,7 @@
         {
           "code": 114,
           "label": "r",
-          "sublabel": "工",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -260,7 +260,7 @@
         {
           "code": 116,
           "label": "t",
-          "sublabel": "糸",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -273,7 +273,7 @@
         {
           "code": 121,
           "label": "y",
-          "sublabel": "火",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -286,7 +286,7 @@
         {
           "code": 117,
           "label": "u",
-          "sublabel": "艸",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -299,7 +299,7 @@
         {
           "code": 105,
           "label": "i",
-          "sublabel": "木",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -312,7 +312,7 @@
         {
           "code": 111,
           "label": "o",
-          "sublabel": "口",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -325,7 +325,7 @@
         {
           "code": 112,
           "label": "p",
-          "sublabel": "耳",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -363,7 +363,7 @@
         },
         {
           "code": 12289,
-          "label": "|\\n、",
+          "label": "？\\n、",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -372,7 +372,7 @@
           "isSticky": false,
           "popupKeyboard": "",
           "popupCharacters": "",
-          "longPressCode": 124
+          "longPressCode": 65311
         }
       ]
     },
@@ -395,7 +395,7 @@
         {
           "code": 97,
           "label": "a",
-          "sublabel": "人",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -408,7 +408,7 @@
         {
           "code": 115,
           "label": "s",
-          "sublabel": "革",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -421,7 +421,7 @@
         {
           "code": 100,
           "label": "d",
-          "sublabel": "日",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -434,7 +434,7 @@
         {
           "code": 102,
           "label": "f",
-          "sublabel": "土",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -447,7 +447,7 @@
         {
           "code": 103,
           "label": "g",
-          "sublabel": "手",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -460,7 +460,7 @@
         {
           "code": 104,
           "label": "h",
-          "sublabel": "鳥",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -473,7 +473,7 @@
         {
           "code": 106,
           "label": "j",
-          "sublabel": "月",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -486,7 +486,7 @@
         {
           "code": 107,
           "label": "k",
-          "sublabel": "立",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -499,7 +499,7 @@
         {
           "code": 108,
           "label": "l",
-          "sublabel": "女",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -512,7 +512,7 @@
         {
           "code": 59,
           "label": ";",
-          "sublabel": "虫",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -569,7 +569,7 @@
         {
           "code": 122,
           "label": "z",
-          "sublabel": "心",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -582,7 +582,7 @@
         {
           "code": 120,
           "label": "x",
-          "sublabel": "水",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -595,7 +595,7 @@
         {
           "code": 99,
           "label": "c",
-          "sublabel": "鹿",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -608,7 +608,7 @@
         {
           "code": 118,
           "label": "v",
-          "sublabel": "禾",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -621,7 +621,7 @@
         {
           "code": 98,
           "label": "b",
-          "sublabel": "馬",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -634,7 +634,7 @@
         {
           "code": 110,
           "label": "n",
-          "sublabel": "魚",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -647,7 +647,7 @@
         {
           "code": 109,
           "label": "m",
-          "sublabel": "雨",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -660,7 +660,7 @@
         {
           "code": 44,
           "label": ",",
-          "sublabel": "力",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -673,7 +673,7 @@
         {
           "code": 46,
           "label": ".",
-          "sublabel": "舟",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -686,7 +686,7 @@
         {
           "code": 47,
           "label": "/",
-          "sublabel": "竹",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -729,7 +729,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
@@ -741,11 +741,11 @@
           "longPressCode": 0
         },
         {
-          "code": -99,
+          "code": -201,
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "mic",
+          "icon": "face.smiling",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
@@ -768,7 +768,7 @@
         },
         {
           "code": -2,
-          "label": "@string/label_symbol_key",
+          "label": ".?123",
           "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",

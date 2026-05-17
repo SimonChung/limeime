@@ -32,6 +32,8 @@ final class KeyboardViewController: UIInputViewController {
     private var mEnglishOnly: Bool = false
     private var mCapsLock:    Bool = false
     private var isShiftOn:    Bool = false
+    private var isShiftKeyHeld: Bool = false
+    private var shiftHoldModifiedCharacter: Bool = false
     private var activeIM:     String = "phonetic"
     /// Cached `imkeys` for the active IM (refreshed on every setTableName).
     /// On iPad layouts, characters whose code is NOT in this string are routed to
@@ -162,6 +164,7 @@ final class KeyboardViewController: UIInputViewController {
     // which sums actual per-row heights (54 pt regular, 56 pt bottom row).
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private weak var inlineMenuPanel: UIView?
+    private weak var inlineMenuDismissTapGesture: UITapGestureRecognizer?
     private weak var keyboardTopCoverView: UIView?
     private var keyboardHostCoverHeight: CGFloat { isOnPad ? 0 : 12 }
 
@@ -1094,7 +1097,7 @@ final class KeyboardViewController: UIInputViewController {
         // candidate lookup. Using `imkeys` membership routes those codes to the
         // direct-output branch (commit current candidate + insertText + finishComposing).
         // Phone layouts retain the legacy heuristic to avoid behavior changes.
-        let isIPadLayout = isOnPad && currentLayout.id.hasSuffix("_ipad")
+        let isIPadLayout = isOnPad && currentLayout.id.contains("_ipad")
         let accepted: Bool
         if isIPadLayout && !currentImKeys.isEmpty {
             // Compare both the literal char and its lowercase form so a-z and A-Z
@@ -1139,8 +1142,7 @@ final class KeyboardViewController: UIInputViewController {
             finishComposing()
         }
 
-        // One-shot shift: auto-reset after a character (caps lock stays)
-        if isShiftOn && !mCapsLock && code != LimeKeyCode.shift.rawValue { setShift(false) }
+        consumeShiftAfterCharacter()
     }
 
     // MARK: - English Character Handling (spec §5 English Mode)
@@ -1158,7 +1160,7 @@ final class KeyboardViewController: UIInputViewController {
         textDocumentProxy.insertText(insertChar)
         isSelfUpdate = false
         updateEnglishPrediction()
-        if isShiftOn && !mCapsLock { setShift(false) }   // one-shot reset
+        consumeShiftAfterCharacter()
     }
 
     // MARK: - Backspace Handling (spec §5 handleBackspace — 6 cases)
@@ -1254,10 +1256,31 @@ final class KeyboardViewController: UIInputViewController {
         applyShiftState()
     }
 
+    private func consumeShiftAfterCharacter() {
+        if ShiftResetPolicy.shouldResetAfterCharacter(isShiftOn: isShiftOn,
+                                                      capsLock: mCapsLock,
+                                                      shiftKeyIsHeld: isShiftKeyHeld) {
+            setShift(false)
+        } else if isShiftOn && !mCapsLock && isShiftKeyHeld {
+            shiftHoldModifiedCharacter = true
+        }
+    }
+
+    private func releaseShiftKey() {
+        isShiftKeyHeld = false
+        if ShiftResetPolicy.shouldResetAfterShiftRelease(capsLock: mCapsLock,
+                                                         holdModifiedCharacter: shiftHoldModifiedCharacter) {
+            setShift(false)
+        }
+        shiftHoldModifiedCharacter = false
+    }
+
     private func clearShiftState() {
         guard isShiftOn || mCapsLock else { return }
         isShiftOn = false
         mCapsLock = false
+        isShiftKeyHeld = false
+        shiftHoldModifiedCharacter = false
         applyShiftState()
     }
 
@@ -2139,7 +2162,7 @@ final class KeyboardViewController: UIInputViewController {
     private func updateGlobeKeyVisibility() {
         let isPad = isOnPad
         // On iPad with an _ipad layout, globe is always visible (matches Apple's stock keyboard).
-        let globeVisible = (isPad && currentLayout.id.hasSuffix("_ipad")) || needsInputModeSwitchKey
+        let globeVisible = (isPad && currentLayout.id.contains("_ipad")) || needsInputModeSwitchKey
         keyboardView?.setGlobeKeyVisible(globeVisible)
     }
 
@@ -2207,11 +2230,29 @@ extension KeyboardViewController: KeyboardViewDelegate {
         if emojiPanelView?.handleSearchKey(code: keyDef.code) == true {
             return
         }
+        if keyDef.code == LimeKeyCode.shift.rawValue {
+            isShiftKeyHeld = true
+            shiftHoldModifiedCharacter = false
+        }
         if keyDef.codes.count > 1 {
             handleMultiTap(keyDef)
         } else {
             resetMultiTap()
             onKey(primaryCode: keyDef.code)
+        }
+    }
+
+    func keyboardView(_ view: KeyboardView, didRelease keyDef: KeyDef) {
+        if keyDef.code == LimeKeyCode.shift.rawValue {
+            releaseShiftKey()
+        }
+    }
+
+    func keyboardView(_ view: KeyboardView, didUpdateShiftHoldActive active: Bool) {
+        if active {
+            isShiftKeyHeld = true
+        } else {
+            releaseShiftKey()
         }
     }
 
@@ -2414,10 +2455,11 @@ extension KeyboardViewController: KeyboardViewDelegate {
     }
 
     func keyboardView(_ view: KeyboardView, didLongPress keyDef: KeyDef) {
-        // Keyboard key (code -3) and legacy globe key (code -200): show iOS+LIME options menu (spec §10).
+        // Keyboard key (code -3): show the LIME options menu (spec §10).
+        // Globe long-press is routed through UIInputViewController.handleInputModeList.
         // Per spec §10: briefly show globe icon preview to satisfy Apple's globe affordance requirement,
         // then display the inline options menu.
-        if keyDef.code == LimeKeyCode.done.rawValue || keyDef.code == LimeKeyCode.globe.rawValue {
+        if keyDef.code == LimeKeyCode.done.rawValue {
             showGlobeKeyPreview(for: keyDef, in: view)
             showGlobeMenu(from: view)
         }
@@ -2524,18 +2566,6 @@ extension KeyboardViewController: KeyboardViewDelegate {
             return KeyRow(keys: keys, isBottomRow: row.isBottomRow)
         }
         return LimeKeyLayout(id: layout.id, rows: rows)
-    }
-
-    // MARK: - Open URL via Responder Chain
-
-    /// Keyboard extensions cannot use UIApplication.shared directly.
-    /// Access UIApplication dynamically to open the containing app URL.
-    /// Ask the main app to navigate to a named destination.
-    /// Keyboard extensions cannot open URLs directly; we write a flag to the shared
-    /// App Group UserDefaults and the main app reads it in sceneDidBecomeActive.
-    private func requestMainAppNavigation(_ destination: String) {
-        sharedDefaults?.set(destination, forKey: "pending_navigation")
-        sharedDefaults?.synchronize()
     }
 
     // MARK: - IM Switching Helper
@@ -2683,6 +2713,10 @@ extension KeyboardViewController: KeyboardViewDelegate {
     private func dismissInlineMenu() {
         inlineMenuPanel?.removeFromSuperview()
         inlineMenuPanel = nil
+        if let tap = inlineMenuDismissTapGesture {
+            view?.removeGestureRecognizer(tap)
+            inlineMenuDismissTapGesture = nil
+        }
     }
 
     /// Build and show an inline menu panel overlaying the keyboard.
@@ -2771,12 +2805,21 @@ extension KeyboardViewController: KeyboardViewDelegate {
         preferredHeight.priority = .defaultHigh
         preferredHeight.isActive = true
 
-        // Tap outside to dismiss
-        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissInlineMenuGesture))
-        tap.cancelsTouchesInView = false
-        root.addGestureRecognizer(tap)
-
         inlineMenuPanel = panel
+
+        // Arm tap-outside dismissal after the long-press touch sequence completes.
+        // Adding this recognizer immediately can make the same finger-up event that
+        // opened the menu dismiss it again before it is visibly usable.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self, weak root, weak panel] in
+            guard let self,
+                  let root,
+                  let panel,
+                  self.inlineMenuPanel === panel else { return }
+            let tap = UITapGestureRecognizer(target: self, action: #selector(self.dismissInlineMenuGesture))
+            tap.cancelsTouchesInView = false
+            root.addGestureRecognizer(tap)
+            self.inlineMenuDismissTapGesture = tap
+        }
 
         // Animate in
         panel.alpha = 0
@@ -2794,16 +2837,18 @@ extension KeyboardViewController: KeyboardViewDelegate {
         if !panel.frame.contains(loc) {
             dismissInlineMenu()
         }
-        view?.removeGestureRecognizer(gr)
     }
 
     /// Long-press on keyboard key: inline options menu (mirrors Android handleOptions()).
     private func showGlobeMenu(from sourceView: UIView) {
         var items: [(title: String, action: () -> Void)] = []
 
-        // 喜好設定 — open main app (mirrors Android launchSettings())
-        items.append(("喜好設定", { [weak self] in
-            self?.requestMainAppNavigation("settings")
+        let reverseLookupValue = LIMEPreferenceManager.shared.reverseLookup(for: activeIM)
+        let reverseLookupOptions = LIMEPreferenceManager.reverseLookupOptions(from: activatedIMs)
+        let reverseLookupLabel = LIMEPreferenceManager.reverseLookupLabel(for: reverseLookupValue,
+                                                                          options: reverseLookupOptions)
+        items.append(("字根反查：\(reverseLookupLabel) ▸", { [weak self] in
+            self?.showReverseLookupPicker()
         }))
 
         // 漢字轉換 — sub-picker (mirrors Android showHanConvertPicker())
@@ -2815,12 +2860,28 @@ extension KeyboardViewController: KeyboardViewDelegate {
         items.append(("LIME 輸入法切換", { [weak self] in self?.showLimeIMPicker() }))
 
         // 系統輸入法切換 — only when no globe key is visible (tap-globe already handles this when visible)
-        let isPadIPad = isOnPad && currentLayout.id.hasSuffix("_ipad")
+        let isPadIPad = isOnPad && currentLayout.id.contains("_ipad")
         let globeIsVisible = isPadIPad || needsInputModeSwitchKey
         if !globeIsVisible {
             items.append(("系統輸入法切換", { [weak self] in self?.advanceToNextInputMode() }))
         }
 
+        items.append(("取消", {}))
+        showInlineMenu(items: items)
+    }
+
+    /// Reverse lookup source sub-picker for the current active IM.
+    private func showReverseLookupPicker() {
+        let current = LIMEPreferenceManager.shared.reverseLookup(for: activeIM)
+        var items: [(title: String, action: () -> Void)] = []
+        for option in LIMEPreferenceManager.reverseLookupOptions(from: activatedIMs) {
+            let display = option.value == current ? "✓ \(option.label)" : option.label
+            items.append((display, { [weak self] in
+                guard let self else { return }
+                LIMEPreferenceManager.shared.setReverseLookup(option.value, for: self.activeIM)
+                self.showLimeToast("字根反查：\(option.label)")
+            }))
+        }
         items.append(("取消", {}))
         showInlineMenu(items: items)
     }
@@ -2937,13 +2998,13 @@ extension KeyboardViewController: KeyboardViewDelegate {
     private func loadEmojiCategoryPages() -> [[Mapping]] {
         let recent = searchServer?.loadRecentEmoji(32) ?? []
         var pages = EmojiPanelFallback.categories.map { emojiMappings(from: $0) }
+        pages[0] = EmojiRecentSeedQueue.merged(recent: recent,
+                                               fallback: pages[0],
+                                               limit: 32)
         let dbCategoryPages = searchServer?.loadEmojiCategoryPages() ?? []
         for (index, dbPage) in dbCategoryPages.enumerated()
             where index + 1 < pages.count && !dbPage.isEmpty {
             pages[index + 1] = dbPage
-        }
-        if !recent.isEmpty {
-            pages[0] = recent
         }
         return pages
     }
@@ -3028,6 +3089,14 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         } else {
             pickCandidateManually(mapping)
         }
+    }
+
+    func candidateBarViewDidRequestEmoji(_ view: CandidateBarView) {
+        showEmojiPanel()
+    }
+
+    func candidateBarViewDidRequestOptions(_ view: CandidateBarView) {
+        showGlobeMenu(from: view)
     }
 
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
@@ -3193,9 +3262,11 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private var categoryStartDisplayOffsets: [CGFloat] = []
     private var displayEmojiPages: [[Mapping]] = []
     private var displayPageSourceIndexes: [Int] = []
+    private var displayPageColumnCounts: [Int] = []
     private var renderedDisplayPageIndexes: Set<Int> = []
     private var cachedPagination: EmojiPanelPaginationResult?
     private var cachedPaginationCellsPerPage: Int = 0
+    private var cachedPaginationRowsPerPage: Int = 0
     private var cachedPaginationCategoryButtonCount: Int = 0
     private var reusableEmojiLabels: [UILabel] = []
 
@@ -3408,29 +3479,36 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         let cellsPerPage = max(1, columnsPerPage * rows)
         let pages: [[Mapping]]
         let pageSourceIndexes: [Int]
+        let pageColumnCounts: [Int]
         if isSearchMode {
             pages = [emojiPages.flatMap { $0 }]
             categoryStartDisplayPageIndexes = []
             pageSourceIndexes = [0]
+            pageColumnCounts = [Int(ceil(Double(pages.first?.count ?? 0) / Double(rows)))]
         } else {
-            let pagination = pagination(cellsPerPage: cellsPerPage)
+            let pagination = pagination(cellsPerPage: cellsPerPage, rowsPerPage: rows)
             pages = pagination.pages
             categoryStartDisplayPageIndexes = pagination.categoryStartDisplayPageIndexes
             pageSourceIndexes = pagination.sourcePageIndexes
+            pageColumnCounts = pagination.columnCounts
         }
         displayEmojiPages = pages
         displayPageSourceIndexes = pageSourceIndexes
-        displayPageOffsets = pageOffsets(sourceIndexes: pageSourceIndexes,
-                                         pageWidth: pageWidth,
-                                         horizontalInset: horizontalInset)
+        displayPageColumnCounts = pageColumnCounts
+        displayPageOffsets = EmojiPanelScrollLayout.unitOffsets(columnCounts: pageColumnCounts,
+                                                                cellWidth: cellWidth)
         categoryStartDisplayOffsets = categoryStartDisplayPageIndexes.map { pageIndex in
-            pageIndex < displayPageOffsets.count ? displayPageOffsets[pageIndex] : CGFloat(pageIndex) * pageWidth
+            pageIndex < displayPageOffsets.count ? displayPageOffsets[pageIndex] : 0
         }
         if isSearchMode {
             let columns = Int(ceil(Double(pages.first?.count ?? 0) / Double(rows)))
             emojiContentWidth = max(pageWidth, CGFloat(columns) * buttonSize + 24)
         } else {
-            emojiContentWidth = max(pageWidth, (displayPageOffsets.last ?? 0) + pageWidth)
+            emojiContentWidth = EmojiPanelScrollLayout.contentWidth(unitOffsets: displayPageOffsets,
+                                                                    columnCounts: pageColumnCounts,
+                                                                    cellWidth: cellWidth,
+                                                                    horizontalInset: horizontalInset,
+                                                                    viewportWidth: pageWidth)
         }
         emojiContentOffsetX = min(max(emojiContentOffsetX, 0), maxEmojiContentOffsetX())
         let pageIndexes = renderPageIndexes(pageWidth: pageWidth)
@@ -3452,8 +3530,12 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
                 pageRows = rows
                 pageButtonSize = emojiButtonSize(forRows: pageRows)
             }
-            let cellsPerPage = columnsPerPage * pageRows
-            let visibleCellCount = (!isSearchMode && pageIndex == 0) ? max(page.count, cellsPerPage) : page.count
+            let columnsForPage = pageIndex < pageColumnCounts.count
+                ? max(pageColumnCounts[pageIndex], 1)
+                : max(1, Int(ceil(Double(page.count) / Double(max(pageRows, 1)))))
+            let visibleCellCount = isSearchMode
+                ? page.count
+                : max(page.count, columnsForPage * pageRows)
             for index in 0..<visibleCellCount {
                 let column: Int
                 let row: Int
@@ -3461,8 +3543,9 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
                     column = index / rows
                     row = index % rows
                 } else {
-                    column = index % columnsPerPage
-                    row = index / columnsPerPage
+                    let position = EmojiPanelScrollLayout.cellPosition(index: index, rows: pageRows)
+                    column = position.column
+                    row = position.row
                 }
                 let button = dequeueEmojiLabel()
                 let isRealEmoji = index < page.count
@@ -3479,7 +3562,10 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
                     button.textColor = UIColor.label.withAlphaComponent(0.001)
                     button.backgroundColor = UIColor.label.withAlphaComponent(0.001)
                 }
-                button.frame = CGRect(x: pageOffsetX - emojiContentOffsetX + CGFloat(column) * cellWidth + horizontalInset,
+                button.frame = CGRect(x: EmojiPanelScrollLayout.cellX(pageOffsetX: pageOffsetX,
+                                                                       column: column,
+                                                                       cellWidth: cellWidth,
+                                                                       horizontalInset: horizontalInset),
                                       y: CGFloat(row) * pageButtonSize,
                                       width: cellWidth,
                                       height: pageButtonSize)
@@ -3503,17 +3589,20 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         return label
     }
 
-    private func pagination(cellsPerPage: Int) -> EmojiPanelPaginationResult {
+    private func pagination(cellsPerPage: Int, rowsPerPage: Int) -> EmojiPanelPaginationResult {
         if let cachedPagination,
            cachedPaginationCellsPerPage == cellsPerPage,
+           cachedPaginationRowsPerPage == rowsPerPage,
            cachedPaginationCategoryButtonCount == categoryButtons.count {
             return cachedPagination
         }
         let pagination = EmojiPanelPaginator.displayPages(sourcePages: emojiPages,
                                                           cellsPerPage: cellsPerPage,
+                                                          rowsPerPage: rowsPerPage,
                                                           categoryButtonCount: categoryButtons.count)
         cachedPagination = pagination
         cachedPaginationCellsPerPage = cellsPerPage
+        cachedPaginationRowsPerPage = rowsPerPage
         cachedPaginationCategoryButtonCount = categoryButtons.count
         return pagination
     }
@@ -3526,7 +3615,9 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         let visibleEnd = emojiContentOffsetX + pageWidth + buffer
         return displayEmojiPages.indices.filter { index in
             let start = index < displayPageOffsets.count ? displayPageOffsets[index] : CGFloat(index) * pageWidth
-            let end = start + pageWidth
+            let columnCount = index < displayPageColumnCounts.count ? max(displayPageColumnCounts[index], 1) : 1
+            let cellWidth = normalModeCellWidth(pageWidth: pageWidth)
+            let end = start + CGFloat(columnCount) * cellWidth + emojiHorizontalInset() * 2
             return end >= visibleStart && start <= visibleEnd
         }
     }
@@ -3542,22 +3633,6 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
     private func emojiPageHeight() -> CGFloat {
         max(emojiViewport.bounds.height, CGFloat(max(1, currentVisibleRows())) * emojiButtonSize())
-    }
-
-    private func pageOffsets(sourceIndexes: [Int],
-                             pageWidth: CGFloat,
-                             horizontalInset: CGFloat) -> [CGFloat] {
-        guard !sourceIndexes.isEmpty else { return [0] }
-        var offsets: [CGFloat] = []
-        var nextOffset: CGFloat = 0
-        for index in sourceIndexes.indices {
-            offsets.append(nextOffset)
-            let nextIsSameCategory = index + 1 < sourceIndexes.count
-                && sourceIndexes[index] == sourceIndexes[index + 1]
-                && sourceIndexes[index] != 0
-            nextOffset += nextIsSameCategory ? max(1, pageWidth - horizontalInset * 2) : pageWidth
-        }
-        return offsets
     }
 
     private func usesPadEmojiLayout() -> Bool {
@@ -3613,6 +3688,12 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         return usesPadEmojiLayout() ? min(10, max(8, fitted)) : min(10, max(7, fitted))
     }
 
+    private func normalModeCellWidth(pageWidth: CGFloat) -> CGFloat {
+        let horizontalInset = emojiHorizontalInset()
+        let columnsPerPage = normalModeColumnsPerPage(pageWidth: pageWidth)
+        return (pageWidth - horizontalInset * 2) / CGFloat(columnsPerPage)
+    }
+
     private func clamped(_ value: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
         min(max(value, lower), upper)
     }
@@ -3637,12 +3718,15 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
     private func layoutEmojiContent(height: CGFloat? = nil) {
         let contentHeight = height ?? emojiContentView.frame.height
-        emojiContentView.frame = CGRect(x: emojiContentOffsetX,
-                                        y: 0,
-                                        width: max(emojiViewport.bounds.width, 1),
-                                        height: contentHeight)
+        emojiContentView.frame = EmojiPanelScrollLayout.contentFrame(
+            viewportWidth: max(emojiViewport.bounds.width, 1),
+            contentWidth: emojiContentWidth,
+            contentHeight: contentHeight)
         emojiViewport.contentSize = CGSize(width: emojiContentWidth, height: contentHeight)
-        emojiViewport.contentOffset.x = min(emojiContentOffsetX, maxEmojiContentOffsetX())
+        let clampedX = min(emojiViewport.contentOffset.x, maxEmojiContentOffsetX())
+        if abs(emojiViewport.contentOffset.x - clampedX) > 0.5 {
+            emojiViewport.setContentOffset(CGPoint(x: clampedX, y: 0), animated: false)
+        }
     }
 
     private func setEmojiContentOffset(_ offsetX: CGFloat, animated: Bool) {
@@ -3653,7 +3737,6 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             rebuildEmojiButtons()
             return
         }
-        layoutEmojiContent()
         updateCategoryHighlightForScroll()
     }
 
@@ -3717,7 +3800,9 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             where index > 0 && startOffset <= emojiContentOffsetX + 0.5 {
             active = index
         }
-        activeCategoryIndex = min(max(active, 1), max(categoryButtons.count - 1, 1))
+        let nextActive = min(max(active, 1), max(categoryButtons.count - 1, 1))
+        guard nextActive != activeCategoryIndex else { return }
+        activeCategoryIndex = nextActive
         updateCategoryHighlight()
     }
 
@@ -3736,7 +3821,6 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             rebuildEmojiButtons()
             return
         }
-        layoutEmojiContent()
         updateCategoryHighlightForScroll()
     }
 

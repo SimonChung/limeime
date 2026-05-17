@@ -27,6 +27,7 @@ enum LimeKeyCode: Int {
     case emojiCategoryObjects = -210
     case emojiCategorySymbols = -211
     case emojiCategoryFlags   = -212
+    case voiceInput           = -220 // Deprecated on iOS: third-party keyboards cannot launch dictation
     case nextIM              = -20  // cycle to next activated IM (spec §10)
     case prevIM              = -21  // cycle to previous activated IM (spec §10)
     case switchSymbolKeyboard = -15  // cycle symbol keyboard pages (spec §10, Android code -15)
@@ -41,41 +42,105 @@ struct EmojiPanelPaginationResult {
     let pages: [[Mapping]]
     let categoryStartDisplayPageIndexes: [Int]
     let sourcePageIndexes: [Int]
+    let columnCounts: [Int]
 }
 
 enum EmojiPanelPaginator {
     static func displayPages(sourcePages: [[Mapping]],
                              cellsPerPage: Int,
+                             rowsPerPage: Int,
                              categoryButtonCount: Int) -> EmojiPanelPaginationResult {
         let safeCellsPerPage = max(cellsPerPage, 1)
+        let safeRowsPerPage = max(rowsPerPage, 1)
         var displayPages: [[Mapping]] = []
         var sourceIndexes: [Int] = []
+        var columnCounts: [Int] = []
         var starts = Array(repeating: 0, count: max(categoryButtonCount, sourcePages.count + 1))
         for (sourceIndex, sourcePage) in sourcePages.enumerated() {
             let buttonTag = sourceIndex + 1
             if buttonTag < starts.count {
                 starts[buttonTag] = displayPages.count
             }
-            if sourceIndex == 0 || sourcePage.isEmpty {
-                displayPages.append(sourcePage)
-                sourceIndexes.append(sourceIndex)
-                continue
-            }
-            var start = 0
-            while start < sourcePage.count {
-                let end = min(start + safeCellsPerPage, sourcePage.count)
-                displayPages.append(Array(sourcePage[start..<end]))
-                sourceIndexes.append(sourceIndex)
-                start = end
-            }
+            displayPages.append(sourcePage)
+            sourceIndexes.append(sourceIndex)
+            let minimumCells = sourceIndex == 0 ? safeCellsPerPage : 1
+            let cells = max(sourcePage.count, minimumCells)
+            columnCounts.append(max(1, Int(ceil(Double(cells) / Double(safeRowsPerPage)))))
         }
         if displayPages.isEmpty {
             displayPages.append([])
             sourceIndexes.append(0)
+            columnCounts.append(max(1, Int(ceil(Double(safeCellsPerPage) / Double(safeRowsPerPage)))))
         }
         return EmojiPanelPaginationResult(pages: displayPages,
                                           categoryStartDisplayPageIndexes: starts,
-                                          sourcePageIndexes: sourceIndexes)
+                                          sourcePageIndexes: sourceIndexes,
+                                          columnCounts: columnCounts)
+    }
+}
+
+enum EmojiRecentSeedQueue {
+    static func merged(recent: [Mapping],
+                       fallback: [Mapping],
+                       limit: Int) -> [Mapping] {
+        let safeLimit = max(limit, 1)
+        var seen = Set<String>()
+        var output: [Mapping] = []
+        for mapping in recent + fallback {
+            guard !mapping.word.isEmpty, seen.insert(mapping.word).inserted else { continue }
+            output.append(mapping)
+            if output.count >= safeLimit {
+                break
+            }
+        }
+        return output
+    }
+}
+
+enum EmojiPanelScrollLayout {
+    static func contentFrame(viewportWidth: CGFloat,
+                             contentWidth: CGFloat,
+                             contentHeight: CGFloat) -> CGRect {
+        CGRect(x: 0,
+               y: 0,
+               width: max(viewportWidth, contentWidth),
+               height: contentHeight)
+    }
+
+    static func cellX(pageOffsetX: CGFloat,
+                      column: Int,
+                      cellWidth: CGFloat,
+                      horizontalInset: CGFloat) -> CGFloat {
+        pageOffsetX + CGFloat(column) * cellWidth + horizontalInset
+    }
+
+    static func unitOffsets(columnCounts: [Int],
+                            cellWidth: CGFloat) -> [CGFloat] {
+        var offsets: [CGFloat] = []
+        var nextOffset: CGFloat = 0
+        for columnCount in columnCounts {
+            offsets.append(nextOffset)
+            nextOffset += CGFloat(max(columnCount, 1)) * cellWidth
+        }
+        return offsets.isEmpty ? [0] : offsets
+    }
+
+    static func contentWidth(unitOffsets: [CGFloat],
+                             columnCounts: [Int],
+                             cellWidth: CGFloat,
+                             horizontalInset: CGFloat,
+                             viewportWidth: CGFloat) -> CGFloat {
+        guard let lastOffset = unitOffsets.last,
+              let lastColumnCount = columnCounts.last else {
+            return max(viewportWidth, 1)
+        }
+        let compactWidth = lastOffset + CGFloat(max(lastColumnCount, 1)) * cellWidth + horizontalInset * 2
+        return max(viewportWidth, compactWidth)
+    }
+
+    static func cellPosition(index: Int, rows: Int) -> (column: Int, row: Int) {
+        let safeRows = max(rows, 1)
+        return (index / safeRows, index % safeRows)
     }
 }
 
@@ -231,7 +296,6 @@ struct LimeKeyLayout {
             KeyDef(code: 111, label: "o"), KeyDef(code: 112, label: "p"),
             KeyDef(code: 113, label: "q"), KeyDef(code: 114, label: "r"),
             KeyDef(code: 115, label: "s"),
-            KeyDef(code: LimeKeyCode.switchToIM.rawValue, label: "中文", widthPercent: 10, isModifier: true),
         ]),
         KeyRow(keys: [
             KeyDef(code: LimeKeyCode.shift.rawValue,  widthPercent: 15, icon: "shift",           isRepeatable: false, isModifier: true, isSticky: true),
@@ -243,7 +307,7 @@ struct LimeKeyLayout {
         ]),
         KeyRow(keys: [
             KeyDef(code: LimeKeyCode.done.rawValue,           widthPercent: 15, icon: "keyboard.chevron.compact.down", isRepeatable: false, isModifier: true, longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue),
-            KeyDef(code: LimeKeyCode.emojiPanel.rawValue,     widthPercent: 10, icon: "face.smiling",                 isModifier: true),
+            KeyDef(code: LimeKeyCode.switchToIM.rawValue,     label: "中文", widthPercent: 10,                         isModifier: true),
             KeyDef(code: 44,  label: ",",                     widthPercent: 10),
             KeyDef(code: 32,                                  widthPercent: 30, icon: "space.bar"),
             KeyDef(code: 46,  label: ".",                     widthPercent: 10),
@@ -258,5 +322,24 @@ enum CandidateExpansionPolicy {
                              composing: String,
                              hasChineseSymbolCandidatesShown: Bool) -> Bool {
         return hasCandidatesShown
+    }
+}
+
+enum ShiftResetPolicy {
+    static func shouldResetAfterCharacter(isShiftOn: Bool,
+                                          capsLock: Bool,
+                                          shiftKeyIsHeld: Bool) -> Bool {
+        isShiftOn && !capsLock && !shiftKeyIsHeld
+    }
+
+    static func shouldResetAfterShiftRelease(capsLock: Bool,
+                                             holdModifiedCharacter: Bool) -> Bool {
+        !capsLock && holdModifiedCharacter
+    }
+}
+
+enum ShiftHoldTouchPolicy {
+    static func isShiftStillHeld(activeTouchCount: Int) -> Bool {
+        activeTouchCount > 1
     }
 }
