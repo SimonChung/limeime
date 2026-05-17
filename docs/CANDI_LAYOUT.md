@@ -16,6 +16,61 @@ For the host-app-specific Safari / Gemini extra top-space investigation, see
 [SAFARI_EXTRA_SPACE.md](SAFARI_EXTRA_SPACE.md). That issue is intentionally not
 treated as candidate-bar geometry here.
 
+## Android candidate theming
+
+Android candidate UI is inflated with the keyboard theme context from
+`LIMEService.initialViewAndSwitcher()`. The service wraps the base context with
+`ContextThemeWrapper(getKeyboardTheme())`, and `CandidateView` resolves
+`R.attr.LIMECandidateView`, falling back to `R.style.LIMECandidateView`.
+
+Candidate colors and action icons therefore belong in the `LIMECandidateView`
+style family, not in layout `android:src` attributes and not in ad-hoc runtime
+tints. The themed attributes are declared in
+[`attrs.xml`](../LimeStudio/app/src/main/res/values/attrs.xml) and assigned in
+[`styles.xml`](../LimeStudio/app/src/main/res/values/styles.xml):
+
+| Attribute | Runtime use |
+|---|---|
+| `suggestHighlight` | Candidate selection background. |
+| `voiceInputIcon` | Right-side voice button when the candidate row is empty. |
+| `emojiButtonIcon` | Left-side emoji button when the candidate row is empty. |
+| `ExpandDownButtonIcon` | Right-side down chevron before expansion. |
+| `ExpandUpButtonIcon` | Right-side up chevron after expansion. |
+| `closeButtonIcon` | Candidate dismiss button. |
+| `keyboardShowIcon` | Physical-keyboard mode button for showing the soft keyboard. |
+| `candidateBackground`, `candidateNormalTextColor`, `candidateNormalTextHighlightColor`, `composingCodeColor`, `composingCodeHighlightColor`, `spacerColor`, `selKeyColor`, `selKeyShiftedColor`, `composingTextColor`, `composingBackgroundColor` | Candidate row, expanded row, composing strip, spacers, and hardware-selection text colors. |
+
+The six Android candidate theme variants are:
+`Light`, `Dark`, `Pink`, `TechBlue`, `RelaxGreen`, and `FashionPurple`.
+The voice and emoji controls both have matching selector drawable families for
+those six variants:
+
+```
+btn_voice_light / btn_emoji_light
+btn_voice_dark / btn_emoji_dark
+btn_voice_pink / btn_emoji_pink
+btn_voice_tech_blue / btn_emoji_tech_blue
+btn_voice_relax_green / btn_emoji_relax_green
+btn_voice_fashion_purple / btn_emoji_fashion_purple
+```
+
+`CandidateInInputViewContainer` reads the resolved drawables from its
+`CandidateView` owner:
+
+- `candidate_emoji` uses `mDrawableEmojiInput`.
+- `candidate_right` uses `mDrawableVoiceInput` when there are no candidates.
+- `candidate_right` swaps to `mDrawableExpandDown` or `mDrawableExpandUp` when
+  candidates are present.
+
+When swapping these icons, clear any existing image color filter before setting
+the themed drawable. A previously tinted `ImageButton` can otherwise tint the
+next drawable and make a theme-specific asset render with the wrong color.
+
+The expanded candidate popup must reuse the same candidate colors and action
+button assets. It should cover the original candidate bar when the soft keyboard
+is visible, and its first row should preserve the collapsed row's visual metrics
+so the dismiss button, composing text, and candidates look expanded in place.
+
 ---
 
 ## 1. The candidate bar

@@ -279,7 +279,7 @@ screens (section 2.2), not the global preferences screen.
 | iOS Spec Item | Android Current | Gap | Severity |
 |---|---|---|---|
 | Section header | All under lime_keyboard (preference.xml:34). | Add dedicated category. | P2 |
-| keyboard_theme Picker (0-5; 6 iOS-only) | defaultValue=0 (preference.xml:35-41). | Verify 6 entries in @array/keyboard_themes_values. | P3 (verify) |
+| keyboard_theme Picker (0-5 plus 6=system follow) | defaultValue=6 (preference.xml:35-41). | At parity; Android current resolves value 6 via system night mode. | - |
 | enable_emoji_position Picker, default 6 | defaultValue=6; first option `0` disables inline emoji candidates. | At parity; replaces the removed emoji toggle. | - |
 | keyboard_size Picker, default 1.1 | defaultValue=1 (preference.xml:116-122). | DEFAULT MISMATCH; change to 1.1. | P2 |
 | show_arrow_key Picker, default 0 | defaultValue=0 (preference.xml:80-86). | At parity. | - |
@@ -378,9 +378,6 @@ PreferenceManager.getDefaultSharedPreferences(requireContext()); appropriate ana
 
 ## 7. iOS-only - Do NOT Backport
 
-- keyboard_theme value 6 (system follow). Android already follows system via
-  AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM (LIMESettings.java:101,
-  LIMEPreference.java:56). Leave value array at 0-5.
 - App Group / shared UserDefaults. Android keyboard + Settings already share the
   same process SharedPreferences.
 - split_keyboard_mode iPad-only hide rule. Android has no iPad/iPhone split.
@@ -551,7 +548,7 @@ file path or layout block to touch.
 - [ ] (covered by P2.8) Search-bar style migration to `Toolbar` `SearchView`.
 - [ ] (covered by P2.8) Grid vs single-column record layout.
 - [ ] Verify resource arrays match spec value lists:
-  - [ ] `@array/keyboard_themes_values` has exactly 6 entries (0–5).
+  - [x] `@array/keyboard_themes_values` has 7 entries (0–5 plus 6=system follow).
   - [ ] `@array/im_reverse_lookup_codes` and `@array/im_reverse_lookup` each have 14 entries (`none` + 13 IMs).
   - [ ] `@array/han_convert_options_values` has 3 entries (0–2).
 - [ ] Status footer copy alignment (DB Manager + IM Install).

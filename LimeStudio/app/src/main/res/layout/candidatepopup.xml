@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ /*
   ~  *
@@ -23,11 +23,9 @@
   ~  */
   -->
 
-<LinearLayout
+<FrameLayout
   	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:id="@+id/candidatePopupLayout"
-  	android:baselineAligned="true"
-  	android:orientation="vertical"
   	android:layout_width="match_parent"
   	android:layout_height="wrap_content"
 	android:background="@color/third_background_light">
@@ -46,14 +44,19 @@
 
 </ScrollView>
 
-<ImageButton android:id="@+id/closeButton"
+<ImageButton android:id="@+id/candidate_dismiss"
 		android:background="@android:color/transparent"
 		android:contentDescription="@string/close_cand"
-		android:src="@drawable/btn_close"
-		android:layout_width="wrap_content"
-		android:layout_height="fill_parent"
-		android:layout_marginLeft="8dp"
-		android:layout_marginStart="8dp"
+		android:layout_width="@dimen/candidate_dismiss_button_width"
+		android:layout_height="@dimen/candidate_stripe_height"
 		android:clickable="true" 
-		android:layout_gravity="bottom|end"/>
-</LinearLayout>
+		android:layout_gravity="top|start"/>
+
+<ImageButton android:id="@+id/candidate_expand_collapse"
+		android:background="@android:color/transparent"
+		android:contentDescription="@string/close_cand"
+		android:layout_width="@dimen/candidate_expand_button_width"
+		android:layout_height="@dimen/candidate_stripe_height"
+		android:clickable="true"
+		android:layout_gravity="top|end"/>
+</FrameLayout>

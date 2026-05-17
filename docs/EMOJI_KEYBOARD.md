@@ -278,16 +278,18 @@ Android now implements the v1 emoji panel contract using the same DB-backed cate
 
 ### Android category expansion
 
-- Large categories are split across multiple physical pages.
+- Android now mirrors the compact iOS category model: each semantic category is one horizontal section sized by the number of columns it actually needs.
 - The bookmark strip remains semantic: one icon per category, not one icon per physical page.
-- Swiping moves through all pages in a category before entering the next category.
-- Category highlight maps the current physical page back to its owning category.
+- Emoji cells fill top-to-bottom by column, then continue into the next column.
+- Swiping moves through all columns in a category before entering the next category, without reserving a full blank page at the category tail.
+- Category highlight maps the current scroll offset back to the owning semantic category.
 
 ### Android gap and scroll behavior
 
-- Remove extra visual gaps between physical pages inside the same category.
-- Keep normal category-boundary spacing only where it improves readability.
-- Verify horizontal scrolling starts correctly from sparse Recent blank areas.
+- Android category sections no longer reserve fixed full pages for each category chunk.
+- Recent reserves at least one viewport so sparse Recent blank areas remain horizontally draggable.
+- Final partial columns are padded with transparent interactive filler cells so drags starting from blank category-tail space still scroll.
+- The emoji panel opens at Recent by default, matching iOS.
 
 ### Android prewarm/cache
 

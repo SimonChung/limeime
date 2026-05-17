@@ -43,6 +43,7 @@ public class CandidateViewContainer extends LinearLayout implements OnTouchListe
     private ImageButton mButtonDismiss;
     private ImageButton mButtonExpand;
     private View mButtonExpandLayout;
+    private View mActionRow;
     private CandidateView mCandidateView;
 
 
@@ -58,6 +59,9 @@ public class CandidateViewContainer extends LinearLayout implements OnTouchListe
             mButtonDismiss = findViewById(R.id.candidate_dismiss);
             mButtonExpandLayout = findViewById(R.id.candidate_right_parent);
             mButtonExpand = findViewById(R.id.candidate_right);
+            if (mButtonDismiss != null && mButtonDismiss.getParent() instanceof View) {
+                mActionRow = (View) mButtonDismiss.getParent();
+            }
             if (mButtonDismiss != null) {
                 mButtonDismiss.setOnTouchListener(this);
             }
@@ -72,13 +76,19 @@ public class CandidateViewContainer extends LinearLayout implements OnTouchListe
                 mCandidateView.setService((LIMEService) getContext());
             }
             mCandidateView.setBackgroundColor(mCandidateView.mColorBackground);
+            if (mActionRow != null) {
+                mActionRow.setBackgroundColor(CandidateInInputViewContainer.actionRowBackgroundColor(mCandidateView.mColorBackground));
+            }
+            if (mButtonExpandLayout != null) {
+                mButtonExpandLayout.setBackgroundColor(CandidateInInputViewContainer.actionRowBackgroundColor(mCandidateView.mColorBackground));
+            }
             if (mButtonDismiss != null) {
                 mButtonDismiss.setPadding(0, 0, 0, 0);
                 mButtonDismiss.setScaleType(ImageButton.ScaleType.CENTER);
                 mButtonDismiss.setMinimumWidth(0);
                 mButtonDismiss.setMinimumHeight(0);
                 mButtonDismiss.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
-                mButtonDismiss.setBackground(mCandidateView.makeDismissButtonBackground());
+                mButtonDismiss.setBackgroundColor(CandidateInInputViewContainer.dismissButtonBackgroundColor());
                 mButtonDismiss.post(() -> mCandidateView.storePopupDismissButtonWidth(mButtonDismiss));
             }
             mButtonExpand.setBackgroundColor(mCandidateView.mColorBackground);

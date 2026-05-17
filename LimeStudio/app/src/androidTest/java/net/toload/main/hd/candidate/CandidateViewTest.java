@@ -1,7 +1,10 @@
 package net.toload.main.hd.candidate;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import android.graphics.Color;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -21,5 +24,17 @@ public class CandidateViewTest {
         assertFalse(CandidateView.shouldShowLimeToast(false, "大易"));
         assertFalse(CandidateView.shouldShowLimeToast(true, null));
         assertFalse(CandidateView.shouldShowLimeToast(true, ""));
+    }
+
+    @Test
+    public void candidateActionButtonsStayTransparentOnThemedRow() {
+        int darkCandidateBackground = Color.rgb(16, 16, 16);
+
+        assertEquals(darkCandidateBackground,
+                CandidateInInputViewContainer.actionRowBackgroundColor(darkCandidateBackground));
+        assertEquals(Color.TRANSPARENT,
+                CandidateInInputViewContainer.actionButtonBackgroundColor());
+        assertEquals(Color.TRANSPARENT,
+                CandidateInInputViewContainer.dismissButtonBackgroundColor());
     }
 }

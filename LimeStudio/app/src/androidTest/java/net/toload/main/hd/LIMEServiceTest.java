@@ -121,6 +121,48 @@ public class LIMEServiceTest {
     }
 
     @Test
+    public void emojiPanelStartsOnRecentCategory() {
+        MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
+
+        Integer categoryIndex = helper.getField("mEmojiCategoryIndex");
+
+        assertEquals(Integer.valueOf(0), categoryIndex);
+    }
+
+    @Test
+    public void emojiCategoryPaginationKeepsCategoryCompact() {
+        MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
+        List<List<String>> categories = new ArrayList<>();
+        categories.add(new ArrayList<>());
+        List<String> largeCategory = new ArrayList<>();
+        for (int i = 0; i < 75; i++) {
+            largeCategory.add("e" + i);
+        }
+        categories.add(largeCategory);
+
+        @SuppressWarnings("unchecked")
+        List<List<String>> pages = (List<List<String>>) helper.invokeMethod(
+                "paginateEmojiCategories",
+                new Class<?>[]{List.class},
+                categories);
+
+        assertNotNull(pages);
+        assertEquals(10, pages.size());
+        assertEquals(75, pages.get(1).size());
+        assertEquals(largeCategory, pages.get(1));
+
+        int[] starts = helper.getField("mEmojiCategoryPageStarts");
+        assertNotNull(starts);
+        assertEquals(0, starts[0]);
+        assertEquals(1, starts[1]);
+
+        List<Integer> pageCategoryIndexes = helper.getField("mEmojiPageCategoryIndexes");
+        assertNotNull(pageCategoryIndexes);
+        assertEquals(Integer.valueOf(0), pageCategoryIndexes.get(0));
+        assertEquals(Integer.valueOf(1), pageCategoryIndexes.get(1));
+    }
+
+    @Test
     public void reverseLookupUsesPersistentLimeToast() {
         MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
         CandidateView candidateView = helper.injectMockCandidateView();

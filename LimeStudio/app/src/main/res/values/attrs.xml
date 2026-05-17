@@ -187,6 +187,8 @@
         <attr name="suggestHighlight" format="reference" />
         <!-- drawable for voice input button in the right of empty candidate view   -->
         <attr name="voiceInputIcon" format="reference" />
+        <!-- drawable for emoji button in the left of empty candidate view   -->
+        <attr name="emojiButtonIcon" format="reference" />
         <attr name="ExpandDownButtonIcon" format="reference" />
         <!-- drawable for expand down button in the right of candidate view   -->
         <attr name="ExpandUpButtonIcon" format="reference" />

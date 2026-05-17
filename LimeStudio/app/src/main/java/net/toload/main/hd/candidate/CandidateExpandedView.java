@@ -119,15 +119,16 @@ public class CandidateExpandedView extends CandidateView {
                     + ", mBgPadding.Right=" + mBgPadding.right);
 
         final int height = mHeight;
+        final int rowHeight = rowHeight(height, mVerticalPadding);
         final Rect bgPadding = mBgPadding;
         final Paint candidatePaint = mCandidatePaint;
+        final Paint candidateEmojiPaint = mCandidatePaint;
         final Paint selKeyPaint = mSelKeyPaint;
 
         // Update mSelectedIndex from touch x and y;
         if (mTouchX != OUT_OF_BOUNDS && mTouchY != OUT_OF_BOUNDS) {
             //Jeremy '11,8,23 mTouchY is already relative to view origin, no need to add mScrollY
-            mSelRow = mTouchY// + mScrollY)
-                    / (height + mVerticalPadding);
+            mSelRow = mTouchY / rowHeight;
 
             for (int i = 0; i < mRowSize[mSelRow]; i++) {
                 if (mTouchX >= mWordX[mSelRow][i] && mTouchX < mWordX[mSelRow][i] + mWordWidth[mSelRow][i]) {
@@ -153,29 +154,30 @@ public class CandidateExpandedView extends CandidateView {
             // 29/Aug/2011, Art just ignore if there is an error.
             try {
                 if (mSelectedIndex >= 0) {
-                    canvas.translate(mWordX[mSelRow][mSelCol], mSelRow * (height + mVerticalPadding));
-                    mDrawableSuggestHighlight.setBounds(0, bgPadding.top, mWordWidth[mSelRow][mSelCol], height);
+                    canvas.translate(mWordX[mSelRow][mSelCol], mSelRow * rowHeight);
+                    mDrawableSuggestHighlight.setBounds(0, bgPadding.top, mWordWidth[mSelRow][mSelCol], rowHeight);
                     mDrawableSuggestHighlight.draw(canvas);
-                    canvas.translate(-mWordX[mSelRow][mSelCol], -mSelRow * (height + mVerticalPadding));
+                    canvas.translate(-mWordX[mSelRow][mSelCol], -mSelRow * rowHeight);
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
                 Log.e(TAG, "Error in candidate expanded view", e);
             }
 
             try {
-                int y = (int) (((height - mCandidatePaint.getTextSize()) / 2) - mCandidatePaint.ascent());
+                int y = rowBaseline(rowHeight, mCandidatePaint.getTextSize(), mCandidatePaint.ascent());
                 int index = 0; //index in mSuggestions
                 for (int i = 0; i < mRows; i++) {
-                    if (i != 0) y += height + mVerticalPadding;
+                    if (i != 0) y += rowHeight;
 
                     for (int j = 0; j < mRowSize[i]; j++) {
 
                         if(mSuggestions == null || mSuggestions.isEmpty() || mSuggestions.get(index) == null){
                             continue;
                         }
-                        String suggestion = mSuggestions.get(index).getWord();
+                        Mapping mapping = mSuggestions.get(index);
+                        String suggestion = displaySuggestion(index, mSuggestions);
 
-                        switch (mSuggestions.get(i).getRecordType()) {
+                        switch (mapping.getRecordType()) {
                             case Mapping.RECORD_EXACT_MATCH_TO_CODE:
                             case Mapping.RECORD_PARTIAL_MATCH_TO_CODE:
                             case Mapping.RECORD_COMPOSING_CODE:
@@ -197,13 +199,17 @@ public class CandidateExpandedView extends CandidateView {
                                     candidatePaint.setColor(mColorNormalText);
                                 break;
                         }
-                        canvas.drawText(suggestion, mWordX[i][j] + X_GAP, y, candidatePaint);
+                        if (mapping.isEmojiRecord()) {
+                            canvas.drawText(suggestion, mWordX[i][j] + X_GAP, Math.round(y * 0.95f), candidateEmojiPaint);
+                        } else {
+                            canvas.drawText(suggestion, mWordX[i][j] + X_GAP, y, candidatePaint);
+                        }
 
 
                         candidatePaint.setColor(mColorSpacer);
                         float lineX = mWordX[i][j] + mWordWidth[i][j] + 0.5f;
-                        canvas.drawLine(lineX, bgPadding.top + (height + mVerticalPadding) * i, lineX,
-                                (height + mVerticalPadding) * (i + 1) - mVerticalPadding + 1, candidatePaint);
+                        canvas.drawLine(lineX, bgPadding.top + rowLineTop(i, rowHeight, mVerticalPadding), lineX,
+                                rowLineBottom(i, rowHeight, mVerticalPadding), candidatePaint);
                         candidatePaint.setFakeBoldText(false);
                         index++;
 
@@ -235,13 +241,15 @@ public class CandidateExpandedView extends CandidateView {
             Log.i(TAG, "prepareLayout():mSuggestions.size()" + mSuggestions.size());
 
         updateFontSize();
+        mCandidatePaint.setTextSize(CandidateView.liveCandidateTextSize(mCandidatePaint.getTextSize()));
         
-        // Update mHeight to configHeight (content height without padding)
-        // Row height is mHeight + mVerticalPadding, which matches parent's mHeight
+        // Keep the same content height and padding math as the live candidate bar.
         mHeight = configHeight;
 
         final Paint paint = mCandidatePaint;
-        int x = 0;
+        int dismissWidth = mCandidateView.popupDismissButtonWidth();
+        int expandWidth = mCandidateView.popupExpandButtonWidth();
+        int x = rowStartX(0, dismissWidth);
         int row = 0;
         int indexInRow = 0;
         mRowStartingIndex[0] = 0;
@@ -251,16 +259,15 @@ public class CandidateExpandedView extends CandidateView {
             //if(DEBUG)
             //	Log.i(TAG, "prepareLayout():updating:" + i +", indexInRox=" + indexInRow );
 
-            String suggestion = mSuggestions.get(i).getWord();
-            float textWidth = paint.measureText(suggestion);
-            final int wordWidth = (int) textWidth + X_GAP * 2;
+            String suggestion = displaySuggestion(i, mSuggestions);
+            final int wordWidth = wordWidth(paint, suggestion, X_GAP);
 
-            if (x + wordWidth > mScreenWidth) {
+            if (x + wordWidth > rowEndX(row, mScreenWidth, expandWidth)) {
                 mRowSize[row] = indexInRow;
                 row++;
                 mRowStartingIndex[row] = i;
                 indexInRow = 0;
-                x = 0;
+                x = rowStartX(row, dismissWidth);
                 if (DEBUG)
                     Log.i(TAG, "prepareLayout():mRowSize[" + (row - 1) + "]=" + mRowSize[row - 1]);
                 if (DEBUG)
@@ -289,9 +296,54 @@ public class CandidateExpandedView extends CandidateView {
         }
         //mTotalWidth = x;
         mRows = row + 1;
-        mTotalHeight = (mHeight + mVerticalPadding) * (mRows);
+        mTotalHeight = rowHeight(mHeight, mVerticalPadding) * mRows;
         if (DEBUG)
             Log.i(TAG, "prepareLayout(): mRows=" + mRows + ", mTotalHeight=" + mTotalHeight);
+    }
+
+    static int rowHeight(int contentHeight, int verticalPadding) {
+        return contentHeight + verticalPadding;
+    }
+
+    static int rowBaseline(int rowHeight, float textSize, float ascent) {
+        return (int) (((rowHeight - textSize) / 2) - ascent);
+    }
+
+    static float rowLineTop(int row, int rowHeight, int verticalPadding) {
+        return rowHeight * row + ((float) verticalPadding / 2);
+    }
+
+    static float rowLineBottom(int row, int rowHeight, int verticalPadding) {
+        return rowHeight * (row + 1) - ((float) verticalPadding / 2);
+    }
+
+    static String displaySuggestion(int index, List<Mapping> suggestions) {
+        String suggestion = suggestions.get(index).getWord();
+        if (index == 0
+                && suggestions.size() > 1
+                && suggestions.get(1).isRuntimeBuiltPhraseRecord()
+                && suggestion.length() > 8) {
+            return suggestion.substring(0, 2) + "..";
+        }
+        return suggestion;
+    }
+
+    static int wordWidth(Paint paint, String suggestion, int xGap) {
+        if (suggestion == null) return xGap * 2;
+        float base = paint.measureText("。");
+        float textWidth = paint.measureText(suggestion);
+        if (textWidth < base) {
+            textWidth = base;
+        }
+        return (int) textWidth + xGap * 2;
+    }
+
+    static int rowStartX(int row, int dismissWidth) {
+        return row == 0 ? dismissWidth : 0;
+    }
+
+    static int rowEndX(int row, int screenWidth, int expandWidth) {
+        return row == 0 ? screenWidth - expandWidth : screenWidth;
     }
 
 

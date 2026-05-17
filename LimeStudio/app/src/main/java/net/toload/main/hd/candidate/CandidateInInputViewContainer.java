@@ -25,8 +25,10 @@
 package net.toload.main.hd.candidate;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -44,6 +46,8 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
     private ImageButton mEmojiButton;
     private ImageButton mRightButton;
     private ImageButton mKeyboardButton;
+    private View mActionRow;
+    private View mRightButtonParent;
     private CandidateView mCandidateView;
     private LIMEService mService;
 
@@ -66,6 +70,7 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             Log.i(TAG, "initViews()");
         if (mCandidateView == null) {
             View mButtonRightExpand = findViewById(R.id.candidate_right_parent);
+            mRightButtonParent = mButtonRightExpand;
             // Ensure buttons are laid out in correct order
             if (mButtonRightExpand instanceof ViewGroup) {
                 android.view.ViewGroup vg = (android.view.ViewGroup) mButtonRightExpand;
@@ -76,6 +81,9 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             mEmojiButton = findViewById(R.id.candidate_emoji);
             mRightButton = findViewById(R.id.candidate_right);
             mKeyboardButton = findViewById(R.id.candidate_keyboard);
+            if (mEmojiButton != null && mEmojiButton.getParent() instanceof View) {
+                mActionRow = (View) mEmojiButton.getParent();
+            }
 
             if (mDismissButton != null) {
                 mDismissButton.setOnClickListener(this);
@@ -85,6 +93,9 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             }
             if (mRightButton != null) {
                 mRightButton.setOnClickListener(this);
+            }
+            if (mRightButtonParent != null) {
+                mRightButtonParent.setOnClickListener(this);
             }
             if (mKeyboardButton != null) {
                 mKeyboardButton.setOnClickListener(this);
@@ -101,13 +112,19 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
 
             assert mCandidateView != null;
             mCandidateView.setBackgroundColor(mCandidateView.mColorBackground);
+            if (mActionRow != null) {
+                mActionRow.setBackgroundColor(actionRowBackgroundColor(mCandidateView.mColorBackground));
+            }
+            if (mRightButtonParent != null) {
+                mRightButtonParent.setBackgroundColor(actionRowBackgroundColor(mCandidateView.mColorBackground));
+            }
             if (mDismissButton != null) {
                 mDismissButton.setPadding(0, 0, 0, 0);
                 mDismissButton.setScaleType(ImageButton.ScaleType.CENTER);
                 mDismissButton.setMinimumWidth(0);
                 mDismissButton.setMinimumHeight(0);
                 mDismissButton.setImageDrawable(mCandidateView.makeDismissButtonGlyph());
-                mDismissButton.setBackground(mCandidateView.makeDismissButtonBackground());
+                mDismissButton.setBackgroundColor(dismissButtonBackgroundColor());
                 mDismissButton.post(() -> mCandidateView.storePopupDismissButtonWidth(mDismissButton));
             }
             if (mEmojiButton != null) {
@@ -115,11 +132,16 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 mEmojiButton.setScaleType(ImageButton.ScaleType.CENTER);
                 mEmojiButton.setMinimumWidth(0);
                 mEmojiButton.setMinimumHeight(0);
-                mEmojiButton.setColorFilter(mCandidateView.mColorNormalText);
-                mEmojiButton.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                mEmojiButton.clearColorFilter();
+                mEmojiButton.setImageDrawable(mCandidateView.mDrawableEmojiInput);
+                mEmojiButton.setBackgroundColor(actionButtonBackgroundColor());
             }
             if (mRightButton != null) {
-                mRightButton.setBackgroundColor(mCandidateView.mColorBackground);
+                mRightButton.setPadding(0, 0, 0, 0);
+                mRightButton.setScaleType(ImageButton.ScaleType.CENTER);
+                mRightButton.setMinimumWidth(0);
+                mRightButton.setMinimumHeight(0);
+                mRightButton.setBackgroundColor(actionButtonBackgroundColor());
             }
             if (mKeyboardButton != null) {
                 mKeyboardButton.setBackgroundColor(mCandidateView.mColorBackground);
@@ -199,12 +221,13 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
             // When empty: show voice input button
             // When not empty: show expand button based on keyboard visibility
             if (mRightButton != null) {
+                mRightButton.clearColorFilter();
                 if (isEmpty) {
                     mRightButton.setImageDrawable(mCandidateView.mDrawableVoiceInput);
                 } else {
                     // Show up arrow when keyboard is hidden, down arrow when keyboard is shown
                     boolean isKeyboardHidden = (mService != null) && mService.isKeyboardViewHidden();
-                    mRightButton.setImageDrawable(isKeyboardHidden ? 
+                    mRightButton.setImageDrawable(shouldShowCollapseGlyph(isEmpty, mCandidateView.isCandidateExpanded(), isKeyboardHidden) ?
                         mCandidateView.mDrawableExpandUpButton : 
                         mCandidateView.mDrawableExpandDownButton);
                 }
@@ -212,6 +235,35 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
         }
         
         super.requestLayout();
+    }
+
+    static int actionRowBackgroundColor(int candidateBackground) {
+        return candidateBackground;
+    }
+
+    static int actionButtonBackgroundColor() {
+        return Color.TRANSPARENT;
+    }
+
+    static int dismissButtonBackgroundColor() {
+        return Color.TRANSPARENT;
+    }
+
+    static boolean isRightActionClick(View clicked, View rightButton, View rightButtonParent) {
+        return clicked == rightButton || clicked == rightButtonParent;
+    }
+
+    static boolean isRightEdgeActionTap(float x, float y, int containerWidth, int candidateRowHeight, int actionWidth) {
+        return containerWidth > 0
+                && candidateRowHeight > 0
+                && actionWidth > 0
+                && y >= 0
+                && y <= candidateRowHeight
+                && x >= containerWidth - actionWidth;
+    }
+
+    static boolean shouldShowCollapseGlyph(boolean isEmpty, boolean isExpanded, boolean isKeyboardHidden) {
+        return !isEmpty && (isExpanded || isKeyboardHidden);
     }
     
     /**
@@ -298,6 +350,32 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getActionMasked() == MotionEvent.ACTION_UP
+                && mCandidateView != null
+                && !mCandidateView.isEmpty()) {
+            int candidateRowHeight = candidateRowHeight();
+            int actionWidth = getResources().getDimensionPixelSize(R.dimen.candidate_expand_button_width);
+            if (isRightEdgeActionTap(ev.getX(), ev.getY(), getWidth(), candidateRowHeight, actionWidth)) {
+                toggleCandidatePopup();
+                performClick();
+                return true;
+            }
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private int candidateRowHeight() {
+        if (mActionRow != null && mActionRow.getHeight() > 0) {
+            return mActionRow.getHeight();
+        }
+        if (mCandidateView != null && mCandidateView.getHeight() > 0) {
+            return mCandidateView.getHeight();
+        }
+        return 0;
+    }
+
+    @Override
     public void onClick(View v) {
         if (v == mDismissButton) {
             if (mCandidateView != null) {
@@ -316,11 +394,20 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
                 // Request layout to update button visibility
                 post(this::requestLayout);
             }
-        } else if (v == mRightButton) {
+        } else if (isRightActionClick(v, mRightButton, mRightButtonParent)) {
             if (mCandidateView.isEmpty())
                 mCandidateView.startVoiceInput();
             else
-                mCandidateView.showCandidatePopup();
+                toggleCandidatePopup();
         }
+    }
+
+    private void toggleCandidatePopup() {
+        if (mCandidateView.isCandidateExpanded()) {
+            mCandidateView.hideCandidatePopup();
+        } else {
+            mCandidateView.showCandidatePopup();
+        }
+        post(this::requestLayout);
     }
 }

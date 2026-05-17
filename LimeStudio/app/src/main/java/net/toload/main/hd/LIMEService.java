@@ -149,7 +149,7 @@ public class LIMEService extends InputMethodService
     private LinearLayout mEmojiCategoryBar = null;
     private TextView mEmojiSearchField = null;
     private TextView mEmojiAbcButton = null;
-    private int mEmojiCategoryIndex = 1;
+    private int mEmojiCategoryIndex = 0;
     private int mInputCandidateStripVisibilityBeforeEmoji = View.VISIBLE;
     private boolean mEmojiSearchMode = false;
     private boolean mEmojiSearchFocused = false;
@@ -157,10 +157,13 @@ public class LIMEService extends InputMethodService
     private List<List<String>> mEmojiCategoryPages = null;
     private List<Integer> mEmojiPageCategoryIndexes = new ArrayList<>();
     private int[] mEmojiCategoryPageStarts = new int[0];
+    private int[] mEmojiCategoryStartOffsets = new int[0];
     private static final int EMOJI_SEARCH_PANEL_HEIGHT_DP = 120;
     private static final int EMOJI_SEARCH_SCROLL_HEIGHT_DP = 44;
     private static final int EMOJI_SEARCH_KEY_HEIGHT_DP = 40;
     private static final int EMOJI_PAGE_CAPACITY = 32;
+    private static final int EMOJI_GRID_COLUMNS = 8;
+    private static final int EMOJI_GRID_ROWS = 4;
     private boolean mPersistentLanguageMode;  //Jeremy '12,5,1
     private int mShowArrowKeys; //Jeremy '12,5,22 force recreate keyboard if show arrow keys mode changes.
     private int mSplitKeyboard; //Jeremy '12,5,26 force recreate keyboard if split keyboard settings changes; 6/19 changed to int
@@ -2008,6 +2011,7 @@ public class LIMEService extends InputMethodService
     private void showEmojiKeyboard() {
         mEmojiSourceWasEnglish = mEnglishOnly;
         mEmojiKeyboardShown = true;
+        mEmojiCategoryIndex = 0;
         mEmojiSearchFocused = false;
         mEmojiSearchQuery.setLength(0);
         if (mEmojiSearchField != null) {
@@ -2103,10 +2107,7 @@ public class LIMEService extends InputMethodService
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             mEmojiScroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (!mEmojiSearchMode) {
-                    int pageWidth = getEmojiPageWidth();
-                    if (pageWidth > 0) {
-                        updateEmojiCategoryHighlight(Math.round((float) scrollX / (float) pageWidth));
-                    }
+                    updateEmojiCategoryHighlight(categoryIndexForEmojiScroll(scrollX));
                 }
             });
         }
@@ -2189,7 +2190,7 @@ public class LIMEService extends InputMethodService
 
         if (mEmojiSearchMode) {
             List<String> matches = findEmojiSearchResults(normalizedQuery);
-            addEmojiPage(matches.toArray(new String[0]), getEmojiPageWidth());
+            addEmojiSearchPage(matches.toArray(new String[0]), getEmojiPageWidth());
             updateEmojiCategoryHighlight(-1);
             if (mEmojiScroll != null) {
                 mEmojiScroll.post(() -> mEmojiScroll.scrollTo(0, 0));
@@ -2197,13 +2198,18 @@ public class LIMEService extends InputMethodService
         } else {
             int pageWidth = getEmojiPageWidth();
             List<List<String>> pages = getEmojiPanelPages();
-            for (List<String> page : pages) {
-                addEmojiPage(page.toArray(new String[0]), pageWidth);
+            mEmojiCategoryStartOffsets = new int[getEmojiCategoryCount()];
+            int nextOffset = 0;
+            for (int i = 0; i < pages.size(); i++) {
+                if (i < mEmojiCategoryStartOffsets.length) {
+                    mEmojiCategoryStartOffsets[i] = nextOffset;
+                }
+                nextOffset += addEmojiSection(pages.get(i).toArray(new String[0]), pageWidth, i);
             }
             updateEmojiCategoryHighlight(-1);
             if (mEmojiScroll != null) {
-                final int pageIndex = getEmojiCategoryStartPage(mEmojiCategoryIndex);
-                mEmojiScroll.post(() -> mEmojiScroll.scrollTo(pageIndex * getEmojiPageWidth(), 0));
+                final int offset = getEmojiCategoryStartOffset(mEmojiCategoryIndex);
+                mEmojiScroll.post(() -> mEmojiScroll.scrollTo(offset, 0));
             }
         }
     }
@@ -2292,33 +2298,65 @@ public class LIMEService extends InputMethodService
         renderEmojiContent(mEmojiSearchQuery.toString());
     }
 
-    private void addEmojiPage(String[] emojis, int pageWidth) {
+    private void addEmojiSearchPage(String[] emojis, int pageWidth) {
         GridLayout page = new GridLayout(mThemeContext);
-        page.setColumnCount(mEmojiSearchMode ? Math.max(1, emojis.length) : 8);
+        page.setColumnCount(Math.max(1, emojis.length));
         page.setPadding(0, 0, 0, 0);
-        int keySize = Math.max(dp(42), pageWidth / 8);
+        int keySize = Math.max(dp(42), pageWidth / EMOJI_GRID_COLUMNS);
         for (String emoji : emojis) {
             TextView key = createEmojiControl(emoji, 28);
             key.setOnClickListener(v -> commitEmoji(((TextView) v).getText().toString()));
             GridLayout.LayoutParams keyParams = new GridLayout.LayoutParams();
             keyParams.width = keySize;
-            keyParams.height = dp(mEmojiSearchMode ? EMOJI_SEARCH_KEY_HEIGHT_DP : 50);
+            keyParams.height = dp(EMOJI_SEARCH_KEY_HEIGHT_DP);
             keyParams.setMargins(0, dp(1), 0, dp(1));
             page.addView(key, keyParams);
         }
-        int contentWidth = mEmojiSearchMode ? Math.max(pageWidth, keySize * emojis.length) : pageWidth;
+        int contentWidth = Math.max(pageWidth, keySize * emojis.length);
         mEmojiPages.addView(page, new LinearLayout.LayoutParams(contentWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+    }
+
+    private int addEmojiSection(String[] emojis, int pageWidth, int categoryIndex) {
+        GridLayout page = new GridLayout(mThemeContext);
+        int keySize = Math.max(dp(42), pageWidth / EMOJI_GRID_COLUMNS);
+        int realCount = emojis == null ? 0 : emojis.length;
+        int columns = Math.max(1, (int) Math.ceil((double) realCount / (double) EMOJI_GRID_ROWS));
+        if (categoryIndex == 0) {
+            columns = Math.max(EMOJI_GRID_COLUMNS, columns);
+        }
+        int visibleCellCount = Math.max(realCount, columns * EMOJI_GRID_ROWS);
+        page.setColumnCount(columns);
+        page.setRowCount(EMOJI_GRID_ROWS);
+        page.setPadding(0, 0, 0, 0);
+        for (int i = 0; i < visibleCellCount; i++) {
+            boolean isRealEmoji = i < realCount;
+            TextView key = createEmojiControl(isRealEmoji ? emojis[i] : "•", 28);
+            if (isRealEmoji) {
+                key.setOnClickListener(v -> commitEmoji(((TextView) v).getText().toString()));
+            } else {
+                key.setTextColor(Color.TRANSPARENT);
+                key.setAlpha(0.01f);
+                key.setOnClickListener(null);
+            }
+            int column = i / EMOJI_GRID_ROWS;
+            int row = i % EMOJI_GRID_ROWS;
+            GridLayout.LayoutParams keyParams = new GridLayout.LayoutParams(
+                    GridLayout.spec(row),
+                    GridLayout.spec(column));
+            keyParams.width = keySize;
+            keyParams.height = dp(50);
+            keyParams.setMargins(0, dp(1), 0, dp(1));
+            page.addView(key, keyParams);
+        }
+        int contentWidth = categoryIndex == 0 ? Math.max(pageWidth, keySize * columns) : keySize * columns;
+        mEmojiPages.addView(page, new LinearLayout.LayoutParams(contentWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return contentWidth;
     }
 
     private void updateEmojiCategoryHighlight(int categoryIndex) {
         if (mEmojiCategoryBar == null) return;
         if (categoryIndex >= 0) {
-            if (!mEmojiPageCategoryIndexes.isEmpty()) {
-                int pageIndex = Math.max(0, Math.min(categoryIndex, mEmojiPageCategoryIndexes.size() - 1));
-                mEmojiCategoryIndex = mEmojiPageCategoryIndexes.get(pageIndex);
-            } else {
-                mEmojiCategoryIndex = Math.max(0, Math.min(categoryIndex, getEmojiCategoryCount() - 1));
-            }
+            mEmojiCategoryIndex = Math.max(0, Math.min(categoryIndex, getEmojiCategoryCount() - 1));
         }
 
         if (mEmojiCategoryBar.getChildCount() != getEmojiCategoryCount()) {
@@ -2331,12 +2369,12 @@ public class LIMEService extends InputMethodService
                         mEmojiSearchField.setText("");
                     }
                     mEmojiSearchMode = false;
+                    mEmojiCategoryIndex = index;
                     renderEmojiContent("");
                     if (mEmojiScroll != null) {
                         mEmojiScroll.post(() -> mEmojiScroll.smoothScrollTo(
-                                getEmojiCategoryStartPage(index) * getEmojiPageWidth(), 0));
+                                getEmojiCategoryStartOffset(index), 0));
                     }
-                    mEmojiCategoryIndex = index;
                     updateEmojiCategoryHighlight(-1);
                 });
                 mEmojiCategoryBar.addView(tab, new LinearLayout.LayoutParams(0, dp(40), 1));
@@ -2360,6 +2398,30 @@ public class LIMEService extends InputMethodService
         }
         int safeIndex = Math.max(0, Math.min(categoryIndex, mEmojiCategoryPageStarts.length - 1));
         return mEmojiCategoryPageStarts[safeIndex];
+    }
+
+    private int getEmojiCategoryStartOffset(int categoryIndex) {
+        if (mEmojiCategoryStartOffsets == null || mEmojiCategoryStartOffsets.length == 0) {
+            return getEmojiCategoryStartPage(categoryIndex) * getEmojiPageWidth();
+        }
+        int safeIndex = Math.max(0, Math.min(categoryIndex, mEmojiCategoryStartOffsets.length - 1));
+        return mEmojiCategoryStartOffsets[safeIndex];
+    }
+
+    private int categoryIndexForEmojiScroll(int scrollX) {
+        if (mEmojiCategoryStartOffsets == null || mEmojiCategoryStartOffsets.length == 0) {
+            int pageWidth = getEmojiPageWidth();
+            return pageWidth > 0 ? Math.round((float) scrollX / (float) pageWidth) : 0;
+        }
+        int active = 0;
+        for (int i = 0; i < mEmojiCategoryStartOffsets.length; i++) {
+            if (mEmojiCategoryStartOffsets[i] <= scrollX + 1) {
+                active = i;
+            } else {
+                break;
+            }
+        }
+        return active;
     }
 
     private View createEmojiCategoryIcon(int categoryIndex) {
@@ -2486,21 +2548,8 @@ public class LIMEService extends InputMethodService
             if (items == null || items.isEmpty()) {
                 items = emojiArrayToList(FALLBACK_EMOJI_CATEGORIES[categoryIndex]);
             }
-            int capacity = EMOJI_PAGE_CAPACITY;
-            if (categoryIndex == 0) {
-                pages.add(new ArrayList<>(items));
-                mEmojiPageCategoryIndexes.add(categoryIndex);
-                continue;
-            }
-            for (int start = 0; start < items.size(); start += capacity) {
-                int end = Math.min(items.size(), start + capacity);
-                pages.add(new ArrayList<>(items.subList(start, end)));
-                mEmojiPageCategoryIndexes.add(categoryIndex);
-            }
-            if (items.isEmpty()) {
-                pages.add(new ArrayList<>());
-                mEmojiPageCategoryIndexes.add(categoryIndex);
-            }
+            pages.add(new ArrayList<>(items));
+            mEmojiPageCategoryIndexes.add(categoryIndex);
         }
         return pages;
     }

@@ -34,6 +34,7 @@ import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.PixelFormat;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -55,6 +56,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
@@ -133,6 +135,7 @@ public class CandidateView extends View implements View.OnClickListener {
 
     protected Drawable mDrawableSuggestHighlight;
     protected Drawable mDrawableVoiceInput;
+    protected Drawable mDrawableEmojiInput;
     protected Drawable mDrawableExpandDownButton;
     protected Drawable mDrawableExpandUpButton;
     protected Drawable mDrawableCloseButton;
@@ -172,7 +175,6 @@ public class CandidateView extends View implements View.OnClickListener {
     protected LIMEPreferenceManager mLIMEPref;
 
     private CandidateExpandedView mPopupCandidateView;
-    private int mCloseButtonHeight;
     private ScrollView mPopupScrollView;
     private boolean candidateExpanded = false;
     private PopupWindow mLimeToastPopup;
@@ -217,6 +219,8 @@ public class CandidateView extends View implements View.OnClickListener {
                         mDrawableSuggestHighlight = a.getDrawable(attr);
                 } else if (attr == R.styleable.LIMECandidateView_voiceInputIcon) {
                         mDrawableVoiceInput = a.getDrawable(attr);
+                } else if (attr == R.styleable.LIMECandidateView_emojiButtonIcon) {
+                        mDrawableEmojiInput = a.getDrawable(attr);
                 } else if (attr == R.styleable.LIMECandidateView_ExpandDownButtonIcon) {
                         mDrawableExpandDownButton = a.getDrawable(attr);
                 } else if (attr == R.styleable.LIMECandidateView_ExpandUpButtonIcon) {
@@ -548,6 +552,7 @@ public class CandidateView extends View implements View.OnClickListener {
 
         candidateExpanded = true;
         requestLayout();
+        doHideComposing();
 
         checkHasMoreRecords();
 
@@ -556,6 +561,10 @@ public class CandidateView extends View implements View.OnClickListener {
             mCandidatePopupWindow = new PopupWindow(mContext);
             // Allow popup to extend beyond window bounds when expanding upward
             mCandidatePopupWindow.setClippingEnabled(false);
+            mCandidatePopupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                mCandidatePopupWindow.setElevation(0f);
+            }
             LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(
                     Context.LAYOUT_INFLATER_SERVICE);
             mCandidatePopupContainer = inflater.inflate(R.layout.candidatepopup, (ViewGroup) this.getRootView(), false);
@@ -564,14 +573,34 @@ public class CandidateView extends View implements View.OnClickListener {
 
             mCandidatePopupWindow.setContentView(mCandidatePopupContainer);
 
-            ImageButton btnClose = mCandidatePopupContainer.findViewById(R.id.closeButton);
-            if (btnClose != null) {
-                btnClose.setOnClickListener(this);
-                btnClose.setImageDrawable(mDrawableCloseButton);
-                btnClose.setBackgroundColor(mColorBackground);
-                btnClose.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            ImageButton popupDismiss = mCandidatePopupContainer.findViewById(R.id.candidate_dismiss);
+            if (popupDismiss != null) {
+                popupDismiss.setOnClickListener(this);
+                popupDismiss.setPadding(0, 0, 0, 0);
+                popupDismiss.setScaleType(ImageButton.ScaleType.CENTER);
+                popupDismiss.setMinimumWidth(0);
+                popupDismiss.setMinimumHeight(0);
+                popupDismiss.setImageDrawable(makeDismissButtonGlyph());
+                popupDismiss.setBackgroundColor(CandidateInInputViewContainer.dismissButtonBackgroundColor());
+                popupDismiss.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
                         MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-                mCloseButtonHeight = btnClose.getMeasuredHeight();
+                storePopupDismissButtonWidth(popupDismiss);
+            }
+
+            ImageButton popupCollapse = mCandidatePopupContainer.findViewById(R.id.candidate_expand_collapse);
+            if (popupCollapse != null) {
+                popupCollapse.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        hideCandidatePopup();
+                    }
+                });
+                popupCollapse.setPadding(0, 0, 0, 0);
+                popupCollapse.setScaleType(ImageButton.ScaleType.CENTER);
+                popupCollapse.setMinimumWidth(0);
+                popupCollapse.setMinimumHeight(0);
+                popupCollapse.setImageDrawable(mDrawableExpandUpButton);
+                popupCollapse.setBackgroundColor(Color.TRANSPARENT);
             }
 
             mPopupScrollView = mCandidatePopupContainer.findViewById(R.id.sv);
@@ -597,9 +626,11 @@ public class CandidateView extends View implements View.OnClickListener {
         // Determine expansion direction based on keyboard visibility
         boolean expandUpward = (mService != null) && mService.isKeyboardViewHidden();
         int candidateViewHeight = getHeight();
+        configurePopupOverlayControls(candidateViewHeight);
         int availableSpaceAbove = offsetOnScreen[1];
         int availableSpaceBelow = mScreenHeight - offsetOnScreen[1] - candidateViewHeight;
 
+        int myHeight = getHeight();
         mPopupCandidateView.setSuggestions(mSuggestions);
         mPopupCandidateView.prepareLayout();
 
@@ -608,32 +639,27 @@ public class CandidateView extends View implements View.OnClickListener {
 
         int popHeight;
         int popupYOffset;
-        int myHeight = getHeight();
         if (expandUpward) {
             // Expand upward: calculate height based on available space above
-            popHeight = availableSpaceAbove;
-            if (mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight < popHeight)
-                popHeight = mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight;
+            popHeight = popupHeight(availableSpaceAbove, mPopupCandidateView.getMeasuredHeight(), true);
             // Offset to align popup bottom with CandidateView bottom
-            popupYOffset = -(popHeight);
+            popupYOffset = popupYOffset(myHeight, popHeight, true);
         } else {
-            // Expand downward: original behavior
-            popHeight = availableSpaceBelow;
-            if (mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight < popHeight)
-                popHeight = mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight;
-            // Original offset: show above CandidateView
-            popupYOffset = -myHeight;
+            // Soft keyboard visible: cover the live candidate bar and keyboard view with one coherent popup.
+            popHeight = popupHeight(visibleKeyboardPopupHeight(availableSpaceBelow, candidateViewHeight),
+                    mPopupCandidateView.getMeasuredHeight(), false);
+            popupYOffset = popupYOffset(myHeight, popHeight, false);
         }
 
-        if (!hasRoomForExpanding(expandUpward)) {
-            popHeight = 3 * (configHeight + mVerticalPadding) + mCloseButtonHeight;
+        if (expandUpward && !hasRoomForExpanding(true)) {
+            popHeight = 3 * (configHeight + mVerticalPadding);
 
             if (DEBUG)
                 Log.i(TAG, "doUpdateCandidatePopup(), " +
                         "no enough room for expanded view, expand self first. newHeight:" + popHeight);
 
-            if (mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight < popHeight)
-                popHeight = mPopupCandidateView.getMeasuredHeight() + mCloseButtonHeight;
+            if (mPopupCandidateView.getMeasuredHeight() < popHeight)
+                popHeight = mPopupCandidateView.getMeasuredHeight();
             this.setLayoutParams(
                     new LinearLayout.LayoutParams(mScreenWidth - mExpandButtonWidth, popHeight));
         }
@@ -650,7 +676,6 @@ public class CandidateView extends View implements View.OnClickListener {
                             + ", popHeight = " + popHeight
                             + ", popupYOffset = " + popupYOffset
                             + ", CandidateExpandedView.measureHeight = " + mPopupCandidateView.getMeasuredHeight()
-                            + ", btnClose.getMeasuredHeight() = " + mCloseButtonHeight
             );
 
 
@@ -660,23 +685,30 @@ public class CandidateView extends View implements View.OnClickListener {
                 Log.i(TAG, "doUpdateCandidatePopup(),mCandidatePopup.isShowing ");
             // Update size only, position is controlled by showAsDropDown offsetY
             // Update both size and y-offset (location) to reflect new popHeight
-            mCandidatePopupWindow.update(this, 0, popupYOffset, mScreenWidth, popHeight);
+            if (expandUpward) {
+                mCandidatePopupWindow.update(this, 0, popupYOffset, mScreenWidth, popHeight);
+            } else {
+                mCandidatePopupWindow.update(mScreenWidth, popHeight);
+            }
         } else {
             mCandidatePopupWindow.setWidth(mScreenWidth);
             mCandidatePopupWindow.setHeight(popHeight);
-            // Use offsetY to position popup: negative value shows above, aligns bottom when expanding upward
-            mCandidatePopupWindow.showAsDropDown(this, 0, popupYOffset);
+            if (expandUpward) {
+                // Use offsetY to position popup above the candidate bar when the soft keyboard is hidden.
+                mCandidatePopupWindow.showAsDropDown(this, 0, popupYOffset);
+            } else {
+                mCandidatePopupWindow.showAtLocation(getRootView(), Gravity.BOTTOM | Gravity.START, 0, 0);
+            }
             mPopupScrollView.scrollTo(0, 0);
         }
 
         //Jeremy '12,5,31 do update layoutparams after popupWindow update or creation.
         mPopupCandidateView.setLayoutParams(
                 new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT
-                        , popHeight - mCloseButtonHeight));
+                        , popupContentHeight(popHeight)));
 
         mPopupScrollView.setLayoutParams(
-                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT
-                        , popHeight - mCloseButtonHeight));
+                popupFrameContentLayoutParams(popHeight));
 
 
     }
@@ -706,6 +738,9 @@ public class CandidateView extends View implements View.OnClickListener {
                         && (mComposingTextPopup.isShowing()) || mComposingTextView.getVisibility() == VISIBLE)) {
 
             mComposingTextView.setVisibility(INVISIBLE);
+            if (embeddedComposing == null && mComposingTextPopup != null && mComposingTextPopup.isShowing()) {
+                mComposingTextPopup.dismiss();
+            }
         }
     }
 
@@ -765,6 +800,13 @@ public class CandidateView extends View implements View.OnClickListener {
 
         mComposingTextView.invalidate();  //Jeremy '12,6,2 invalidate and measure so as to get correct height and width later. 
         mComposingTextView.setVisibility(VISIBLE);
+        if (candidateExpanded) {
+            mComposingTextView.setVisibility(INVISIBLE);
+            if (mComposingTextPopup != null && mComposingTextPopup.isShowing()) {
+                mComposingTextPopup.dismiss();
+            }
+            return;
+        }
 
         //Jeremy '15,6, 4 bypass updating popup when composing view is embedded in candidate container
 
@@ -782,6 +824,10 @@ public class CandidateView extends View implements View.OnClickListener {
             Log.i(TAG, "doUpdateComposing(): this.isShown()" + this.isShown() +
                     "; embeddedComposing is null:" + (embeddedComposing == null));
 
+        if (!shouldShowComposingPopup(candidateExpanded, this.isShown())) {
+            doHideComposing();
+            return;
+        }
 
         if (embeddedComposing != null)
             return; //Jeremy '15,6, 4 bypass updating popup when composing view is embedded in candidate container
@@ -839,7 +885,7 @@ public class CandidateView extends View implements View.OnClickListener {
             Log.i(TAG, "showComposing()");
         //jeremy '12,6,3 moved the creation of mComposingTextPopup and mComposingTextView from doUpdateComposing
         //Jeremy '12,4,8 to avoid fc when hard keyboard is engaged and candidateview is not shown
-        if (!this.isShown()) return;
+        if (!shouldShowComposingPopup(candidateExpanded, this.isShown())) return;
 
         final int composingShowDelayMs = 50; // Delay before showing composing text
         mHandler.updateComposing(composingShowDelayMs);
@@ -1016,6 +1062,82 @@ public class CandidateView extends View implements View.OnClickListener {
 
     static int popupBaseX(int rowLeft, int dismissWidth) {
         return rowLeft + dismissWidth;
+    }
+
+    static int popupContentHeight(int popHeight) {
+        return popHeight;
+    }
+
+    static int popupHeight(int availableSpace, int measuredContentHeight, boolean keyboardViewHidden) {
+        if (keyboardViewHidden && measuredContentHeight < availableSpace) {
+            return measuredContentHeight;
+        }
+        return availableSpace;
+    }
+
+    static int visibleKeyboardPopupHeight(int availableSpaceBelowCandidateBar, int candidateViewHeight) {
+        return availableSpaceBelowCandidateBar + candidateViewHeight;
+    }
+
+    static int popupYOffset(int candidateViewHeight, int popHeight, boolean keyboardViewHidden) {
+        return keyboardViewHidden ? -popHeight : 0;
+    }
+
+    static int visibleKeyboardPopupY(int candidateTopOnScreen, int candidateViewHeight) {
+        return candidateTopOnScreen + candidateViewHeight;
+    }
+
+    static boolean shouldShowComposingPopup(boolean candidateExpanded, boolean viewShown) {
+        return viewShown && !candidateExpanded;
+    }
+
+    static float liveCandidateTextSize(float configuredTextSize) {
+        return configuredTextSize * 0.9f;
+    }
+
+    static boolean isExpandEdgeTap(int touchX, int viewWidth, int expandButtonWidth, int totalWidth) {
+        return viewWidth > 0
+                && expandButtonWidth > 0
+                && totalWidth > viewWidth
+                && touchX >= viewWidth - expandButtonWidth;
+    }
+
+    static FrameLayout.LayoutParams popupFrameContentLayoutParams(int popHeight) {
+        return new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                popupContentHeight(popHeight));
+    }
+
+    int popupDismissButtonWidth() {
+        if (mPopupDismissButtonWidth > 0) return mPopupDismissButtonWidth;
+        return mContext.getResources().getDimensionPixelSize(R.dimen.candidate_dismiss_button_width);
+    }
+
+    int popupExpandButtonWidth() {
+        return mExpandButtonWidth;
+    }
+
+    private void configurePopupOverlayControls(int rowHeight) {
+        if (mCandidatePopupContainer == null || rowHeight <= 0) return;
+        ImageButton popupDismiss = mCandidatePopupContainer.findViewById(R.id.candidate_dismiss);
+        configurePopupOverlayControl(popupDismiss, popupDismissButtonWidth(), rowHeight, Gravity.TOP | Gravity.START);
+
+        ImageButton popupCollapse = mCandidatePopupContainer.findViewById(R.id.candidate_expand_collapse);
+        configurePopupOverlayControl(popupCollapse, popupExpandButtonWidth(), rowHeight, Gravity.TOP | Gravity.END);
+    }
+
+    private void configurePopupOverlayControl(ImageButton button, int width, int height, int gravity) {
+        if (button == null || width <= 0 || height <= 0) return;
+        FrameLayout.LayoutParams params;
+        ViewGroup.LayoutParams current = button.getLayoutParams();
+        if (current instanceof FrameLayout.LayoutParams) {
+            params = (FrameLayout.LayoutParams) current;
+        } else {
+            params = new FrameLayout.LayoutParams(width, height);
+        }
+        params.width = width;
+        params.height = height;
+        params.gravity = gravity;
+        button.setLayoutParams(params);
     }
 
     private static class DismissGlyphDrawable extends Drawable {
@@ -1532,6 +1654,13 @@ public class CandidateView extends View implements View.OnClickListener {
             case MotionEvent.ACTION_UP:
                 if (DEBUG)
                     Log.i(TAG, "OnTouchEvent():MotionEvent.ACTION_UP, mScrolled=" + mScrolled + "; mSelectedIndex = " + mSelectedIndex);
+                if (!mScrolled && isExpandEdgeTap(x, getWidth(), mExpandButtonWidth, mTotalWidth)) {
+                    mSelectedIndex = -1;
+                    removeHighlight();
+                    showCandidatePopup();
+                    performClick();
+                    return true;
+                }
                 if (!mScrolled) {
                     if (mSelectedIndex >= 0) {
                         takeSelectedSuggestion(true);
@@ -1749,10 +1878,10 @@ public class CandidateView extends View implements View.OnClickListener {
 
     @Override
     public void onClick(View v) {
-        //Jeremy '11,8.27 do vibrate and sound on candidateexpandedview close button pressed.
-        mService.doVibrateSound(0);
-
-        hideCandidatePopup();
+        if (mService != null) {
+            mService.doVibrateSound(0);
+        }
+        dismissComposingFromCandidate();
     }
 
 
