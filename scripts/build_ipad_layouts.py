@@ -12,6 +12,13 @@ import copy
 
 LAYOUTS_DIR = "LimeIME-iOS/LimeKeyboard/Layouts"
 
+EXCLUDED_IPAD_LAYOUTS = {
+    "lime_ez",
+    "lime_ez_shift",
+    "lime_hs",
+    "lime_hs_shift",
+}
+
 # -------------------------------------------------------------------------
 # iPad bottom row (standard for all Chinese-IM layouts)
 # globe | .?123 | emoji | space | .?123 | dismiss
@@ -19,8 +26,8 @@ LAYOUTS_DIR = "LimeIME-iOS/LimeKeyboard/Layouts"
 # emoji (code -201) opens the emoji panel. The .?123 cells use the literal
 # ".?123" label for iPad layout consistency per docs/IOS_KB_GAP.md Â§3.2.
 #
-# ï¼\nï¼is placed on the asdf row (right of l) by append_semicolon_key,
-# freeing the bottom row for the emoji cell.
+# ï¼\nï¼ and 。\n， are placed on the asdf row by append_semicolon_key
+# and append_fullshape_period; they must not be generated in the bottom row.
 # globe and dismiss carry longPressCode -100 (show options menu).
 # Total: 8 + 10 + 7 + 57 + 10 + 8 = 100
 # -------------------------------------------------------------------------
@@ -50,7 +57,6 @@ IM_LAYOUTS = {
     "lime_dayi_sym", "lime_dayi_sym_shift",
     "lime_et26",     "lime_et26_shift",
     "lime_et_41",    "lime_et_41_shift",
-    "lime_hs",       "lime_hs_shift",
     "lime_hsu",      "lime_hsu_shift",
     "lime_wb",       "lime_wb_shift",
 }
@@ -252,6 +258,16 @@ _DIGIT_SYMBOL = {
     48: (41,  ")\\n0"),
 }
 
+
+def make_plus_equals_key(width=7.0):
+    return {
+        "code": 61, "label": "+\\n=", "sublabel": "",
+        "widthPercent": width, "icon": "",
+        "isModifier": False, "isRepeatable": False, "isSticky": False,
+        "popupKeyboard": "", "popupCharacters": "", "longPressCode": 43,
+    }
+
+
 # -------------------------------------------------------------------------
 # Per-row IM transforms â applied in pipeline order for 4-row IM layouts.
 # Each function is self-gating: it detects its target row by content and
@@ -261,11 +277,10 @@ _DIGIT_SYMBOL = {
 def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
     """Augment the IM digit row for iPad.
 
-    Result layout: "~\n`" | 1 2 3 4 5 6 7 8 9 0 | [dash] | "â¦\nâ" | â«
+    Result layout: "~\n`" | 1 2 3 4 5 6 7 8 9 0 | [dash] | "+\n=" | â«
+    Digit row invariant: exactly 13 normal keys plus delete = 14 total keys.
 
     "~\n`" prefix: backtick primary (96), tilde long-press (126).
-    `â¦\\nâ` slot: em-dash primary (8212), ellipsis long-press (8230) â
-      replaces the historical =/+ slot in the digit row.
     â«: repeating delete so users don't have to reach the top-right corner.
 
     dash_key: harvested `-` dict, or None when dash goes to the zxcv row
@@ -298,7 +313,7 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
             })
         elif layout_dash_key is None:
             keys.insert(ins, {
-                "code": 8230, "label": "â¦", "sublabel": "", "widthPercent": W, "icon": "",
+                "code": 8230, "label": "\u2026", "sublabel": "", "widthPercent": W, "icon": "",
                 "isModifier": False, "isRepeatable": False, "isSticky": False,
                 "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
             })
@@ -312,6 +327,8 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
             "icon": "delete.backward", "isModifier": True, "isRepeatable": True,
             "isSticky": False, "popupKeyboard": "", "popupCharacters": "", "longPressCode": 0,
         })
+        if len(keys) != 14:
+            raise ValueError("Generated iPad symbol top row must be 14 keys")
         return row
 
     if 48 not in codes or 49 not in codes:  # must be a 1â0 digit row
@@ -350,7 +367,7 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
     elif layout_dash_key is None:
         # No dash anywhere in the layout â use em-dash/ellipsis as fallback.
         keys.insert(ins, {
-            "code": 8212, "label": "â¦\\nâ", "sublabel": "",
+            "code": 8212, "label": "\u2026\\n\u2014", "sublabel": "",
             "widthPercent": W, "icon": "",
             "isModifier": False, "isRepeatable": False, "isSticky": False,
             "popupKeyboard": "", "popupCharacters": "", "longPressCode": 8230,
@@ -367,12 +384,13 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
             ek["longPressCode"] = 43
         keys.append(ek)
     else:
-        keys.append({
-            "code": 61, "label": "+\\n=", "sublabel": "",
-            "widthPercent": W, "icon": "",
-            "isModifier": False, "isRepeatable": False, "isSticky": False,
-            "popupKeyboard": "", "popupCharacters": "", "longPressCode": 43,
-        })
+        keys.append(make_plus_equals_key(W))
+
+    # Hard invariant guard: every generated digit row must have the +\n= key.
+    # This catches source layouts where = was stripped or absent in an unusual
+    # place and prevents a 13-key top row from being emitted.
+    if not any(k.get("code") == 61 for k in keys):
+        keys.append(make_plus_equals_key(W))
 
     keys.append({
         "code": -5, "label": "", "sublabel": "", "widthPercent": W,
@@ -386,18 +404,25 @@ def augment_im_digit_row(row, digit_dash, layout_dash_key=None, eq_key=None):
         "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
         "popupKeyboard": "", "popupCharacters": "", "longPressCode": 126,
     })
+    if len(keys) != 14:
+        raise ValueError("Generated iPad digit top row must be 14 keys")
     return row
 
 
 def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None, has_digit_row=True):
     """Detect the qwerty row (last primary code = p/112 or P/80).
 
-    Leftmost position:  source \\ (92) if present, else ï¼\\nã fallback (12289â65311).
-    Second position:    Tab (9), always present.
-    Rightmost pair:     source [ (91) or ã\\nã, then source ] (93) or ã\\nã.
+    Left edge:          Tab (9), always present.
+    Rightmost pair:     source [ (91) or fallback ã\\nã,
+                        then source ] (93) or fallback ã\\nã.
+    Rightmost position: source \\ with IM sublabel is preserved; otherwise
+                        ï¼\\nã (tap ã, slide/long-press ï¼) when digit row exists;
+                        â« when no digit row.
 
     Source keys are moved (stripped from other rows by strip_promoted_keys).
-    Fallback CJK sliders are used when the source layout lacks the key.
+    Fallback dual-sliding keys are added only when the source layout does not
+    already provide the slot. A plain backslash/pipe source key is not converted
+    to |\\nã; Chinese IM rows use the CJK ï¼\\nã fallback instead.
     """
     if row.get("isBottomRow", False):
         return row
@@ -425,7 +450,7 @@ def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None, has_
         keys.append(lk)
     else:
         keys.append({
-            "code": 12300, "label": "ã\\nã", "sublabel": "", "widthPercent": W,
+            "code": 12300, "label": "\u300e\\n\u300c", "sublabel": "", "widthPercent": W,
             "icon": "", "isModifier": False, "isRepeatable": False,
             "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
             "longPressCode": 12302,
@@ -441,21 +466,18 @@ def transform_qwerty_row(row, lbracket=None, backslash=None, rbracket=None, has_
         keys.append(rk)
     else:
         keys.append({
-            "code": 12301, "label": "ã\\nã", "sublabel": "", "widthPercent": W,
+            "code": 12301, "label": "\u300f\\n\u300d", "sublabel": "", "widthPercent": W,
             "icon": "", "isModifier": False, "isRepeatable": False,
             "isSticky": False, "popupKeyboard": "", "popupCharacters": "",
             "longPressCode": 12303,
         })
 
-    # Rightmost: \ (source) or ï¼\nã fallback when digit row exists;
-    # â« when no digit row (qwerty row carries delete instead of \).
+    # Rightmost: preserve an IM-component source \ key; otherwise use ï¼\nã
+    # when digit row exists. No-digit qwerty row carries delete instead.
     if has_digit_row:
-        if backslash is not None:
+        if backslash is not None and backslash.get("sublabel", ""):
             bs = normalise_key(copy.deepcopy(backslash))
             bs["widthPercent"] = W
-            if not bs.get("sublabel", ""):
-                bs["label"] = "|\\n\\"
-                bs["longPressCode"] = 124
             keys.append(bs)
         else:
             keys.append({
@@ -570,12 +592,12 @@ def append_semicolon_key(row):
         lk = keys[-1]
         if not lk.get("sublabel", ""):
             lk["code"]         = 65306
-            lk["label"]        = "ï¼\\nï¼"
+            lk["label"]        = "\uff1b\\n\uff1a"
             lk["longPressCode"] = 65307
         # else: IM component key â leave unchanged
     else:
         keys.append({
-            "code": 65306, "label": "ï¼\\nï¼", "sublabel": "", "widthPercent": 7.0,
+            "code": 65306, "label": "\uff1b\\n\uff1a", "sublabel": "", "widthPercent": 7.0,
             "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
             "popupKeyboard": "", "popupCharacters": "", "longPressCode": 65307,
         })
@@ -589,7 +611,7 @@ def append_fullshape_period(row):
     58 (:) and 59 (;) are included for IM shift layouts whose last asdf key is an
     IM component (sublabel present) so append_semicolon_key left it unchanged.
     65306 (ï¼) is included because append_semicolon_key may have placed it last.
-    Full-shape period (65292) on tap, full-shape comma (12290) on long-press.
+    Full-shape comma (65292) on tap, full-shape period (12290) on long-press.
     Always placed left of the Enter key on the asdf row.
     """
     if row.get("isBottomRow", False):
@@ -598,7 +620,7 @@ def append_fullshape_period(row):
     if not keys or keys[-1].get("code") not in (58, 59, 65306, 108, 76):
         return row
     keys.append({
-        "code": 65292, "label": "ã\\nï¼", "sublabel": "", "widthPercent": 7.0,
+        "code": 65292, "label": "\u3002\\n\uff0c", "sublabel": "", "widthPercent": 7.0,
         "icon": "", "isModifier": False, "isRepeatable": False, "isSticky": False,
         "popupKeyboard": "", "popupCharacters": "", "longPressCode": 12290,
     })
@@ -754,13 +776,6 @@ def normalize_im_row_widths(row):
 #
 # Punct: < > ? : (60/62/63/58) â , . / ; (44/46/47/59)
 _SHIFTED_PUNCT_REVERT = {60: (44, ','), 62: (46, '.'), 63: (47, '/'), 58: (59, ';')}
-# Digits: ! @ # $ % ^ & * ( ) (33/64/35/36/37/94/38/42/40/41) â 1â0 (49â48)
-_SHIFTED_DIGIT_REVERT = {
-    33: (49, '1'), 64: (50, '2'), 35: (51, '3'), 36: (52, '4'), 37: (53, '5'),
-    94: (54, '6'), 38: (55, '7'), 42: (56, '8'), 40: (57, '9'), 41: (48, '0'),
-}
-
-
 def apply_shift_key_rules(ipad_layout, source_id):
     """Post-process an iPad shift layout:
     1. Dual-slide keys (label X\\nY, no sublabel) in qwerty/asdf/zxcv rows â
@@ -778,18 +793,15 @@ def apply_shift_key_rules(ipad_layout, source_id):
         if row.get("isBottomRow", False):
             continue
         codes = {k.get("code") for k in row.get("keys", [])}
-        # Digit row (1â0) or symbol-shift row (!@#â¦): only revert IM sublabel
-        # keys to their base char; dual-slide keys without sublabel stay as-is.
+        # Digit row (1â0) or symbol-shift row (!@#â¦): keep source IM sublabel
+        # symbol keys as shifted symbols. Only non-digit rows need the generic
+        # dual-slide and punctuation post-processing below.
         is_digit_or_sym_row = (48 in codes and 49 in codes) or (33 in codes and 41 in codes)
         for key in row.get("keys", []):
             label = key.get("label", "")
             sublabel = key.get("sublabel", "")
             if is_digit_or_sym_row:
-                # Rule 2b: symbol-row IM sublabel digit key â revert to base digit
-                if sublabel:
-                    entry = _SHIFTED_DIGIT_REVERT.get(key.get("code"))
-                    if entry:
-                        key["code"], key["label"] = entry
+                continue
             else:
                 if SEP in label and not sublabel:
                     # Rule 1: dual-slide punctuation/bracket, no IM component â show X.
@@ -820,7 +832,42 @@ def _make_bottom_row(is_wb=False):
     wb's abc key lives in its content row (replacing the source -2 shortcut)
     so the standard bottom row applies to all layouts.
     """
-    return copy.deepcopy(IPAD_BOTTOM_ROW)
+    row = copy.deepcopy(IPAD_BOTTOM_ROW)
+    keys = row.get("keys", [])
+    if len(keys) != 6:
+        raise ValueError("Generated iPad bottom row must be 6 keys")
+    if any(k.get("icon") == "mic" for k in keys):
+        raise ValueError("Generated iPad bottom row must use emoji, not microphone")
+    if any(k.get("code") == 65292 for k in keys):
+        raise ValueError("Generated iPad bottom row must not contain 。\\n，")
+    return row
+
+
+def validate_ipad_row_counts(ipad, source_id):
+    bottom_rows = [r for r in ipad.get("rows", []) if r.get("isBottomRow", False)]
+    if len(bottom_rows) != 1:
+        raise ValueError(f"{source_id}: expected exactly one iPad bottom row")
+    bottom_keys = bottom_rows[0].get("keys", [])
+    if len(bottom_keys) != 6:
+        raise ValueError(f"{source_id}: bottom row must be 6 keys, got {len(bottom_keys)}")
+    if any(k.get("icon") == "mic" for k in bottom_keys):
+        raise ValueError(f"{source_id}: bottom row must use emoji, not microphone")
+    if any(k.get("code") == 65292 for k in bottom_keys):
+        raise ValueError(f"{source_id}: bottom row must not contain 。\\n，")
+
+    if "wb" in source_id:
+        return
+
+    content_rows = [r for r in ipad.get("rows", []) if not r.get("isBottomRow", False)]
+    expected = [14, 14, 13, 12] if len(content_rows) == 4 else [14, 13, 12]
+    if len(content_rows) != len(expected):
+        raise ValueError(f"{source_id}: unexpected content row count {len(content_rows)}")
+
+    names = ["digit", "qwerty", "asdf", "zxcv"] if len(expected) == 4 else ["qwerty", "asdf", "zxcv"]
+    for name, row, count in zip(names, content_rows, expected):
+        actual = len(row.get("keys", []))
+        if actual != count:
+            raise ValueError(f"{source_id}: {name} row must be {count} keys, got {actual}")
 
 
 # -------------------------------------------------------------------------
@@ -860,7 +907,7 @@ def make_ipad_layout(phone, source_id):
     # has_digit_row: True for layouts with a 1â0 or !@#â¦ top row (standard IM).
     # False for 3-row layouts without a digit row (lime_array, lime_cj family).
     # The only behavioural difference is the qwerty row rightmost key:
-    #   has_digit_row=True  â \ / |\nã fallback
+    #   has_digit_row=True  â ï¼\nã
     #   has_digit_row=False â â«
     has_digit_row = any(
         is_number_top_row(r) or is_symbol_top_row(r)
@@ -922,6 +969,7 @@ def make_ipad_layout(phone, source_id):
             if key.get("code") == 46:
                 key["popupKeyboard"] = ""
 
+    validate_ipad_row_counts(ipad, source_id)
     return ipad
 
 
@@ -956,9 +1004,6 @@ JOBS = [
     # lime_et_41
     ("lime_et_41",            "lime_et_41_ipad"),
     ("lime_et_41_shift",      "lime_et_41_ipad_shift"),
-    # lime_hs
-    ("lime_hs",               "lime_hs_ipad"),
-    ("lime_hs_shift",         "lime_hs_ipad_shift"),
     # lime_hsu
     ("lime_hsu",              "lime_hsu_ipad"),
     ("lime_hsu_shift",        "lime_hsu_ipad_shift"),
@@ -973,6 +1018,9 @@ def main():
     errors = []
 
     for src_stem, out_stem in JOBS:
+        if src_stem in EXCLUDED_IPAD_LAYOUTS:
+            continue
+
         src_path = os.path.join(LAYOUTS_DIR, src_stem + ".json")
         out_path = os.path.join(LAYOUTS_DIR, out_stem + ".json")
 

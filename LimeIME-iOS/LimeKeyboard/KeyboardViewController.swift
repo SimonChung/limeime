@@ -9,6 +9,7 @@ final class KeyboardViewController: UIInputViewController {
     private var candidateBar: CandidateBarView!
     private var keyboardView:  KeyboardView!
     private var emojiPanelView: EmojiPanelView?
+    private var emojiPanelSource: EmojiPanelSource = .english
 
     // MARK: - SearchServer
     private var searchServer: SearchServer?
@@ -59,7 +60,7 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Settings (spec §15 — read from shared UserDefaults)
     /// Raw `keyboard_theme` value (0–5 = explicit palette; 6 = follow system appearance).
-    private var currentKeyboardTheme:    Int  = 0
+    private var currentKeyboardTheme:    Int  = 6
     private var hanConvertOption:        Int  = 0     // 0=off, 1=T→S, 2=S→T
     private var autoChineseSymbol:       Bool = true  // show Chinese punctuation after commit
     private var sortSuggestions:         Bool = false
@@ -563,7 +564,9 @@ final class KeyboardViewController: UIInputViewController {
         // Note: d?.bool(forKey:) and d?.integer(forKey:) return false/0 when the key is
         // absent (not nil), so the ?? fallback never fires. Use object(forKey:) as? Type
         // for all settings whose default is non-false / non-zero.
-        currentKeyboardTheme    = d?.integer(forKey: "keyboard_theme")                          ?? 0
+        currentKeyboardTheme    = (d?.object(forKey: "keyboard_theme") != nil)
+            ? (d?.integer(forKey: "keyboard_theme") ?? 6)
+            : 6
         hanConvertOption        = d?.integer(forKey: "han_convert_option")                       ?? 0
         autoChineseSymbol       = d?.bool(forKey: "auto_chinese_symbol")                        ?? false
         sortSuggestions         = (d?.object(forKey: "learning_switch")          as? Bool)      ?? true
@@ -1245,9 +1248,15 @@ final class KeyboardViewController: UIInputViewController {
         let targetId  = wantShift ? "\(base)_shift" : base
         if targetId != currentLayout.id,
            let newLayout = LayoutLoader.load(targetId) {
+            if isShiftKeyHeld {
+                keyboardView?.previewLayout(newLayout)
+                return
+            }
             currentLayout = newLayout
             keyboardView?.setLayout(currentLayout)
             applyHeight()
+        } else if !wantShift {
+            keyboardView?.previewLayout(nil)
         }
     }
 
@@ -1271,6 +1280,8 @@ final class KeyboardViewController: UIInputViewController {
         if ShiftResetPolicy.shouldResetAfterShiftRelease(capsLock: mCapsLock,
                                                          holdModifiedCharacter: shiftHoldModifiedCharacter) {
             setShift(false)
+        } else {
+            applyShiftState()
         }
         shiftHoldModifiedCharacter = false
     }
@@ -2231,8 +2242,17 @@ extension KeyboardViewController: KeyboardViewDelegate {
             return
         }
         if keyDef.code == LimeKeyCode.shift.rawValue {
+            let wasShiftKeyHeld = isShiftKeyHeld
             isShiftKeyHeld = true
+            guard ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: wasShiftKeyHeld) else {
+                return
+            }
             shiftHoldModifiedCharacter = false
+        }
+        if let shiftedCode = shiftedHeldPrimaryCode(for: keyDef) {
+            resetMultiTap()
+            onKey(primaryCode: shiftedCode)
+            return
         }
         if keyDef.codes.count > 1 {
             handleMultiTap(keyDef)
@@ -2254,6 +2274,18 @@ extension KeyboardViewController: KeyboardViewDelegate {
         } else {
             releaseShiftKey()
         }
+    }
+
+    private func shiftedHeldPrimaryCode(for keyDef: KeyDef) -> Int? {
+        guard isShiftOn,
+              isShiftKeyHeld,
+              keyDef.longPressCode != 0,
+              keyDef.longPressCode != LimeKeyCode.keyboardOptionsMenu.rawValue,
+              keyDef.popupKeyboard.isEmpty,
+              keyDef.code > 0 else {
+            return nil
+        }
+        return keyDef.longPressCode
     }
 
     private func handleMultiTap(_ keyDef: KeyDef) {
@@ -2915,6 +2947,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
     }
 
     private func showEmojiPanel() {
+        emojiPanelSource = EmojiPanelSource.source(isEnglishOnly: mEnglishOnly)
         if isExpandedCandidatesVisible { hideExpandedCandidates() }
         dismissPopupKeyboard()
         hideComposingPopup()
@@ -2952,6 +2985,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         keyboardView.isHidden = true
         candidateBar.isHidden = true
         panel.prepareForPresentation()
+        panel.setReturnKeyTitle(emojiPanelSource.returnKeyTitle)
         panel.isHidden = false
         panel.setEmojiPages(loadEmojiCategoryPages())
     }
@@ -3252,6 +3286,8 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private var emojiBottomToPanelConstraint: NSLayoutConstraint?
     private var isSearchMode = false
     private var categoryButtons: [UIButton] = []
+    private var returnKeyboardButton: UIButton?
+    private var returnKeyTitle = EmojiPanelSource.english.returnKeyTitle
     private var activeCategoryIndex = 1
     private var lastRenderedWidth: CGFloat = 0
     private var lastRenderedViewportHeight: CGFloat = 0
@@ -3294,6 +3330,11 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             activeCategoryIndex = 1
         }
         rebuildEmojiButtons()
+    }
+
+    func setReturnKeyTitle(_ title: String) {
+        returnKeyTitle = title
+        returnKeyboardButton?.setTitle(title, for: .normal)
     }
 
     override func layoutSubviews() {
@@ -3404,8 +3445,9 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private func buildCategoryBar() {
         categoryBar.arrangedSubviews.forEach { $0.removeFromSuperview() }
         categoryButtons = []
-        let abc = textButton("ABC", action: #selector(tapABC))
+        let abc = textButton(returnKeyTitle, action: #selector(tapABC))
         abc.tag = 0
+        returnKeyboardButton = abc
         categoryButtons.append(abc)
         categoryBar.addArrangedSubview(abc)
         categoryBar.addArrangedSubview(categoryIconSpacer)

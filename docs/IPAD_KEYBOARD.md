@@ -21,6 +21,150 @@ No-digit layouts (lime_array, lime_cj) have no digit row.  Their qwerty and
 asdf rows follow the same 14 / 13 targets; their zxcv row follows the same
 12 target.
 
+Digit-row rule: every generated iPad digit row is always 14 keys total:
+13 normal keys plus backspace. The final normal key before backspace must be
+`+\n=` (tap `=`, slide/long-press `+`). If a source layout does not provide an
+`=` key, the generator must add the `+\n=` fallback so the row never drops to
+13 total keys.
+
+### Chinese IM iPad generator contract
+
+`scripts/build_ipad_layouts.py` is allowed to generate only these Chinese IM
+iPad layouts:
+
+- `lime_phonetic`, `lime_phonetic_shift`
+- `lime_array`, `lime_array_shift`
+- `lime_array_number`, `lime_array_number_shift`
+- `lime_cj`, `lime_cj_shift`
+- `lime_cj_number`, `lime_cj_number_shift`
+- `lime_dayi`, `lime_dayi_shift`
+- `lime_dayi_sym`, `lime_dayi_sym_shift`
+- `lime_et26`, `lime_et26_shift`
+- `lime_et_41`, `lime_et_41_shift`
+- `lime_hsu`, `lime_hsu_shift`
+- `lime_wb`, `lime_wb_shift`
+
+The generator must always exclude these layouts, including shifted variants:
+
+- `lime_ez`
+- `lime_ez_shift`
+- `lime_hs`
+- `lime_hs_shift`
+
+Do not generate, regenerate, normalize, or otherwise modify
+`lime_ez_ipad*.json` or `lime_hs_ipad*.json` from this script.
+
+#### Source-first guard
+
+Before adding any fallback key, the generator must first inspect the original
+phone layout. If the source layout already provides the needed key, use that
+source key instead of creating a generic fallback.
+
+- Preserve source keys that have IM sublabels; those sublabels are IM data, not
+  decoration.
+- A source key with no sublabel may be upgraded in place to the iPad
+  dual-sliding form for that slot.
+- A fallback dual-sliding key may be added only when the source layout does not
+  already provide the base key or its shifted equivalent for that slot.
+- Any key promoted to a new iPad row must be stripped from its original row so
+  the layout does not duplicate it.
+- Dual-sliding labels use `hint\nprimary`: top/hint character before `\n`,
+  direct tap character after `\n`.
+
+#### Row 1 / digit row guard
+
+Generated 4-content-row IM layouts must have a 14-key digit row:
+
+```
+~\n` | 1 ... 0 | - or fallback | +\n= | backspace
+```
+
+- Total count is always 14, including backspace.
+- The row is 13 normal keys plus backspace.
+- Use source `-` if present; if it has no sublabel, upgrade it to `_\n-`.
+- Use source `=` if present; if it has no sublabel, upgrade it to `+\n=`.
+- If `=` is missing, add fallback `+\n=` so the row does not fall to 13 keys.
+- If the source has no dash slot, use the established dash fallback for that
+  layout class.
+- Shifted digit rows mirror dual-sliding keys as fixed slide-output keys.
+
+`lime_array` and `lime_cj` no-digit layouts have no digit row; their first
+content row starts at the QWERTY rule below. `lime_wb` is compact and is exempt
+from normal content-row count validation, but it still uses the standard
+bottom-row guard.
+
+#### Row 2 / QWERTY guard
+
+Generated QWERTY rows must have 14 keys:
+
+```
+Tab | q w e r t y u i o p | bracket-left | bracket-right | CJK-punct/backspace
+```
+
+- Total count is always 14.
+- Use source `[` and `]` if present; preserve them if they have IM sublabels,
+  otherwise upgrade to bracket dual-sliding keys.
+- If bracket keys are missing, add fallback `『\n「` and `』\n」`.
+- For 4-content-row layouts, the rightmost punctuation key is always
+  `？\n、`: tap emits `、` (12289), slide/long-press emits `？` (65311).
+- Never synthesize `|\n、` for Chinese IM iPad layouts.
+- A source `\` key with an IM sublabel may be preserved. A plain backslash/pipe
+  key must not be converted into `|\n、`.
+- For no-digit layouts, the row uses the bracket pair and ends with backspace
+  instead of adding the `？\n、` key.
+
+#### Row 3 / ASDF guard
+
+Generated ASDF rows must have 13 keys:
+
+```
+abc | a s d f g h j k l | ；\n： or source IM key | 。\n， | Enter/search
+```
+
+- Total count is always 13.
+- The left modifier is `abc`.
+- Use source `;` or `:` if present. Preserve it when it has an IM sublabel.
+- If source `;` or `:` has no sublabel, upgrade it in place to `；\n：`.
+- If no source semicolon/colon slot exists, add fallback `；\n：`.
+- `。\n，` belongs on ASDF, immediately left of Enter/search.
+- `。\n，` must never be generated in the bottom row.
+
+#### Row 4 / ZXCV guard
+
+Generated ZXCV rows must have 12 keys:
+
+```
+Shift | z x c v b n m | ,/. punctuation slots | Shift
+```
+
+- Total count is always 12.
+- There is a shift key on both ends.
+- Existing `,`, `.`, `/` keys without IM sublabels are upgraded to
+  `<\n,`, `>\n.`, `?\n/`.
+- Missing punctuation fallbacks are added only if neither the base key nor its
+  shifted equivalent already exists (`<`, `>`, `?`).
+- Do not promote ASDF-owned punctuation (`;`, `:`, `。\n，`) into ZXCV.
+- Strip non-QWERTY extra printable keys that would make the generated row exceed
+  the fixed 12-key scaffold.
+
+#### Row 5 / bottom-row guard
+
+Every generated Chinese IM iPad layout uses this fixed 6-key bottom row:
+
+```
+[ globe ][ .?123 ][ emoji ][ space ][ .?123 ][ dismiss ]
+```
+
+- Total count is always 6.
+- Widths are `8 + 10 + 7 + 57 + 10 + 8 = 100`.
+- The emoji key is `code = -201`, `icon = face.smiling`.
+- There is no microphone key in generated Chinese IM iPad bottom rows.
+- There is no transparent spacer key in generated Chinese IM iPad bottom rows.
+- `。\n，` and `；\n：` are not bottom-row keys.
+- `globe` and `dismiss` both carry `longPressCode = -100` for the options menu.
+- `globe` is always present on iPad; do not hide it because of
+  `needsInputModeSwitchKey`.
+
 ### Shift mirroring rule
 
 A dual-sliding key (`hint\nprimary`) on the unshifted row becomes a **fixed
@@ -111,7 +255,8 @@ For each existing keyboard layout that is exposed on iPad, ship a **separate `*_
    - English / ABC keyboard (§4.2.1 / §4.2.2): 5 rows; top row is the dual number+symbol row with `\n`-split labels and slide-down secondary entry; right edge gets the `{ [` / `} ]` / `| \` cluster; row 3 has a `注音` IM-toggle modifier; row 3 right is the blue `search` / `return` accent; row 4 has shift on **both** ends.
    - Symbols / `.?123` keyboard (§4.2.3): 5 rows; row-3 modifier is `undo`; row-4 modifier is `redo`; bottom row uses `ABC` on both sides of the spacebar.
    - Phonetic / 注音 keyboard (§4.2.5): 5 rows; row-3 modifier is `abc`; right-edge cluster uses CJK corner brackets `『「` / `』」` / `？ 、`; row-3 right is the magnifying-glass `search` icon.
-   - Every other Chinese IM (Array / CJ / Dayi / ET26 / ET41 / Hsu / EZ / HS / WB) inherits the same scaffolding (§4.2.6) — alpha keys come from the existing phone JSON, but the iPad-only number row, IM-toggle, search, dual punctuation cells, dual shift, and bottom-row template are all added; **no key is squeezed**, and rows that have fewer alpha keys than the iPad scaffold are padded with transparent spacers (§4.2.7) so each surviving key stays at iPad cell width.
+   - Every generated Chinese IM (Array / CJ / Dayi / ET26 / ET41 / Hsu / WB) inherits the same scaffolding (§4.2.6) — alpha keys come from the existing phone JSON, but the iPad-only number row, IM-toggle, search, dual punctuation cells, dual shift, and bottom-row template are all added; **no key is squeezed**, and rows that have fewer alpha keys than the iPad scaffold are padded with transparent spacers (§4.2.7) so each surviving key stays at iPad cell width.
+   - **EZ and HS are permanently excluded from iPad layout generation**, including shifted variants. The generator must never create or update `lime_ez_ipad*.json` or `lime_hs_ipad*.json`; leave those layout files untouched.
 2. The English / ABC top row implements the **dual-character key** (§4.5): tap = primary symbol, slide-down = secondary number, long-press = preview shows secondary only. Encoded with the existing `\n`-split label + `longPressCode` field — no schema change.
 3. Larger candidate bar font and row height on iPad (§5).
 4. Show the candidate-bar hamburger/options button on iPad when the candidate row is empty; tapping it opens the same menu as long-pressing the keyboard/dismiss key. The button stays on the right/backspace edge but uses a 7% normal-key-width frame instead of the wider backspace width, uses candidate text color for light/dark contrast, and keeps a full-height touch target.
@@ -179,8 +324,6 @@ Alpha / IM layouts — exposed on iPad:
 - `lime_dayi_sym_ipad.json`, `lime_dayi_sym_shift_ipad.json`
 - `lime_et26_ipad.json`, `lime_et26_shift_ipad.json`
 - `lime_et_41_ipad.json`, `lime_et_41_shift_ipad.json`
-- `lime_ez_ipad.json`, `lime_ez_shift_ipad.json`
-- `lime_hs_ipad.json`, `lime_hs_shift_ipad.json`
 - `lime_hsu_ipad.json`, `lime_hsu_shift_ipad.json`
 - `lime_wb_ipad.json`, `lime_wb_shift_ipad.json`
 - `lime_number_ipad.json`, `lime_number_shift_ipad.json`
@@ -191,12 +334,16 @@ Alpha / IM layouts — exposed on iPad:
 Phone-only numpads (no iPad variant — fall through to phone JSON):
 - `phone.json`, `phone_number.json`, `phone_shift.json`, `phone_simple.json` — these are bound to `.phonePad` numeric textfields and look identical on iPad.
 
+Excluded from script generation (do not create or modify iPad variants):
+- `lime_ez`, `lime_ez_shift`
+- `lime_hs`, `lime_hs_shift`
+
 Popups (`popup_*`, see §4.4):
 - Optional `popup_*_ipad.json` only if the popup needs more columns on iPad.
 
 ### 4.2 Geometry conventions for `_ipad.json`
 
-Goal: the iPad layouts must look **exactly** like Apple's stock iPad keyboards in the three attached screenshots. We have far more screen than iPhone, so the design intent is the opposite of the phone JSON: **do not squeeze keys**. Add the extra side columns, the extra top/right symbol columns, and the wider modifiers that the stock iPad keyboard uses. Every IM (Phonetic, Array, CJ, Dayi, ET26, ET41, Hsu, EZ, HS, WB, English, ABC) gets the same scaffolding even though the alpha-key cluster differs per IM.
+Goal: the iPad layouts must look **exactly** like Apple's stock iPad keyboards in the three attached screenshots. We have far more screen than iPhone, so the design intent is the opposite of the phone JSON: **do not squeeze keys**. Add the extra side columns, the extra top/right symbol columns, and the wider modifiers that the stock iPad keyboard uses. Every generated IM (Phonetic, Array, CJ, Dayi, ET26, ET41, Hsu, WB, English, ABC) gets the same scaffolding even though the alpha-key cluster differs per IM. EZ and HS are excluded from iPad layout generation.
 
 Common scaffolding (every alpha-IM `_ipad.json`):
 
@@ -209,7 +356,7 @@ Geometric tokens used in the layouts below (each stays consistent across the thr
 | Token            | `widthPercent` | Notes |
 | ---              | ---            | --- |
 | `KEY`            | `6.66`         | Standard top-row / alpha cell (15-column grid). |
-| `KEY_NARROW`     | `6.0`          | Bottom-row tertiary keys (`globe`, `.?123`, dismiss). |
+| `KEY_NARROW`     | `6.0`          | Bottom-row tertiary keys (`globe`, `.?123`/`ABC`, emoji, dismiss). |
 | `MOD_TAB`        | `7.0`          | `→` (tab) on row 2, left edge. |
 | `MOD_IM`         | `7.0`          | `注音` / `abc` toggle on row 3, left edge. |
 | `MOD_SHIFT_L`    | `9.5`          | Left shift on row 4. |
@@ -217,13 +364,18 @@ Geometric tokens used in the layouts below (each stays consistent across the thr
 | `MOD_RETURN`     | `9.5`          | `search` / `return` on row 3, right edge. |
 | `MOD_BACKSPACE`  | `7.5`          | `⌫` on row 1, right edge. |
 | `MOD_PUNCT`      | `6.0`          | `:`/`;`, `"`/`,`, `<`/`,` etc. dual-glyph cells. |
-| `SPACE`          | `≈ 56`         | Space — fills whatever is left after the bottom-row siblings. |
+| `SPACE`          | `≈ 50`         | Space — fills whatever is left after the bottom-row siblings. |
 
 Bottom-row template (every alpha layout, every IM):
 
 ```
-[ globe(KEY_NARROW) ][ .?123(KEY_NARROW) ][ emoji ][ space(SPACE) ][ .?123(KEY_NARROW) ][ dismiss(KEY_NARROW) ]
+[ globe ][ .?123 ][ emoji ][ space ][ .?123 ][ dismiss ]
 ```
+
+This is a fixed **6-key** row. The old microphone/dictation slot is not used;
+that position is the emoji key (`face.smiling`, code `-201`). There is no
+post-space spacer in the generated Chinese IM bottom row. `。\n，` belongs on
+the ASDF row, left of Enter/search.
 
 **Both `globe` and `dismiss` keys are always present** in the iPad bottom row — they coexist (visible in all three screenshots: globe icon at the far left, keyboard-with-down-arrow icon at the far right). This is different from the phone behavior where the globe key is conditional on `needsInputModeSwitchKey`:
 
@@ -252,7 +404,7 @@ The duplicate `.?123` / `ABC` keys on both sides of the spacebar is Apple's iPad
 
 #### 4.2.1 `lime_english_ipad.json` — exact replica of screenshot 2 (ABC mode)
 
-Row 1 (15 cells, `KEY` × 14 + `MOD_BACKSPACE`):
+Row 1 (14 cells, `KEY` × 13 + `MOD_BACKSPACE`):
 ```
 ~ ` | ! 1 | @ 2 | # 3 | $ 4 | % 5 | ^ 6 | & 7 | * 8 | ( 9 | ) 0 | _ - | + = | ⌫
 ```
@@ -287,13 +439,21 @@ Same 5 rows, same widths, same key positions. Differences:
 - Alpha keys render uppercase via existing `adjustCase(_:)` (no JSON change needed; current shift mechanism already handles this).
 - Top-row dual cells: same labels, same codes (the shift state of iPad doesn't actually change the dual top row in the screenshots — both states show `! 1`, `@ 2`, … — verify against the shift screenshot before shipping).
 
+Current iOS runtime behavior:
+- The shipped layout IDs use the `*_ipad_shift` suffix form, e.g. `lime_english_ipad_shift` and `lime_english_number_ipad_shift`.
+- A tap-and-release on shift enters one-shot shift: the shift key is blue, the shifted iPad layout is shown, the next character is shifted, then the keyboard returns to unshifted.
+- A physical shift hold previews the shifted layout without rebuilding/removing the original pressed shift button. This preserves UIKit's shift release event. While held, tapped keys output shifted values; on release, the shift key and layout return to unshifted.
+- A double tap on shift enters caps lock. Caps lock keeps the shifted layout and shifted output until shift is tapped again.
+- For iPad dual-label keys, held shift uses the key's `longPressCode` as the shifted output while the original key button remains alive for touch tracking.
+- `lime_english_number_ipad_shift.json` must be a real shifted layout: letter keys display uppercase labels (`Q`, `W`, ...), top/punctuation dual-label cells collapse to shifted single labels such as `~`, `!`, `{`, `<`.
+
 #### 4.2.3 `symbols1_ipad.json` — exact replica of screenshot 1 (.?123 mode)
 
-Row 1 (15 cells, all single-glyph `KEY`):
+Row 1 (14 cells, 13 single-glyph `KEY` + `MOD_BACKSPACE`):
 ```
 ` | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | < | > | ⌫
 ```
-- Single label per key (no dual rendering); top row in symbols mode is just a 14-key strip + backspace.
+- Single label per key (no dual rendering); top row in symbols mode is a 13-key strip + backspace.
 
 Row 2 (`MOD_TAB` + 13× `KEY`):
 ```
@@ -325,7 +485,7 @@ Same scaffolding as 4.2.3 (5 rows, `→`/`undo`/`redo` on the modifier column, `
 
 #### 4.2.5 `lime_phonetic_ipad.json` — exact replica of screenshot 3 (注音 mode)
 
-Row 1 (15 cells, `KEY` × 14 + `MOD_BACKSPACE`):
+Row 1 (14 cells, `KEY` × 13 + `MOD_BACKSPACE`):
 ```
 ~ . | ㄅ | ㄉ | ˇ | ˋ | ㄓ | ˊ | ˙ | ㄚ | ㄞ | ㄢ | ㄦ | — / ......  | ⌫
 ```
@@ -355,16 +515,33 @@ Row 5 (bottom-row template).
 
 `lime_phonetic_shift_ipad.json` mirrors §4.2.2: same scaffolding, alpha keys are the shift-state Bopomofo set already in the phone JSON.
 
-#### 4.2.6 Other IM layouts (Array / CJ / Dayi / ET26 / ET41 / Hsu / EZ / HS / WB)
+#### 4.2.6 Other IM layouts (Array / CJ / Dayi / ET26 / ET41 / Hsu / WB)
 
 Apply the same 5-row scaffolding from §4.2.5:
-- Row 1: number/symbol top row using the same 15-cell template as English (`! 1`, `@ 2`, …) with `\n`-dual labels and `longPressCode`.
-- Row 2: `→` + the alpha keys from the IM's existing phone JSON, padded right with the same `{ [`, `} ]`, `| \` corner cluster.
-- Row 3: `abc` IM-toggle + alpha keys + `: ;` + `" ,` + `search`.
+- Row 1: number/symbol top row using the same 14-cell template as English (`! 1`, `@ 2`, …, `+\n=`, `⌫`) with `\n`-dual labels and `longPressCode`.
+- Row 2: `→` + the alpha keys from the IM's existing phone JSON, padded right with the same `『\n「`, `』\n」`, `？\n、` CJK cluster used by the phonetic layout. Do **not** generate `|\n、` here.
+- Row 3: `abc` IM-toggle + alpha keys + `: ;` + `。\n，` + `search`.
 - Row 4: `⇧` + alpha keys + dual punctuation cells + `⇧`.
 - Row 5: bottom-row template.
 
-For each IM, the per-row alpha-key list comes 1:1 from the existing phone JSON in the same order — only the **scaffolding columns** (top number row, side modifiers, right-edge symbol cluster, bottom-row template, second shift key) are added. **No alpha key is removed; no key width is shrunk to fit.** When the alpha-key count for a row falls short of the 11–14 cells the screenshot shows, pad with transparent spacers (`code = 0`, `label = ""`, no background drawn) so the surviving keys keep the iPad cell width — this is the "extra space" the user requested.
+For each generated IM, the per-row alpha-key list comes 1:1 from the existing phone JSON in the same order. The generator must be **source-first**:
+- Harvest source keys that belong in fixed iPad positions before adding fallbacks (`-`, `=`, `[`, `]`, `\`, bottom-row printable symbols).
+- Preserve harvested keys with IM sublabels. Do not replace an IM component key with a generic punctuation fallback.
+- If a harvested key has no sublabel, it may be upgraded in place to the matching dual-sliding iPad form.
+- Add a dual-sliding fallback only when the source layout does not already provide that slot.
+- Strip promoted keys from their original source row so the layout does not duplicate them.
+
+Row-specific source-first rules:
+- Top row: use source `-` / `=` if present; upgrade no-sublabel keys to `_\n-` / `+\n=`. If `=` is missing, add fallback `+\n=`. Do not drop the row below 14 keys including backspace.
+- QWERTY row: use source `[` and `]` if present; upgrade no-sublabel keys to bracket duals. If missing, add `『\n「` / `』\n」`. The CJK punctuation slot is `？\n、`; do not synthesize `|\n、`. A source `\` key with an IM sublabel may be preserved, but a plain backslash/pipe key is not converted into `|\n、`.
+- ASDF row: use source `;` / `:` if present. Preserve it when it has an IM sublabel; otherwise upgrade in place to `；\n：`. If missing, add fallback `；\n：`. `。\n，` is appended on ASDF left of search/Enter, not in the bottom row.
+- ZXCV row: upgrade existing `,` / `.` / `/` without sublabels to `<\n,` / `>\n.` / `?\n/`. Add missing fallbacks only if neither the base key nor its shift equivalent already exists.
+
+Only the **scaffolding columns** (top number row, side modifiers, right-edge cluster, bottom-row template, second shift key) are added. **No alpha key is removed; no key width is shrunk to fit.** When the alpha-key count for a row falls short of the target row count, pad with transparent spacers (`code = 0`, `label = ""`, no background drawn) so the surviving keys keep the iPad cell width.
+
+EZ and HS are explicit exceptions: `lime_ez`, `lime_ez_shift`, `lime_hs`, and `lime_hs_shift` must be excluded from iPad layout script generation. Do not generate, regenerate, or modify their `_ipad` layout files.
+
+The row-2 CJK punctuation key is always `？\n、`: tap emits `、` (12289), slide/long-press emits `？` (65311). It replaces the older `|\n、` form; Chinese IM iPad layouts must not use pipe as that key's slide output.
 
 Phone-only numpads (`phone.json`, `phone_number.json`, `phone_shift.json`, `phone_simple.json`) do **not** get an iPad variant — they fall through to the phone JSON for `.phonePad` text fields where iPad mirrors the iPhone numpad UI.
 
@@ -581,7 +758,7 @@ If an automation aid is desired later, a small `.claude/scripts/wrap_ipad_layout
 
 Manual (no automated coverage in `LimeTests/` for layout JSON):
 1. iPhone (any) — every IM still loads original layout (no `_ipad` suffix sneaks in). Verify `LayoutLoader` returns the unsuffixed JSON.
-2. iPad portrait — open each IM (phonetic / array / cj / dayi / et26 / hsu / wb / ez / hs / english) and confirm the new wider layout renders, top row visible, bottom row icon set correct.
+2. iPad portrait — open each generated IM (phonetic / array / cj / dayi / et26 / hsu / wb / english) and confirm the new wider layout renders, top row visible, bottom row icon set correct. EZ and HS are excluded from generated iPad layouts.
 3. iPad landscape — same, plus split-keyboard mode 2 (landscape-only) renders the new layout split.
 4. iPad with `font_size` pref at min and max — candidate bar fonts scale.
 5. iPad with empty candidate row — right side of candidate bar shows hamburger/options button on the right/backspace edge, sized to normal-key width rather than the wider backspace key. Verify light/dark contrast, full-height top/bottom touch area, and tapping it opens the same menu as long-pressing keyboard/dismiss.
@@ -621,3 +798,160 @@ Manual (no automated coverage in `LimeTests/` for layout JSON):
 9. Implement §4.5 dual-row touch handling (slide-down + long-press → secondary glyph) and §4.6 preview suppression in `KeyboardView.keyDown` / touch handlers. Phone path stays untouched.
 10. Optional: add `_ipad` popup variants where columns benefit.
 11. Update release notes documenting (a) iPad keyboards now match Apple's stock layout, (b) iPad top-row slide-down + long-press (§4.5), (c) iPad no-preview rule (§4.6), (d) the iPad shortcut bar limitation from §6.
+
+---
+
+## Appendix A. Current Generated Chinese IM iPad Layouts
+
+This appendix is a literal inventory of the current generated JSON files in `LimeIME-iOS/LimeKeyboard/Layouts`. It is generated from the checked-in `*_ipad.json` files, not from the prose rules.
+
+Notation: `label/sublabel` means the JSON key has both `label` and `sublabel`. Icon-only keys are named by role: `tab`, `backspace`, `shift`, `emoji`, `space`, or `dismiss`.
+
+Excluded from generator output and intentionally absent here: `lime_ez_ipad*.json`, `lime_hs_ipad*.json`.
+
+### lime_phonetic_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `1/ㄅ` | `2/ㄉ` | `3/ˇ` | `4/ˋ` | `5/ㄓ` | `6/ˊ` | `7/˙` | `8/ㄚ` | `9/ㄞ` | `0/ㄢ` | `-/ㄦ` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q/ㄆ` | `w/ㄊ` | `e/ㄍ` | `r/ㄐ` | `t/ㄔ` | `y/ㄗ` | `u/一` | `i/ㄛ` | `o/ㄟ` | `p/ㄣ` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/ㄇ` | `s/ㄋ` | `d/ㄎ` | `f/ㄑ` | `g/ㄕ` | `h/ㄘ` | `j/ㄨ` | `k/ㄜ` | `l/ㄠ` | `;/ㄤ` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/ㄈ` | `x/ㄌ` | `c/ㄏ` | `v/ㄒ` | `b/ㄖ` | `n/ㄙ` | `m/ㄩ` | `,/ㄝ` | `./ㄡ` | `//ㄥ` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_phonetic_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!/ㄅ` | `@/ㄉ` | `#/ˇ` | `$/ˋ` | `%/ㄓ` | `^/ˊ` | `&/˙` | `*/ㄚ` | `(/ㄞ` | `)/ㄢ` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q/ㄆ` | `W/ㄊ` | `E/ㄍ` | `R/ㄐ` | `T/ㄔ` | `Y/ㄗ` | `U/一` | `I/ㄛ` | `O/ㄟ` | `P/ㄣ` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/ㄇ` | `S/ㄋ` | `D/ㄎ` | `F/ㄑ` | `G/ㄕ` | `H/ㄘ` | `J/ㄨ` | `K/ㄜ` | `L/ㄠ` | `;/ㄤ` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/ㄈ` | `X/ㄌ` | `C/ㄏ` | `V/ㄒ` | `B/ㄖ` | `N/ㄙ` | `M/ㄩ` | `,/ㄝ` | `./ㄡ` | `//ㄥ` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_array_ipad.json
+- Row 1 (row, 14 keys): `tab` | `q/1⇡` | `w/2⇡` | `e/3⇡` | `r/4⇡` | `t/5⇡` | `y/6⇡` | `u/7⇡` | `i/8⇡` | `o/9⇡` | `p/0⇡` | `『\n「` | `』\n」` | `backspace`
+- Row 2 (row, 13 keys): `abc` | `a/1−` | `s/2−` | `d/3−` | `f/4−` | `g/5−` | `h/6−` | `j/7−` | `k/8−` | `l/9−` | `;/0−` | `。\n，` | `enter`
+- Row 3 (row, 12 keys): `shift` | `z/1⇣` | `x/2⇣` | `c/3⇣` | `v/4⇣` | `b/5⇣` | `n/6⇣` | `m/7⇣` | `,/8⇣` | `./9⇣` | `//0⇣` | `shift`
+- Row 4 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_array_ipad_shift.json
+- Row 1 (row, 14 keys): `tab` | `Q/1⇡` | `W/2⇡` | `E/3⇡` | `R/4⇡` | `T/5⇡` | `Y/6⇡` | `U/7⇡` | `I/8⇡` | `O/9⇡` | `P/0⇡` | `『` | `』` | `backspace`
+- Row 2 (row, 13 keys): `abc` | `A/1−` | `S/2−` | `D/3−` | `F/4−` | `G/5−` | `H/6−` | `J/7−` | `K/8−` | `L/9−` | `;/0−` | `。` | `enter`
+- Row 3 (row, 12 keys): `shift` | `Z/1⇣` | `X/2⇣` | `C/3⇣` | `V/4⇣` | `B/5⇣` | `N/6⇣` | `M/7⇣` | `,/8⇣` | `./9⇣` | `//0⇣` | `shift`
+- Row 4 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_array_number_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `!\n1` | `@\n2` | `#\n3` | `$\n4` | `%\n5` | `^\n6` | `&\n7` | `*\n8` | `(\n9` | `)\n0` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q/1⇡` | `w/2⇡` | `e/3⇡` | `r/4⇡` | `t/5⇡` | `y/6⇡` | `u/7⇡` | `i/8⇡` | `o/9⇡` | `p/0⇡` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/1−` | `s/2−` | `d/3−` | `f/4−` | `g/5−` | `h/6−` | `j/7−` | `k/8−` | `l/9−` | `;/0−` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/1⇣` | `x/2⇣` | `c/3⇣` | `v/4⇣` | `b/5⇣` | `n/6⇣` | `m/7⇣` | `,/8⇣` | `./9⇣` | `//0⇣` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_array_number_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` | `(` | `)` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q/1⇡` | `W/2⇡` | `E/3⇡` | `R/4⇡` | `T/5⇡` | `Y/6⇡` | `U/7⇡` | `I/8⇡` | `O/9⇡` | `P/0⇡` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/1−` | `S/2−` | `D/3−` | `F/4−` | `G/5−` | `H/6−` | `J/7−` | `K/8−` | `L/9−` | `;/0−` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/1⇣` | `X/2⇣` | `C/3⇣` | `V/4⇣` | `B/5⇣` | `N/6⇣` | `M/7⇣` | `,/8⇣` | `./9⇣` | `//0⇣` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_cj_ipad.json
+- Row 1 (row, 14 keys): `tab` | `q/手` | `w/田` | `e/水` | `r/口` | `t/廿` | `y/卜` | `u/山` | `i/戈` | `o/人` | `p/心` | `『\n「` | `』\n」` | `backspace`
+- Row 2 (row, 13 keys): `abc` | `a/日` | `s/尸` | `d/木` | `f/火` | `g/土` | `h/竹` | `j/十` | `k/大` | `l/中` | `；\n：` | `。\n，` | `enter`
+- Row 3 (row, 12 keys): `shift` | `z/重` | `x/難` | `c/金` | `v/女` | `b/月` | `n/弓` | `m/一` | `<\n,` | `>\n.` | `?\n/` | `shift`
+- Row 4 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_cj_ipad_shift.json
+- Row 1 (row, 14 keys): `tab` | `Q/手` | `W/田` | `E/水` | `R/口` | `T/廿` | `Y/卜` | `U/山` | `I/戈` | `O/人` | `P/心` | `『` | `』` | `backspace`
+- Row 2 (row, 13 keys): `abc` | `A/日` | `S/尸` | `D/木` | `F/火` | `G/土` | `H/竹` | `J/十` | `K/大` | `L/中` | `；` | `。` | `enter`
+- Row 3 (row, 12 keys): `shift` | `Z/重` | `X/難` | `C/金` | `V/女` | `B/月` | `N/弓` | `M/一` | `<` | `>` | `?` | `shift`
+- Row 4 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_cj_number_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `!\n1` | `@\n2` | `#\n3` | `$\n4` | `%\n5` | `^\n6` | `&\n7` | `*\n8` | `(\n9` | `)\n0` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q/手` | `w/田` | `e/水` | `r/口` | `t/廿` | `y/卜` | `u/山` | `i/戈` | `o/人` | `p/心` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/日` | `s/尸` | `d/木` | `f/火` | `g/土` | `h/竹` | `j/十` | `k/大` | `l/中` | `；\n：` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/重` | `x/難` | `c/金` | `v/女` | `b/月` | `n/弓` | `m/一` | `<\n,` | `>\n.` | `?\n/` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_cj_number_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` | `(` | `)` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q/手` | `W/田` | `E/水` | `R/口` | `T/廿` | `Y/卜` | `U/山` | `I/戈` | `O/人` | `P/心` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/日` | `S/尸` | `D/木` | `F/火` | `G/土` | `H/竹` | `J/十` | `K/大` | `L/中` | `；` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/重` | `X/難` | `C/金` | `V/女` | `B/月` | `N/弓` | `M/一` | `<` | `>` | `?` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_dayi_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `!\n1` | `@\n2` | `#\n3` | `$\n4` | `%\n5` | `^\n6` | `&\n7` | `*\n8` | `(\n9` | `)\n0` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q` | `w` | `e` | `r` | `t` | `y` | `u` | `i` | `o` | `p` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a` | `s` | `d` | `f` | `g` | `h` | `j` | `k` | `l` | `；\n：` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z` | `x` | `c` | `v` | `b` | `n` | `m` | `<\n,` | `>\n.` | `?\n/` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_dayi_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` | `(` | `)` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q` | `W` | `E` | `R` | `T` | `Y` | `U` | `I` | `O` | `P` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A` | `S` | `D` | `F` | `G` | `H` | `J` | `K` | `L` | `；` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z` | `X` | `C` | `V` | `B` | `N` | `M` | `<` | `>` | `?` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_dayi_sym_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `1/言` | `2/牛` | `3/目` | `4/四` | `5/王` | `6/門` | `7/田` | `8/米` | `9/足` | `0/金` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q/石` | `w/山` | `e/一` | `r/工` | `t/糸` | `y/火` | `u/艸` | `i/木` | `o/口` | `p/耳` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/人` | `s/革` | `d/日` | `f/土` | `g/手` | `h/鳥` | `j/月` | `k/立` | `l/女` | `;/虫` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/心` | `x/水` | `c/鹿` | `v/禾` | `b/馬` | `n/魚` | `m/雨` | `,/力` | `./舟` | `//竹` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_dayi_sym_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!/言` | `@/牛` | `#/目` | `$/四` | `%/王` | `^/門` | `&/田` | `*/米` | `(/足` | `)/金` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q/石` | `W/山` | `E/一` | `R/工` | `T/糸` | `Y/火` | `U/艸` | `I/木` | `O/口` | `P/耳` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/人` | `S/革` | `D/日` | `F/土` | `G/手` | `H/鳥` | `J/月` | `K/立` | `L/女` | `;/虫` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/心` | `X/水` | `C/鹿` | `V/禾` | `B/馬` | `N/魚` | `M/雨` | `,/力` | `./舟` | `//竹` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_et26_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `!\n1` | `@\n2` | `#\n3` | `$\n4` | `%\n5` | `^\n6` | `&\n7` | `*\n8` | `(\n9` | `)\n0` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q\tㄗ/ㄟ` | `w\tㄘ/ㄝ` | `e/ㄧ` | `r/ㄜ` | `t\tㄊ/ㄤ` | `y/ㄔ` | `u/ㄩ` | `i/ㄞ` | `o/ㄛ` | `p\tㄆ/ㄡ` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/ㄚ` | `s/ㄙ` | `d\t˙/ㄉ` | `f\tˊ/ㄈ` | `g\tㄓ/ㄐ` | `h\tㄏ/ㄦ` | `j\tˇ/ㄖ` | `k\tˋ/ㄎ` | `l\tㄌ/ㄥ` | `；\n：` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/ㄠ` | `x/ㄨ` | `c\tㄒ/ㄕ` | `v\tㄑ/ㄍ` | `b/ㄅ` | `n\tㄋ/ㄣ` | `m\tㄇ/ㄢ` | `<\n,` | `>\n.` | `?\n/` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_et26_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` | `(` | `)` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q\tㄗ/ㄟ` | `W\tㄘ/ㄝ` | `E/ㄧ` | `R/ㄜ` | `T\tㄊ/ㄤ` | `Y/ㄔ` | `U/ㄩ` | `I/ㄞ` | `O/ㄛ` | `P\tㄆ/ㄡ` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/ㄚ` | `S/ㄙ` | `D\t˙/ㄉ` | `F\tˊ/ㄈ` | `G\tㄓ/ㄐ` | `H\tㄏ/ㄦ` | `J\tˇ/ㄖ` | `K\tˋ/ㄎ` | `L\tㄌ/ㄥ` | `；` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/ㄠ` | `X/ㄨ` | `C\tㄒ/ㄕ` | `V\tㄑ/ㄍ` | `B/ㄅ` | `N\tㄋ/ㄣ` | `M\tㄇ/ㄢ` | `<` | `>` | `?` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_et_41_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `1/˙` | `2/ˊ` | `3/ˇ` | `4/ˋ` | `%\n5` | `^\n6` | `7/ㄑ` | `8/ㄢ` | `9/ㄣ` | `0/ㄤ` | `-/ㄥ` | `=/ㄦ` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q/ㄟ` | `w/ㄝ` | `e/一` | `r/ㄜ` | `t/ㄊ` | `y/ㄡ` | `u/ㄩ` | `i/ㄞ` | `o/ㄛ` | `p/ㄆ` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a/ㄚ` | `s/ㄙ` | `d/ㄉ` | `f/ㄈ` | `g/ㄐ` | `h/ㄏ` | `j/ㄖ` | `k/ㄎ` | `l/ㄌ` | `;/ㄗ` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/ㄠ` | `x/ㄨ` | `c/ㄒ` | `v/ㄍ` | `b/ㄅ` | `n/ㄋ` | `m/ㄇ` | `,/ㄓ` | `./ㄔ` | `//ㄕ` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_et_41_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!/˙` | `@/ˊ` | `#/ˇ` | `$/ˋ` | `%` | `^` | `&/ㄑ` | `*/ㄢ` | `(/ㄣ` | `)/ㄤ` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q/ㄟ` | `W/ㄝ` | `E/一` | `R/ㄜ` | `T/ㄊ` | `Y/ㄡ` | `U/ㄩ` | `I/ㄞ` | `O/ㄛ` | `P/ㄆ` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A/ㄚ` | `S/ㄙ` | `D/ㄉ` | `F/ㄈ` | `G/ㄐ` | `H/ㄏ` | `J/ㄖ` | `K/ㄎ` | `L/ㄌ` | `;/ㄗ` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/ㄠ` | `X/ㄨ` | `C/ㄒ` | `V/ㄍ` | `B/ㄅ` | `N/ㄋ` | `M/ㄇ` | `,/ㄓ` | `./ㄔ` | `//ㄕ` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_hsu_ipad.json
+- Row 1 (row, 14 keys): `` ~\n` `` | `!\n1` | `@\n2` | `#\n3` | `$\n4` | `%\n5` | `^\n6` | `&\n7` | `*\n8` | `(\n9` | `)\n0` | `…\n—` | `+\n=` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `q` | `w/ㄠ` | `e\tㄧ/ㄝ` | `r\tㄖ/ㄚ` | `t/ㄊ` | `y/ㄚ` | `u/ㄩ` | `i/ㄞ` | `o/ㄡ` | `p/ㄆ` | `『\n「` | `』\n」` | `？\n、`
+- Row 3 (row, 13 keys): `abc` | `a\tㄘ/ㄟ` | `s\t˙/ㄙ` | `d\tˊ/ㄉ` | `f\tˇ/ㄈ` | `g\tㄍ/ㄜ` | `h\tㄏ/ㄛ` | `j\tˋ/ㄐㄓ` | `k\tㄎ/ㄤ` | `l\tㄌ/ㄦㄥ` | `；\n：` | `。\n，` | `enter`
+- Row 4 (row, 12 keys): `shift` | `z/ㄗ` | `x/ㄨ` | `c\tㄒ/ㄕ` | `v\tㄑ/ㄔ` | `b/ㄅ` | `n\tㄋ/ㄣ` | `m\tㄇ/ㄢ` | `<\n,` | `>\n.` | `?\n/` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_hsu_ipad_shift.json
+- Row 1 (row, 14 keys): `~` | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` | `(` | `)` | `…` | `+` | `backspace`
+- Row 2 (row, 14 keys): `tab` | `Q` | `W/ㄠ` | `E\tㄧ/ㄝ` | `R\tㄖ/ㄚ` | `T/ㄊ` | `Y/ㄚ` | `U/ㄩ` | `I/ㄞ` | `O/ㄡ` | `P/ㄆ` | `『` | `』` | `？`
+- Row 3 (row, 13 keys): `abc` | `A\tㄘ/ㄟ` | `S\t˙/ㄙ` | `D\tˊ/ㄉ` | `F\tˇ/ㄈ` | `G\tㄍ/ㄜ` | `H\tㄏ/ㄛ` | `J\tˋ/ㄐㄓ` | `K\tㄎ/ㄤ` | `L\tㄌ/ㄦㄥ` | `；` | `。` | `enter`
+- Row 4 (row, 12 keys): `shift` | `Z/ㄗ` | `X/ㄨ` | `C\tㄒ/ㄕ` | `V\tㄑ/ㄔ` | `B/ㄅ` | `N\tㄋ/ㄣ` | `M\tㄇ/ㄢ` | `<` | `>` | `?` | `shift`
+- Row 5 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_wb_ipad.json
+- Row 1 (row, 3 keys): `一` | `丨` | `丿`
+- Row 2 (row, 4 keys): `abc` | `丶` | `ㄣ` | `backspace`
+- Row 3 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`
+
+### lime_wb_ipad_shift.json
+- Row 1 (row, 14 keys): `tab` | `Q/手` | `W/田` | `E/水` | `R/口` | `T/廿` | `Y/卜` | `U/山` | `I/戈` | `O/口` | `P/心` | `『` | `』` | `backspace`
+- Row 2 (row, 13 keys): `abc` | `A/日` | `S/尸` | `D/木` | `F/火` | `G/土` | `H/竹` | `J/十` | `K/大` | `L/中` | `；` | `。` | `enter`
+- Row 3 (row, 12 keys): `shift` | `Z/重` | `X/難` | `C/金` | `V/女` | `B/月` | `N/弓` | `M/一` | `<` | `>` | `?` | `shift`
+- Row 4 (bottom, 6 keys): `globe` | `.?123` | `emoji` | `space` | `.?123` | `dismiss`

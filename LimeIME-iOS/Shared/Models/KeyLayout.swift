@@ -38,6 +38,35 @@ enum LimeKeyCode: Int {
     case arrowDown  = -33
 }
 
+enum EmojiPanelSource {
+    case english
+    case chineseIM
+
+    var returnKeyTitle: String {
+        switch self {
+        case .english: return "ABC"
+        case .chineseIM: return "中"
+        }
+    }
+
+    static func source(isEnglishOnly: Bool) -> EmojiPanelSource {
+        isEnglishOnly ? .english : .chineseIM
+    }
+}
+
+enum CandidateBarSystemChrome {
+    static func usesLightForeground(systemUserInterfaceStyle: UIUserInterfaceStyle) -> Bool {
+        systemUserInterfaceStyle == .dark
+    }
+
+    static func labelColor(systemUserInterfaceStyle: UIUserInterfaceStyle) -> UIColor {
+        let style: UIUserInterfaceStyle = usesLightForeground(systemUserInterfaceStyle: systemUserInterfaceStyle)
+            ? .dark
+            : .light
+        return UIColor.label.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+    }
+}
+
 struct EmojiPanelPaginationResult {
     let pages: [[Mapping]]
     let categoryStartDisplayPageIndexes: [Int]
@@ -338,8 +367,19 @@ enum ShiftResetPolicy {
     }
 }
 
+enum ShiftPressPolicy {
+    static func shouldHandleShiftPress(wasShiftKeyHeld: Bool) -> Bool {
+        !wasShiftKeyHeld
+    }
+}
+
 enum ShiftHoldTouchPolicy {
     static func isShiftStillHeld(activeTouchCount: Int) -> Bool {
         activeTouchCount > 1
+    }
+
+    static func isShiftStillHeld(activeTouchCount: Int,
+                                 wasShiftAlreadyHeld: Bool) -> Bool {
+        (wasShiftAlreadyHeld && activeTouchCount > 0) || activeTouchCount > 1
     }
 }

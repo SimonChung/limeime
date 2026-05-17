@@ -23,10 +23,6 @@ final class CandidateBarView: UIView {
     private let dismissButton = UIButton(type: .system)
     private let emojiButton   = UIButton(type: .system)
     private let optionsButton = UIButton(type: .system)
-    /// Host-class snapshot. Set by `KeyboardViewController` after init.
-    var deviceCapabilities: DeviceCapabilities? {
-        didSet { rebuildButtons() }
-    }
     /// Leading region that displays the composing keyname. iPad uses this
     /// in lieu of the in-keyboard composingPopupLabel strip (which wastes
     /// vertical space). iPhone keeps the strip and leaves this collapsed.
@@ -84,19 +80,10 @@ final class CandidateBarView: UIView {
         didSet { guard oldValue != systemUserInterfaceStyle else { return }; applyTheme() }
     }
 
-    // The candidate bar backdrop is a transparent system blur — always contrast the
-    // system backdrop regardless of keyboard theme:
-    //   Dark system  → white label for every theme (all palette.candiText values are dark)
-    //   Light system → theme 1's candiText is frozen-white (wrong), override to dark;
-    //                  all other themes have dark palette.candiText, use as-is.
+    // The candidate bar backdrop is a transparent system blur, so chrome here
+    // follows only the host light/dark appearance, not the selected keyboard theme.
     private var effectiveCandiText: UIColor {
-        if systemUserInterfaceStyle == .dark {
-            return KeyboardPalette.iosDark(.label)
-        }
-        if theme == 1 {
-            return KeyboardPalette.iosLight(.label)
-        }
-        return palette.candiText
+        CandidateBarSystemChrome.labelColor(systemUserInterfaceStyle: systemUserInterfaceStyle)
     }
 
     // MARK: - Feedback
@@ -172,9 +159,9 @@ final class CandidateBarView: UIView {
         backgroundColor = .clear
         moreButton.tintColor = effectiveCandiText
         moreSep.backgroundColor = effectiveCandiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
-        dismissButton.tintColor = palette.label
+        dismissButton.tintColor = effectiveCandiText
         dismissButton.backgroundColor = palette.normalKey.withAlphaComponent(0.15)
-        emojiButton.tintColor = palette.label
+        emojiButton.tintColor = effectiveCandiText
         emojiButton.backgroundColor = LayoutMetrics.TouchTrap.fill
         optionsButton.tintColor = effectiveCandiText
         optionsButton.setTitleColor(effectiveCandiText, for: .normal)
@@ -228,7 +215,7 @@ final class CandidateBarView: UIView {
         let dismissConfig = UIImage.SymbolConfiguration(
             pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad), weight: .regular)
         dismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
-        dismissButton.tintColor = palette.label
+        dismissButton.tintColor = effectiveCandiText
         dismissButton.isHidden = true
         dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
         // Visible rounded background so the full button extent (restRowH) is apparent.
@@ -248,7 +235,7 @@ final class CandidateBarView: UIView {
             emojiButton.titleLabel?.font = UIFont.systemFont(
                 ofSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.35, weight: .regular)
         }
-        emojiButton.tintColor = palette.label
+        emojiButton.tintColor = effectiveCandiText
         emojiButton.imageView?.contentMode = .scaleAspectFit
         emojiButton.isHidden = true
         emojiButton.addTarget(self, action: #selector(emojiTapped), for: .touchUpInside)

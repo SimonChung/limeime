@@ -153,6 +153,22 @@ Shared Android/iOS codes:
 | `-202` | `LIME.KEYCODE_EMOJI_ABC` | `LimeKeyCode.emojiABC` | Hides emoji panel and returns to keyboard. |
 | `-203` to `-212` | Emoji category codes | Emoji category codes | Jump to emoji categories. |
 
+## Shift Key Behavior
+
+Android and iOS both expose shift as `code = -1`, but the runtime touch model differs. The desired user-visible state machine is the same:
+
+- Tap and release shift once: enter one-shot shift. The shift key shows active/blue, the shifted keyboard is visible, the next character is shifted, then shift returns to off.
+- Press and hold shift: show shifted keys while the physical shift touch is down. Every tapped key while shift is held outputs shifted content. Releasing shift returns the key state and keyboard view to unshifted.
+- Tap shift twice: enter caps lock. Shifted output continues until shift is tapped again, which returns to unshifted.
+
+iOS implementation notes:
+
+- `KeyboardViewController` owns `isShiftOn`, `mCapsLock`, `isShiftKeyHeld`, and `shiftHoldModifiedCharacter`.
+- Do not rebuild/remove the pressed shift button while the shift touch is still down. `KeyboardView.previewLayout(_:)` restyles the existing buttons with the shifted layout so UIKit can still deliver the original shift release event.
+- A held shift reset happens on release after shift modified at least one character. A one-shot shift reset happens after the first character when shift is no longer physically held.
+- iPad dual-label keys use `longPressCode` as their shifted output while a physical shift hold is active.
+- Repeated shift press events during one physical hold are ignored so they do not promote the state into caps lock.
+
 Android-only or Android-specific codes:
 
 | Code | Constant | Behavior |

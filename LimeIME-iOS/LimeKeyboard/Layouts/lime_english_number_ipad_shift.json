@@ -251,9 +251,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 81,
+          "code": 113,
           "codes": [
-            81
+            113
           ],
           "label": "Q",
           "sublabel": "",
@@ -267,9 +267,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 87,
+          "code": 119,
           "codes": [
-            87
+            119
           ],
           "label": "W",
           "sublabel": "",
@@ -283,9 +283,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 69,
+          "code": 101,
           "codes": [
-            69
+            101
           ],
           "label": "E",
           "sublabel": "",
@@ -299,9 +299,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 82,
+          "code": 114,
           "codes": [
-            82
+            114
           ],
           "label": "R",
           "sublabel": "",
@@ -315,9 +315,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 84,
+          "code": 116,
           "codes": [
-            84
+            116
           ],
           "label": "T",
           "sublabel": "",
@@ -331,9 +331,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 89,
+          "code": 121,
           "codes": [
-            89
+            121
           ],
           "label": "Y",
           "sublabel": "",
@@ -347,9 +347,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 85,
+          "code": 117,
           "codes": [
-            85
+            117
           ],
           "label": "U",
           "sublabel": "",
@@ -363,9 +363,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 73,
+          "code": 105,
           "codes": [
-            73
+            105
           ],
           "label": "I",
           "sublabel": "",
@@ -379,9 +379,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 79,
+          "code": 111,
           "codes": [
-            79
+            111
           ],
           "label": "O",
           "sublabel": "",
@@ -395,9 +395,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 80,
+          "code": 112,
           "codes": [
-            80
+            112
           ],
           "label": "P",
           "sublabel": "",
@@ -470,7 +470,7 @@
           ],
           "label": "中",
           "sublabel": "",
-          "widthPercent": 11.5,
+          "widthPercent": 9.0,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
@@ -480,9 +480,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 65,
+          "code": 97,
           "codes": [
-            65
+            97
           ],
           "label": "A",
           "sublabel": "",
@@ -496,9 +496,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 83,
+          "code": 115,
           "codes": [
-            83
+            115
           ],
           "label": "S",
           "sublabel": "",
@@ -512,9 +512,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 68,
+          "code": 100,
           "codes": [
-            68
+            100
           ],
           "label": "D",
           "sublabel": "",
@@ -528,9 +528,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 70,
+          "code": 102,
           "codes": [
-            70
+            102
           ],
           "label": "F",
           "sublabel": "",
@@ -544,9 +544,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 71,
+          "code": 103,
           "codes": [
-            71
+            103
           ],
           "label": "G",
           "sublabel": "",
@@ -560,9 +560,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 72,
+          "code": 104,
           "codes": [
-            72
+            104
           ],
           "label": "H",
           "sublabel": "",
@@ -576,9 +576,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 74,
+          "code": 106,
           "codes": [
-            74
+            106
           ],
           "label": "J",
           "sublabel": "",
@@ -592,9 +592,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 75,
+          "code": 107,
           "codes": [
-            75
+            107
           ],
           "label": "K",
           "sublabel": "",
@@ -608,9 +608,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 76,
+          "code": 108,
           "codes": [
-            76
+            108
           ],
           "label": "L",
           "sublabel": "",
@@ -662,7 +662,7 @@
           ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 11.5,
+          "widthPercent": 14.0,
           "icon": "return",
           "isModifier": true,
           "isRepeatable": false,
@@ -693,9 +693,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 90,
+          "code": 122,
           "codes": [
-            90
+            122
           ],
           "label": "Z",
           "sublabel": "",
@@ -709,9 +709,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 88,
+          "code": 120,
           "codes": [
-            88
+            120
           ],
           "label": "X",
           "sublabel": "",
@@ -725,9 +725,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 67,
+          "code": 99,
           "codes": [
-            67
+            99
           ],
           "label": "C",
           "sublabel": "",
@@ -741,9 +741,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 86,
+          "code": 118,
           "codes": [
-            86
+            118
           ],
           "label": "V",
           "sublabel": "",
@@ -757,9 +757,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 66,
+          "code": 98,
           "codes": [
-            66
+            98
           ],
           "label": "B",
           "sublabel": "",
@@ -773,9 +773,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 78,
+          "code": 110,
           "codes": [
-            78
+            110
           ],
           "label": "N",
           "sublabel": "",
@@ -789,9 +789,9 @@
           "popupCharacters": ""
         },
         {
-          "code": 77,
+          "code": 109,
           "codes": [
-            77
+            109
           ],
           "label": "M",
           "sublabel": "",
@@ -906,17 +906,20 @@
           "popupCharacters": ""
         },
         {
-          "code": -201,
+          "code": -99,
+          "codes": [
+            -99
+          ],
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "face.smiling",
+          "icon": "mic",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
+          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": "",
-          "longPressCode": 0
+          "popupCharacters": ""
         },
         {
           "code": 32,

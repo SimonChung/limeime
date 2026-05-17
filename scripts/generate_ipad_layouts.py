@@ -141,7 +141,7 @@ def load_phone(name):
     path = os.path.join(LAYOUTS_DIR, name + '.json')
     if not os.path.exists(path):
         return None
-    with open(path, encoding='utf-8') as f:
+    with open(path, encoding='utf-8-sig') as f:
         return json.load(f)
 
 
@@ -630,8 +630,14 @@ def build_cjk_ipad(lid, phone_name):
     # Digit → shift-symbol mapping for number-row shift layout.
     _DIGIT_SHIFT = {49:33, 50:64, 51:35, 52:36, 53:37, 54:94, 55:38, 56:42, 57:40, 48:41}
     _SHIFT_CHAR  = {33:'!', 64:'@', 35:'#', 36:'$', 37:'%', 94:'^', 38:'&', 42:'*', 40:'(', 41:')'}
-    _PUNCT_SHIFT = {44:60, 46:62, 47:63, 59:58}
-    _PUNCT_SHIFT_CHAR = {60:'<', 62:'>', 63:'?', 58:':'}
+    _PUNCT_SHIFT = {
+        45:95, 61:43, 91:123, 93:125, 92:124, 59:58,
+        39:34, 44:60, 46:62, 47:63,
+    }
+    _PUNCT_SHIFT_CHAR = {
+        95:'_', 43:'+', 123:'{', 125:'}', 124:'|', 58:':',
+        34:'"', 60:'<', 62:'>', 63:'?',
+    }
 
     def _row(tuples):
         """Normal row: preserve original codes and labels."""
@@ -644,7 +650,7 @@ def build_cjk_ipad(lid, phone_name):
             if c in _DIGIT_SHIFT:
                 sc = _DIGIT_SHIFT[c]
                 keys.append(mk(sc, label=_SHIFT_CHAR[sc], sublabel=sub, width=KEY_W))
-            elif c in _PUNCT_SHIFT and sub:
+            elif c in _PUNCT_SHIFT:
                 sc = _PUNCT_SHIFT[c]
                 keys.append(mk(sc, label=_PUNCT_SHIFT_CHAR[sc], sublabel=sub, width=KEY_W))
             elif 97 <= c <= 122:  # lowercase ASCII letter → uppercase
@@ -1019,9 +1025,10 @@ def make_wb():
 
 def make_number_style(base_name, ipad_id):
     phone = load_phone(base_name)
+    is_shift = ipad_id.endswith('_shift')
     if not phone:
         # Create a minimal 5-row layout
-        r1 = row1_english()
+        r1 = row1_english_shift() if is_shift else row1_english()
         r2 = build_row2([], bracket_cluster='english')
         r3 = build_row3_english(C_IM, '中', [])
         r4 = build_row4_english([])
@@ -1035,10 +1042,14 @@ def make_number_style(base_name, ipad_id):
         a_r3 = extract_alpha(phone, shift_base + 1)
         a_r4 = extract_alpha(phone, shift_base + 2)
         im_code, im_lbl, im_sub = extract_im_key(phone)
-        r1 = row1_english()
-        r2 = build_row2(a_r2[:10], bracket_cluster='english')
-        r3 = build_row3_english(im_code, im_lbl, a_r3[:9], im_sub)
-        r4 = build_row4_english(a_r4[:7])
+        if is_shift:
+            a_r2 = [_cap_alpha_tuple(t) for t in a_r2]
+            a_r3 = [_cap_alpha_tuple(t) for t in a_r3]
+            a_r4 = [_cap_alpha_tuple(t) for t in a_r4]
+        r1 = row1_english_shift() if is_shift else row1_english()
+        r2 = build_row2(a_r2[:10], bracket_cluster='english', is_shift=is_shift)
+        r3 = build_row3_english(im_code, im_lbl, a_r3[:9], im_sub, is_shift=is_shift)
+        r4 = build_row4_english(a_r4[:7], is_shift=is_shift)
 
     write_layout(ipad_id, [
         (r1, False), (r2, False), (r3, False), (r4, False),

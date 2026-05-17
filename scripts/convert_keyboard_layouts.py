@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # convert_keyboard_layouts.py
 #
 # Purpose: Convert Android XML keyboard layout files to JSON for the iOS port.
@@ -154,6 +154,7 @@ def parse_label(raw_label):
     Android also uses backslash-escaping for characters that have special XML meaning:
       \\@ → @   (@ starts resource references in Android XML)
       \\# → #   (# starts colour literals)
+      question-mark escapes are normalized to bare ?
     These must be unescaped so the key shows the bare character.
     """
     if not raw_label:
@@ -161,12 +162,12 @@ def parse_label(raw_label):
     # Strip Android @string/ resource references (unescaped @)
     if raw_label.startswith("@"):
         return raw_label, ""
-    # Unescape Android XML escape sequences: \@ → @, \# → #, \\ → \
+    # Unescape Android XML escape sequences for literal key labels.
     def unescape(s):
         result = []
         i = 0
         while i < len(s):
-            if s[i] == '\\' and i + 1 < len(s) and s[i+1] in ('@', '#', '\\'):
+            if s[i] == '\\' and i + 1 < len(s) and s[i+1] in ('@', '#', '?', '\\'):
                 result.append(s[i+1])
                 i += 2
             else:

@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "lime_english_ipad",
   "defaultWidthPercent": 7.15,
   "rows": [
@@ -470,7 +470,7 @@
           ],
           "label": "中",
           "sublabel": "",
-          "widthPercent": 11.5,
+          "widthPercent": 9.0,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
@@ -662,7 +662,7 @@
           ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 11.5,
+          "widthPercent": 14.0,
           "icon": "return",
           "isModifier": true,
           "isRepeatable": false,
@@ -906,17 +906,20 @@
           "popupCharacters": ""
         },
         {
-          "code": -201,
+          "code": -99,
+          "codes": [
+            -99
+          ],
           "label": "",
           "sublabel": "",
           "widthPercent": 7.0,
-          "icon": "face.smiling",
+          "icon": "mic",
           "isModifier": true,
           "isRepeatable": false,
           "isSticky": false,
+          "longPressCode": 0,
           "popupKeyboard": "",
-          "popupCharacters": "",
-          "longPressCode": 0
+          "popupCharacters": ""
         },
         {
           "code": 32,

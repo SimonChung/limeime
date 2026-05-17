@@ -127,6 +127,20 @@ final class KeyboardViewControllerTest: XCTestCase {
         }
     }
 
+    func testIPadEnglishNumberShiftLayoutShowsShiftedKeys() throws {
+        let layout = try loadKeyboardLayoutFixture("lime_english_number_ipad_shift")
+        let keys = layout.rows.flatMap(\.keys)
+        let tilde = try XCTUnwrap(keys.first { $0.code == 126 })
+        let q = try XCTUnwrap(keys.first { $0.code == 113 })
+        let leftBrace = try XCTUnwrap(keys.first { $0.code == 123 })
+        let lessThan = try XCTUnwrap(keys.first { $0.code == 60 })
+
+        XCTAssertEqual(tilde.label, "~")
+        XCTAssertEqual(q.label, "Q")
+        XCTAssertEqual(leftBrace.label, "{")
+        XCTAssertEqual(lessThan.label, "<")
+    }
+
     func testIPadOptionsMenuKeysAreNotTreatedAsDualRowSecondaryGlyphKeys() {
         let keyboardKey = KeyDef(code: LimeKeyCode.done.rawValue,
                                  widthPercent: 8,
@@ -205,14 +219,41 @@ final class KeyboardViewControllerTest: XCTestCase {
                                                                      holdModifiedCharacter: true))
     }
 
+    func testShiftPressPolicyIgnoresRepeatedPressDuringSamePhysicalHold() {
+        XCTAssertTrue(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: false))
+        XCTAssertFalse(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: true))
+    }
+
     func testShiftHoldTouchPolicyRequiresAnotherActiveTouch() {
         XCTAssertTrue(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 2))
         XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 1))
         XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 0))
     }
 
-    func testKeyboardExtensionDoesNotAttemptDirectVoiceAudioCapture() {
-        XCTAssertFalse(VoiceInputController.canCaptureAudioInKeyboardExtension)
+    func testShiftHoldTouchPolicyKeepsExistingHoldWhenCharacterTouchReportsOnlyItself() {
+        XCTAssertTrue(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 1,
+                                                           wasShiftAlreadyHeld: true))
+        XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 1,
+                                                            wasShiftAlreadyHeld: false))
+        XCTAssertFalse(ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: 0,
+                                                            wasShiftAlreadyHeld: true))
+    }
+
+    func testIOSBundlesDoNotDeclareVoiceInputPrivacyUsageDescriptions() throws {
+        for plistURL in [
+            projectFileURL("LimeKeyboard/Info.plist"),
+            projectFileURL("LimeSettings/Info.plist"),
+        ] {
+            let data = try Data(contentsOf: plistURL)
+            let plist = try XCTUnwrap(
+                PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+            )
+
+            XCTAssertNil(plist["NSMicrophoneUsageDescription"],
+                         "\(plistURL.lastPathComponent) should not request microphone privacy usage")
+            XCTAssertNil(plist["NSSpeechRecognitionUsageDescription"],
+                         "\(plistURL.lastPathComponent) should not request speech-recognition privacy usage")
+        }
     }
 
     func testCandidateChevronExpansionAllowsEnglishSuggestionsWithoutComposingBuffer() {
@@ -295,6 +336,22 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(laterCellX, 558)
     }
 
+    func testEmojiPanelSourceReturnKeyTitlesMatchSourceKeyboard() {
+        XCTAssertEqual(EmojiPanelSource.english.returnKeyTitle, "ABC")
+        XCTAssertEqual(EmojiPanelSource.chineseIM.returnKeyTitle, "中")
+    }
+
+    func testEmojiPanelSourceCapturesCurrentLanguageMode() {
+        XCTAssertEqual(EmojiPanelSource.source(isEnglishOnly: true), .english)
+        XCTAssertEqual(EmojiPanelSource.source(isEnglishOnly: false), .chineseIM)
+    }
+
+    func testCandidateBarChromeUsesSystemAppearanceOnly() {
+        XCTAssertTrue(CandidateBarSystemChrome.usesLightForeground(systemUserInterfaceStyle: .dark))
+        XCTAssertFalse(CandidateBarSystemChrome.usesLightForeground(systemUserInterfaceStyle: .light))
+        XCTAssertFalse(CandidateBarSystemChrome.usesLightForeground(systemUserInterfaceStyle: .unspecified))
+    }
+
     private func emojiMapping(_ word: String) -> Mapping {
         Mapping(id: 0, code: "", word: word,
                 score: 0, baseScore: 0,
@@ -331,13 +388,16 @@ final class KeyboardViewControllerTest: XCTestCase {
     }
 
     private func loadKeyboardLayoutFixture(_ layoutID: String) throws -> KeyboardLayoutFixture {
-        let testFileURL = URL(fileURLWithPath: #filePath)
-        let iosRoot = testFileURL.deletingLastPathComponent().deletingLastPathComponent()
-        let url = iosRoot
-            .appendingPathComponent("LimeKeyboard/Layouts")
-            .appendingPathComponent("\(layoutID).json")
+        let url = projectFileURL("LimeKeyboard/Layouts/\(layoutID).json")
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(KeyboardLayoutFixture.self, from: data)
+    }
+
+    private func projectFileURL(_ relativePath: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent(relativePath)
     }
 
 }

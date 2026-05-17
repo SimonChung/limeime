@@ -168,6 +168,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private var repeatKeyDef: KeyDef?
     private weak var globeButton: UIButton?
     private var shiftHoldTrackingActive = false
+    private static let styledContentTag = 92731
     /// Set by KeyboardViewController so globe button uses the system keyboard picker.
     weak var inputModeViewController: UIInputViewController? {
         didSet { configureGlobeButtonForSystemPicker() }
@@ -335,6 +336,16 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         globeButton = nil
         shiftKeyButtons.removeAll()
         buildKeys()
+        updateShiftKeyIcon()
+    }
+
+    func previewLayout(_ previewLayout: LimeKeyLayout?) {
+        let buttons = renderedKeyButtons()
+        let previewKeys = renderedKeys(for: previewLayout ?? layout)
+        guard buttons.count == previewKeys.count else { return }
+        for (btn, keyDef) in zip(buttons, previewKeys) {
+            applyButtonStyle(btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: 100)
+        }
         updateShiftKeyIcon()
     }
 
@@ -720,6 +731,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     ///   • Wide key  (width  > height): label small left, sublabel large right  — horizontal stack
     private func styleKeyContent(btn: UIButton, keyDef: KeyDef,
                                  rowHeight: CGFloat, totalPercent: CGFloat) {
+        clearStyledKeyContent(from: btn)
         let keyLabel = keyDef.isModifier ? palette.modifierLabel : palette.label
         if !keyDef.icon.isEmpty {
             // SF Symbol icon key — dismiss key uses a larger point size for legibility
@@ -758,6 +770,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
                                               isTall: isTall, labelColor: keyLabel)
             }
             container.isUserInteractionEnabled = false
+            container.tag = Self.styledContentTag
             container.translatesAutoresizingMaskIntoConstraints = false
             container.clipsToBounds = true
             btn.addSubview(container)
@@ -785,6 +798,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         // Popup-keyboard indicator: small "…" pinned to bottom-right corner
         if !keyDef.popupKeyboard.isEmpty {
             let dot = UILabel()
+            dot.tag = Self.styledContentTag
             dot.text = "…"
             dot.font = UIFont.systemFont(ofSize: LayoutMetrics.Key.popupIndicatorFontSize, weight: .medium)
             dot.textColor = palette.secondaryLabel
@@ -798,6 +812,32 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
                                             constant: LayoutMetrics.Key.popupIndicatorBottomInset),
             ])
         }
+    }
+
+    private func clearStyledKeyContent(from btn: UIButton) {
+        btn.subviews
+            .filter { $0.tag == Self.styledContentTag }
+            .forEach { $0.removeFromSuperview() }
+        btn.setTitle(nil, for: .normal)
+        btn.setImage(nil, for: .normal)
+    }
+
+    private func renderedKeyButtons() -> [UIButton] {
+        rowViews.flatMap { rowView in
+            allSubviews(of: rowView).compactMap { $0 as? KeyButton }
+        }
+    }
+
+    private func allSubviews(of view: UIView) -> [UIView] {
+        view.subviews + view.subviews.flatMap { allSubviews(of: $0) }
+    }
+
+    private func renderedKeys(for sourceLayout: LimeKeyLayout) -> [KeyDef] {
+        var rows: [KeyRow] = []
+        if showArrowKey == 1 { rows.append(arrowKeyRow) }
+        rows.append(contentsOf: sourceLayout.rows)
+        if showArrowKey == 2 { rows.append(arrowKeyRow) }
+        return rows.flatMap(\.keys).filter { !($0.code == 0 && $0.label.isEmpty && $0.icon.isEmpty) }
     }
 
     /// Builds a two-part label view for keys that have both a primary label and a sublabel.
@@ -986,7 +1026,6 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private func updateShiftHoldTracking(for keyDef: KeyDef, event: UIEvent) {
         if keyDef.code == LimeKeyCode.shift.rawValue {
             shiftHoldTrackingActive = true
-            delegate?.keyboardView(self, didUpdateShiftHoldActive: true)
             return
         }
 
@@ -994,7 +1033,8 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         let activeTouchCount = event.allTouches?
             .filter { $0.phase != .ended && $0.phase != .cancelled }
             .count ?? 1
-        let active = ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: activeTouchCount)
+        let active = ShiftHoldTouchPolicy.isShiftStillHeld(activeTouchCount: activeTouchCount,
+                                                           wasShiftAlreadyHeld: shiftHoldTrackingActive)
         if !active {
             shiftHoldTrackingActive = false
         }
