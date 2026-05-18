@@ -398,21 +398,32 @@ public class LIMEUtilities {
 		if(DEBUG) Log.i(TAG, "isVoiceSearchServiceExist()");
 		
 		InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+		if (imm == null) {
+			return null;
+		}
 		List<InputMethodInfo> mInputMethodProperties = imm.getEnabledInputMethodList();
-	
-		//boolean isVoiceSearchServiceEnabled = false;
-		for (int i = 0; i < mInputMethodProperties.size(); i++) {
-			InputMethodInfo imi = mInputMethodProperties.get(i);
-			if(DEBUG) Log.i(TAG, "enabled IM " + i + ":" + imi.getId());
 
-			if(imi.getId().equals("com.google.android.voicesearch/.ime.VoiceInputMethodService")){
-				return "com.google.android.voicesearch/.ime.VoiceInputMethodService";
-			}else if(imi.getId().equals("com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService")){
-				return "com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService";
+		// Legacy Google voice IMEs that behave as dedicated switch targets.
+		// Modern Google Speech Services voice UI is reached through RecognizerIntent
+		// instead; switching to its IME service can appear as a no-op on emulator.
+		for (InputMethodInfo imi : mInputMethodProperties) {
+			String id = imi.getId();
+			if(DEBUG) Log.i(TAG, "enabled IM:" + id);
+
+			if(isVoiceInputMethodId(id)){
+				return id;
 			}
 		}
 		return null;
 		
+	}
+
+	public static boolean isVoiceInputMethodId(String id) {
+		if (id == null) {
+			return false;
+		}
+		return id.equals("com.google.android.voicesearch/.ime.VoiceInputMethodService") ||
+				id.equals("com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService");
 	}
 	
 	public static boolean isLIMEEnabled(Context context){

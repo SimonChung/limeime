@@ -760,8 +760,9 @@ public class LIMEService extends InputMethodService
         if (voiceText != null) {
             InputConnection ic = getCurrentInputConnection();
             if (ic != null) {
-                ic.commitText(voiceText, 1);
-                Log.i(TAG, "onStartInputView(): Committed voice text: '" + voiceText + "'");
+                String textToCommit = prepareVoiceTextForCommit(voiceText);
+                ic.commitText(textToCommit, 1);
+                Log.i(TAG, "onStartInputView(): Committed voice text: '" + textToCommit + "'");
             } else {
                 Log.w(TAG, "onStartInputView(): IC still null, storing voice text for retry");
                 mPendingVoiceText = voiceText;
@@ -5057,21 +5058,17 @@ public class LIMEService extends InputMethodService
 
     /**
      *  start voice input
-     *  Launches voice recognition directly using RecognizerIntent
-     *  Voice recognition inserts text directly into the input field without switching IMEs
+     *  Prefer switching to a voice IME. RecognizerIntent is only the fallback.
      */
     public void startVoiceInput() {
         if (DEBUG)
             Log.i(TAG, "startVoiceInput(): API level: " + android.os.Build.VERSION.SDK_INT);
 
-        // Check if voice recognition is available
         Intent voiceIntent = getVoiceIntent();
-
-        // Optional: Set prompt text (if available in strings.xml)
-        // voiceIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_input_prompt));
-
-        // Try to switch to voice IME first (preferred method)
         String voiceID = LIMEUtilities.isVoiceSearchServiceExist(getBaseContext());
+        Log.i(TAG, "startVoiceInput(): voiceID=" + voiceID
+                + ", activeIM=" + activeIM
+                + ", fallbackLanguage=" + voiceIntent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE));
 
         if (voiceID != null) {
             if (DEBUG)
@@ -5098,10 +5095,7 @@ public class LIMEService extends InputMethodService
                     // Verify the switch worked by checking IME after a short delay
                     // If it didn't work, fall back to RecognizerIntent immediately
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        String currentIME = Settings.Secure.getString(
-                                getContentResolver(),
-                                Settings.Secure.DEFAULT_INPUT_METHOD
-                        );
+                        String currentIME = getCurrentDefaultInputMethod();
                         if (DEBUG)
                             Log.i(TAG, "startVoiceInput(): Current IME after switch: " + currentIME + " (expected: " + voiceID + ")");
 
@@ -5113,40 +5107,34 @@ public class LIMEService extends InputMethodService
                             if (DEBUG)
                                 Log.w(TAG, "startVoiceInput(): switchInputMethod() didn't work (still on " + currentIME + "), falling back to RecognizerIntent");
                             stopMonitoringIMEChanges();
-                            // Fall back to RecognizerIntent
                             launchRecognizerIntent(voiceIntent);
                         }
                     }, 200); // Delay to check if switch worked - short enough for quick fallback
 
-                    //return; // Assume success, will fall back if verification fails
+                    return;
                 } catch (SecurityException e) {
                     if (DEBUG)
                         Log.e(TAG, "startVoiceInput(): SecurityException switching to voice IME: " + e.getMessage(), e);
                     stopMonitoringIMEChanges();
-                    // Fall through to try RecognizerIntent
                 } catch (Exception e) {
                     if (DEBUG)
                         Log.e(TAG, "startVoiceInput(): Exception switching to voice IME: " + e.getMessage(), e);
                     stopMonitoringIMEChanges();
-                    // Fall through to try RecognizerIntent
                 }
             } else {
                 if (DEBUG)
                     Log.e(TAG, "startVoiceInput(): InputMethodManager is null");
             }
-        } else {
-            //  Voice IME not found (voiceID is null), using RecognizerIntent");
+        } else if (DEBUG) {
+            Log.i(TAG, "startVoiceInput(): voice IME not found, using RecognizerIntent fallback");
+        }
+
+        try {
+            launchRecognizerIntent(voiceIntent);
             if (DEBUG)
-                Log.i(TAG, "startVoiceInput(): About to call launchRecognizerIntent() - voiceID was null");
-            // Fallback: Use RecognizerIntent directly if voice IME switching fails or is not available
-            // This path is taken when voiceID is null (e.g., on API 35)
-            try {
-                launchRecognizerIntent(voiceIntent);
-                if (DEBUG)
-                    Log.i(TAG, "startVoiceInput(): launchRecognizerIntent() returned successfully");
-            } catch (Exception e) {
-                Log.e(TAG, "Error launching recognizer intent", e);
-            }
+                Log.i(TAG, "startVoiceInput(): launchRecognizerIntent() returned successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching recognizer intent", e);
         }
     }
 
@@ -5154,31 +5142,9 @@ public class LIMEService extends InputMethodService
         Intent voiceIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
 
-        // Defensive: fallback to "en" if locale/resources unavailable (for test envs)
-        String languageTag = "en";
-        try {
-            Locale systemLocale = null;
-            try {
-                systemLocale = ConfigurationCompat.getLocales(getResources().getConfiguration()).get(0);
-            } catch (Exception e) {
-                // getResources() or getConfiguration() may throw in test env
-            }
-            if (systemLocale != null) {
-                try {
-                    languageTag = systemLocale.toLanguageTag();
-                } catch (NoSuchMethodError e) {
-                    languageTag = systemLocale.getLanguage();
-                    String country = systemLocale.getCountry();
-                    if (!country.isEmpty()) {
-                        languageTag += "-" + country;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // fallback to default "en"
-        }
+        String languageTag = getVoiceRecognitionLanguageTag();
         voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag);
-        Log.i(TAG, "getVoiceIntent() - Using system locale for voice input: " + languageTag);
+        Log.i(TAG, "getVoiceIntent() - Using voice recognition language: " + languageTag);
 
         // Add prompt text
         voiceIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now");
@@ -5186,6 +5152,34 @@ public class LIMEService extends InputMethodService
         // Ensure we get results back
         voiceIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         return voiceIntent;
+    }
+
+    private String getVoiceRecognitionLanguageTag() {
+        Locale systemLocale = null;
+        try {
+            systemLocale = ConfigurationCompat.getLocales(getResources().getConfiguration()).get(0);
+        } catch (Exception e) {
+            // getResources() or getConfiguration() may throw in test env
+        }
+        return resolveVoiceRecognitionLanguageTag(systemLocale);
+    }
+
+    static String resolveVoiceRecognitionLanguageTag(Locale locale) {
+        if (locale == null) {
+            return "zh-TW";
+        }
+        String language = locale.getLanguage();
+        String country = locale.getCountry();
+        if (!"zh".equalsIgnoreCase(language)) {
+            return "zh-TW";
+        }
+        if ("TW".equalsIgnoreCase(country)) {
+            return "zh-TW";
+        }
+        if ("HK".equalsIgnoreCase(country) || "MO".equalsIgnoreCase(country)) {
+            return "zh-HK";
+        }
+        return "zh-TW";
     }
 
     /**
@@ -5196,19 +5190,7 @@ public class LIMEService extends InputMethodService
             Log.e(TAG, "launchRecognizerIntent(): voiceIntent is NULL! Creating default intent");
             voiceIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            Locale systemLocale = ConfigurationCompat.getLocales(getResources().getConfiguration()).get(0);
-            String languageTag;
-            try {
-                assert systemLocale != null;
-                languageTag = systemLocale.toLanguageTag();
-            } catch (NoSuchMethodError e) {
-                languageTag = systemLocale.getLanguage();
-                systemLocale.getCountry();
-                if (!systemLocale.getCountry().isEmpty()) {
-                    languageTag += "-" + systemLocale.getCountry();
-                }
-            }
-            voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag);
+            voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, getVoiceRecognitionLanguageTag());
             //voiceIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now");
             voiceIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         }
@@ -5250,6 +5232,18 @@ public class LIMEService extends InputMethodService
         } catch (Exception e) {
             Log.e(TAG, "launchRecognizerIntent(): Failed to launch VoiceInputActivity: " + e.getMessage(), e);
             showLimeToast("Voice input unavailable: " + e.getMessage());
+        }
+    }
+
+    private String getCurrentDefaultInputMethod() {
+        try {
+            return Settings.Secure.getString(
+                    getContentResolver(),
+                    Settings.Secure.DEFAULT_INPUT_METHOD
+            );
+        } catch (Exception e) {
+            Log.w(TAG, "getCurrentDefaultInputMethod(): Unable to read default IME: " + e.getMessage());
+            return null;
         }
     }
 
@@ -5392,13 +5386,14 @@ public class LIMEService extends InputMethodService
      */
     private void commitVoiceTextWithRetry(String text, int attempt) {
         InputConnection ic = getCurrentInputConnection();
+        String textToCommit = prepareVoiceTextForCommit(text);
         if (ic != null) {
             try {
-                ic.commitText(text, 1);
+                ic.commitText(textToCommit, 1);
                 Log.i(TAG, "commitVoiceTextWithRetry(): Committed voice text on attempt " + attempt);
             } catch (Exception e) {
                 Log.e(TAG, "commitVoiceTextWithRetry(): Failed to commit: " + e.getMessage());
-                mPendingVoiceText = text;
+                mPendingVoiceText = textToCommit;
             }
         } else if (attempt < 3) {
             Log.w(TAG, "commitVoiceTextWithRetry(): IC null, retry " + (attempt + 1) + " in 200ms");
@@ -5407,9 +5402,25 @@ public class LIMEService extends InputMethodService
             return; // Don't clear mIsVoiceInputActive yet
         } else {
             Log.w(TAG, "commitVoiceTextWithRetry(): IC still null after 3 retries, storing as pending");
-            mPendingVoiceText = text;
+            mPendingVoiceText = textToCommit;
         }
         mIsVoiceInputActive = false;
+    }
+
+    private String prepareVoiceTextForCommit(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        try {
+            if (mLIMEPref != null && mLIMEPref.getHanCovertOption() != 0 && SearchSrv != null) {
+                String converted = SearchSrv.hanConvert(text);
+                Log.i(TAG, "prepareVoiceTextForCommit(): Applied Han conversion to voice result");
+                return converted;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "prepareVoiceTextForCommit(): Han conversion skipped: " + e.getMessage());
+        }
+        return text;
     }
 
     /**

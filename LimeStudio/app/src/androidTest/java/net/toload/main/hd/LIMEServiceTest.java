@@ -7827,35 +7827,46 @@ public class LIMEServiceTest {
     }
 
     @Test
-    public void test_5_20_3_1_VoiceInputIntentDefaultsTraditionalIMToZhTW() throws Exception {
+    public void test_5_20_3_1_VoiceInputIntentFallsBackToZhTW() throws Exception {
         LIMEService limeService = new LIMEService();
-        limeService.activeIM = LIME.IM_CJ;
 
         java.lang.reflect.Method getVoiceIntent = LIMEService.class.getDeclaredMethod("getVoiceIntent");
         getVoiceIntent.setAccessible(true);
 
         android.content.Intent voiceIntent = (android.content.Intent) getVoiceIntent.invoke(limeService);
 
-        assertEquals("Traditional IMs should default RecognizerIntent fallback to zh-TW",
+        assertEquals("RecognizerIntent fallback should default to zh-TW when locale is unavailable",
                 "zh-TW",
                 voiceIntent.getStringExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE));
     }
 
     @Test
-    public void test_5_20_3_2_VoiceInputIntentDoesNotForceZhTWForSimplifiedIM() throws Exception {
-        assertFalse("Pinyin should not be treated as Traditional voice input",
-                LIMEService.isTraditionalChineseIM(LIME.IM_PINYIN));
-        assertFalse("Simplified Cangjie should not be treated as Traditional voice input",
-                LIMEService.isTraditionalChineseIM(LIME.IM_SCJ));
-        assertTrue("Cangjie should be treated as Traditional voice input",
-                LIMEService.isTraditionalChineseIM(LIME.IM_CJ));
+    public void test_5_20_3_2_VoiceInputLocaleResolutionNeverUsesZhCN() {
+        assertEquals("Explicit Taiwan Chinese should use zh-TW",
+                "zh-TW",
+                LIMEService.resolveVoiceRecognitionLanguageTag(java.util.Locale.forLanguageTag("zh-TW")));
+        assertEquals("Explicit Hong Kong Chinese should use zh-HK",
+                "zh-HK",
+                LIMEService.resolveVoiceRecognitionLanguageTag(java.util.Locale.forLanguageTag("zh-HK")));
+        assertEquals("Simplified Chinese locale should fall back to zh-TW",
+                "zh-TW",
+                LIMEService.resolveVoiceRecognitionLanguageTag(java.util.Locale.forLanguageTag("zh-CN")));
+        assertEquals("Ambiguous Chinese script-only locale should fall back to zh-TW",
+                "zh-TW",
+                LIMEService.resolveVoiceRecognitionLanguageTag(java.util.Locale.forLanguageTag("zh-Hans")));
+        assertEquals("Non-Chinese locale should fall back to zh-TW",
+                "zh-TW",
+                LIMEService.resolveVoiceRecognitionLanguageTag(java.util.Locale.US));
     }
 
     @Test
-    public void test_5_20_3_3_GoogleTtsVoiceImeIdDetected() {
-        assertTrue("Newer Google Speech Services voice IME ID should be detected",
+    public void test_5_20_3_3_GoogleTtsVoiceImeUsesRecognizerIntentFallback() {
+        assertFalse("Google Speech Services voice IME should not be used as switch target",
                 LIMEUtilities.isVoiceInputMethodId(
                         "com.google.android.tts/com.google.android.apps.speech.tts.googletts.settings.asr.voiceime.VoiceInputMethodService"));
+        assertTrue("Legacy Google voice IME should still be detected",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService"));
     }
 
     /**
