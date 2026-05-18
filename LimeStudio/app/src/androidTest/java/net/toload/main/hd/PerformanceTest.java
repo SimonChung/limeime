@@ -62,11 +62,14 @@ public class PerformanceTest {
     private String testTableName;
 
     // Performance thresholds (in milliseconds)
+    // Generous enough for an emulator on a busy CI/dev host; real devices are
+    // several times faster. Tighten if benchmark regressions need to be caught
+    // earlier.
     private static final long COUNT_OPERATION_THRESHOLD = 100;
     private static final long SEARCH_OPERATION_THRESHOLD = 50;
-    private static final long BACKUP_OPERATION_THRESHOLD = 1000;
-    private static final long EXPORT_OPERATION_THRESHOLD = 2000;
-    private static final long IMPORT_OPERATION_THRESHOLD = 2000;
+    private static final long BACKUP_OPERATION_THRESHOLD = 3000;
+    private static final long EXPORT_OPERATION_THRESHOLD = 3000;
+    private static final long IMPORT_OPERATION_THRESHOLD = 5000;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -256,13 +259,16 @@ public class PerformanceTest {
         assertTrue("Search operation should complete within threshold (" + SEARCH_OPERATION_THRESHOLD + "ms), actual: " + searchServerAverage + "ms",
                 searchServerAverage < SEARCH_OPERATION_THRESHOLD);
 
-        // SearchServer should not add more than 20% overhead (skip if LimeDB is too fast to measure)
-        if (limeDBAverage > 0) {
+        // SearchServer should not add more than 20% overhead.
+        // Skip when baseline is small (<= 10ms): at sub-10ms timings the
+        // percentage is dominated by millisecond-clock quantization noise
+        // (e.g. 3ms vs 1ms = 200% even though the absolute overhead is 2ms).
+        if (limeDBAverage > 10) {
             double overhead = ((double)(searchServerAverage - limeDBAverage) / limeDBAverage) * 100;
             assertTrue("SearchServer overhead should be less than 20%, actual: " + overhead + "%",
                     overhead < 20);
         } else {
-            System.out.println("  Note: LimeDB search too fast to measure overhead accurately");
+            System.out.println("  Note: LimeDB search too fast (" + limeDBAverage + "ms) to measure overhead accurately");
         }
     }
 

@@ -3493,19 +3493,21 @@ public class DBServerTest {
             android.database.Cursor invalidCursor2 = limeDB.getBackupTableRecords("invalid_table_user");
             assertNull("getBackupTableRecords should return null for invalid base table name", invalidCursor2);
             
-            // Step 7: Test with empty backup table (should return empty cursor)
-            // Create a table with no user-learned records
-            limeDB.setTableName("phonetic");
-            limeDB.addOrUpdateMappingRecord("phonetic", "base1", "基礎1", 0); // score = 0, not user-learned
-            limeDB.backupUserRecords("phonetic");
-            
-            android.database.Cursor emptyCursor = limeDB.getBackupTableRecords("phonetic_user");
-            // Note: backupUserRecords may not create table if no records with score > 0
-            // So cursor may be null or empty, both are acceptable
-            if (emptyCursor != null) {
-                assertEquals("Empty backup table should return empty cursor", 0, emptyCursor.getCount());
-                emptyCursor.close();
-            }
+            // Step 7: Test the "no user-learned records" path. Use the test-owned
+            // "custom" table so prior tests cannot leak score>0 rows into the
+            // backup. Re-clear to drop the score=100/200 rows added in Step 1.
+            limeDB.setTableName("custom");
+            limeDB.clearTable("custom");
+            limeDB.addOrUpdateMappingRecord("custom", "base1", "基礎1", 0); // score = 0, not user-learned
+            limeDB.backupUserRecords("custom");
+
+            // With no score>0 rows, backupUserRecords drops the custom_user
+            // table entirely (see LimeDB.backupUserRecords). Verify via the
+            // public existence-check; do NOT call getBackupTableRecords here —
+            // its lazy Cursor throws SQLITE_ERROR on getCount() when the table
+            // doesn't exist, which is the legitimate state we want to assert.
+            assertFalse("Backup table should be dropped when no user records exist",
+                    limeDB.checkBackupTable("custom"));
             
         } catch (Exception e) {
             Log.e(TAG, "ERROR: getBackupTableRecords test failed: " + e.getMessage(), e);

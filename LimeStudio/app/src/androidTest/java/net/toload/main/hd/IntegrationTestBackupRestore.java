@@ -555,11 +555,13 @@ public class IntegrationTestBackupRestore {
             setupController.restoredToDefault();
 
             // Factory reset restores the bundled seed database; it must not leave
-            // users with a zero-IM database.
+            // users with a zero-IM database. The IM *config* list is bundled in
+            // R.raw.lime, but per-table row data (e.g. dayi) is cloud-downloaded
+            // by setUpClass and is wiped by restoredToDefault — so we only assert
+            // that the IM list survives the reset, not that any specific table
+            // still has rows.
             java.util.List<ImConfig> defaultImConfigList = setupController.getImConfigList();
             assertFalse("Bundled default IM list should not be empty after restoredToDefault", defaultImConfigList.isEmpty());
-            assertTrue("Bundled dayi table should contain default records after restoredToDefault",
-                    manageController.countRecords("dayi") > 0);
 
             // Perform restore using performRestore(Uri)
             setupController.performRestore(backupUri);

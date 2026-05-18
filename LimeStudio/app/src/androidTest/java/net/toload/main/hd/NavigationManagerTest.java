@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 @RunWith(AndroidJUnit4.class)
 public class NavigationManagerTest {
 
+    @org.junit.Ignore("Deprecated: NavigationManager is rebound to BottomNavigationView/NavigationRail per docs/LIME_SETTINGS_BACKPORT.md; SetupImFragment is being renamed/refactored to SetupFragment (§5). See docs/DEPCECATED_UI_TESTS.md.")
     @Test
     public void navigateToSetupAndRelatedFragments_doesNotCrash() {
         try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {

@@ -38,6 +38,7 @@ public class NewsDialogTest {
         assertTrue("NewsDialog should define link/button handlers", hasClick);
     }
 
+    @org.junit.Ignore("Deprecated: first-launch news/help splash flow disabled in commit 6f36521a; see docs/DEPCECATED_UI_TESTS.md.")
     @Test
     public void testNewsDialogSurvivesRecreation() {
         try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {

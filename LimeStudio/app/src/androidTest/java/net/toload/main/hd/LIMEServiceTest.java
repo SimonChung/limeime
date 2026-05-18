@@ -37,6 +37,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import net.toload.main.hd.candidate.CandidateView;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
+import net.toload.main.hd.global.LIMEUtilities;
 import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.LIMEService;
 import net.toload.main.hd.SearchServer;
@@ -44,6 +45,7 @@ import net.toload.main.hd.keyboard.LIMEBaseKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboardView;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -62,6 +64,21 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(AndroidJUnit4.class)
 public class LIMEServiceTest {
+
+    @Before
+    public void clearEmojiDisplayPositionPrefs() {
+        // Tests in this class write to enable_emoji / enable_emoji_position to
+        // exercise the legacy-migration branch in LIMEPreferenceManager. If the
+        // process is killed before the migration's async apply() flushes, those
+        // keys can be left in SharedPreferences and break later runs that read
+        // the default. Clear them before each test so defaults are honored.
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext)
+                .edit()
+                .remove("enable_emoji")
+                .remove("enable_emoji_position")
+                .commit();
+    }
 
     @Test
     public void emojiKeyboardSpecialKeyCodesUseReservedCrossPlatformRange() {
@@ -7807,6 +7824,38 @@ public class LIMEServiceTest {
             // Method might not exist in this build
             assertTrue("Voice intent configuration test skipped (method not found)", true);
         }
+    }
+
+    @Test
+    public void test_5_20_3_1_VoiceInputIntentDefaultsTraditionalIMToZhTW() throws Exception {
+        LIMEService limeService = new LIMEService();
+        limeService.activeIM = LIME.IM_CJ;
+
+        java.lang.reflect.Method getVoiceIntent = LIMEService.class.getDeclaredMethod("getVoiceIntent");
+        getVoiceIntent.setAccessible(true);
+
+        android.content.Intent voiceIntent = (android.content.Intent) getVoiceIntent.invoke(limeService);
+
+        assertEquals("Traditional IMs should default RecognizerIntent fallback to zh-TW",
+                "zh-TW",
+                voiceIntent.getStringExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE));
+    }
+
+    @Test
+    public void test_5_20_3_2_VoiceInputIntentDoesNotForceZhTWForSimplifiedIM() throws Exception {
+        assertFalse("Pinyin should not be treated as Traditional voice input",
+                LIMEService.isTraditionalChineseIM(LIME.IM_PINYIN));
+        assertFalse("Simplified Cangjie should not be treated as Traditional voice input",
+                LIMEService.isTraditionalChineseIM(LIME.IM_SCJ));
+        assertTrue("Cangjie should be treated as Traditional voice input",
+                LIMEService.isTraditionalChineseIM(LIME.IM_CJ));
+    }
+
+    @Test
+    public void test_5_20_3_3_GoogleTtsVoiceImeIdDetected() {
+        assertTrue("Newer Google Speech Services voice IME ID should be detected",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.google.android.tts/com.google.android.apps.speech.tts.googletts.settings.asr.voiceime.VoiceInputMethodService"));
     }
 
     /**

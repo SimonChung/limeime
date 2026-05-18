@@ -104,6 +104,7 @@ public class HelpDialogTest {
      *
      * Note: This test has an extended timeout (60 seconds) to accommodate slower emulators.
      */
+    @org.junit.Ignore("Deprecated: first-launch help splash disabled in commit 6f36521a and LIMESettings startup lifecycle changed (docs/LIME_SETTINGS_BACKPORT.md, docs/DEPCECATED_UI_TESTS.md).")
     @Test(timeout = 60000)
     public void testHelpDialogSurvivesRecreation() throws Exception {
         try (ActivityScenario<LIMESettings> scenario = ActivityScenario.launch(LIMESettings.class)) {
