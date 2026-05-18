@@ -33,6 +33,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -51,6 +52,7 @@ import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Keyboard;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
+import net.toload.main.hd.ui.view.ScrollableTabHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -191,6 +193,13 @@ public class LIMEPreference extends AppCompatActivity {
 		private Context ctx = null;
 		private SearchServer SearchSrv = null;
 		private LIMEPreferenceManager mLIMEPref = null;
+
+		@Override
+		public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
+			super.onViewCreated(view, savedInstanceState);
+			ScrollableTabHelper.applyToRecyclerView(getActivity(), getListView());
+		}
+
 		@Override
 		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
 			// Load the preferences from an XML resource (scoped to rootKey for nested PreferenceScreen drill-down)

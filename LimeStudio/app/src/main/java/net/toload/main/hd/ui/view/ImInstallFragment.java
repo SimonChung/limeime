@@ -176,6 +176,7 @@ public class ImInstallFragment extends Fragment {
 
         recyclerView = rootView.findViewById(R.id.im_install_list);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ScrollableTabHelper.applyToRecyclerView(activity, recyclerView);
 
         // Load installed state async, then set adapter
         loadFamilyListAsync();
@@ -226,6 +227,7 @@ public class ImInstallFragment extends Fragment {
                 currentFamilies = families;
                 adapter = new ImFamilyAdapter(families);
                 rv.setAdapter(adapter);
+                ScrollableTabHelper.refreshRecyclerViewScrollbar(rv);
             });
         }).start();
     }

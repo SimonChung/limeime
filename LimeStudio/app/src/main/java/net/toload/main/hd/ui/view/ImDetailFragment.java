@@ -17,6 +17,7 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
@@ -86,6 +87,10 @@ public class ImDetailFragment extends Fragment {
         }
 
         View rootView = inflater.inflate(R.layout.fragment_im_detail, container, false);
+        NestedScrollView scrollView = rootView.findViewById(R.id.im_detail_scroll);
+        if (scrollView != null) {
+            ScrollableTabHelper.applyToNestedScrollView(activity, scrollView);
+        }
 
         // Toolbar with back navigation (title is rendered by tv_im_detail_heading below)
         MaterialToolbar toolbar = rootView.findViewById(R.id.im_detail_toolbar);

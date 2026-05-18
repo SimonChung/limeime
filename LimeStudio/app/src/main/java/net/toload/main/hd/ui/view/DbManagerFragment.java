@@ -24,6 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
@@ -86,6 +87,10 @@ public class DbManagerFragment extends Fragment {
         }
 
         View root = inflater.inflate(R.layout.fragment_db_manager, container, false);
+        NestedScrollView scrollView = root.findViewById(R.id.db_manager_scroll);
+        if (scrollView != null) {
+            ScrollableTabHelper.applyToNestedScrollView(activity, scrollView);
+        }
 
         dbStatusCard = root.findViewById(R.id.dbStatusCard);
         dbStatusText = root.findViewById(R.id.dbStatusText);

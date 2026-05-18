@@ -43,6 +43,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.pm.PackageInfoCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
@@ -83,6 +84,10 @@ public class SetupFragment extends Fragment {
                              Bundle savedInstanceState) {
         activity = getActivity();
         View rootView = inflater.inflate(R.layout.fragment_setup, container, false);
+        NestedScrollView scrollView = rootView.findViewById(R.id.setup_scroll);
+        if (scrollView != null) {
+            ScrollableTabHelper.applyToNestedScrollView(activity, scrollView);
+        }
 
         statusCard = rootView.findViewById(R.id.statusCard);
         statusText = rootView.findViewById(R.id.statusText);

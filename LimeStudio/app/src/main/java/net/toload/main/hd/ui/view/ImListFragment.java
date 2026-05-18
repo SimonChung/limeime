@@ -82,6 +82,7 @@ public class ImListFragment extends Fragment {
 
         RecyclerView recyclerView = rootView.findViewById(R.id.im_list_recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ScrollableTabHelper.applyToRecyclerView(activity, recyclerView);
 
         adapter = new ImRowAdapter(new ArrayList<>());
         recyclerView.setAdapter(adapter);
@@ -160,6 +161,10 @@ public class ImListFragment extends Fragment {
         void setData(List<ImConfig> data) {
             this.imList = data != null ? data : new ArrayList<>();
             notifyDataSetChanged();
+            View root = getView();
+            if (root != null) {
+                ScrollableTabHelper.refreshRecyclerViewScrollbar(root.findViewById(R.id.im_list_recycler));
+            }
         }
 
         @Override
