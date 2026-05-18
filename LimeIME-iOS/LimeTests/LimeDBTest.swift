@@ -697,6 +697,70 @@ final class LimeDBTest: XCTestCase {
         XCTAssertTrue(output.contains("@cname@|Friendly Name"))
     }
 
+    func testImportTxtFileSupportsLimeTextV2EscapedFieldsAndScores() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        @format@|lime-text-v2
+        %chardef begin
+        aa|word\\|with\\|pipes|7|11
+        \\@code|literal at code|3|5
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.countRecords(LIME.DB_TABLE_CUSTOM,
+                                       "code = ? AND word = ? AND score = ? AND basescore = ?",
+                                       ["aa", "word|with|pipes", "7", "11"]), 1)
+        XCTAssertEqual(db.countRecords(LIME.DB_TABLE_CUSTOM,
+                                       "code = ? AND word = ? AND score = ? AND basescore = ?",
+                                       ["@code", "literal at code", "3", "5"]), 1)
+    }
+
+    func testImportTxtFileStoresCinKeynameMetadata() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".cin")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        %keyname begin
+        a ㄅ
+        b ㄆ
+        %keyname end
+        %chardef begin
+        a 測
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "imkeys"), "ab")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "imkeynames"), "ㄅ|ㄆ")
+    }
+
+    func testExportTxtTableWritesLimeTextV2WhenFieldsNeedEscaping() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, "@code", "word|with|pipes", 4)
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL))
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+
+        XCTAssertTrue(output.contains("@format@|lime-text-v2"))
+        XCTAssertTrue(output.contains("\\@code|word\\|with\\|pipes|4|0"))
+    }
+
     func testLimeDBResetImConfig() throws {
         let db = try makeLimeDB()
         let im = "test_reset_\(Date().timeIntervalSince1970)"

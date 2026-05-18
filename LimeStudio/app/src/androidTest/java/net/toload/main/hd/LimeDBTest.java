@@ -5304,6 +5304,65 @@ public class LimeDBTest {
         }
     }
 
+    @Test(timeout = 15000)
+    public void testImportTxtTableSupportsLimeTextV2EscapedFields() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        File file = File.createTempFile("lime-v2-import", ".lime", appContext.getCacheDir());
+        try {
+            String content = "@format@|lime-text-v2\n"
+                    + "%chardef begin\n"
+                    + "aa|word\\|with\\|pipes|7|11\n"
+                    + "\\@code|literal at code|3|5\n"
+                    + "%chardef end\n";
+            writeUtf8(file, content);
+
+            limeDB.setFilename(file);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals(1, limeDB.countRecords(LIME.DB_TABLE_CUSTOM,
+                    "code = ? AND word = ? AND score = ? AND basescore = ?",
+                    new String[]{"aa", "word|with|pipes", "7", "11"}));
+            assertEquals(1, limeDB.countRecords(LIME.DB_TABLE_CUSTOM,
+                    "code = ? AND word = ? AND score = ? AND basescore = ?",
+                    new String[]{"@code", "literal at code", "3", "5"}));
+        } finally {
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete temp import file");
+            }
+        }
+    }
+
+    @Test(timeout = 10000)
+    public void testExportTxtTableWritesLimeTextV2WhenFieldsNeedEscaping() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+        limeDB.addOrUpdateMappingRecord("custom", "@code", "word|with|pipes", 4);
+
+        File exportFile = new File(appContext.getCacheDir(), "test_export_v2_" + System.currentTimeMillis() + ".lime");
+        try {
+            boolean success = limeDB.exportTxtTable(LIME.DB_TABLE_CUSTOM, exportFile, null);
+            assertTrue("exportTxtTable should succeed", success);
+            String output = readUtf8(exportFile);
+            assertTrue(output.contains("@format@|lime-text-v2"));
+            assertTrue(output.contains("\\@code|word\\|with\\|pipes|4|0"));
+        } finally {
+            if (exportFile.exists() && !exportFile.delete()) {
+                Log.e(TAG, "Failed to delete export file");
+            }
+        }
+    }
+
     @Test(timeout = 10000)
     public void testLimeDBExportTxtTableWithRelatedTable() {
         // Test exportTxtTable with related table (LIME.DB_TABLE_RELATED)

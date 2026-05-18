@@ -162,6 +162,7 @@ Because Android and iOS differ, `|` is the safest delimiter only when code and w
 LIME-style metadata uses the active delimiter. With pipe delimiter:
 
 ```text
+@format@|lime-text-v2
 @version@|My IM Version
 @cname@|My IM Display Name
 @selkey@|123456789
@@ -176,16 +177,35 @@ Android recognizes a metadata line when the parsed `code` field starts with `@`.
 - `@selkey@`
 - `@endkey@`
 - `@spacestyle@`
+- `@format@`
 
 These lines are not inserted as mappings.
 
 Metadata meaning:
 
+- `@format@|lime-text-v2` enables escaped field parsing for the rest of the file.
 - `@version@` stores the IM version metadata.
 - `@cname@` stores the IM display name, equivalent to CIN `%cname`.
 - `@selkey@`, `@endkey@`, and `@spacestyle@` store IM selection/end/space behavior metadata.
 
 When both `@version@` and `@cname@` are present, `@version@` remains the version value and `@cname@` is the display name value.
+
+### 2.4.1 Escaped v2 Fields
+
+Files without `@format@|lime-text-v2` use legacy unescaped parsing. In v2, fields are split on the active delimiter while ignoring escaped delimiter characters, then escapes are decoded.
+
+Supported v2 escapes:
+
+```text
+\\ = literal backslash
+\| = literal pipe when `|` is the delimiter
+\@ = literal at-sign
+\% = literal percent
+\t = tab
+\n = newline
+```
+
+Exporters may keep the legacy v1 format when no field needs escaping. They should write `@format@|lime-text-v2` before records when a value contains the active delimiter, backslash, tab/newline, or when a mapping code would otherwise be mistaken for metadata.
 
 ### 2.5 Mapping Records
 

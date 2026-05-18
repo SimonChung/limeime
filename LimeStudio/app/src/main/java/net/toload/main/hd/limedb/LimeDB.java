@@ -3628,6 +3628,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 String endkey = "";
                 String selkey = "";
                 String spacestyle = "";
+                boolean escapedFormat = false;
                 StringBuilder imkeys = new StringBuilder();
                 StringBuilder imkeynames = new StringBuilder();
 
@@ -3793,24 +3794,54 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                         //else { line.length() }
 
                         try {
+                            if (!isCinFormat && line.trim().startsWith("@")) {
+                                List<String> metaParts = splitEscapedFields(line, delimiter_symbol, escapedFormat);
+                                if (metaParts.size() >= 2) {
+                                    String metaKey = metaParts.get(0).trim().toLowerCase(Locale.US);
+                                    String metaValue = metaParts.get(1).trim();
+                                    if ("@format@".equals(metaKey)) {
+                                        escapedFormat = "lime-text-v2".equalsIgnoreCase(metaValue);
+                                        continue;
+                                    } else if ("@version@".equals(metaKey)) {
+                                        version = metaValue;
+                                        if (imname.isEmpty()) imname = version;
+                                        continue;
+                                    } else if ("@cname@".equals(metaKey)) {
+                                        imname = metaValue;
+                                        if (version.isEmpty()) version = imname;
+                                        continue;
+                                    } else if ("@selkey@".equals(metaKey)) {
+                                        selkey = metaValue;
+                                        continue;
+                                    } else if ("@endkey@".equals(metaKey)) {
+                                        endkey = metaValue;
+                                        continue;
+                                    } else if ("@spacestyle@".equals(metaKey)) {
+                                        spacestyle = metaValue;
+                                        continue;
+                                    }
+                                }
+                                continue;
+                            }
+
                             // Handle related table import format: pword|cword|basescore|userscore
                             if (isRelatedTable && delimiter_symbol.equals("|")) {
                                 try {
-                                    String[] parts = line.split("\\|");
-                                    if (parts.length >= 4) {
-                                        String pword = parts[0].trim();
-                                        String cword = parts[1].trim();
+                                    List<String> parts = splitEscapedFields(line, delimiter_symbol, escapedFormat);
+                                    if (parts.size() >= 4) {
+                                        String pword = parts.get(0).trim();
+                                        String cword = parts.get(1).trim();
                                         int basescore = 0;
                                         int userscore = 0;
                                         
                                         try {
-                                            basescore = Integer.parseInt(parts[2].trim());
+                                            basescore = Integer.parseInt(parts.get(2).trim());
                                         } catch (NumberFormatException e) {
                                             if (DEBUG) Log.e(TAG, "Error parsing basescore from line: " + line, e);
                                         }
                                         
                                         try {
-                                            userscore = Integer.parseInt(parts[3].trim());
+                                            userscore = Integer.parseInt(parts.get(3).trim());
                                         } catch (NumberFormatException e) {
                                             if (DEBUG) Log.e(TAG, "Error parsing userscore from line: " + line, e);
                                         }
@@ -3829,20 +3860,20 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                             }
                                         }
                                         continue; // Skip regular parsing for related table
-                                    } else if (parts.length == 3) {
+                                    } else if (parts.size() == 3) {
                                         // Legacy format: pword+cword|basescore|userscore (backward compatibility)
-                                        String pwordCword = parts[0].trim();
+                                        String pwordCword = parts.get(0).trim();
                                         int basescore = 0;
                                         int userscore = 0;
                                         
                                         try {
-                                            basescore = Integer.parseInt(parts[1].trim());
+                                            basescore = Integer.parseInt(parts.get(1).trim());
                                         } catch (NumberFormatException e) {
                                             if (DEBUG) Log.e(TAG, "Error parsing basescore from line: " + line, e);
                                         }
                                         
                                         try {
-                                            userscore = Integer.parseInt(parts[2].trim());
+                                            userscore = Integer.parseInt(parts.get(2).trim());
                                         } catch (NumberFormatException e) {
                                             if (DEBUG) Log.e(TAG, "Error parsing userscore from line: " + line, e);
                                         }
@@ -3890,69 +3921,54 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                             String code = null, word = null;
                             if (isCinFormat) {
                                 if (line.contains("\t")) {
+                                    List<String> parts = splitEscapedFields(line, "\t", false);
                                     try {
-                                        code = line.split("\t")[0];
-                                        word = line.split("\t")[1];
+                                        code = parts.get(0);
+                                        word = parts.get(1);
                                     } catch (Exception e) {
                                         if (DEBUG) Log.e(TAG, "Error parsing line with tab delimiter: " + line, e);
                                         continue;
                                     }
                                     try {
                                         // Simply ignore error and try to load score and basescore values
-                                        source_score = Integer.parseInt(line.split("\t")[2]);
-                                        source_basescore = Integer.parseInt(line.split("\t")[3]);
+                                        source_score = Integer.parseInt(parts.get(2).trim());
+                                        source_basescore = Integer.parseInt(parts.get(3).trim());
                                     } catch (Exception e) {
                                         if (DEBUG) Log.e(TAG, "Error parsing score values from line: " + line, e);
                                     }
                                 } else if (line.contains(" ")) {
+                                    List<String> parts = splitEscapedFields(line, " ", false);
                                     try {
-                                        code = line.split(" ")[0];
-                                        word = line.split(" ")[1];
+                                        code = parts.get(0);
+                                        word = parts.get(1);
                                     } catch (Exception e) {
                                         if (DEBUG) Log.e(TAG, "Error parsing line with space delimiter: " + line, e);
                                         continue;
                                     }
                                     try {
                                         // Simply ignore error and try to load score and basescore values
-                                        source_score = Integer.parseInt(line.split(" ")[2]);
-                                        source_basescore = Integer.parseInt(line.split(" ")[3]);
+                                        source_score = Integer.parseInt(parts.get(2).trim());
+                                        source_basescore = Integer.parseInt(parts.get(3).trim());
                                     } catch (Exception e) {
                                         if (DEBUG) Log.e(TAG, "Error parsing score values from line: " + line, e);
                                     }
                                 }
                             } else {
-                                if (delimiter_symbol.equals("|")) {
-                                    try {
-                                        code = line.split("\\|")[0];
-                                        word = line.split("\\|")[1];
-                                    } catch (Exception e) {
-                                        if (DEBUG) Log.e(TAG, "Error parsing line with pipe delimiter: " + line, e);
-                                        continue;
-                                    }
-                                    try {
-                                        // Simply ignore error and try to load score and basescore values
-                                        source_score = Integer.parseInt(line.split("\\|")[2]);
-                                        source_basescore = Integer.parseInt(line.split("\\|")[3]);
-                                    } catch (Exception e) {
-                                        if (DEBUG) Log.e(TAG, "Error parsing score values from line: " + line, e);
-                                    }
-                                } else {
-                                    try {
-                                        code = line.split(delimiter_symbol)[0];
-                                        word = line.split(delimiter_symbol)[1];
-                                    } catch (Exception e) {
-                                        if (DEBUG) Log.e(TAG, "Error parsing line with delimiter: " + line, e);
-                                        continue;
-                                    }
-                                    try {
-                                        // Simply ignore error and try to load score and basescore values
-                                        source_score = Integer.parseInt(line.split(delimiter_symbol)[2]);
-                                        source_basescore = Integer.parseInt(line.split(delimiter_symbol)[3]);
-                                    } catch (Exception e) {
-                                        if (DEBUG) Log.e(TAG, "Error parsing score values from line: " + line, e);
-                                    }
+                                List<String> parts = splitEscapedFields(line, delimiter_symbol, escapedFormat);
+                                try {
+                                    code = parts.get(0);
+                                    word = parts.get(1);
+                                } catch (Exception e) {
+                                    if (DEBUG) Log.e(TAG, "Error parsing line with delimiter: " + line, e);
+                                    continue;
                                 }
-
+                                try {
+                                    // Simply ignore error and try to load score and basescore values
+                                    source_score = Integer.parseInt(parts.get(2).trim());
+                                    source_basescore = Integer.parseInt(parts.get(3).trim());
+                                } catch (Exception e) {
+                                    if (DEBUG) Log.e(TAG, "Error parsing score values from line: " + line, e);
+                                }
                             }
                             if (code == null || code.trim().isEmpty()) {
                                 continue;
@@ -3965,47 +3981,30 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 word = word.trim();
                             }
 
-                            // Skip meta header lines (export writes @version@, @cname@, @selkey@, @endkey@, @spacestyle@)
                             String codeLower = code.toLowerCase(Locale.US);
-                            if (codeLower.startsWith("@")) {
-                                if (codeLower.contains("@version@")) {
-                                    version = word.trim();
-                                    if (imname.isEmpty()) imname = version;
-                                } else if (codeLower.contains("@cname@")) {
-                                    imname = word.trim();
-                                    if (version.isEmpty()) version = imname;
-                                } else if (codeLower.contains("@selkey@")) {
-                                    selkey = word.trim();
-                                } else if (codeLower.contains("@endkey@")) {
-                                    endkey = word.trim();
-                                } else if (codeLower.contains("@spacestyle@")) {
-                                    spacestyle = word.trim();
-                                }
-                                continue; // do not insert meta into table
-                            }
-
+                            boolean escapedMetadataCode = escapedFormat && line.trim().startsWith("\\%");
                             String metadataWord = word.trim();
-                            if (codeLower.startsWith("%") && line.length() > code.length()) {
+                            if (!escapedMetadataCode && codeLower.startsWith("%") && line.length() > code.length()) {
                                 metadataWord = line.substring(code.length()).trim();
                             }
 
-                            if (codeLower.contains("%version")) {
+                            if (!escapedMetadataCode && codeLower.equals("%version")) {
                                 version = metadataWord;
                                 if (imname.isEmpty()) imname = version;
                                 continue;
-                            } else if (codeLower.contains("%cname")) {
+                            } else if (!escapedMetadataCode && codeLower.equals("%cname")) {
                                 imname = metadataWord;
                                 if (version.isEmpty()) version = imname;
                                 continue;
-                            } else if (codeLower.contains("%selkey")) {
+                            } else if (!escapedMetadataCode && codeLower.equals("%selkey")) {
                                 selkey = metadataWord;
                                 if (DEBUG) Log.i(TAG, "loadfile(): selkey:" + selkey);
                                 continue;
-                            } else if (codeLower.contains("%endkey")) {
+                            } else if (!escapedMetadataCode && codeLower.equals("%endkey")) {
                                 endkey = metadataWord;
                                 if (DEBUG) Log.i(TAG, "loadfile(): endkey:" + endkey);
                                 continue;
-                            } else if (codeLower.contains("%spacestyle")) {
+                            } else if (!escapedMetadataCode && codeLower.equals("%spacestyle")) {
                                 spacestyle = metadataWord;
                                 continue;
                             } else {
@@ -4244,6 +4243,103 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             return " ";
         }
 
+    }
+
+    private List<String> splitEscapedFields(String line, String delimiter, boolean escapedFormat) {
+        List<String> result = new ArrayList<>();
+        if (delimiter == null || delimiter.isEmpty()) {
+            result.add(decodeEscapedField(line, escapedFormat));
+            return result;
+        }
+
+        char delimiterChar = delimiter.charAt(0);
+        StringBuilder field = new StringBuilder();
+        boolean escaping = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (escapedFormat && escaping) {
+                field.append(decodeEscapedChar(c));
+                escaping = false;
+            } else if (escapedFormat && c == '\\') {
+                escaping = true;
+            } else if (c == delimiterChar) {
+                result.add(field.toString());
+                field.setLength(0);
+            } else {
+                field.append(c);
+            }
+        }
+        if (escapedFormat && escaping) {
+            field.append('\\');
+        }
+        result.add(field.toString());
+        return result;
+    }
+
+    private String decodeEscapedField(String value, boolean escapedFormat) {
+        if (!escapedFormat || value == null || value.indexOf('\\') < 0) {
+            return value;
+        }
+        StringBuilder out = new StringBuilder();
+        boolean escaping = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (escaping) {
+                out.append(decodeEscapedChar(c));
+                escaping = false;
+            } else if (c == '\\') {
+                escaping = true;
+            } else {
+                out.append(c);
+            }
+        }
+        if (escaping) {
+            out.append('\\');
+        }
+        return out.toString();
+    }
+
+    private char decodeEscapedChar(char c) {
+        if (c == 't') return '\t';
+        if (c == 'n') return '\n';
+        return c;
+    }
+
+    private String escapeField(String value, String delimiter) {
+        if (value == null) {
+            return "";
+        }
+        char delimiterChar = (delimiter == null || delimiter.isEmpty()) ? '|' : delimiter.charAt(0);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\\') out.append("\\\\");
+            else if (c == delimiterChar) out.append('\\').append(c);
+            else if (c == '@') out.append("\\@");
+            else if (c == '%') out.append("\\%");
+            else if (c == '\t') out.append("\\t");
+            else if (c == '\n') out.append("\\n");
+            else out.append(c);
+        }
+        return out.toString();
+    }
+
+    private boolean needsEscapedField(String value, String delimiter, boolean codeField) {
+        if (value == null) {
+            return false;
+        }
+        char delimiterChar = (delimiter == null || delimiter.isEmpty()) ? '|' : delimiter.charAt(0);
+        String lower = value.toLowerCase(Locale.US);
+        return value.indexOf(delimiterChar) >= 0
+                || value.indexOf('\\') >= 0
+                || value.indexOf('\t') >= 0
+                || value.indexOf('\n') >= 0
+                || (codeField && value.startsWith("@"))
+                || (codeField && (lower.startsWith("%version")
+                || lower.startsWith("%cname")
+                || lower.startsWith("%selkey")
+                || lower.startsWith("%endkey")
+                || lower.startsWith("%spacestyle")));
     }
 
    /* */
@@ -5303,7 +5399,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
      * <ul>
      *   <li><b>Regular mapping tables:</b> .lime format
      *     <ul>
-     *       <li>Header lines with IM info (@version@, @cname@, @selkey@, @endkey@, @spacestyle@) if imConfig provided</li>
+     *       <li>Header lines with IM info (@format@, @version@, @cname@, @selkey@, @endkey@, @spacestyle@) if imConfig provided</li>
      *       <li>Data lines: code|word|score|basescore</li>
      *     </ul>
      *   </li>
@@ -5383,6 +5479,18 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                             int totalRecords = relatedList.size();
                             int processedRecords = 0;
+                            boolean useEscapedFormat = false;
+                            for (Related w : relatedList) {
+                                if (needsEscapedField(w.getPword(), "|", false)
+                                        || needsEscapedField(w.getCword(), "|", false)) {
+                                    useEscapedFormat = true;
+                                    break;
+                                }
+                            }
+                            if (useEscapedFormat) {
+                                fout.write("@format@|lime-text-v2");
+                                fout.newLine();
+                            }
 
                             // Write records
                             for (Related w : relatedList) {
@@ -5395,7 +5503,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                     Log.w(TAG,"Skipped record with pWord ="+w.getPword() + ", cWord= " + w.getCword() + ", base score= " + w.getBasescore() + ", user score= " + w.getUserscore() + ".");
                                     continue;
                                 }
-                                String s = w.getPword() + "|" + w.getCword() + "|" + w.getBasescore() + "|" + w.getUserscore();
+                                String pword = useEscapedFormat ? escapeField(w.getPword(), "|") : w.getPword();
+                                String cword = useEscapedFormat ? escapeField(w.getCword(), "|") : w.getCword();
+                                String s = pword + "|" + cword + "|" + w.getBasescore() + "|" + w.getUserscore();
                                 fout.write(s);
                                 fout.newLine();
                                 
@@ -5417,6 +5527,14 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                             int totalRecords = records.size();
                             int processedRecords = 0;
+                            boolean useEscapedFormat = false;
+                            for (Record w : records) {
+                                if (needsEscapedField(w.getCode(), "|", true)
+                                        || needsEscapedField(w.getWord(), "|", false)) {
+                                    useEscapedFormat = true;
+                                    break;
+                                }
+                            }
 
                             // Write IM info headers if provided
                             if (imConfig != null && !imConfig.isEmpty()) {
@@ -5435,27 +5553,41 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                     else if (LIME.IM_ENDKEY.equals(i.getTitle())) endkey = i.getDesc();
                                     else if (LIME.IM_SPACESTYLE.equals(i.getTitle())) spacestyle = i.getDesc();
                                 }
+                                if (needsEscapedField(version, "|", false)
+                                        || needsEscapedField(name, "|", false)
+                                        || needsEscapedField(selkey, "|", false)
+                                        || needsEscapedField(endkey, "|", false)
+                                        || needsEscapedField(spacestyle, "|", false)) {
+                                    useEscapedFormat = true;
+                                }
+                                if (useEscapedFormat) {
+                                    fout.write("@format@|lime-text-v2");
+                                    fout.newLine();
+                                }
                                 String exportVersion = !version.isEmpty() ? version : name;
                                 if (!exportVersion.isEmpty()) {
-                                    fout.write("@version@|" + exportVersion);
+                                    fout.write("@version@|" + (useEscapedFormat ? escapeField(exportVersion, "|") : exportVersion));
                                     fout.newLine();
                                 }
                                 if (!name.isEmpty()) {
-                                    fout.write("@cname@|" + name);
+                                    fout.write("@cname@|" + (useEscapedFormat ? escapeField(name, "|") : name));
                                     fout.newLine();
                                 }
                                 if (!selkey.isEmpty()) {
-                                    fout.write("@selkey@|" + selkey);
+                                    fout.write("@selkey@|" + (useEscapedFormat ? escapeField(selkey, "|") : selkey));
                                     fout.newLine();
                                 }
                                 if (!endkey.isEmpty()) {
-                                    fout.write("@endkey@|" + endkey);
+                                    fout.write("@endkey@|" + (useEscapedFormat ? escapeField(endkey, "|") : endkey));
                                     fout.newLine();
                                 }
                                 if (!spacestyle.isEmpty()) {
-                                    fout.write("@spacestyle@|" + spacestyle);
+                                    fout.write("@spacestyle@|" + (useEscapedFormat ? escapeField(spacestyle, "|") : spacestyle));
                                     fout.newLine();
                                 }
+                            } else if (useEscapedFormat) {
+                                fout.write("@format@|lime-text-v2");
+                                fout.newLine();
                             }
 
                             // Write records
@@ -5467,7 +5599,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                                     continue;
                                 }
-                                String s = w.getCode() + "|" + w.getWord() + "|" + w.getScore() + "|" + w.getBasescore();
+                                String code = useEscapedFormat ? escapeField(w.getCode(), "|") : w.getCode();
+                                String word = useEscapedFormat ? escapeField(w.getWord(), "|") : w.getWord();
+                                String s = code + "|" + word + "|" + w.getScore() + "|" + w.getBasescore();
                                 fout.write(s);
                                 fout.newLine();
                                 

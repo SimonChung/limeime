@@ -2857,13 +2857,23 @@ final class LimeDB {
         var lines: [String] = []
         if isRelated {
             let related = getRelated(nil, 0, 0)
+            let useEscapedFormat = related.contains {
+                needsEscaping($0.parentWord, delimiter: "|") || needsEscaping($0.childWord, delimiter: "|")
+            }
+            if useEscapedFormat { lines.append("@format@|lime-text-v2") }
             lines.append("%chardef begin")
             for r in related {
                 guard !r.parentWord.isEmpty, !r.childWord.isEmpty else { continue }
-                lines.append("\(r.parentWord)|\(r.childWord)|\(r.baseScore)|\(r.score)")
+                let pword = useEscapedFormat ? escapeField(r.parentWord, delimiter: "|") : r.parentWord
+                let cword = useEscapedFormat ? escapeField(r.childWord, delimiter: "|") : r.childWord
+                lines.append("\(pword)|\(cword)|\(r.baseScore)|\(r.score)")
             }
             lines.append("%chardef end")
         } else {
+            let records = getRecordList(table, nil, searchByCode: false, 0, 0)
+            var useEscapedFormat = records.contains {
+                needsEscaping($0.code, delimiter: "|", codeField: true) || needsEscaping($0.word, delimiter: "|")
+            }
             if let configs = imConfig {
                 var version = ""
                 var name = ""
@@ -2877,18 +2887,29 @@ final class LimeDB {
                     if c.title == "endkey" { endkey = c.desc }
                     if c.title == "spacestyle" { spacestyle = c.desc }
                 }
+                if needsEscaping(version, delimiter: "|")
+                    || needsEscaping(name, delimiter: "|")
+                    || needsEscaping(selkey, delimiter: "|")
+                    || needsEscaping(endkey, delimiter: "|")
+                    || needsEscaping(spacestyle, delimiter: "|") {
+                    useEscapedFormat = true
+                }
+                if useEscapedFormat { lines.append("@format@|lime-text-v2") }
                 let exportVersion = version.isEmpty ? name : version
-                if !exportVersion.isEmpty { lines.append("@version@|\(exportVersion)") }
-                if !name.isEmpty { lines.append("@cname@|\(name)") }
-                if !selkey.isEmpty { lines.append("@selkey@|\(selkey)") }
-                if !endkey.isEmpty { lines.append("@endkey@|\(endkey)") }
-                if !spacestyle.isEmpty { lines.append("@spacestyle@|\(spacestyle)") }
+                if !exportVersion.isEmpty { lines.append("@version@|\(useEscapedFormat ? escapeField(exportVersion, delimiter: "|") : exportVersion)") }
+                if !name.isEmpty { lines.append("@cname@|\(useEscapedFormat ? escapeField(name, delimiter: "|") : name)") }
+                if !selkey.isEmpty { lines.append("@selkey@|\(useEscapedFormat ? escapeField(selkey, delimiter: "|") : selkey)") }
+                if !endkey.isEmpty { lines.append("@endkey@|\(useEscapedFormat ? escapeField(endkey, delimiter: "|") : endkey)") }
+                if !spacestyle.isEmpty { lines.append("@spacestyle@|\(useEscapedFormat ? escapeField(spacestyle, delimiter: "|") : spacestyle)") }
+            } else if useEscapedFormat {
+                lines.append("@format@|lime-text-v2")
             }
             lines.append("%chardef begin")
-            let records = getRecordList(table, nil, searchByCode: false, 0, 0)
             for r in records {
                 guard !(r.word.isEmpty || r.word == "null") else { continue }
-                lines.append("\(r.code)|\(r.word)|\(r.score)|\(r.baseScore)")
+                let code = useEscapedFormat ? escapeField(r.code, delimiter: "|") : r.code
+                let word = useEscapedFormat ? escapeField(r.word, delimiter: "|") : r.word
+                lines.append("\(code)|\(word)|\(r.score)|\(r.baseScore)")
             }
             lines.append("%chardef end")
         }
@@ -2905,23 +2926,30 @@ final class LimeDB {
     func importTxtFile(at path: String, tableName: String,
                        progress: ((Int) -> Void)? = nil) throws {
         guard isValidTableName(tableName) else { throw LimeDBError.invalidTableName(tableName) }
-        try ensureMappingTable(tableName)
+        let isRelatedTable = tableName == LIME.DB_TABLE_RELATED
+        if !isRelatedTable { try ensureMappingTable(tableName) }
         guard let reader = StreamReader(path: path) else { throw LimeDBError.fileNotFound(path) }
         importCancelled = false
 
         let sourceName = URL(fileURLWithPath: path).lastPathComponent
+        let isCinFormat = sourceName.lowercased().hasSuffix(".cin")
         var version = ""
         var name = ""
         var selkey = ""
         var endkey = ""
         var spacestyle = ""
+        var imkeys = ""
+        var imkeynames: [String] = []
+        var escapedFormat = false
 
         // Auto-detect delimiter from the first non-comment data line (mirrors Java identifyDelimiter())
         var detectedDelimiter: Character = "\t"
         var inChardef = false
+        var inKeyname = false
         var delimiterDetected = false
 
-        var batch: [(code: String, word: String)] = []
+        var batch: [(code: String, word: String, score: Int, baseScore: Int)] = []
+        var relatedBatch: [(pword: String, cword: String, baseScore: Int, userScore: Int)] = []
         let batchSize = 500
         var totalInserted = 0
         for line in reader {
@@ -2929,6 +2957,36 @@ final class LimeDB {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.lowercased().hasPrefix("%chardef begin") { inChardef = true;  continue }
             if trimmed.lowercased().hasPrefix("%chardef end")   { inChardef = false; continue }
+            if trimmed.lowercased().hasPrefix("%keyname begin") { inKeyname = true; continue }
+            if trimmed.lowercased().hasPrefix("%keyname end") { inKeyname = false; continue }
+
+            if trimmed.hasPrefix("@") {
+                let parts = splitEscapedFields(trimmed, delimiter: delimiterDetected ? detectedDelimiter : (trimmed.contains("|") ? "|" : "\t"), escapedFormat: escapedFormat)
+                if parts.count >= 2 {
+                    let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let value = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                    switch key {
+                    case "@format@":
+                        escapedFormat = value.lowercased() == "lime-text-v2"
+                    case "@version@":
+                        version = value
+                        if name.isEmpty { name = value }
+                    case "@cname@":
+                        name = value
+                        if version.isEmpty { version = value }
+                    case "@selkey@":
+                        selkey = value
+                    case "@endkey@":
+                        endkey = value
+                    case "@spacestyle@":
+                        spacestyle = value
+                    default:
+                        break
+                    }
+                }
+                continue
+            }
+
             if let meta = parseMetadataLine(trimmed, delimiter: delimiterDetected ? detectedDelimiter : nil) {
                 switch meta.key {
                 case "version":
@@ -2953,7 +3011,10 @@ final class LimeDB {
             // Skip .cin comment lines starting with '#' (e.g. "# Begin" inside the
             // %chardef begin/end block). Without this, comments would be imported
             // as mappings where code="#" and word="Begin"/"End"/etc.
-            if !inChardef || trimmed.hasPrefix("%") || trimmed.hasPrefix("#") || trimmed.isEmpty { continue }
+            if trimmed.hasPrefix("#") || trimmed.isEmpty { continue }
+            if isCinFormat && !(inChardef || inKeyname) { continue }
+            if !isCinFormat && trimmed.hasPrefix("%") { continue }
+            if isCinFormat && trimmed.hasPrefix("%") { continue }
 
             // Detect delimiter from first data line
             if !delimiterDetected {
@@ -2961,12 +3022,55 @@ final class LimeDB {
                 delimiterDetected = true
             }
 
-            let parts = trimmed.components(separatedBy: String(detectedDelimiter))
-            if parts.count >= 2 { batch.append((code: parts[0], word: parts[1])) }
+            let parts = splitEscapedFields(trimmed, delimiter: detectedDelimiter, escapedFormat: escapedFormat)
+            if isRelatedTable {
+                if parts.count >= 4 {
+                    let pword = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                    let cword = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !pword.isEmpty && !cword.isEmpty {
+                        relatedBatch.append((pword: pword,
+                                             cword: cword,
+                                             baseScore: Int(parts[2].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                                             userScore: Int(parts[3].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0))
+                    }
+                } else if parts.count == 3 {
+                    let combined = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                    if combined.count > 1 {
+                        let splitIndex = combined.index(after: combined.startIndex)
+                        relatedBatch.append((pword: String(combined[..<splitIndex]),
+                                             cword: String(combined[splitIndex...]),
+                                             baseScore: Int(parts[1].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                                             userScore: Int(parts[2].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0))
+                    }
+                }
+                if relatedBatch.count >= batchSize {
+                    totalInserted += try flushRelatedBatch(&relatedBatch)
+                    progress?(totalInserted)
+                }
+                continue
+            }
+
+            if parts.count >= 2 {
+                let code = parts[0].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let word = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                if inKeyname {
+                    imkeys += code
+                    if !word.isEmpty { imkeynames.append(word) }
+                } else if !code.isEmpty && !word.isEmpty {
+                    let score = parts.count > 2 ? (Int(parts[2].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0) : 0
+                    var baseScore = parts.count > 3 ? (Int(parts[3].trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0) : 0
+                    if baseScore == 0 { baseScore = getBaseScore(word) }
+                    batch.append((code: code, word: word, score: score, baseScore: baseScore))
+                }
+            }
             if batch.count >= batchSize {
                 totalInserted += try flushBatch(&batch, tableName: tableName)
                 progress?(totalInserted)
             }
+        }
+        if !relatedBatch.isEmpty && !importCancelled {
+            totalInserted += try flushRelatedBatch(&relatedBatch)
+            progress?(totalInserted)
         }
         if !batch.isEmpty && !importCancelled {
             totalInserted += try flushBatch(&batch, tableName: tableName)
@@ -2981,6 +3085,8 @@ final class LimeDB {
             if !selkey.isEmpty { setImConfig(tableName, "selkey", selkey) }
             if !endkey.isEmpty { setImConfig(tableName, "endkey", endkey) }
             if !spacestyle.isEmpty { setImConfig(tableName, "spacestyle", spacestyle) }
+            if !imkeys.isEmpty { setImConfig(tableName, "imkeys", imkeys) }
+            if !imkeynames.isEmpty { setImConfig(tableName, "imkeynames", imkeynames.joined(separator: "|")) }
         }
     }
 
@@ -3017,6 +3123,74 @@ final class LimeDB {
         return nil
     }
 
+    private func splitEscapedFields(_ line: String, delimiter: Character, escapedFormat: Bool) -> [String] {
+        var fields: [String] = []
+        var current = ""
+        var escaping = false
+        for char in line {
+            if escapedFormat && escaping {
+                current.append(decodeEscapedCharacter(char))
+                escaping = false
+            } else if escapedFormat && char == "\\" {
+                escaping = true
+            } else if char == delimiter {
+                fields.append(current)
+                current.removeAll(keepingCapacity: true)
+            } else {
+                current.append(char)
+            }
+        }
+        if escapedFormat && escaping { current.append("\\") }
+        fields.append(current)
+        return fields
+    }
+
+    private func decodeEscapedCharacter(_ char: Character) -> Character {
+        switch char {
+        case "t": return "\t"
+        case "n": return "\n"
+        default: return char
+        }
+    }
+
+    private func escapeField(_ value: String, delimiter: Character) -> String {
+        var output = ""
+        for char in value {
+            switch char {
+            case "\\":
+                output += "\\\\"
+            case let c where c == delimiter:
+                output.append("\\")
+                output.append(char)
+            case "@":
+                output += "\\@"
+            case "%":
+                output += "\\%"
+            case "\t":
+                output += "\\t"
+            case "\n":
+                output += "\\n"
+            default:
+                output.append(char)
+            }
+        }
+        return output
+    }
+
+    private func needsEscaping(_ value: String, delimiter: Character, codeField: Bool = false) -> Bool {
+        let lower = value.lowercased()
+        return value.contains(delimiter)
+            || value.contains("\\")
+            || value.contains("\t")
+            || value.contains("\n")
+            || (codeField && value.hasPrefix("@"))
+            || (codeField && (lower.hasPrefix("%version")
+                || lower.hasPrefix("%cname")
+                || lower.hasPrefix("%selkey")
+                || lower.hasPrefix("%endkey")
+                || lower.hasPrefix("%spacestyle")))
+    }
+
     /// Async variant with background dispatch and main-queue completion (mirrors Java Thread spawn).
     func importTxtFileAsync(at path: String, tableName: String,
                             progress: ((Int) -> Void)? = nil,
@@ -3035,13 +3209,33 @@ final class LimeDB {
         }
     }
 
-    private func flushBatch(_ batch: inout [(code: String, word: String)], tableName: String) throws -> Int {
+    private func flushBatch(_ batch: inout [(code: String, word: String, score: Int, baseScore: Int)], tableName: String) throws -> Int {
         let count = batch.count
         try dbQueue.write { db in
             for pair in batch {
+                if tableName == LIME.DB_TABLE_PHONETIC {
+                    let noTone = pair.code.replacingOccurrences(of: "[3467 ]", with: "", options: .regularExpression)
+                    try db.execute(
+                        sql: "INSERT OR IGNORE INTO \(tableName) (code, word, score, basescore, code3r) VALUES (?, ?, ?, ?, ?)",
+                        arguments: [pair.code, pair.word, pair.score, pair.baseScore, noTone])
+                } else {
+                    try db.execute(
+                        sql: "INSERT OR IGNORE INTO \(tableName) (code, word, score, basescore) VALUES (?, ?, ?, ?)",
+                        arguments: [pair.code, pair.word, pair.score, pair.baseScore])
+                }
+            }
+        }
+        batch.removeAll()
+        return count
+    }
+
+    private func flushRelatedBatch(_ batch: inout [(pword: String, cword: String, baseScore: Int, userScore: Int)]) throws -> Int {
+        let count = batch.count
+        try dbQueue.write { db in
+            for row in batch {
                 try db.execute(
-                    sql: "INSERT OR IGNORE INTO \(tableName) (code, word) VALUES (?, ?)",
-                    arguments: [pair.code, pair.word])
+                    sql: "INSERT OR IGNORE INTO related (pword, cword, basescore, score) VALUES (?, ?, ?, ?)",
+                    arguments: [row.pword, row.cword, row.baseScore, row.userScore])
             }
         }
         batch.removeAll()
