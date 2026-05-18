@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
-  "tool_input_preview": "{\"file\":\"/Users/jeremy/Documents/GitHub/limeime/.claude/worktrees/sharp-jones-12e37e/LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/SetupFragment.java\"}",
-  "error": "Language server 'jdtls' not found.\nInstall with: Install from https://github.com/eclipse/eclipse.jdt.ls",
-  "timestamp": "2026-05-10T11:47:20.568Z",
-  "retry_count": 1
-}
