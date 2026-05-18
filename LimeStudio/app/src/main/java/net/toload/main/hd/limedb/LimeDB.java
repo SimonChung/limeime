@@ -3965,12 +3965,15 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 word = word.trim();
                             }
 
-                            // Skip meta header lines (export writes @version@, @selkey@, @endkey@, @spacestyle@)
+                            // Skip meta header lines (export writes @version@, @cname@, @selkey@, @endkey@, @spacestyle@)
                             String codeLower = code.toLowerCase(Locale.US);
                             if (codeLower.startsWith("@")) {
                                 if (codeLower.contains("@version@")) {
                                     version = word.trim();
                                     if (imname.isEmpty()) imname = version;
+                                } else if (codeLower.contains("@cname@")) {
+                                    imname = word.trim();
+                                    if (version.isEmpty()) version = imname;
                                 } else if (codeLower.contains("@selkey@")) {
                                     selkey = word.trim();
                                 } else if (codeLower.contains("@endkey@")) {
@@ -5300,7 +5303,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
      * <ul>
      *   <li><b>Regular mapping tables:</b> .lime format
      *     <ul>
-     *       <li>Header lines with IM info (@version@, @selkey@, @endkey@, @spacestyle@) if imConfig provided</li>
+     *       <li>Header lines with IM info (@version@, @cname@, @selkey@, @endkey@, @spacestyle@) if imConfig provided</li>
      *       <li>Data lines: code|word|score|basescore</li>
      *     </ul>
      *   </li>
@@ -5435,6 +5438,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 String exportVersion = !version.isEmpty() ? version : name;
                                 if (!exportVersion.isEmpty()) {
                                     fout.write("@version@|" + exportVersion);
+                                    fout.newLine();
+                                }
+                                if (!name.isEmpty()) {
+                                    fout.write("@cname@|" + name);
                                     fout.newLine();
                                 }
                                 if (!selkey.isEmpty()) {

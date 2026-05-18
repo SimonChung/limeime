@@ -5142,6 +5142,40 @@ public class LimeDBTest {
     }
 
     @Test(timeout = 15000)
+    public void testImportTxtTableStoresCnameMetadataFromLimeHeader() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        File file = File.createTempFile("lime-cname", ".lime", appContext.getCacheDir());
+        try {
+            String content = "@version@|My Android Table 2026.05\n"
+                    + "@cname@|自建輸入法名稱\n"
+                    + "%chardef begin\n"
+                    + "aa|測\n"
+                    + "%chardef end\n";
+            writeUtf8(file, content);
+
+            limeDB.setFilename(file);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("My Android Table 2026.05",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("自建輸入法名稱",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
+            assertEquals("1",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"));
+        } finally {
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete temp import file");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
     public void testImportTxtTableStoresVersionMetadataFromCinVersion() throws Exception {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         LimeDB limeDB = new LimeDB(appContext);
@@ -5232,6 +5266,37 @@ public class LimeDBTest {
                     output.contains("@version@|Version 2.0"));
             assertFalse("Export file should not use name when version exists",
                     output.contains("@version@|Friendly Name"));
+        } finally {
+            if (exportFile.exists() && !exportFile.delete()) {
+                Log.e(TAG, "Failed to delete export file");
+            }
+        }
+    }
+
+    @Test(timeout = 10000)
+    public void testExportTxtTableWritesCnameMetadataFromNameConfig() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+        limeDB.addOrUpdateMappingRecord("custom", "cname_test", "測", 10);
+        limeDB.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Name");
+        limeDB.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Version 2.0");
+
+        List<ImConfig> imConfigInfo = limeDB.getImConfigList(LIME.DB_TABLE_CUSTOM, null);
+        File exportFile = new File(appContext.getCacheDir(), "test_export_cname_" + System.currentTimeMillis() + ".lime");
+
+        try {
+            boolean success = limeDB.exportTxtTable(LIME.DB_TABLE_CUSTOM, exportFile, imConfigInfo);
+            assertTrue("exportTxtTable should succeed", success);
+            String output = readUtf8(exportFile);
+            assertTrue("Export file should contain dedicated version header",
+                    output.contains("@version@|Version 2.0"));
+            assertTrue("Export file should contain display name header",
+                    output.contains("@cname@|Friendly Name"));
         } finally {
             if (exportFile.exists() && !exportFile.delete()) {
                 Log.e(TAG, "Failed to delete export file");

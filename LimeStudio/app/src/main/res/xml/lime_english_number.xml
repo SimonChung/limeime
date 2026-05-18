@@ -75,6 +75,7 @@
     
     <Row>
         <Key limehd:codes="97" limehd:keyLabel="a"
+                 limehd:horizontalGap="5%p"
                  limehd:popupKeyboard="@xml/popup_template"
                 limehd:popupCharacters="@string/alternates_for_a"
                 limehd:keyEdgeFlags="left"/>

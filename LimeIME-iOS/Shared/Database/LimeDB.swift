@@ -2879,6 +2879,7 @@ final class LimeDB {
                 }
                 let exportVersion = version.isEmpty ? name : version
                 if !exportVersion.isEmpty { lines.append("@version@|\(exportVersion)") }
+                if !name.isEmpty { lines.append("@cname@|\(name)") }
                 if !selkey.isEmpty { lines.append("@selkey@|\(selkey)") }
                 if !endkey.isEmpty { lines.append("@endkey@|\(endkey)") }
                 if !spacestyle.isEmpty { lines.append("@spacestyle@|\(spacestyle)") }
@@ -2934,7 +2935,7 @@ final class LimeDB {
                     version = meta.value
                     if name.isEmpty { name = meta.value }
                 case "cname":
-                    if name.isEmpty { name = meta.value }
+                    name = meta.value
                     if version.isEmpty { version = meta.value }
                 case "name":
                     name = meta.value

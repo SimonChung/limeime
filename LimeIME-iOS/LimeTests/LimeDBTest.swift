@@ -592,6 +592,28 @@ final class LimeDBTest: XCTestCase {
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "2")
     }
 
+    func testImportTxtFileStoresCnameMetadataFromLimeHeader() throws {
+        let db = try makeLimeDB()
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        @version@|My Custom Table 2026.05
+        @cname@|自建輸入法名稱
+        %chardef begin
+        aa|測
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "My Custom Table 2026.05")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "自建輸入法名稱")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "1")
+    }
+
     func testImportTxtFileStoresVersionMetadataFromCinVersion() throws {
         let db = try makeLimeDB()
         let importURL = FileManager.default.temporaryDirectory
@@ -654,6 +676,25 @@ final class LimeDBTest: XCTestCase {
         let output = try String(contentsOf: exportURL, encoding: .utf8)
         XCTAssertTrue(output.contains("@version@|Version 2.0"))
         XCTAssertFalse(output.contains("@version@|Friendly Name"))
+    }
+
+    func testExportTxtTableWritesCnameMetadataFromNameConfig() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord("aa", "測")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Name")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Version 2.0")
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        let configs = db.getImConfigList(LIME.DB_TABLE_CUSTOM, nil)
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL, imConfig: configs))
+
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertTrue(output.contains("@version@|Version 2.0"))
+        XCTAssertTrue(output.contains("@cname@|Friendly Name"))
     }
 
     func testLimeDBResetImConfig() throws {
