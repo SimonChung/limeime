@@ -1,4 +1,4 @@
-// EditRecordView.swift
+﻿// EditRecordView.swift
 // LimeIME-iOS
 //
 // Sheet for editing or deleting a mapping record.
@@ -38,25 +38,7 @@ struct EditRecordView: View {
                         .disableAutocorrection(true)
                     TextField("文字", text: $word)
                         .disableAutocorrection(true)
-                    HStack {
-                        Text("分數")
-                        Spacer()
-                        Button {
-                            score = max(0, score - 1)
-                        } label: {
-                            Image(systemName: "minus.circle")
-                        }
-                        .buttonStyle(.plain)
-                        Text("\(score)")
-                            .frame(minWidth: 40)
-                            .multilineTextAlignment(.center)
-                        Button {
-                            score += 1
-                        } label: {
-                            Image(systemName: "plus.circle")
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    ScoreInputRow(score: $score)
                 }
 
                 if !errorMessage.isEmpty {

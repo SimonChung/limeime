@@ -1,4 +1,4 @@
-// ManageRelatedController.swift
+﻿// ManageRelatedController.swift
 // LimeIME-iOS
 //
 // Async related-phrase CRUD + pagination.
@@ -38,7 +38,8 @@ final class ManageRelatedController: BaseController {
         }.value
     }
 
-    func addRelated(parentWord: String, childWord: String) async -> Result<Void, Error> {
+    func addRelated(parentWord: String, childWord: String,
+                    score: Int = 0) async -> Result<Void, Error> {
         guard !parentWord.isEmpty, !childWord.isEmpty else {
             return .failure(ControllerError.validation("詞彙和關聯字不能為空"))
         }
@@ -46,20 +47,20 @@ final class ManageRelatedController: BaseController {
         let rowID = await Task.detached(priority: .userInitiated) {
             server.addRecord("related",
                              ["pword": parentWord, "cword": childWord,
-                              "basescore": 0, "score": 0])
+                              "basescore": 0, "score": score])
         }.value
         return rowID > 0 ? .success(()) : .failure(ControllerError.operation("新增失敗"))
     }
 
     func updateRelated(id: Int64, parentWord: String,
-                       childWord: String) async -> Result<Void, Error> {
+                       childWord: String, score: Int = 0) async -> Result<Void, Error> {
         guard !parentWord.isEmpty, !childWord.isEmpty else {
             return .failure(ControllerError.validation("詞彙和關聯字不能為空"))
         }
         let server = self.dbServer
         let affected = await Task.detached(priority: .userInitiated) {
             server.updateRecord("related",
-                                ["pword": parentWord, "cword": childWord],
+                                ["pword": parentWord, "cword": childWord, "score": score],
                                 "_id = ?", ["\(id)"])
         }.value
         return affected > 0 ? .success(()) : .failure(ControllerError.operation("更新失敗"))
@@ -94,7 +95,8 @@ final class ManageRelatedController: BaseController {
         }
     }
 
-    func addRelated(parentWord: String, childWord: String, view: (any ManageRelatedView)?) {
+    func addRelated(parentWord: String, childWord: String, score: Int = 0,
+                    view: (any ManageRelatedView)?) {
         guard !parentWord.isEmpty, !childWord.isEmpty else {
             view?.onError("詞彙和關聯字不能為空"); return
         }
@@ -102,7 +104,7 @@ final class ManageRelatedController: BaseController {
         Task.detached(priority: .userInitiated) {
             let rowID = server.addRecord("related",
                                         ["pword": parentWord, "cword": childWord,
-                                         "basescore": 0, "score": 0])
+                                         "basescore": 0, "score": score])
             await MainActor.run {
                 rowID > 0 ? view?.refreshPhraseList() : view?.onError("新增失敗")
             }
@@ -110,14 +112,14 @@ final class ManageRelatedController: BaseController {
     }
 
     func updateRelated(id: Int64, parentWord: String, childWord: String,
-                       view: (any ManageRelatedView)?) {
+                       score: Int = 0, view: (any ManageRelatedView)?) {
         guard !parentWord.isEmpty, !childWord.isEmpty else {
             view?.onError("詞彙和關聯字不能為空"); return
         }
         let server = self.dbServer
         Task.detached(priority: .userInitiated) {
             let affected = server.updateRecord("related",
-                                               ["pword": parentWord, "cword": childWord],
+                                               ["pword": parentWord, "cword": childWord, "score": score],
                                                "_id = ?", ["\(id)"])
             await MainActor.run {
                 affected > 0 ? view?.refreshPhraseList() : view?.onError("更新失敗")

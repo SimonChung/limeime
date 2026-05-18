@@ -1,22 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/sheet_scroll"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:clipToPadding="false"
+    android:fillViewport="false">
 
-    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
+        android:orientation="vertical"
+        android:padding="24dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_cancel"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="0dp"
+        android:text="@string/dialog_cancel"
+        android:layout_marginBottom="8dp"
+        app:cornerRadius="4dp"
+        app:strokeColor="@color/material_blue"
+        app:strokeWidth="1dp" />
 
     <TextView
         android:id="@+id/sheet_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/manage_related_dialog_edit"
+        android:textAppearance="?attr/textAppearanceHeadline5"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/sheet_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/manage_related_dialog_edit"
         android:textAppearance="?attr/textAppearanceSubtitle1"
+        android:alpha="0.6"
         android:layout_marginBottom="16dp" />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -55,6 +79,17 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layout_marginBottom="20dp">
+        <TextView
+            android:id="@+id/tv_score_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/manage_editor_score"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:textStyle="bold" />
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_minus"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -63,12 +98,14 @@
             android:text="&#8722;"
             android:padding="0dp"
             app:cornerRadius="24dp" />
-        <TextView
-            android:id="@+id/tv_score"
-            android:layout_width="0dp"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edt_score"
+            android:layout_width="72dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:gravity="center"
+            android:inputType="number"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
             android:text="1"
             android:textAppearance="?attr/textAppearanceBody1" />
         <com.google.android.material.button.MaterialButton
@@ -93,8 +130,13 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_save"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/manage_related_save" />
+        android:text="@string/manage_related_save"
+        app:cornerRadius="4dp"
+        app:strokeColor="@color/material_blue"
+        app:strokeWidth="1dp" />
 
-</LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

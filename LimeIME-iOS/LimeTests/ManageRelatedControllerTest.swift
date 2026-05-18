@@ -1,4 +1,4 @@
-// ManageRelatedControllerTest.swift
+﻿// ManageRelatedControllerTest.swift
 // LimeIMETests
 //
 // CRUD + pagination tests for ManageRelatedController.
@@ -70,6 +70,23 @@ final class ManageRelatedControllerTest: XCTestCase {
         }
     }
 
+    func testAddRelatedPersistsScore() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageRelatedController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let result = await controller.addRelated(parentWord: "分數", childWord: "新增", score: 42)
+
+        guard case .success = result else {
+            XCTFail("Expected addRelated to succeed")
+            return
+        }
+        let phrases = db.getRelated(nil, 10, 0)
+        XCTAssertTrue(phrases.contains {
+            $0.parentWord == "分數" && $0.childWord == "新增" && $0.score == 42
+        })
+    }
+
     func testAddRelatedEmptyParentReportsError() async throws {
         let (url, db) = try makeDB()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -124,6 +141,35 @@ final class ManageRelatedControllerTest: XCTestCase {
 
         let updated = db.getRelated(nil, 10, 0)
         XCTAssertTrue(updated.contains { $0.childWord == "三" })
+    }
+
+    func testUpdateRelatedPersistsScore() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageRelatedController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let addResult = await controller.addRelated(parentWord: "分數", childWord: "編輯", score: 7)
+        guard case .success = addResult,
+              let first = db.getRelated(nil, 10, 0).first(where: {
+                  $0.parentWord == "分數" && $0.childWord == "編輯"
+              }) else {
+            XCTFail("Expected seeded related phrase")
+            return
+        }
+
+        let updateResult = await controller.updateRelated(id: first.id,
+                                                          parentWord: "分數",
+                                                          childWord: "更新",
+                                                          score: 88)
+
+        guard case .success = updateResult else {
+            XCTFail("Expected updateRelated to succeed")
+            return
+        }
+        let updated = db.getRelated(nil, 10, 0)
+        XCTAssertTrue(updated.contains {
+            $0.parentWord == "分數" && $0.childWord == "更新" && $0.score == 88
+        })
     }
 
     func testUpdateRelatedEmptyWordReportsError() async throws {

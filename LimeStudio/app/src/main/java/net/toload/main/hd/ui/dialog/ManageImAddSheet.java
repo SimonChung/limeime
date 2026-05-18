@@ -28,7 +28,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -49,7 +48,7 @@ import net.toload.main.hd.ui.view.ManageImFragment;
 public class ManageImAddSheet extends BottomSheetDialogFragment {
 
     private ManageImFragment hostFragment;
-    private int score = 1;
+    private int score = 0;
 
     public static ManageImAddSheet newInstance() {
         return new ManageImAddSheet();
@@ -69,21 +68,21 @@ public class ManageImAddSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        ImeAwareBottomSheet.applyInsets(view);
 
         TextInputEditText edtCode = view.findViewById(R.id.edt_code);
         TextInputEditText edtWord = view.findViewById(R.id.edt_word);
-        TextView tvScore = view.findViewById(R.id.tv_score);
-        tvScore.setText(String.valueOf(score));
+        TextInputEditText edtScore = view.findViewById(R.id.edt_score);
+        ManageSheetScoreInput.setScore(edtScore, score);
 
         view.findViewById(R.id.btn_minus).setOnClickListener(v -> {
-            if (score > 0) {
-                score--;
-                tvScore.setText(String.valueOf(score));
-            }
+            score = ManageSheetScoreInput.decrement(edtScore, score);
         });
         view.findViewById(R.id.btn_plus).setOnClickListener(v -> {
-            score++;
-            tvScore.setText(String.valueOf(score));
+            score = ManageSheetScoreInput.increment(edtScore, score);
+        });
+        view.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
+            dismiss();
         });
 
         view.findViewById(R.id.btn_save).setOnClickListener(v -> {
@@ -93,11 +92,18 @@ public class ManageImAddSheet extends BottomSheetDialogFragment {
                 Toast.makeText(requireContext(), R.string.insert_error, Toast.LENGTH_SHORT).show();
                 return;
             }
+            score = ManageSheetScoreInput.readScore(edtScore, score);
             if (hostFragment != null) {
                 hostFragment.addRecord(code, score, word);
             }
             dismiss();
         });
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        ImeAwareBottomSheet.expandForIme(this);
     }
 
     private boolean validateInput(String code, String word) {

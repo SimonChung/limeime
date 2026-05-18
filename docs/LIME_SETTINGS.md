@@ -674,12 +674,21 @@ Form
 ├── Section "新增資料列"
 │   ├── TextField "字根 (code)"
 │   ├── TextField "文字 (word)"
-│   └── Stepper "分數: \(score)"   in: 0...9999, step: 1; default: 0
+│   └── ScoreInputRow "分數"
+│       ├── Button(systemImage: "minus.circle") → score = max(0, score - 1)
+│       ├── TextField(value: score, keyboard: numberPad, width: 64)
+│       └── Button(systemImage: "plus.circle")  → score = min(9999, score + 1)
 └── Section
     └── Button "確認新增" → guard !code.isEmpty && !word.isEmpty
                           → db.addRecord(table:code:word:score:)
                           → dismiss
 ```
+
+Android `ManageImAddSheet` must expose the same row-editor content:
+`取消` framed button, title/subtitle `新增資料列`, fields `字根` and `文字`,
+score row with `-`, directly editable numeric score, and `+`, then a framed
+rectangular `確認新增` action. The bottom sheet remains scrollable and IME-aware
+per issue #65.
 
 #### 6.1.2 EditRecordView (sheet) — Equivalent to `ManageImEditDialog`
 
@@ -688,11 +697,7 @@ Form
 ├── Section "編輯資料列"
 │   ├── TextField "字根"  binding: code
 │   ├── TextField "文字"  binding: word
-│   └── HStack "分數" {
-│       Button("−") → score = max(0, score - 1)
-│       Text("\(score)").frame(minWidth: 40)
-│       Button("+") → score += 1
-│   }
+│   └── ScoreInputRow "分數"       // same editable score control as AddRecordView
 ├── Section
 │   └── Button("儲存") → confirmAlert → db.updateRecord(id:code:score:word:) → dismiss
 └── Section
@@ -700,6 +705,10 @@ Form
 ```
 
 Validation on Save: code and word must not be empty.
+
+Android `ManageImEditSheet` mirrors the same content with title/subtitle
+`編輯資料列`, prefilled `字根`/`文字`, directly editable numeric score, framed
+rectangular `刪除`, and framed rectangular `儲存`.
 
 ### 6.2 Related Phrase List — RelatedListView (embedded in §5.2)
 
@@ -737,25 +746,86 @@ NavigationStack (continued from §5.2)
 
 ```
 Form
-├── Section "新增關聯字"
+├── Section "新增資料列"
 │   ├── TextField "詞彙 (word)"
-│   └── TextField "關聯字 (related)"
+│   ├── TextField "關聯字 (related)"
+│   └── ScoreInputRow "分數"
+│       ├── Button(systemImage: "minus.circle") → score = max(0, score - 1)
+│       ├── TextField(value: score, keyboard: numberPad, width: 64)
+│       └── Button(systemImage: "plus.circle")  → score = min(9999, score + 1)
 └── Section
-    └── Button("新增") → guard both non-empty → db.addRelated(word:related:) → dismiss
+    └── Button("確認新增") → guard both non-empty
+                         → db.addRelated(word:related:score:)
+                         → dismiss
 ```
+
+The score is persisted to the `related.score` value on add. Default score is
+`0`; both platforms must accept direct numeric entry and clamp values to
+`0...9999`.
 
 #### 6.2.2 EditRelatedView (sheet) — Equivalent to `ManageRelatedEditDialog`
 
 ```
 Form
-├── Section "編輯關聯字"
+├── Section "編輯資料列"
 │   ├── TextField "詞彙"    binding: word
-│   └── TextField "關聯字"  binding: related
+│   ├── TextField "關聯字"  binding: related
+│   └── ScoreInputRow "分數"       // initialized from existing related score
 ├── Section
-│   └── Button("儲存", role .none)        → confirmAlert → db.updateRelated → dismiss
+│   └── Button("儲存", role .none)        → confirmAlert
+│                                        → db.updateRelated(word:related:score:)
+│                                        → dismiss
 └── Section
     └── Button("刪除", role: .destructive) → confirmAlert → db.removeRelated → dismiss
 ```
+
+The score field must update the persisted related-row score and the list score
+shown in `RelatedListView` / `ManageRelatedFragment`.
+
+### 6.3 Cross-platform Add/Edit Row Editor Contract
+
+This contract applies to all four row-editor sheets:
+
+- IM add: `AddRecordView` / `ManageImAddSheet`
+- IM edit: `EditRecordView` / `ManageImEditSheet`
+- Related add: `AddRelatedView` / `ManageRelatedAddSheet`
+- Related edit: `EditRelatedView` / `ManageRelatedEditSheet`
+
+Required structure:
+
+```
+RowEditorSheet
+├── Cancel action: "取消"
+├── Title: "新增資料列" or "編輯資料列"
+├── Subtitle: same as title
+├── Field group
+│   ├── IM:      "字根"/"文字"
+│   └── Related: "詞彙"/"關聯字"
+├── Score row
+│   ├── Label "分數"
+│   ├── decrement button "-"
+│   ├── directly editable numeric field
+│   └── increment button "+"
+└── Actions
+    ├── Add:  framed "確認新增"
+    └── Edit: framed "儲存" and destructive framed "刪除"
+```
+
+Platform styling requirements:
+
+- iOS uses `Form` sheet styling and SF Symbol score buttons.
+- Android uses the #65 full-height, scrollable, IME-aware bottom sheet.
+- Android action buttons must keep the existing rectangular Material outline
+  vocabulary; do not use pill-shaped save/cancel buttons.
+- Score `-` / `+` controls may remain circular/icon-like on both platforms.
+- Score is editable by direct typing as well as by the `-` / `+` controls.
+
+Visual verification evidence:
+
+| State | iOS | Android |
+|---|---|---|
+| Related add | ![iOS related add sheet with editable score](../.Codex/txt/issue66_add_related_editable_score.png) | ![Android related add sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_add_rect_buttons.png) |
+| Related edit | ![iOS related edit sheet with editable score](../.Codex/txt/issue66_edit_related_editable_score.png) | ![Android related edit sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_edit_rect_buttons.png) |
 
 ---
 

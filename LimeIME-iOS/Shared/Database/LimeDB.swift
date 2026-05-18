@@ -2926,7 +2926,7 @@ final class LimeDB {
     func importTxtFile(at path: String, tableName: String,
                        progress: ((Int) -> Void)? = nil) throws {
         guard isValidTableName(tableName) else { throw LimeDBError.invalidTableName(tableName) }
-        let isRelatedTable = tableName == LIME.DB_TABLE_RELATED
+        let isRelatedTable = tableName == "related"
         if !isRelatedTable { try ensureMappingTable(tableName) }
         guard let reader = StreamReader(path: path) else { throw LimeDBError.fileNotFound(path) }
         importCancelled = false
@@ -3213,7 +3213,7 @@ final class LimeDB {
         let count = batch.count
         try dbQueue.write { db in
             for pair in batch {
-                if tableName == LIME.DB_TABLE_PHONETIC {
+                if tableName == "phonetic" {
                     let noTone = pair.code.replacingOccurrences(of: "[3467 ]", with: "", options: .regularExpression)
                     try db.execute(
                         sql: "INSERT OR IGNORE INTO \(tableName) (code, word, score, basescore, code3r) VALUES (?, ?, ?, ?, ?)",

@@ -1,4 +1,4 @@
-// EditRelatedView.swift
+﻿// EditRelatedView.swift
 // LimeIME-iOS
 //
 // Sheet for editing or deleting a related phrase.
@@ -16,6 +16,7 @@ struct EditRelatedView: View {
     @Environment(\.presentationMode) private var presentationMode
     @State private var parentWord: String
     @State private var childWord: String
+    @State private var score: Int
     @State private var errorMessage: String = ""
     @State private var showDeleteConfirm = false
 
@@ -23,16 +24,18 @@ struct EditRelatedView: View {
         self.phrase = phrase
         _parentWord = State(initialValue: phrase.parentWord)
         _childWord = State(initialValue: phrase.childWord)
+        _score = State(initialValue: phrase.score)
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("編輯關聯字")) {
+                Section(header: Text("編輯資料列")) {
                     TextField("詞彙", text: $parentWord)
                         .disableAutocorrection(true)
                     TextField("關聯字", text: $childWord)
                         .disableAutocorrection(true)
+                    ScoreInputRow(score: $score)
                 }
 
                 if !errorMessage.isEmpty {
@@ -56,7 +59,7 @@ struct EditRelatedView: View {
                     }
                 }
             }
-            .navigationTitle("編輯關聯字")
+            .navigationTitle("編輯資料列")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
@@ -76,7 +79,7 @@ struct EditRelatedView: View {
     private func savePhrase() {
         Task {
             let result = await manageRelatedController.updateRelated(
-                id: phrase.id, parentWord: parentWord, childWord: childWord)
+                id: phrase.id, parentWord: parentWord, childWord: childWord, score: score)
             switch result {
             case .success:
                 presentationMode.wrappedValue.dismiss()

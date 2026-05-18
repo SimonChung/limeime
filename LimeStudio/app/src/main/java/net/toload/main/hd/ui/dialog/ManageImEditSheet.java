@@ -28,7 +28,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -73,26 +72,26 @@ public class ManageImEditSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        ImeAwareBottomSheet.applyInsets(view);
 
         TextInputEditText edtCode = view.findViewById(R.id.edt_code);
         TextInputEditText edtWord = view.findViewById(R.id.edt_word);
-        TextView tvScore = view.findViewById(R.id.tv_score);
+        TextInputEditText edtScore = view.findViewById(R.id.edt_score);
 
         if (record != null) {
             edtCode.setText(record.getCode());
             edtWord.setText(record.getWord());
-            tvScore.setText(String.valueOf(score));
+            ManageSheetScoreInput.setScore(edtScore, score);
         }
 
         view.findViewById(R.id.btn_minus).setOnClickListener(v -> {
-            if (score > 0) {
-                score--;
-                tvScore.setText(String.valueOf(score));
-            }
+            score = ManageSheetScoreInput.decrement(edtScore, score);
         });
         view.findViewById(R.id.btn_plus).setOnClickListener(v -> {
-            score++;
-            tvScore.setText(String.valueOf(score));
+            score = ManageSheetScoreInput.increment(edtScore, score);
+        });
+        view.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
+            dismiss();
         });
 
         view.findViewById(R.id.btn_delete).setOnClickListener(v -> {
@@ -116,6 +115,7 @@ public class ManageImEditSheet extends BottomSheetDialogFragment {
                 Toast.makeText(requireContext(), R.string.update_error, Toast.LENGTH_SHORT).show();
                 return;
             }
+            score = ManageSheetScoreInput.readScore(edtScore, score);
             new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.dialog_update_title)
                 .setMessage(R.string.dialog_update_message)
@@ -128,6 +128,12 @@ public class ManageImEditSheet extends BottomSheetDialogFragment {
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
         });
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        ImeAwareBottomSheet.expandForIme(this);
     }
 
     private boolean validateInput(String code, String word) {

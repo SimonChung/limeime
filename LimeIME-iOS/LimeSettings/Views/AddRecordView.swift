@@ -1,4 +1,4 @@
-// AddRecordView.swift
+﻿// AddRecordView.swift
 // LimeIME-iOS
 //
 // Sheet for adding a new mapping record.
@@ -28,7 +28,7 @@ struct AddRecordView: View {
                         .disableAutocorrection(true)
                     TextField("文字 (word)", text: $word)
                         .disableAutocorrection(true)
-                    Stepper("分數：\(score)", value: $score, in: 0...9999)
+                    ScoreInputRow(score: $score)
                 }
 
                 if !errorMessage.isEmpty {
@@ -67,6 +67,44 @@ struct AddRecordView: View {
             case .failure(let error):
                 errorMessage = error.localizedDescription
             }
+        }
+    }
+}
+
+struct ScoreInputRow: View {
+    @Binding var score: Int
+
+    var title: String = "分數"
+    var range: ClosedRange<Int> = 0...9999
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Button {
+                score = max(range.lowerBound, score - 1)
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .buttonStyle(.plain)
+            .disabled(score <= range.lowerBound)
+
+            TextField("", value: $score, format: .number)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .frame(width: 64)
+                .textFieldStyle(.roundedBorder)
+                .onChange(of: score) { newValue in
+                    score = min(max(newValue, range.lowerBound), range.upperBound)
+                }
+
+            Button {
+                score = min(range.upperBound, score + 1)
+            } label: {
+                Image(systemName: "plus.circle")
+            }
+            .buttonStyle(.plain)
+            .disabled(score >= range.upperBound)
         }
     }
 }
