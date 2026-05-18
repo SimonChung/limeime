@@ -77,6 +77,34 @@ public class SearchServer {
     private static final int SCORE_ADJUSTMENT_INCREMENT = 50; // Score adjustment increment
     private static final int CODE_LENGTH_BONUS_MULTIPLIER = 30; // Multiplier for code length bonus calculation
 
+    private static int codePointLength(String text) {
+        return text == null ? 0 : text.codePointCount(0, text.length());
+    }
+
+    private static String codePointSubstring(String text, int beginCodePoint, int endCodePoint) {
+        int begin = text.offsetByCodePoints(0, beginCodePoint);
+        int end = text.offsetByCodePoints(0, endCodePoint);
+        return text.substring(begin, end);
+    }
+
+    private static String[] splitLeadingCodePoint(String text) {
+        if (text == null || text.isEmpty()) {
+            return new String[]{text, ""};
+        }
+        int end = text.offsetByCodePoints(0, 1);
+        return new String[]{text.substring(0, end), text.substring(end)};
+    }
+
+    private static String[] splitRelatedPhraseTail(String phrase, int cwordCodePointCount) {
+        int phraseCodePointLength = codePointLength(phrase);
+        int pwordStart = phraseCodePointLength - cwordCodePointCount - 1;
+        int cwordStart = phraseCodePointLength - cwordCodePointCount;
+        return new String[]{
+                codePointSubstring(phrase, pwordStart, cwordStart),
+                codePointSubstring(phrase, cwordStart, phraseCodePointLength)
+        };
+    }
+
     //Jeremy '12,5,1 shared single LIMEDB object
     //Jeremy '12,4,6 Combine updatedb and quierydb into db,
     //Jeremy '12,4,7 move db open/close back to LimeDB
@@ -540,7 +568,7 @@ public class SearchServer {
                                 Mapping remainingCodeExactMatchMapping = resultList.get(0);
                                 Mapping previousMapping = p.first;
                                 String phrase = previousMapping.getWord() + remainingCodeExactMatchMapping.getWord();
-                                int phraseLen = phrase.length();
+                                int phraseLen = codePointLength(phrase);
                                 if (phraseLen < 2 || remainingCodeExactMatchMapping.getBasescore() < 2)
                                     continue;
                                 int remainingScore = remainingCodeExactMatchMapping.getBasescore();
@@ -561,8 +589,9 @@ public class SearchServer {
                                 // check up to four characters phrase 1-3, 1-2 , 1-1
                                 Mapping relatedMapping = null;
                                 for (int k = ((phraseLen < 4) ? phraseLen - 1 : 3); k > 0; k--) {
-                                    String pword = phrase.substring(phraseLen - k - 1, phraseLen - k);
-                                    String cword = phrase.substring(phraseLen - k, phraseLen);
+                                    String[] relatedWords = splitRelatedPhraseTail(phrase, k);
+                                    String pword = relatedWords[0];
+                                    String cword = relatedWords[1];
                                     relatedMapping = dbadapter.isRelatedPhraseExist(pword, cword);
                                     if (relatedMapping != null) break;
                                 }
@@ -1456,7 +1485,7 @@ List<Mapping> scorelistSnapshot = null;
                     baseCode = unit1.getCode();
                     baseWord = unit1.getWord();
 
-                    if (baseWord.length() == 1) {
+                    if (codePointLength(baseWord) == 1) {
                         if (unit1.getId() == null //Jeremy '12,6,7 break if id is null (selected from related list)
                                 || unit1.isPartialMatchToCodeRecord() //Jeremy '15,6,3 new record identification
                                 || unit1.getCode() == null //Jeremy '12,6,7 break if code is null (selected from related phrase)
@@ -1474,10 +1503,11 @@ List<Mapping> scorelistSnapshot = null;
                             break;//abandon the phrase learning process;
 
                         //if word length >0, lookup all codes and rebuild basecode and QPCode
-                    } else if (baseWord.length() > 1 && baseWord.length() < 5) {
+                    } else if (codePointLength(baseWord) > 1 && codePointLength(baseWord) < 5) {
                         baseCode = "";
-                        for (int i = 0; i < baseWord.length(); i++) {
-                            String c = baseWord.substring(i, i + 1);
+                        int baseWordCodePointLength = codePointLength(baseWord);
+                        for (int i = 0; i < baseWordCodePointLength; i++) {
+                            String c = codePointSubstring(baseWord, i, i + 1);
                             List<Mapping> rMappingList = dbadapter.getMappingByWord(c, tablename);
                             if (!rMappingList.isEmpty()) {
                                 baseCode += rMappingList.get(0).getCode();
@@ -1504,7 +1534,7 @@ List<Mapping> scorelistSnapshot = null;
                             String code2 = unit2.getCode();
                             baseWord += word2;
 
-                            if (word2.length() == 1 && baseWord.length() < 5) { //limit the phrase size to 4
+                            if (codePointLength(word2) == 1 && codePointLength(baseWord) < 5) { //limit the phrase size to 4
                                 if (unit2.getId() == null //Jeremy '12,6,7 break if id is null (selected from related phrase)
                                         || unit2.isPartialMatchToCodeRecord() //Jeremy '15,6,3 new record identification
                                         || code2 == null //Jeremy '12,6,7 break if code is null (selected from relatedphrase)
@@ -1523,9 +1553,10 @@ List<Mapping> scorelistSnapshot = null;
                                     break; //abandon the phrase learning process;
 
                                 //if word length >0, lookup all codes and rebuild basecode and QPCode
-                            } else if (word2.length() > 1 && baseWord.length() < 5) {
-                                for (int j = 0; j < word2.length(); j++) {
-                                    String c = word2.substring(j, j + 1);
+                            } else if (codePointLength(word2) > 1 && codePointLength(baseWord) < 5) {
+                                int word2CodePointLength = codePointLength(word2);
+                                for (int j = 0; j < word2CodePointLength; j++) {
+                                    String c = codePointSubstring(word2, j, j + 1);
                                     List<Mapping> rMappingList = dbadapter.getMappingByWord(c, tablename);
                                     if (!rMappingList.isEmpty()) {
                                         baseCode += rMappingList.get(0).getCode();
@@ -1954,7 +1985,7 @@ List<Mapping> scorelistSnapshot = null;
                             Mapping remainingCodeExactMatchMapping = resultList.get(0);
                             Mapping previousMapping = p.first;
                             String phrase = previousMapping.getWord() + remainingCodeExactMatchMapping.getWord();
-                            int phraseLen = phrase.length();
+                            int phraseLen = codePointLength(phrase);
                             if (phraseLen < 2 || remainingCodeExactMatchMapping.getBasescore() < 2)
                                 continue;
                             int remainingScore = remainingCodeExactMatchMapping.getBasescore();
@@ -1974,8 +2005,9 @@ List<Mapping> scorelistSnapshot = null;
                             // check up to four characters phrase 1-3, 1-2 , 1-1
                             Mapping relatedMapping = null;
                             for (int i = ((phraseLen < 4) ? phraseLen - 1 : 3); i > 0; i--) {
-                                String pword = phrase.substring(phraseLen - i - 1, phraseLen - i);
-                                String cword = phrase.substring(phraseLen - i, phraseLen);
+                                String[] relatedWords = splitRelatedPhraseTail(phrase, i);
+                                String pword = relatedWords[0];
+                                String cword = relatedWords[1];
                                 relatedMapping = dbadapter.isRelatedPhraseExist(pword, cword);
                                 if (relatedMapping != null) break;
                             }
@@ -2571,9 +2603,10 @@ List<Mapping> scorelistSnapshot = null;
         List<String> whereArgsList = new ArrayList<>();
         
         String cword = "";
-        if (pword != null && !pword.isEmpty() && pword.length() > 1) {
-            cword = pword.substring(1);
-            pword = pword.substring(0, 1);
+        if (pword != null && !pword.isEmpty() && codePointLength(pword) > 1) {
+            String[] relatedWords = splitLeadingCodePoint(pword);
+            pword = relatedWords[0];
+            cword = relatedWords[1];
         }
         
         if (pword != null && !pword.isEmpty()) {

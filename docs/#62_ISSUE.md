@@ -9,6 +9,10 @@ The reporter notes:
 - If the Ext-B character is **not** the first character (placed in the middle/end), add/search succeeds.
 - Ext-B characters can be added to IM tables and searched normally, so the failure appears specific to related-phrase handling.
 
+## Platform status
+- **Android:** affected. The related-phrase editor/search/runtime paths used UTF-16 index slicing in Java, which can split an Ext-B leading character.
+- **iOS:** confirmed **not affected** by user verification. The iOS related-phrase editor uses separate `parentWord` / `childWord` fields, and the related search/runtime paths use Swift `String` character APIs such as `prefix(1)`, `dropFirst()`, `suffix(1)`, and `index(offsetBy:)`, which preserve the Ext-B character boundary.
+
 ## Likely root cause
 Supplementary-plane characters are encoded as **UTF-16 surrogate pairs** in Java/Kotlin `String`. Any code that assumes "one character == length 1" or uses `substring(i, i+1)` / `charAt(i)` as a character iterator will split a surrogate pair and produce invalid/unpaired surrogate values.
 

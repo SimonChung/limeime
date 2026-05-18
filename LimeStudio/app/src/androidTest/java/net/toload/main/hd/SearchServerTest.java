@@ -3475,6 +3475,21 @@ public class SearchServerTest {
     }
 
     @Test(timeout = 5000)
+    public void test_3_4_2_4a_countRecordsRelated_extB_leading_parent_splits_by_codepoint() throws Exception {
+        Object original = getStatic("dbadapter", Object.class);
+        StubLimeDBRecords stub = new StubLimeDBRecords(appContext);
+        stub.countResponse = 1;
+        setStatic("dbadapter", stub);
+        try {
+            int count = searchServer.countRecordsRelated("𩼣魚");
+            assertEquals(1, count);
+            assertArrayEquals(new String[]{"𩼣", "魚%"}, stub.lastWhereArgs);
+        } finally {
+            setStatic("dbadapter", original);
+        }
+    }
+
+    @Test(timeout = 5000)
     public void test_3_4_2_5_hasRelated_null_child() throws Exception {
         Object original = getStatic("dbadapter", Object.class);
         StubLimeDBRecords stub = new StubLimeDBRecords(appContext);

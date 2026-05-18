@@ -59,6 +59,14 @@ import java.util.List;
  */
 public class ImportDialog extends DialogFragment {
 
+	private static String[] splitLeadingCodePoint(String text) {
+		if (text == null || text.isEmpty()) {
+			return new String[]{"", ""};
+		}
+		int end = text.offsetByCodePoints(0, 1);
+		return new String[]{text.substring(0, end), text.substring(end)};
+	}
+
 	ManageImController manageImController;
 	Activity activity;
 	View view;
@@ -305,8 +313,9 @@ public class ImportDialog extends DialogFragment {
 
 	private void importToRelatedTable(){
 
-		String pWord = importText.substring(0, 1);
-		String cWord = importText.substring(1);
+		String[] relatedWords = splitLeadingCodePoint(importText);
+		String pWord = relatedWords[0];
+		String cWord = relatedWords[1];
 
 		// Use parameterized query to prevent SQL injection
 		manageImController.addRelatedPhrase(pWord, cWord, 1);

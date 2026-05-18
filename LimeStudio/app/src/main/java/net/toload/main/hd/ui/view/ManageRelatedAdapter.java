@@ -51,6 +51,14 @@ public class ManageRelatedAdapter extends ListAdapter<Related, ManageRelatedAdap
     private final Activity activity;
     private OnItemClickListener onItemClickListener;
 
+    private static String truncateByCodePoint(String text, int maxCodePoints) {
+        if (text == null || text.codePointCount(0, text.length()) <= maxCodePoints) {
+            return text;
+        }
+        int end = text.offsetByCodePoints(0, maxCodePoints);
+        return text.substring(0, end) + "...";
+    }
+
     public interface OnItemClickListener {
         void onItemClick(Related related, int position);
     }
@@ -95,9 +103,7 @@ public class ManageRelatedAdapter extends ListAdapter<Related, ManageRelatedAdap
             String cword = r.getCword();
             int freq = r.getBasescore();
 
-            if (cword != null && cword.length() > 10) {
-                cword = cword.substring(0, 10) + "...";
-            }
+            cword = truncateByCodePoint(cword, 10);
 
             holder.txtPword.setText(pword);
             holder.txtWord.setText(cword);

@@ -103,6 +103,20 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     private static final boolean DEBUG = false;
     private static String TAG = "LimeDB";
 
+    private static String[] splitLeadingCodePoint(String text) {
+        if (text == null || text.isEmpty()) {
+            return new String[]{text, ""};
+        }
+        int end = text.offsetByCodePoints(0, 1);
+        return new String[]{text.substring(0, end), text.substring(end)};
+    }
+
+    private static String codePointSubstring(String text, int beginCodePoint, int endCodePoint) {
+        int begin = text.offsetByCodePoints(0, beginCodePoint);
+        int end = text.offsetByCodePoints(0, endCodePoint);
+        return text.substring(begin, end);
+    }
+
     private static SQLiteDatabase db = null;  //Jeremy '12,5,1 add static modifier. Shared db instance for dbserver and searchserver
     private final static int DATABASE_VERSION = 103;
     private final static String EMOJI_DATA_VERSION = "17.0";
@@ -2996,17 +3010,17 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                 limitClause = (getAllRecords) ? FINAL_RESULT_LIMIT : INITIAL_RESULT_LIMIT;
 
-                if (pword.length() > 1) {
+                int pwordCodePointLength = pword.codePointCount(0, pword.length());
+                if (pwordCodePointLength > 1) {
 
-                    String last = pword.substring(pword.length() - 1);
+                    String last = codePointSubstring(pword, pwordCodePointLength - 1, pwordCodePointLength);
 
                     String selectString =
                             "SELECT " + FIELD_ID + ", " + FIELD_DIC_pword + ", " + FIELD_DIC_cword + ", "
                                     + LIME.DB_RELATED_COLUMN_BASESCORE + ", " + LIME.DB_RELATED_COLUMN_USERSCORE
                                     + ", length(" + FIELD_DIC_pword + ") as len FROM " + LIME.DB_TABLE_RELATED + " where "
-                                    + FIELD_DIC_pword + " = '" + pword
-                                    + "' or " + FIELD_DIC_pword + " = '" + last
-                                    + "' and " + FIELD_DIC_cword + " is not null"
+                                    + FIELD_DIC_pword + " = ? or " + FIELD_DIC_pword + " = ?"
+                                    + " and " + FIELD_DIC_cword + " is not null"
                                     + " order by len desc, " + LIME.DB_RELATED_COLUMN_USERSCORE + " desc, "
                                     + LIME.DB_RELATED_COLUMN_BASESCORE + " desc ";
 
@@ -3016,7 +3030,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                         Log.i(TAG, "getRelatedPhrase() selectString = " + selectString);
 
                     try {
-                        cursor = db.rawQuery(selectString, null);
+                        cursor = db.rawQuery(selectString, new String[]{pword, last});
                     }catch(SQLiteException sqe){
                         if (DEBUG)
                             Log.e(TAG, "Error in database operation", sqe);
@@ -3026,9 +3040,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
 
                 } else {
-                    cursor = db.query(LIME.DB_TABLE_RELATED, null, FIELD_DIC_pword + " = '" + pword
-                            + "' and " + FIELD_DIC_cword + " is not null "
-                            , null, null, null, LIME.DB_RELATED_COLUMN_USERSCORE + " DESC, "
+                    cursor = db.query(LIME.DB_TABLE_RELATED, null,
+                            FIELD_DIC_pword + " = ? and " + FIELD_DIC_cword + " is not null ",
+                            new String[]{pword}, null, null, LIME.DB_RELATED_COLUMN_USERSCORE + " DESC, "
                             + LIME.DB_RELATED_COLUMN_BASESCORE + " DESC", limitClause);
                 }
                 if (cursor != null) {
@@ -3884,15 +3898,14 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         String cword = "";
                                         
                                         if (!pwordCword.isEmpty()) {
-                                            // Try 1 character first
-                                            pword = pwordCword.substring(0, Math.min(1, pwordCword.length()));
-                                            if (pwordCword.length() > 1) {
-                                                cword = pwordCword.substring(1);
-                                            }
+                                            String[] relatedWords = splitLeadingCodePoint(pwordCword);
+                                            pword = relatedWords[0];
+                                            cword = relatedWords[1];
                                             // If cword is empty or too short, try 2 characters for pword
                                             if (cword.isEmpty() && pwordCword.length() > 2) {
-                                                pword = pwordCword.substring(0, Math.min(2, pwordCword.length()));
-                                                cword = pwordCword.substring(2);
+                                                int end = pwordCword.offsetByCodePoints(0, Math.min(2, pwordCword.codePointCount(0, pwordCword.length())));
+                                                pword = pwordCword.substring(0, end);
+                                                cword = pwordCword.substring(end);
                                             }
                                         }
                                         
@@ -4454,13 +4467,13 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             Cursor cursor;
 
             if (cword == null || cword.trim().isEmpty()) {
-                cursor = db.query(LIME.DB_TABLE_RELATED, null, FIELD_DIC_pword + " = '"
-                        + pword + "'" + " AND " + FIELD_DIC_cword + " IS NULL"
-                        , null, null, null, null, null);
+                cursor = db.query(LIME.DB_TABLE_RELATED, null,
+                        FIELD_DIC_pword + " = ? AND " + FIELD_DIC_cword + " IS NULL",
+                        new String[]{pword}, null, null, null, null);
             } else {
-                cursor = db.query(LIME.DB_TABLE_RELATED, null, FIELD_DIC_pword + " = '"
-                        + pword + "'" + " AND " + FIELD_DIC_cword + " = '"
-                        + cword + "'", null, null, null, null, null);
+                cursor = db.query(LIME.DB_TABLE_RELATED, null,
+                        FIELD_DIC_pword + " = ? AND " + FIELD_DIC_cword + " = ?",
+                        new String[]{pword, cword}, null, null, null, null);
             }
 
             if (cursor.moveToFirst()) {
@@ -5952,9 +5965,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         List<String> queryArgs = new ArrayList<>();
         String cword = "";
 
-        if (pword != null && pword.length() > 1) {
-            cword = pword.substring(1);
-            pword = pword.substring(0, 1);
+        if (pword != null && pword.codePointCount(0, pword.length()) > 1) {
+            String[] relatedWords = splitLeadingCodePoint(pword);
+            pword = relatedWords[0];
+            cword = relatedWords[1];
         }
         if (pword != null && !pword.isEmpty()) {
             queryBuilder.append(LIME.DB_RELATED_COLUMN_PWORD).append(" = ? AND ");
