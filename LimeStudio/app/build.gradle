@@ -36,7 +36,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 2026
-        versionName '6.1.4'
+        versionName '6.1.5'
 
         //multiDexEnabled = true
 
@@ -115,18 +115,36 @@ androidComponents {
 }
 
 def currentReleaseApkName = "LIMEHD${android.defaultConfig.versionCode}-${android.defaultConfig.versionName}.apk"
+def preservedReleaseApksDir = layout.buildDirectory.dir("preserved-release-apks")
+def releaseDir = layout.projectDirectory.dir("release")
+def releaseApkOutputDir = layout.buildDirectory.dir("outputs/apk/release")
 
-tasks.register("preserveReleaseApks", Exec) {
-    workingDir(layout.projectDirectory)
-    commandLine("sh", "-c", "mkdir -p build/preserved-release-apks && find release -maxdepth 1 -type f -name '*.apk' ! -name '${currentReleaseApkName}' -exec cp -n {} build/preserved-release-apks/ \\; 2>/dev/null || true")
+tasks.register("preserveReleaseApks", Copy) {
+    from(releaseDir) {
+        include "*.apk"
+        exclude currentReleaseApkName
+    }
+    into preservedReleaseApksDir
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-tasks.register("archiveReleaseApk", Exec) {
-    workingDir(layout.projectDirectory)
-    commandLine("sh", "-c", "mkdir -p release && find build/preserved-release-apks -maxdepth 1 -type f -name '*.apk' ! -name '${currentReleaseApkName}' -exec cp -n {} release/ \\; 2>/dev/null || true; cp build/outputs/apk/release/*.apk release/; cp build/outputs/apk/release/output-metadata.json release/ 2>/dev/null || true")
+tasks.register("archiveReleaseApk", Copy) {
+    from(preservedReleaseApksDir) {
+        include "*.apk"
+        exclude currentReleaseApkName
+    }
+    from(releaseApkOutputDir) {
+        include "*.apk"
+        include "output-metadata.json"
+    }
+    into releaseDir
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 afterEvaluate {
+    tasks.named("preserveReleaseApks").configure {
+        dependsOn("packageRelease")
+    }
     tasks.named("createReleaseApkListingFileRedirect").configure {
         dependsOn("preserveReleaseApks")
         finalizedBy("archiveReleaseApk")

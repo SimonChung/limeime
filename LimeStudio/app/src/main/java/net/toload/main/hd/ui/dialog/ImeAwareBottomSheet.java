@@ -25,6 +25,7 @@
 package net.toload.main.hd.ui.dialog;
 
 import android.app.Dialog;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -34,6 +35,7 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -72,7 +74,11 @@ final class ImeAwareBottomSheet {
 
         Window window = dialog.getWindow();
         if (window != null) {
-            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowCompat.setDecorFitsSystemWindows(window, false);
+            } else {
+                setLegacyAdjustResize(window);
+            }
         }
 
         if (!(dialog instanceof BottomSheetDialog)) {
@@ -93,5 +99,10 @@ final class ImeAwareBottomSheet {
         behavior.setExpandedOffset(0);
         behavior.setSkipCollapsed(true);
         behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void setLegacyAdjustResize(@NonNull Window window) {
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
     }
 }

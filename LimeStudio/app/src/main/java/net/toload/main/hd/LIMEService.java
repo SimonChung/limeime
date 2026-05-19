@@ -79,7 +79,6 @@ import android.widget.TextView;
 
 import net.toload.main.hd.candidate.CandidateInInputViewContainer;
 import net.toload.main.hd.candidate.CandidateView;
-import net.toload.main.hd.candidate.CandidateViewContainer;
 import net.toload.main.hd.data.ChineseSymbol;
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Mapping;
@@ -511,19 +510,12 @@ public class LIMEService extends InputMethodService
 
     @Override
     public View onCreateCandidatesView() {
-
-
         if (DEBUG)
             Log.i(TAG, "onCreateCandidatesView()");
 
-
-        @SuppressLint("InflateParams")
-        CandidateViewContainer candidateViewContainer = (CandidateViewContainer) getLayoutInflater().inflate(R.layout.candidates, null);
-        candidateViewContainer.initViews();
-
-        return candidateViewContainer;
-
-
+        // Candidates are embedded in R.layout.inputcandidate. Returning a
+        // framework candidates view here creates a second strip above the IME.
+        return null;
     }
 
     /**
@@ -4152,7 +4144,10 @@ public class LIMEService extends InputMethodService
 
         if (DEBUG)
             Log.i(TAG, "setCandidateViewShown():" + shown);
-        super.setCandidatesViewShown(shown);
+        // LIME renders candidates inside the input view. Do not show Android's
+        // separate candidates window, or URL/email empty-toolbar fields can get
+        // a blank band above the keyboard.
+        super.setCandidatesViewShown(false);
 
         if (DEBUG) {
             if (mCandidateViewInInputView != null) {
