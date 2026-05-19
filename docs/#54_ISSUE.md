@@ -8,46 +8,68 @@ In Brave Browser’s address bar, if the user types in **English first** and the
 ## Classification
 Bug report (UI / window-insets / IME positioning interaction).
 
-## Likely root cause (hypotheses)
-### A) IME window insets / layout interaction (general)
-This can be an **IME window insets / layout** interaction with Brave’s custom address-bar UI.
+## Status (needs another debugging round)
+Reporter has indicated the issue **still reproduces** after trying a newer build, so the earlier “maybe fixed on latest” hypothesis is not sufficient.
 
-Common failure modes that can produce “IME UI covered by app chrome”:
-- The IME window (or its embedded candidate strip) does not correctly apply **WindowInsets** (system bars / gesture nav / IME insets), so the last rows/edges render under overlays.
-- `InputMethodService.onComputeInsets()` is overridden in a way that prevents the host app from receiving correct insets for the IME window height.
-- Switching EN→ZH changes LIME’s candidate visibility state (`hasCandidatesShown`, `mEnglishOnly`, prediction state), which may toggle candidate strip height without forcing a re-layout/inset pass.
+This issue is likely **app-specific (Brave address bar)** and/or a **LIME IME inset / computeInsets interaction** that only shows up in certain window modes.
 
-LIME uses an embedded candidate view inside the input view container and overrides `onComputeInsets()` with a “no-op” comment. This may be fine for most apps, but Brave’s address bar can be a special case.
+## Likely root cause (updated hypotheses)
+### A) Brave address bar uses non-standard overlay chrome
+Brave’s address bar UI can be implemented as an overlay that does not follow the typical “content area + IME” layout contract. When LIME changes mode (EN→ZH), Brave may not re-run layout in a way that accounts for the IME candidate strip height.
 
-### B) Candidate bar height jump after mode switch (regression hypothesis)
-A plausible regression path is:
-- In older LIME, URL/Email contexts in English keyboard could hide the candidate bar.
-- When switching to Chinese IM inside Brave’s URL bar, the IME view height increased (candidate bar became visible), but Brave may not have re-accounted for the new IME height, causing overlap.
+### B) LIME insets contract is insufficient for this host
+LIME overrides `InputMethodService.onComputeInsets()` with a “no-op” comment. This may work for most apps, but some host UIs depend on accurate insets updates (especially if the IME view height changes, or if the host uses overlays).
 
-If the current LIME build keeps the candidate bar **always visible** (e.g. to expose emoji/mic affordances even in URL/Email contexts), then the IME height does *not* “jump” on EN→ZH switch, and the issue may no longer reproduce.
+Potential failure modes:
+- Candidate strip is inside the IME window, but the host’s overlay (toolbar/address bar) still visually covers it due to incorrect host/IME coordination.
+- EN→ZH switch toggles candidate strip visibility/height or layout params without forcing an inset recomputation visible to the host.
 
-## What to inspect in code
+### C) Navigation/toolbar mode influences overlap (gesture/bottom bar)
+The overlap may depend on:
+- gesture vs 3-button navigation
+- Brave “bottom address bar / bottom toolbar” settings
+- device display size / font size
+
+## What we need from reporter (next data)
+Ask for **one screenshot or short screen recording** that shows:
+- Brave address bar + toolbar position (top/bottom)
+- the moment of EN→ZH switch
+- the candidate strip being covered
+
+Also ask for:
+- Android version + device model
+- Brave version
+- Navigation mode: gesture vs 3-button
+- Whether Brave uses bottom address bar / bottom toolbar
+- Whether it reproduces in Chrome (control test)
+
+## Developer debugging plan
+### Step 1 — confirm whether LIME is changing IME height on EN→ZH switch
+Instrument logs (debug-only):
+- in `onStartInputView()` / `onUpdateSelection()` / any mode-switch path:
+  - current `EditorInfo.inputType`
+  - candidate strip visibility + measured height
+  - root input view measured height
+
+### Step 2 — validate / adjust `onComputeInsets()` behavior
+Experiment (debug build):
+- Remove the no-op override, or implement a correct `Insets` computation so the system/host gets consistent insets when candidate strip is shown/hidden.
+- Ensure inset recomputation happens on mode switch (EN→ZH) and on candidate strip show/hide.
+
+### Step 3 — add IME-aware padding inside IME window (defensive)
+Even if Brave is overlaying, ensure LIME’s own candidate strip and composing view apply appropriate padding/insets (IME + system bars) so content isn’t drawn under overlays.
+
+## Code pointers
 Android:
 - `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
-  - URL field handling (`EditorInfo.TYPE_TEXT_VARIATION_URI`) and whether candidate bar visibility changes across modes
-  - `onCreateInputView()` / `onStartInputView()` inset padding logic
+  - URL field handling (`EditorInfo.TYPE_TEXT_VARIATION_URI`)
+  - EN/CH mode switch logic and candidate strip show/hide
   - `onComputeInsets()` override
-  - candidate strip show/hide paths after mode switch
-
-## Suggested next step
-Treat this as “needs confirmation on latest build” before doing any invasive inset refactor.
-
-## Follow-up questions for reporter
-- Android version + device model.
-- Brave version.
-- Navigation mode: gesture vs 3-button.
-- Is Brave configured with bottom address bar / bottom toolbar?
-- Does the same happen in Chrome (or only Brave)?
+  - candidate view container measurement and layout
 
 ## Verification plan
-- On the reporter’s device:
-  1. Open Brave address bar.
-  2. Type some English.
-  3. Switch to Chinese mode and type to bring up candidates.
-  4. Confirm candidate strip is fully visible and not covered.
-- Cross-check in Chrome to distinguish Brave-specific behavior.
+- Repro in Brave using reporter steps.
+- Toggle Brave bottom address bar / toolbar.
+- Toggle navigation mode (gesture / 3-button).
+- Cross-check in Chrome.
+- Confirm candidate strip is never visually covered after fixes.
