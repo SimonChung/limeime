@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-19T15:06:00+08:00 (Asia/Taipei)
+Last updated: 2026-05-20T09:40:00+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -11,23 +11,27 @@ Last updated: 2026-05-19T15:06:00+08:00 (Asia/Taipei)
 - Latest GitHub Release observed: `v6.0.2` (published 2026-04-23).
 - Android pre-release/build artifacts are not necessarily public GitHub Releases.
 - Scheduled/API-only APK source of truth: `LimeStudio/app/release/output-metadata.json`.
-- Last observed pre-release APK: `LIMEHD2026-6.1.4.apk` (versionName 6.1.4), metadata modified 2026-05-18T17:42:43Z.
+- Last observed pre-release APK: `LIMEHD2026-6.1.5.apk` (versionName 6.1.5), metadata observed 2026-05-20T09:22:43+08:00; APK bump commit `2ca6f1637b643905bebe356bb8d9092431d65943` was committed 2026-05-19T18:38:30+08:00.
 - Raw APK URL pattern: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
+- No open pull requests were observed in the 2026-05-20 scheduled run.
 
 ## Current Issue States And Required Actions
-- #54: Community-reported Brave URL bar candidate overlap. Reporter has a negative/still-reproduces result. `docs/#54_ISSUE.md` was rewritten for another debugging round in commit `8788beecb3381e60b159a543e1ea533ebf9948c0`. Keep open; gather targeted screenshot/video and Brave/device/navigation-mode data; do not retest-prompt until a new #54-relevant fix lands.
+- #54: Community-reported Brave URL bar candidate overlap/white-band behavior. Relevant fix landed in commit `8393abf64230684331f71e20d41797d29f4c3bbd` and APK `LIMEHD2026-6.1.5.apk`; a 6.1.5 retest request was posted as comment `4493653161`. Issue is now closed as completed (closed 2026-05-19T10:38:36Z). Remove from active watch unless reopened or referenced by new reports.
 - #55: Community-reported key preview delay. Reporter confirmed improvement on 6.1.1 pre-release. Closed as completed with closing comment `4485128961`; remove from active watch unless reopened or referenced by new reports.
-- #58: Was previously replied to asking reporter to test 6.1.1 and provide a small sample table if import still fails. Check current state/comments before any further action.
-- #63: Community-reported Google voice input outputs Simplified and duplicates text. Triaged as Android voice-input compatibility bug, documented in `docs/#63_ISSUE.md`, labeled `bug`, and assigned to `jrywu`. Reporter tested 6.1.2 and said NOT fixed; 6.1.4 did not add a new #63-relevant fix. Keep open; ask for targeted screenshot/video, entry point, Android/HyperOS, Google Speech Services version, and exact duplicate-output behavior. Do not retest-prompt until a new #63-relevant fix lands.
-- #64: Community-reported settings text/inset/scroll issue. Triaged as UI/accessibility bug and documented in `docs/#64_ISSUE.md`, labeled `bug`, and assigned to `jrywu`. Keep open until a real #64-relevant fix lands; then ask reporter to test only if the fix is newer than their last tested build.
+- #58: `.lime` pipe-format import/support question. Previously replied asking reporter to test 6.1.1 and provide a small sample table if import still fails. No newer #58-specific fix was observed in 6.1.5; avoid duplicate test requests until reporter responds or a clearly relevant fix lands.
+- #62: Community-reported Ext-B leading-character related-phrase issue. Reporter confirmed 6.1.4 improved add/search, but runtime related-candidate suggestions remain blank after committing parent `𩼣`. `docs/#62_ISSUE.md` was updated in commit `b6c895d3985e51530481d2ba427bf09a7ba4a967`; issue labeled `bug` and assigned to `jrywu`. Keep open; investigate runtime related lookup/display path. Do not ask for 6.1.5 retest because no new #62-relevant fix landed after 6.1.4.
+- #63: Community-reported Google voice input outputs Simplified and duplicates text. Triaged as Android voice-input compatibility bug, documented in `docs/#63_ISSUE.md`, labeled `bug`, and assigned to `jrywu`. Reporter tested 6.1.2 and said NOT fixed, then provided a Google Drive folder with large screen-recording/video evidence in comment `4493061495`: `https://drive.google.com/drive/folders/12XSn_FRBjEROuazexf_u4QCJnC2oNpsl`. 6.1.5 did not add a new #63-relevant fix. Keep open; maintainer should review the linked video/evidence and continue second-round root-cause analysis around RecognizerIntent locale/result handling and duplicate commit paths. Do not retest-prompt until a new #63-relevant fix lands.
+- #64: Community-reported settings text/inset/scroll issue. Reporter confirmed `6.1.2` fixed the issue in comment `4493627919`; automation added a `+1` reaction. Issue is closed as completed (closed 2026-05-20T01:15:24Z). Remove from active watch unless reopened or referenced by new reports.
 - #65: Maintainer-created Android table/assoc editor soft-keyboard sheet issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
 - #66: Maintainer-created iOS assoc/related editor score-field issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
+- #67: New community-reported 6.1.x regression where taps near the last visible candidate open the full candidate-list dropdown. Investigated as an Android candidate-row hit-area bug; `docs/#67_ISSUE.md` created in commit `4ebbd1adc6d684aff35ceb18dd1ae04c0975edff`; issue labeled `bug` and assigned to `jrywu`. Likely root cause is overlapping/broad expand handling in `CandidateInInputViewContainer.dispatchTouchEvent()` plus `CandidateView.isExpandEdgeTap()`. Keep open for fix; after a relevant build lands, ask reporter to retest.
+- #68: Maintainer-created cross-platform candidate-bar dismiss bug. Tapping dismiss should fully cancel composition and remove composing text/state. iOS currently closes composition but leaves inline composing text; Android clears candidate composing UI but leaves Android composing state open. `docs/#68_ISSUE.md` was created in commit `e6e8194c92bb9dc93aeb6aaf2ba64625b023fded`; issue labeled `bug` and assigned to `jrywu`. Keep open for fix; because it is maintainer-created, close directly when a relevant fix lands instead of posting a tester invitation.
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
 - Original memory noted #55 was replied to asking the reporter to test 6.1.1.
 - Original memory noted #58 was replied to asking the reporter to test 6.1.1 and provide a small sample table if import still fails.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.4`, #55 is closed after positive reporter confirmation, #65/#66 are closed as maintainer-created tracking issues, and #63 remains open after negative reporter testing.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.5`, #55 is closed after positive reporter confirmation, #65/#66 are closed as maintainer-created tracking issues, #54 and #64 are closed as completed, #62 has a partial negative follow-up, #63 remains open after negative reporter testing and now includes linked video evidence, #67 is tracked as a bug, and #68 is tracked as a maintainer-created cross-platform dismiss/composition bug.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, or run outcomes change.

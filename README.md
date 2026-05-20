@@ -1,4 +1,4 @@
-# LIME IME (Lightweight Input Method Editor)
+# ![萊姆輸入法](LimeStudio/app/src/main/res/drawable-hdpi/logo.png) 萊姆輸入法
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -12,7 +12,7 @@ LIME 是一套以繁體中文輸入為核心的 Android 輸入法專案，採用
 
 - 版本：v6.0.2
 - APK：LIMEHD2026-6.0.2.apk
-- 下載連結：https://github.com/lime-ime/limeime/releases/latest/download/LIMEHD2026-6.0.2.apk
+- 下載連結：[LIMEHD2026-6.0.2.apk](https://github.com/lime-ime/limeime/releases/latest/download/LIMEHD2026-6.0.2.apk)
 
 ## 版本與相容性
 
@@ -20,8 +20,6 @@ LIME 是一套以繁體中文輸入為核心的 Android 輸入法專案，採用
 - 目標 SDK：36
 - 最低支援 SDK：21
 - 與舊版可並存安裝
-
-##
 
 ## 隱私與安全性
 
