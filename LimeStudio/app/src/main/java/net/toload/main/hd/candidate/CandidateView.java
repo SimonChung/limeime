@@ -67,6 +67,7 @@ import net.toload.main.hd.R;
 import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
+import net.toload.main.hd.voice.DictationState;
 
 import java.lang.ref.WeakReference;
 import java.util.LinkedList;
@@ -184,6 +185,8 @@ public class CandidateView extends View implements View.OnClickListener {
     private boolean waitingForMoreRecords = false;
 
     private boolean mTransparentCandidateView = false;
+    private DictationState mDictationState = DictationState.IDLE;
+    private String mDictationText = "";
 
     //private Rect padding = null;
 
@@ -933,6 +936,26 @@ public class CandidateView extends View implements View.OnClickListener {
         return hasWindowToken && text != null && text.length() > 0;
     }
 
+    static String dictationDisplayText(DictationState state, String text) {
+        if (state == null) {
+            return "";
+        }
+        switch (state) {
+            case LISTENING:
+                return "請開始說話";
+            case PARTIAL:
+                return text != null && text.length() > 0 ? text : "辨識中";
+            case FINALIZING:
+                return text != null && text.length() > 0 ? text : "辨識完成中";
+            case ERROR:
+                return "語音輸入錯誤";
+            case CANCELLED:
+            case IDLE:
+            default:
+                return "";
+        }
+    }
+
     private void doShowLimeToast(CharSequence text) {
         if (!shouldShowLimeToast(getWindowToken() != null, text)) return;
 
@@ -1250,6 +1273,10 @@ public class CandidateView extends View implements View.OnClickListener {
     private void doDraw(Canvas canvas) {
 
 
+        if (isShowingDictationStatus()) {
+            drawDictationStatus(canvas);
+            return;
+        }
         if (mSuggestions == null) return;
         if (DEBUG)
             Log.i(TAG, "CandidateView:doDraw():Suggestion mCount:" + mCount + " mSuggestions.size:" + mSuggestions.size());
@@ -1552,6 +1579,8 @@ public class CandidateView extends View implements View.OnClickListener {
 
     public void clear() {
         if (DEBUG) Log.i(TAG, "clear()");
+        mDictationState = DictationState.IDLE;
+        mDictationText = "";
         //mHeight =0; //Jeremy '12,5,6 hide candidate bar when candidateview is fixed.
         if (mSuggestions != null) mSuggestions.clear();
         mCount = 0;
@@ -1587,6 +1616,8 @@ public class CandidateView extends View implements View.OnClickListener {
         if (DEBUG)
             Log.i(TAG, "forceHide()");
         mHeight = 0;
+        mDictationState = DictationState.IDLE;
+        mDictationText = "";
         //clear();
         //resetWidth();// will cause wrong thread exception. clear() will call updateUI() and will do resetWidth
         mSuggestions = EMPTY_LIST;
@@ -1811,6 +1842,87 @@ public class CandidateView extends View implements View.OnClickListener {
 
     public boolean takeSelectedSuggestion() {
         return this.takeSelectedSuggestion(false);
+    }
+
+    public void showDictationStatus(DictationState state, String text) {
+        mDictationState = state == null ? DictationState.IDLE : state;
+        mDictationText = text == null ? "" : text;
+        if (mDictationState == DictationState.IDLE || mDictationState == DictationState.CANCELLED) {
+            clearDictationStatus();
+            return;
+        }
+        if (mSuggestions != null) {
+            mSuggestions.clear();
+        }
+        mCount = 0;
+        mTargetScrollX = 0;
+        prepareLayout();
+        mHandler.updateUI(0);
+    }
+
+    public void clearDictationStatus() {
+        mDictationState = DictationState.IDLE;
+        mDictationText = "";
+        mHandler.updateUI(0);
+    }
+
+    public boolean isShowingDictationStatus() {
+        return mDictationState != null
+                && mDictationState != DictationState.IDLE
+                && mDictationState != DictationState.CANCELLED;
+    }
+
+    private void drawDictationStatus(Canvas canvas) {
+        updateFontSize();
+        if (mBgPadding == null) {
+            mBgPadding = new Rect(0, 0, 0, 0);
+            if (getBackground() != null) {
+                getBackground().getPadding(mBgPadding);
+            }
+        }
+
+        String displayText = dictationDisplayText(mDictationState, mDictationText);
+        if (displayText.length() == 0) {
+            mTotalWidth = 0;
+            return;
+        }
+
+        final Rect bgPadding = mBgPadding;
+        float base = mCandidatePaint.measureText("。");
+        float textWidth = mCandidatePaint.measureText(displayText);
+        if (textWidth < base) {
+            textWidth = base;
+        }
+        final int wordWidth = (int) textWidth + X_GAP * 2;
+        mWordX[0] = 0;
+        mWordWidth[0] = wordWidth;
+        mTotalWidth = wordWidth;
+        if (canvas == null) {
+            return;
+        }
+
+        if(mTransparentCandidateView){
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+            Paint backgroundPaint = new Paint();
+            backgroundPaint.setColor(ContextCompat.getColor(mContext, R.color.third_background_light));
+            backgroundPaint.setAlpha(33);
+            backgroundPaint.setStyle(Paint.Style.FILL);
+
+            canvas.drawRect(0.5f, bgPadding.top, mScreenWidth, mHeight, backgroundPaint);
+        }
+
+        mCandidatePaint.setColor(mColorNormalText);
+        int textBaseLine = (int) (((mHeight - mCandidatePaint.getTextSize()) / 2) - mCandidatePaint.ascent());
+        canvas.drawText(displayText, mWordX[0] + X_GAP, textBaseLine, mCandidatePaint);
+
+        mCandidatePaint.setColor(mColorSpacer);
+        canvas.drawLine(mWordX[0] + mWordWidth[0] + 0.5f,
+                bgPadding.top + ((float) mVerticalPadding / 2),
+                mWordX[0] + mWordWidth[0] + 0.5f,
+                mHeight - ((float) mVerticalPadding / 2),
+                mCandidatePaint);
+        mCandidatePaint.setFakeBoldText(false);
     }
 
     public boolean takeSelectedSuggestion(boolean vibrateSound) {

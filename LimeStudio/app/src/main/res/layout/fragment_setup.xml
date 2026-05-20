@@ -114,6 +114,65 @@
             android:text="@string/setup_im_system_selectLIME"
             android:layout_marginBottom="24dp" />
 
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/voicePermissionCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/setup_status_bg"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/voicePermissionIcon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/sym_keyboard_voice_light"
+                        android:contentDescription="@null"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:id="@+id/voicePermissionTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/setup_voice_permission_title"
+                        android:textAppearance="?attr/textAppearanceBody2" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/voicePermissionDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/setup_voice_permission_not_granted"
+                    android:textAppearance="?android:attr/textAppearanceMedium"
+                    android:layout_marginTop="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voicePermissionButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/setup_voice_permission_open_settings"
+                    android:layout_marginTop="12dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- About Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

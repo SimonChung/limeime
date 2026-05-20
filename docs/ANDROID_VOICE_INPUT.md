@@ -10,16 +10,19 @@ LIME, the first two are the important ones.
 
 | Mechanism | Android API | Use in LIME |
 | --- | ---: | --- |
-| Voice IME switching | API 3+ | Preferred. Switch from LIME to an enabled voice-capable IME. |
+| Voice IME switching | API 3+ | Delegated fallback. Switch from LIME to an enabled voice-capable IME. |
 | `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` | API 3+ | Fallback. Launch a speech recognition activity and commit the returned text. |
-| `SpeechRecognizer` / `RecognitionService` | API 8+ | Direct recognizer API. More lifecycle and permission surface; not needed for normal LIME voice input. |
+| `SpeechRecognizer` / `RecognitionService` | API 8+ | LIME inline dictation path when enabled and `RECORD_AUDIO` is granted. |
 | `VoiceInteractionService` | API 21+ | Assistant/hotword framework; not normal keyboard dictation. |
 
-The preferred modern behavior for an IME is still:
+LIME always uses automatic routing; there is no user-facing voice mode
+preference. The order is now:
 
-1. Find an enabled voice-capable IME.
-2. Switch to it with `InputMethodService.switchInputMethod(...)`.
-3. Use `RecognizerIntent` only if no suitable voice IME exists or switching fails.
+1. Use LIME-owned inline dictation when enabled, permitted, and available.
+2. Find an enabled voice-capable IME and switch to it with
+   `InputMethodService.switchInputMethod(...)`.
+3. Use `RecognizerIntent` only if no suitable voice IME exists or switching
+   fails.
 
 ## Version Cuts
 
@@ -83,10 +86,19 @@ The Google TTS voice IME ID was added in SweetLime commit `66d06ba` for Android
 13 voice input compatibility. The subtype/heuristic/Gboard fallback was added
 in commit `e30e1db`.
 
-LIME intentionally does not use the Google TTS/Speech Services voice IME ID or
-Gboard as a direct `switchInputMethod(...)` target. On the Android emulator this
-path can appear to do nothing. LIME keeps switching only for the older dedicated
-Google voice IMEs and uses `RecognizerIntent` for modern Speech Services.
+LIME now follows the SweetLime-style quick fix and tries broader enabled voice
+IME targets before `RecognizerIntent`. The order is:
+
+1. Exact known voice IME IDs, including legacy Google Voice Search and modern
+   Google TTS/Speech Services voice IME.
+2. Enabled IMEs with a subtype whose mode is `voice`.
+3. Enabled IME IDs containing `voice` or `speech`.
+4. Gboard (`com.google.android.inputmethod.latin/`) as the last fallback.
+
+This can reach the older voice IME UI shown in the reporter's SweetLime video
+on devices where that switch target is usable. If Android accepts the target
+but the switch does not actually happen, LIME still falls back to
+`RecognizerIntent`.
 
 ## Issue #63 Risk
 
@@ -110,8 +122,9 @@ path where LIME is explicitly passing a language hint and committing the result.
 
 Implemented in the current Android branch:
 
-1. Legacy dedicated Google voice IMEs are still switch targets through
-   `LIMEUtilities.isVoiceSearchServiceExist(...)`.
+1. Legacy Google voice IMEs, modern Google Speech Services/TTS voice IME,
+   voice subtypes, voice/speech ID heuristics, and Gboard fallback are switch
+   targets through `LIMEUtilities.isVoiceSearchServiceExist(...)`.
 2. Voice IME switching remains the first path for all Android versions.
 3. `startVoiceInput()` now reaches the `RecognizerIntent` fallback when no voice
    IME is found, the input method manager is unavailable, or switching throws.
@@ -123,7 +136,8 @@ Implemented in the current Android branch:
 6. Voice result commits now pass through the existing Han converter when the
    global Han conversion option is enabled.
 7. Focused instrumentation tests cover Traditional Chinese fallback language and
-   confirm modern Google Speech Services uses the `RecognizerIntent` fallback.
+   confirm modern Google Speech Services/Gboard-style voice targets are
+   detected.
 
 Still useful for device validation:
 
@@ -179,3 +193,22 @@ Also verify:
 - fallback result delivery through `VoiceInputActivity`
 - retry/pending voice commit behavior
 - optional Han conversion does not affect non-voice typing paths
+
+## Inline Dictation Permission Fallback
+
+The LIME-owned inline dictation mode requires Android microphone
+permission because it uses `SpeechRecognizer` directly. If the user does not
+grant that permission, LIME should not treat voice input as unavailable.
+
+Implemented fallback order:
+
+1. Use LIME inline dictation only when enabled and microphone permission is
+   granted.
+2. If permission is denied or inline dictation is disabled, switch to a
+   Google/vendor voice IME when available.
+3. If no usable voice IME switch target exists, use the current
+   `RecognizerIntent` fallback with the Traditional Chinese language hint and
+   Han conversion.
+
+This gives privacy-conscious users a path where LIME does not receive direct
+microphone permission and Google/vendor voice input owns audio capture.

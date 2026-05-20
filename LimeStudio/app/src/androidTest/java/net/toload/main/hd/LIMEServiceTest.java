@@ -7860,13 +7860,30 @@ public class LIMEServiceTest {
     }
 
     @Test
-    public void test_5_20_3_3_GoogleTtsVoiceImeUsesRecognizerIntentFallback() {
-        assertFalse("Google Speech Services voice IME should not be used as switch target",
+    public void test_5_20_3_3_ModernVoiceImeIdsAreDetected() {
+        assertTrue("Legacy Google Voice Search IME should still be detected",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.google.android.voicesearch/.ime.VoiceInputMethodService"));
+        assertTrue("Google Speech Services voice IME should be used as switch target",
                 LIMEUtilities.isVoiceInputMethodId(
                         "com.google.android.tts/com.google.android.apps.speech.tts.googletts.settings.asr.voiceime.VoiceInputMethodService"));
         assertTrue("Legacy Google voice IME should still be detected",
                 LIMEUtilities.isVoiceInputMethodId(
                         "com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService"));
+        assertTrue("Gboard should be allowed as the last voice-capable IME fallback",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME"));
+        assertTrue("Voice/speech IME IDs should be detected heuristically",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.example.speech/.SpeechInputMethodService"));
+        assertTrue("Voice IME IDs should be detected heuristically",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.example.voice/.InputMethodService"));
+        assertFalse("Unrelated IME IDs should not be treated as voice input",
+                LIMEUtilities.isVoiceInputMethodId(
+                        "com.example.keyboard/.InputMethodService"));
+        assertFalse("Null IME ID should not be treated as voice input",
+                LIMEUtilities.isVoiceInputMethodId(null));
     }
 
     /**

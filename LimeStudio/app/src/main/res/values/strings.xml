@@ -88,6 +88,17 @@
     <string name="setup_im_wizard_nextstep">下一步</string>
     <string name="setup_im_system_settings_description">萊姆輸入法尚未啟用，請按下一步後，在系統鍵盤輸入法頁面啟用萊姆輸入法。完成後請按返回鍵繼續其他設定。</string>
     <string name="setup_im_system_impicker_description">萊姆輸入法已啟用但尚未被選用，請按下方按鈕後，在系統鍵盤輸入法選擇頁選用萊姆輸入法。</string>
+    <string name="setup_voice_permission_title">萊姆內建語音輸入</string>
+    <string name="setup_voice_permission_title_request">萊姆內建語音輸入尚未啟用 ✕</string>
+    <string name="setup_voice_permission_title_granted">萊姆內建語音輸入已啟用 ✓</string>
+    <string name="setup_voice_permission_title_settings">需至系統設定開啟麥克風權限 ⚠</string>
+    <string name="setup_voice_permission_granted">可直接在萊姆鍵盤內使用語音輸入。</string>
+    <string name="setup_voice_permission_not_granted">若要在萊姆鍵盤內直接語音輸入，請允許麥克風權限；也可略過，改用 Google 語音輸入。</string>
+    <string name="setup_voice_permission_denied_once">若要在萊姆鍵盤內直接語音輸入，請允許麥克風權限；也可略過，改用 Google 語音輸入。</string>
+    <string name="setup_voice_permission_denied_permanently">Android 已停止顯示授權視窗。若要使用萊姆內建語音輸入，請前往系統設定，點選「權限」→「麥克風」→「允許」。</string>
+    <string name="setup_voice_permission_request">允許麥克風權限</string>
+    <string name="setup_voice_permission_open_settings">前往系統設定</string>
+    <string name="setup_voice_permission_settings_hint">請點選「權限」→「麥克風」→「允許」。</string>
     <string name="setup_im_import_standard">匯入自定字根表</string>
     <string name="setup_im_import_reset">移除自定字根表</string>
     <string name="setup_im_import_related">匯入關聯字庫</string>

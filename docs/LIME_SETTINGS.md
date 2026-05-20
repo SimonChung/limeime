@@ -205,6 +205,18 @@ Inspired by Gboard's setup screen: a single scrollable screen with the LimeIME l
 | 1 | `Image(systemName: "keyboard")` `.title3` `.accentColor` | `"輕觸「鍵盤」"` |
 | 2 | `ToggleSwitchIcon()` (green capsule + white thumb) | `"開啟萊姆輸入法"` |
 | 3 | `ToggleSwitchIcon()` | `"開啟「允許完整取用」"` |
+| 4 | `mic` / `keyboard_voice` | `"允許語音輸入"` |
+
+Step 4 is optional and appears only when Android LIME inline dictation is
+enabled. It requests Android `RECORD_AUDIO` permission for LIME-owned inline
+dictation. Users who skip or deny it still use delegated Google/vendor VoiceIME
+fallback, then `RecognizerIntent` fallback.
+
+| Permission state | Color | State text | Explanation below | Button |
+|---|---|---|---|---|
+| Granted | Green | `萊姆內建語音輸入已啟用 ✓` | `可直接在萊姆鍵盤內使用語音輸入。` | Hidden |
+| Not requested / denied but askable | Red | `萊姆內建語音輸入尚未啟用 ✕` | `若要在萊姆鍵盤內直接語音輸入，請允許麥克風權限；也可略過，改用 Google 語音輸入。` | `允許麥克風權限` requests `RECORD_AUDIO` |
+| Permanently denied | Yellow | `需至系統設定開啟麥克風權限 ⚠` | `Android 已停止顯示授權視窗。若要使用萊姆內建語音輸入，請前往系統設定，點選「權限」→「麥克風」→「允許」。` | `前往系統設定` opens app info and shows a short toast guide |
 
 **Explanatory note** (`.subheadline`, `.secondary`, centered): `"萊姆輸入法僅需完整取用以啟用按鍵震動回饋。若不需要此功能，可不開啟。萊姆輸入法不會收集或傳送任何個人資料。"`
 
@@ -1142,6 +1154,8 @@ guard let db = openDB() else {
 - [ ] Real-time keyboard-enabled status banner (green / yellow / red)
 - [ ] Full Access detection
 - [ ] "前往系統設定" deep-link button
+- [ ] Optional `RECORD_AUDIO` setup step for LIME inline dictation, hidden when
+      inline dictation is disabled; denial falls back to Google/vendor VoiceIME
 - [ ] Bundled IM seeding button (`seedDefaultIMs`)
 - [ ] App version, licence, GitHub link
 

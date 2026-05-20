@@ -123,17 +123,7 @@ public class VoiceInputActivity extends ComponentActivity {
             // Use ConfigurationCompat to retrieve the top system locale without using
             // the deprecated Configuration.locale field.
             Locale systemLocale = ConfigurationCompat.getLocales(getResources().getConfiguration()).get(0);
-            String languageTag;
-            try {
-                assert systemLocale != null;
-                languageTag = systemLocale.toLanguageTag();
-            } catch (NoSuchMethodError e) {
-                languageTag = systemLocale.getLanguage();
-                systemLocale.getCountry();
-                if (!systemLocale.getCountry().isEmpty()) {
-                    languageTag += "-" + systemLocale.getCountry();
-                }
-            }
+            String languageTag = LIMEService.resolveVoiceRecognitionLanguageTag(systemLocale);
             voiceIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag);
             //voiceIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now");
             voiceIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
@@ -142,18 +132,9 @@ public class VoiceInputActivity extends ComponentActivity {
             Log.i(TAG, "onCreate(): Received voiceIntent from LIMEService with language: " + language);
         }
         
-        // Check if RecognizerIntent is available
-        android.content.ComponentName componentName = voiceIntent.resolveActivity(getPackageManager());
-        if (componentName == null) {
-            Log.e(TAG, "onCreate(): RecognizerIntent not available on this device");
-            android.widget.Toast.makeText(this, "Voice recognition not available", android.widget.Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-        
         try {
             voiceInputLauncher.launch(voiceIntent);
-            Log.i(TAG, "onCreate(): Launched RecognizerIntent: " + componentName.getPackageName() + "/" + componentName.getClassName());
+            Log.i(TAG, "onCreate(): Launched RecognizerIntent");
         } catch (android.content.ActivityNotFoundException e) {
             Log.e(TAG, "onCreate(): ActivityNotFoundException launching RecognizerIntent: " + e.getMessage(), e);
             android.widget.Toast.makeText(this, "Voice recognition activity not found", android.widget.Toast.LENGTH_SHORT).show();

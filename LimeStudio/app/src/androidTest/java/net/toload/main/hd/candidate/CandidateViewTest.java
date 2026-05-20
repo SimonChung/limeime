@@ -8,6 +8,8 @@ import android.graphics.Color;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import net.toload.main.hd.voice.DictationState;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -36,5 +38,14 @@ public class CandidateViewTest {
                 CandidateInInputViewContainer.actionButtonBackgroundColor());
         assertEquals(Color.TRANSPARENT,
                 CandidateInInputViewContainer.dismissButtonBackgroundColor());
+    }
+
+    @Test
+    public void dictationDisplayTextReflectsStateAndPartialText() {
+        assertEquals("請開始說話", CandidateView.dictationDisplayText(DictationState.LISTENING, null));
+        assertEquals("這是測試", CandidateView.dictationDisplayText(DictationState.PARTIAL, "這是測試"));
+        assertEquals("辨識完成中", CandidateView.dictationDisplayText(DictationState.FINALIZING, null));
+        assertEquals("語音輸入錯誤", CandidateView.dictationDisplayText(DictationState.ERROR, null));
+        assertEquals("", CandidateView.dictationDisplayText(DictationState.IDLE, null));
     }
 }

@@ -92,6 +92,15 @@ import net.toload.main.hd.keyboard.LIMEKeyboardView;
 import net.toload.main.hd.keyboard.LIMEMetaKeyKeyListener;
 import net.toload.main.hd.limedb.LimeDB;
 import net.toload.main.hd.ui.LIMEPreference;
+import net.toload.main.hd.voice.AndroidSpeechRecognizerAdapter;
+import net.toload.main.hd.voice.DictationResultListener;
+import net.toload.main.hd.voice.DictationState;
+import net.toload.main.hd.voice.LIMEDictationController;
+import net.toload.main.hd.voice.LIMEVoiceInputRouter;
+import net.toload.main.hd.voice.VoiceInputMode;
+import net.toload.main.hd.voice.VoiceInputRoute;
+import net.toload.main.hd.voice.VoicePermissionHelper;
+import net.toload.main.hd.voice.VoicePermissionState;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -105,7 +114,7 @@ import java.util.Objects;
 
 
 public class LIMEService extends InputMethodService
-        implements LIMEKeyboardBaseView.OnKeyboardActionListener {
+        implements LIMEKeyboardBaseView.OnKeyboardActionListener, DictationResultListener {
 
     private static final boolean DEBUG = false;
     private static final String TAG = "LIMEService";
@@ -194,6 +203,7 @@ public class LIMEService extends InputMethodService
     private boolean mIsVoiceInputActive = false;
     private String mPendingVoiceText = null; // text to commit once InputConnection is re-established
     private String mLIMEId = null;
+    private LIMEDictationController mDictationController = null;
     private BroadcastReceiver mVoiceInputReceiver = null;
     private static final String ACTION_VOICE_RESULT = "net.toload.main.hd.VOICE_INPUT_RESULT";
     private static final String EXTRA_RECOGNIZED_TEXT = "recognized_text";
@@ -335,6 +345,7 @@ public class LIMEService extends InputMethodService
 
         // Construct Preference Access Tool
         mLIMEPref = new LIMEPreferenceManager(this);
+        mDictationController = new LIMEDictationController(new AndroidSpeechRecognizerAdapter(this), this);
 
         // Initialize hasVibration flag from preferences immediately (so it's available for first keypress)
         hasVibration = mLIMEPref.getVibrateOnKeyPressed();
@@ -547,8 +558,12 @@ public class LIMEService extends InputMethodService
         if (DEBUG) {
             Log.i(TAG, "onFinishInput()");
         }
-        // Stop monitoring IME changes when input finishes
-        stopMonitoringIMEChanges();
+        // Stop monitoring IME changes when input finishes, except while a delegated
+        // VoiceIME handoff is in progress. The handoff itself triggers onFinishInput().
+        if (!mIsVoiceInputActive) {
+            stopMonitoringIMEChanges();
+        }
+        cancelInlineDictationIfActive();
         // Don't unregister voice input receiver if voice input is in progress,
         // otherwise the broadcast carrying recognized text will be lost.
         if (!mIsVoiceInputActive) {
@@ -5001,6 +5016,10 @@ public class LIMEService extends InputMethodService
 
         // Stop monitoring IME changes when service is destroyed
         stopMonitoringIMEChanges();
+        if (mDictationController != null) {
+            mDictationController.destroy();
+            mDictationController = null;
+        }
 
         //jeremy 12,4,21 need to check again---
         //clearComposing(true); see no need to do this '12,4,21
@@ -5049,6 +5068,7 @@ public class LIMEService extends InputMethodService
         if (DEBUG)
             Log.i(TAG, "onFinishInputView()");
         super.onFinishInputView(finishingInput);
+        cancelInlineDictationIfActive();
         resetEmojiKeyboardState();
         hideCandidateView(); //Jeremy '12,5,7 hideCandiate when inputview is closed but not yet leave the original field (onfinishinput() will not called).
     }
@@ -5063,75 +5083,183 @@ public class LIMEService extends InputMethodService
 
         Intent voiceIntent = getVoiceIntent();
         String voiceID = LIMEUtilities.isVoiceSearchServiceExist(getBaseContext());
+        boolean recognizerAvailable = true;
+        if (!isRecognizerFallbackAvailable(voiceIntent)) {
+            Log.w(TAG, "startVoiceInput(): recognizer fallback was not visible during preflight; will still try helper activity if delegated VoiceIME is unavailable");
+        }
+        VoiceInputRoute route = LIMEVoiceInputRouter.chooseRoute(
+                isInlineDictationFeatureEnabled(),
+                VoiceInputMode.AUTO,
+                getInlineDictationPermissionState(),
+                isInlineDictationAvailable(),
+                voiceID != null,
+                recognizerAvailable);
         Log.i(TAG, "startVoiceInput(): voiceID=" + voiceID
                 + ", activeIM=" + activeIM
+                + ", route=" + route
                 + ", fallbackLanguage=" + voiceIntent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE));
 
+        switch (route) {
+            case INLINE_DICTATION:
+                startInlineDictationOrFallback(voiceIntent, voiceID);
+                return;
+            case VOICE_IME:
+                startDelegatedVoiceInput(voiceIntent, voiceID);
+                return;
+            case RECOGNIZER_INTENT:
+                startRecognizerFallback(voiceIntent);
+                return;
+            case UNAVAILABLE:
+            default:
+                showLimeToast("Voice recognition not available on this device");
+        }
+    }
+
+    private boolean isInlineDictationFeatureEnabled() {
+        try {
+            return getResources().getBoolean(R.bool.inline_dictation_feature_enabled);
+        } catch (Exception e) {
+            Log.w(TAG, "isInlineDictationFeatureEnabled(): resource unavailable: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isInlineDictationAvailable() {
+        return mDictationController != null && mDictationController.isRecognitionAvailable();
+    }
+
+    private VoicePermissionState getInlineDictationPermissionState() {
+        if (VoicePermissionHelper.hasRecordAudioPermission(this)) {
+            return VoicePermissionState.GRANTED;
+        }
+        return VoicePermissionHelper.wasRecordAudioPermissionPrompted(this)
+                ? VoicePermissionState.DENIED_DO_NOT_ASK_AGAIN
+                : VoicePermissionState.NOT_REQUESTED;
+    }
+
+    private void startInlineDictationOrFallback(Intent voiceIntent, String voiceID) {
+        if (mDictationController != null && mDictationController.isRecognitionAvailable()) {
+            mIsVoiceInputActive = true;
+            mDictationController.start(getVoiceRecognitionLanguageTag());
+            return;
+        }
+        if (DEBUG)
+            Log.i(TAG, "startInlineDictationOrFallback(): inline controller unavailable, using delegated fallback");
+        startDelegatedVoiceInputOrRecognizerFallback(voiceIntent, voiceID);
+    }
+
+    private void startDelegatedVoiceInputOrRecognizerFallback(Intent voiceIntent, String voiceID) {
         if (voiceID != null) {
-            if (DEBUG)
-                Log.i(TAG, "startVoiceInput(): Found voice IME: " + voiceID);
+            startDelegatedVoiceInput(voiceIntent, voiceID);
+        } else {
+            startRecognizerFallback(voiceIntent);
+        }
+    }
 
-            // Get LIME IME ID for switching back
-            if (mLIMEId == null) {
-                mLIMEId = LIMEUtilities.getLIMEID(getBaseContext());
-            }
+    private void startDelegatedVoiceInput(Intent voiceIntent, String voiceID) {
+        if (voiceID == null) {
+            startRecognizerFallback(voiceIntent);
+            return;
+        }
+        if (isGoogleSpeechServicesVoiceIme(voiceID)) {
+            Log.w(TAG, "startDelegatedVoiceInput(): Google Speech Services VoiceIME cannot be direct-switched safely; using RecognizerIntent");
+            startRecognizerFallback(voiceIntent);
+            return;
+        }
+        if (DEBUG)
+            Log.i(TAG, "startDelegatedVoiceInput(): Found voice IME: " + voiceID);
 
-            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                // Start monitoring IME changes to switch back when voice input ends
-                startMonitoringIMEChanges();
-
-                // Try to switch to voice IME using InputMethodService.switchInputMethod()
-                // This is the recommended method for IMEs and works on all API levels (21-36)
-                // setInputMethod() is deprecated on API 28+ and doesn't work on API 36
-                try {
-                    this.switchInputMethod(voiceID);
-                    if (DEBUG)
-                        Log.i(TAG, "startVoiceInput(): Called switchInputMethod(" + voiceID + ")");
-
-                    // Verify the switch worked by checking IME after a short delay
-                    // If it didn't work, fall back to RecognizerIntent immediately
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        String currentIME = getCurrentDefaultInputMethod();
-                        if (DEBUG)
-                            Log.i(TAG, "startVoiceInput(): Current IME after switch: " + currentIME + " (expected: " + voiceID + ")");
-
-                        if (voiceID.equals(currentIME)) {
-                            mIsVoiceInputActive = true;
-                            if (DEBUG)
-                                Log.i(TAG, "startVoiceInput(): Successfully switched to voice IME");
-                        } else {
-                            if (DEBUG)
-                                Log.w(TAG, "startVoiceInput(): switchInputMethod() didn't work (still on " + currentIME + "), falling back to RecognizerIntent");
-                            stopMonitoringIMEChanges();
-                            launchRecognizerIntent(voiceIntent);
-                        }
-                    }, 200); // Delay to check if switch worked - short enough for quick fallback
-
-                    return;
-                } catch (SecurityException e) {
-                    if (DEBUG)
-                        Log.e(TAG, "startVoiceInput(): SecurityException switching to voice IME: " + e.getMessage(), e);
-                    stopMonitoringIMEChanges();
-                } catch (Exception e) {
-                    if (DEBUG)
-                        Log.e(TAG, "startVoiceInput(): Exception switching to voice IME: " + e.getMessage(), e);
-                    stopMonitoringIMEChanges();
-                }
-            } else {
-                if (DEBUG)
-                    Log.e(TAG, "startVoiceInput(): InputMethodManager is null");
-            }
-        } else if (DEBUG) {
-            Log.i(TAG, "startVoiceInput(): voice IME not found, using RecognizerIntent fallback");
+        // Get LIME IME ID for switching back
+        if (mLIMEId == null) {
+            mLIMEId = LIMEUtilities.getLIMEID(getBaseContext());
         }
 
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            startMonitoringIMEChanges();
+            try {
+                mIsVoiceInputActive = true;
+                this.switchInputMethod(voiceID);
+                if (DEBUG)
+                    Log.i(TAG, "startDelegatedVoiceInput(): Called switchInputMethod(" + voiceID + ")");
+
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    String currentIME = getCurrentDefaultInputMethod();
+                    if (DEBUG)
+                        Log.i(TAG, "startDelegatedVoiceInput(): Current IME after switch: " + currentIME + " (expected: " + voiceID + ")");
+
+                    if (voiceID.equals(currentIME)) {
+                        if (DEBUG)
+                            Log.i(TAG, "startDelegatedVoiceInput(): Successfully switched to voice IME");
+                        scheduleModernVoiceImeRecovery(voiceID, voiceIntent);
+                    } else {
+                        if (DEBUG)
+                            Log.w(TAG, "startDelegatedVoiceInput(): switchInputMethod() didn't work (still on " + currentIME + "), falling back to RecognizerIntent");
+                        stopMonitoringIMEChanges();
+                        mIsVoiceInputActive = false;
+                        startRecognizerFallback(voiceIntent);
+                    }
+                }, 200);
+
+                return;
+            } catch (SecurityException e) {
+                if (DEBUG)
+                    Log.e(TAG, "startDelegatedVoiceInput(): SecurityException switching to voice IME: " + e.getMessage(), e);
+                stopMonitoringIMEChanges();
+                mIsVoiceInputActive = false;
+            } catch (Exception e) {
+                if (DEBUG)
+                    Log.e(TAG, "startDelegatedVoiceInput(): Exception switching to voice IME: " + e.getMessage(), e);
+                stopMonitoringIMEChanges();
+                mIsVoiceInputActive = false;
+            }
+        } else if (DEBUG) {
+            Log.e(TAG, "startDelegatedVoiceInput(): InputMethodManager is null");
+        }
+        startRecognizerFallback(voiceIntent);
+    }
+
+    private void scheduleModernVoiceImeRecovery(String voiceID, Intent voiceIntent) {
+        if (!isGoogleSpeechServicesVoiceIme(voiceID)) {
+            return;
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!mIsVoiceInputActive) {
+                return;
+            }
+            String currentIME = getCurrentDefaultInputMethod();
+            if (voiceID.equals(currentIME)) {
+                Log.w(TAG, "scheduleModernVoiceImeRecovery(): Google Speech Services VoiceIME did not auto-start; switching back to LIME and using RecognizerIntent");
+                switchBackToLIME();
+                new Handler(Looper.getMainLooper()).postDelayed(
+                        () -> startRecognizerFallback(voiceIntent), 300);
+            }
+        }, 1500);
+    }
+
+    private boolean isGoogleSpeechServicesVoiceIme(String voiceID) {
+        return "com.google.android.tts/com.google.android.apps.speech.tts.googletts.settings.asr.voiceime.VoiceInputMethodService"
+                .equals(voiceID);
+    }
+
+    private void startRecognizerFallback(Intent voiceIntent) {
         try {
             launchRecognizerIntent(voiceIntent);
             if (DEBUG)
-                Log.i(TAG, "startVoiceInput(): launchRecognizerIntent() returned successfully");
+                Log.i(TAG, "startRecognizerFallback(): launchRecognizerIntent() returned successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error launching recognizer intent", e);
+        }
+    }
+
+    private boolean isRecognizerFallbackAvailable(Intent voiceIntent) {
+        try {
+            Intent intent = voiceIntent != null ? voiceIntent : getVoiceIntent();
+            return getPackageManager() != null &&
+                    !getPackageManager().queryIntentActivities(intent, 0).isEmpty();
+        } catch (Exception e) {
+            Log.w(TAG, "isRecognizerFallbackAvailable(): unable to query recognizer: " + e.getMessage());
+            return true;
         }
     }
 
@@ -5195,16 +5323,6 @@ public class LIMEService extends InputMethodService
         String language = voiceIntent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE);
         Log.i(TAG, "launchRecognizerIntent(): Intent language: " + language + ", Intent action: " + voiceIntent.getAction() +
                 ", API level: " + android.os.Build.VERSION.SDK_INT);
-
-        // Check if voice recognition activity is available
-        java.util.List<android.content.pm.ResolveInfo> activities = getPackageManager().queryIntentActivities(voiceIntent, 0);
-
-        if (activities.isEmpty()) {
-            showLimeToast("Voice recognition not available on this device");
-            return;
-        }
-
-        //android.content.ComponentName componentName = voiceIntent.resolveActivity(getPackageManager());
 
         // Use helper Activity to launch RecognizerIntent for all API levels
         // InputMethodService cannot receive onActivityResult, so we need VoiceInputActivity
@@ -5347,6 +5465,8 @@ public class LIMEService extends InputMethodService
     private void switchBackToLIME() {
         if (mLIMEId == null) {
             mLIMEId = LIMEUtilities.getLIMEID(getBaseContext());
+        }
+        if (mLIMEId == null) {
             if (DEBUG)
                 Log.e(TAG, "switchBackToLIME(): LIME ID is null");
             stopMonitoringIMEChanges();
@@ -5418,6 +5538,72 @@ public class LIMEService extends InputMethodService
             Log.w(TAG, "prepareVoiceTextForCommit(): Han conversion skipped: " + e.getMessage());
         }
         return text;
+    }
+
+    @Override
+    public void onDictationStateChanged(DictationState state) {
+        if (DEBUG) {
+            Log.i(TAG, "onDictationStateChanged(): " + state);
+        }
+        showDictationStatus(state, null);
+    }
+
+    @Override
+    public void onDictationPartialText(String text) {
+        if (DEBUG) {
+            Log.i(TAG, "onDictationPartialText(): " + text);
+        }
+        showDictationStatus(DictationState.PARTIAL, text);
+    }
+
+    @Override
+    public void onDictationFinalText(String text) {
+        clearDictationStatus();
+        if (text != null && !text.isEmpty()) {
+            commitVoiceTextWithRetry(text, 0);
+        } else {
+            mIsVoiceInputActive = false;
+        }
+    }
+
+    @Override
+    public void onDictationError(int errorCode, boolean shouldFallback) {
+        Log.w(TAG, "onDictationError(): errorCode=" + errorCode + ", shouldFallback=" + shouldFallback);
+        showDictationStatus(DictationState.ERROR, null);
+        mIsVoiceInputActive = false;
+        if (!shouldFallback) {
+            return;
+        }
+        Intent voiceIntent = getVoiceIntent();
+        String voiceID = LIMEUtilities.isVoiceSearchServiceExist(getBaseContext());
+        startDelegatedVoiceInputOrRecognizerFallback(voiceIntent, voiceID);
+    }
+
+    @Override
+    public void onDictationCancelled() {
+        clearDictationStatus();
+        mIsVoiceInputActive = false;
+    }
+
+    private void cancelInlineDictationIfActive() {
+        if (mDictationController != null && mDictationController.isActive()) {
+            mDictationController.cancel();
+        }
+    }
+
+    private void showDictationStatus(DictationState state, String text) {
+        if (mCandidateView != null) {
+            mCandidateView.showDictationStatus(state, text);
+            showCandidateView();
+            refreshCandidateInputContainer();
+        }
+    }
+
+    private void clearDictationStatus() {
+        if (mCandidateView != null) {
+            mCandidateView.clearDictationStatus();
+            refreshCandidateInputContainer();
+        }
     }
 
     /**

@@ -38,6 +38,7 @@ import androidx.core.app.NotificationCompat;
 import android.util.Log;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.InputMethodSubtype;
 
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
@@ -403,16 +404,36 @@ public class LIMEUtilities {
 		}
 		List<InputMethodInfo> mInputMethodProperties = imm.getEnabledInputMethodList();
 
-		// Legacy Google voice IMEs that behave as dedicated switch targets.
-		// Modern Google Speech Services voice UI is reached through RecognizerIntent
-		// instead; switching to its IME service can appear as a no-op on emulator.
+		String subtypeVoiceId = null;
+		String heuristicVoiceId = null;
+		String gboardId = null;
+
 		for (InputMethodInfo imi : mInputMethodProperties) {
 			String id = imi.getId();
 			if(DEBUG) Log.i(TAG, "enabled IM:" + id);
 
-			if(isVoiceInputMethodId(id)){
+			if(isKnownVoiceInputMethodId(id)){
 				return id;
 			}
+			if (subtypeVoiceId == null && hasVoiceSubtype(imi)) {
+				subtypeVoiceId = id;
+			}
+			if (heuristicVoiceId == null && isHeuristicVoiceInputMethodId(id)) {
+				heuristicVoiceId = id;
+			}
+			if (gboardId == null && isGboardInputMethodId(id)) {
+				gboardId = id;
+			}
+		}
+
+		if (subtypeVoiceId != null) {
+			return subtypeVoiceId;
+		}
+		if (heuristicVoiceId != null) {
+			return heuristicVoiceId;
+		}
+		if (gboardId != null) {
+			return gboardId;
 		}
 		return null;
 		
@@ -422,8 +443,43 @@ public class LIMEUtilities {
 		if (id == null) {
 			return false;
 		}
+		return isKnownVoiceInputMethodId(id) ||
+				isHeuristicVoiceInputMethodId(id) ||
+				isGboardInputMethodId(id);
+	}
+
+	private static boolean isKnownVoiceInputMethodId(String id) {
+		if (id == null) {
+			return false;
+		}
 		return id.equals("com.google.android.voicesearch/.ime.VoiceInputMethodService") ||
-				id.equals("com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService");
+				id.equals("com.google.android.googlequicksearchbox/com.google.android.voicesearch.ime.VoiceInputMethodService") ||
+				id.equals("com.google.android.tts/com.google.android.apps.speech.tts.googletts.settings.asr.voiceime.VoiceInputMethodService");
+	}
+
+	private static boolean isHeuristicVoiceInputMethodId(String id) {
+		if (id == null) {
+			return false;
+		}
+		String lowerId = id.toLowerCase(java.util.Locale.ROOT);
+		return lowerId.contains("voice") || lowerId.contains("speech");
+	}
+
+	private static boolean isGboardInputMethodId(String id) {
+		return id != null && id.startsWith("com.google.android.inputmethod.latin/");
+	}
+
+	private static boolean hasVoiceSubtype(InputMethodInfo imi) {
+		if (imi == null) {
+			return false;
+		}
+		for (int i = 0; i < imi.getSubtypeCount(); i++) {
+			InputMethodSubtype subtype = imi.getSubtypeAt(i);
+			if (subtype != null && "voice".equalsIgnoreCase(subtype.getMode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	public static boolean isLIMEEnabled(Context context){
