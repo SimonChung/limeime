@@ -13,7 +13,9 @@
 - Detailed automation rules are maintained outside the repository in the scheduled task memory:
   `C:\Users\Jeremy\.codex\automations\monitor-lime-ime-limeime-github\memory.md`
 - The local workspace file `automation-memory.md` is a copy of that scheduled task memory and should stay in sync with it.
+- The scheduled task memory is read-only during scheduled runs. It is loaded into every scheduled session as policy/context and must not be used as a run-time state store.
 - Mutable automation state, active watch-list context, current APK observations, and per-issue run results belong in repo file `docs/AUTOMATION_MEMORY.md`.
+- This separation is strict: policy/rules live in automation memory; current running context and tracking state live in `docs/AUTOMATION_MEMORY.md`.
 - `AGENTS.md` should stay high level. Do not duplicate the full automation memory here.
 
 ## Rule Changes
