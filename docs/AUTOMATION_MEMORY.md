@@ -28,12 +28,12 @@ Last updated: 2026-05-20T20:21:00+08:00 (Asia/Taipei)
 - #68: Maintainer-created cross-platform candidate-bar dismiss bug. Tapping dismiss should fully cancel composition and remove composing text/state. iOS currently closes composition but leaves inline composing text; Android clears candidate composing UI but leaves Android composing state open. `docs/#68_ISSUE.md` was created in commit `e6e8194c92bb9dc93aeb6aaf2ba64625b023fded`; issue labeled `bug` and assigned to `jrywu`. Keep open for fix; because it is maintainer-created, close directly when a relevant fix lands instead of posting a tester invitation.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-20T20:17:48+08:00
+- Time: 2026-05-20T20:46:00+08:00
 - From: Hermes
-- Summary: Processed APK `LIMEHD2026-6.1.6.apk` push. Confirmed `output-metadata.json` points to versionName `6.1.6`; source fixes for #62 (`1b615d6`) and #63 (`342b6a3`) are included after previous 6.1.5 APK. #54 reporter already confirmed 6.1.5 fixed and issue remains closed.
-- Changed: Repo state now records 6.1.6 observed APK state, #62/#63 retest status, and #54 closed/no-watch status. #62 was reopened for reporter verification after the 6.1.6 retest request. #63 is open pending reporter verification. GitHub webhook subscription now loads local skill `limeime-github-moderation` and listens to `issues`, `issue_comment`, `pull_request`, `push`, `release` only.
-- Needs: Watch #62 and #63 for reporter replies. Close only after reporter confirms fixed/improved, or continue debugging on negative retest. Do not re-contact #54 unless reopened or referenced by new reports.
-- Links: #62 retest comment `4498265731`; #63 retest comment `4498265930`; APK raw URL pattern `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
+- Summary: Repo `docs/AUTOMATION_MEMORY.md` is now the canonical reliable handoff location for Codex/Hermes scheduled/background identities because local `.agents/shared/handoffs.md` cannot be trusted for scheduled Codex read/write continuity. The 6.1.6 APK push was processed; `output-metadata.json` points to versionName `6.1.6`, and source fixes for #62 (`1b615d6`) and #63 (`342b6a3`) are included after previous 6.1.5 APK. #54 reporter already confirmed 6.1.5 fixed and issue remains closed.
+- Changed: #62 reporter confirmed 6.1.6 fixed/improved the remaining `𩼣` -> `魚` path; automation added `+1` and closed #62 as completed. #63 reporter replied that 6.1.6 still outputs Simplified Chinese and will upload another video; automation acknowledged and asked them to confirm tested version and LIME microphone permission state. GitHub webhook subscription loads local skill `limeime-github-moderation` and listens to `issues`, `issue_comment`, `pull_request`, `push`, `release` only.
+- Needs: Watch #63 for the promised video/details, then continue debugging; do not send another generic retest request. Remove #62 and #54 from active watch unless reopened or referenced by new reports. For future meaningful work, merge operational handoff notes into this repo file, not local `.agents/shared/handoffs.md`.
+- Links: #62 retest comment `4498265731`; #62 reporter confirmation `4498310094`; #63 retest comment `4498265930`; #63 negative retest `4498466036`; #63 acknowledgement `4498473042`; APK raw URL pattern `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
@@ -42,5 +42,5 @@ Last updated: 2026-05-20T20:21:00+08:00 (Asia/Taipei)
 - Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.6`; #55 is closed after positive reporter confirmation; #65/#66 are closed as maintainer-created tracking issues; #54 and #64 are closed as completed; #62 is closed after reporter confirmation on 6.1.6; #63 source-level fix is included in 6.1.6 and a retest request was posted after that APK landed; #67 is tracked as a bug; and #68 is tracked as a maintainer-created cross-platform dismiss/composition bug.
 
 ## Update Instructions
-- Scheduled runs should update this file through GitHub API when current issue states, APK observations, or run outcomes change.
+- Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, or cross-agent handoff/continuation notes change.
 - Do not store canonical rule/policy changes here; store those in the local automation memory file.
