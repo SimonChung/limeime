@@ -1643,7 +1643,8 @@ public class LIMEService extends InputMethodService
         try {
             if ((mComposing.length() > 0   //denotes composing just finished
                     || !selectedCandidate.isComposingCodeRecord()) // commit selected candidate if it is not the composing text. '15,6,4 Jeremy  (like related phrase or English suggestions)
-                    && !LIMEUtilities.isUnicodeSurrogate(selectedCandidate.getWord())) {   //check if it's surrogate characters (emoji) '15,7,19 Jeremy
+                    && !(LIMEUtilities.isUnicodeSurrogate(selectedCandidate.getWord())
+                            && selectedCandidate.isEmojiRecord())) {   //emoji surrogate path bypasses related-phrase flow; CJK Ext-B (non-emoji surrogate) must use main flow for #62
 
                 if (!mEnglishOnly
                         || !selectedCandidate.isComposingCodeRecord()
@@ -1794,7 +1795,8 @@ public class LIMEService extends InputMethodService
                 }
 
 
-            } else if (LIMEUtilities.isUnicodeSurrogate(selectedCandidate.getWord())) { //Jeremy '15,7,16
+            } else if (LIMEUtilities.isUnicodeSurrogate(selectedCandidate.getWord())
+                    && selectedCandidate.isEmojiRecord()) { //Jeremy '15,7,16; narrowed to emoji-only so CJK Ext-B uses main flow (#62)
                 ic.commitText(selectedCandidate.getWord(), 1);
                 clearComposing(false);
             }
