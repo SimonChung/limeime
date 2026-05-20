@@ -9,9 +9,9 @@
 
 .markdown-body > h1:first-child a {
   display: inline-block;
-  width: min(360px, 78vw);
-  height: 88px;
-  background: url("../images/lime-logo.svg") no-repeat left center / contain;
+  width: min(320px, 72vw);
+  height: 92px;
+  background: url("../../LimeStudio/app/src/main/res/drawable-hdpi/logo.png") no-repeat left center / contain;
   color: transparent;
   font-size: 0;
   line-height: 0;
