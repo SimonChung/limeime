@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-20T21:08:00+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T00:12:29+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -11,7 +11,7 @@ Last updated: 2026-05-20T21:08:00+08:00 (Asia/Taipei)
 - Latest GitHub Release observed: `v6.0.2` (published 2026-04-23).
 - Android pre-release/build artifacts are not necessarily public GitHub Releases.
 - Scheduled/API-only APK source of truth: `LimeStudio/app/release/output-metadata.json`.
-- Last observed pre-release APK: `LIMEHD2026-6.1.6.apk` (versionName 6.1.6), metadata observed 2026-05-20T21:08:00+08:00; APK bump commit `4b7f2f252de0f8d2ccfdf27f3372cb875d96ec70` was committed 2026-05-20T18:52:50+08:00.
+- Last observed pre-release APK: `LIMEHD2026-6.1.7.apk` (versionName 6.1.7), metadata observed 2026-05-21T00:12:29+08:00; APK bump commit `6f1514a42d9919b4742f0f83547c079a3d9f5675` was committed 2026-05-21T00:08:44+08:00 and merged by `8ce2466ac640` at 2026-05-21T00:08:46+08:00.
 - Raw APK URL pattern: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
 - No open pull requests were observed in the 2026-05-20T21:08:00+08:00 scheduled run.
 - No GitHub Discussions tab was observed for the repository.
@@ -26,17 +26,17 @@ Last updated: 2026-05-20T21:08:00+08:00 (Asia/Taipei)
 - #64: Community-reported settings text/inset/scroll issue. Reporter confirmed `6.1.2` fixed the issue in comment `4493627919`; automation added a `+1` reaction. Issue is closed as completed (closed 2026-05-20T01:15:24Z). Remove from active watch unless reopened or referenced by new reports.
 - #65: Maintainer-created Android table/assoc editor soft-keyboard sheet issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
 - #66: Maintainer-created iOS assoc/related editor score-field issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
-- #67: Community-reported 6.1.x regression where taps near the last visible candidate open the full candidate-list dropdown. Investigated as an Android candidate-row hit-area bug; `docs/#67_ISSUE.md` created in commit `4ebbd1adc6d684aff35ceb18dd1ae04c0975edff`; issue labeled `bug` and assigned to `jrywu`. Keep open for fix; after a relevant build lands, ask reporter to retest.
-- #68: Maintainer-created cross-platform candidate-bar dismiss bug. Tapping dismiss should fully cancel composition and remove composing text/state. iOS currently closes composition but leaves inline composing text; Android clears candidate composing UI but leaves Android composing state open. `docs/#68_ISSUE.md` was created in commit `e6e8194c92bb9dc93aeb6aaf2ba64625b023fded`; issue labeled `bug` and assigned to `jrywu`. Keep open for fix; because it is maintainer-created, close directly when a relevant fix lands instead of posting a tester invitation.
-- #69: Maintainer-created cross-platform candidate-bar tool-icon flicker bug. Continuous input can briefly show idle/tool icons between composition candidates on Android and iOS. Issue is open, labeled `bug`, and assigned to `jrywu`; `docs/#69_ISSUE.md` exists and identifies the likely root cause as candidate-bar idle tool visibility being coupled directly to an empty candidate list during transient composition transitions. Keep open for fix; because it is maintainer-created, close directly when a relevant fix lands instead of posting a tester invitation.
+- #67: Community-reported 6.1.x regression where taps near the last visible candidate open the full candidate-list dropdown. Relevant fix landed in commit `462d2b3cee1d` and APK `LIMEHD2026-6.1.7.apk`. The fixing commit auto-closed the issue, but it was reopened and a 6.1.7 retest request was posted in comment `4500340452`. Keep open pending reporter confirmation.
+- #68: Maintainer-created cross-platform candidate-bar dismiss bug. Relevant fix landed in commit `ae42ae3e58e2` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500349694`. Remove from active watch unless reopened or referenced by new reports.
+- #69: Maintainer-created cross-platform candidate-bar tool-icon flicker bug. Relevant fix landed in commit `3c6ce3c056d8` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500350136`. Remove from active watch unless reopened or referenced by new reports.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-20T21:08:00+08:00
-- From: Codex scheduled moderation
-- Summary: Checked recent issues, PRs, release/tag state, APK metadata, and active watch items. No new PRs, releases, tags, or APK bumps were observed. #63 remains the only urgent community follow-up: reporter says 6.1.6 still outputs Simplified Chinese and is expected to upload another video/details. #69 investigation doc is present, so the stale task note was updated.
-- Changed: Updated this repo automation context to record that `docs/#69_ISSUE.md` exists and to record this moderation run outcome. No issue comments, labels, assignees, closures, or APK retest invitations were posted in this run.
-- Needs: Watch #63 for the promised video/details, then inspect evidence and continue targeted debugging of Google/system voice versus LIME inline dictation path. Do not send another generic retest request. Continue implementation work for #67, #68, and #69; close maintainer-created #68/#69 directly only after relevant fixes land.
-- Links: #63 negative 6.1.6 retest `4498466036`; #63 acknowledgement `4498473042`; #69 investigation doc `https://github.com/lime-ime/limeime/blob/master/docs/%2369_ISSUE.md`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.6.apk`.
+- Time: 2026-05-21T00:12:29+08:00
+- From: Hermes interactive moderation
+- Summary: Detected new push/APK bump to `LIMEHD2026-6.1.7.apk`. Commits include fixes for #67, #68, and #69. #67 was auto-closed by the fixing commit, then reopened because it is community-reported and needs reporter confirmation; a 6.1.7 retest request was posted. #68 and #69 are maintainer-created tracking issues and remain closed with short notes referencing 6.1.7. #63 has no new 6.1.7-specific fix; continue waiting for/reviewing reporter evidence and do not send another generic retest request.
+- Changed: Updated latest APK state from 6.1.6 to 6.1.7; updated #67/#68/#69 tracking state. GitHub writes: reopened #67 and posted retest comment `4500340452`; added #68 comment `4500349694`; added #69 comment `4500350136`.
+- Needs: Watch #67 for reporter retest result on 6.1.7. Continue #63 follow-up only after reporter clarifies/replies or further evidence is inspected.
+- Links: current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #67 retest comment `https://github.com/lime-ime/limeime/issues/67#issuecomment-4500340452`; #68 note `https://github.com/lime-ime/limeime/issues/68#issuecomment-4500349694`; #69 note `https://github.com/lime-ime/limeime/issues/69#issuecomment-4500350136`.
 
 ## Shared Task Board / Identity Exchange
 - Purpose: This section is the repo-backed exchange area for Codex, Hermes, and future identities. Merge scheduled/background handoffs and task-board items here because local `.agents/shared/handoffs.md` and `.agents/shared/tasks.md` are not reliable for scheduled-session continuity.
@@ -49,28 +49,16 @@ Last updated: 2026-05-20T21:08:00+08:00 (Asia/Taipei)
   Updated: 2026-05-20T21:08:00+08:00
 - Status: todo
   Owner: next implementation/debugging identity
-  Task: Investigate #67 candidate dropdown false trigger near the last visible candidate.
-  Context: Existing investigation points to Android candidate-row hit-area / expand-edge handling.
-  Next: Implement relevant fix, then ask community reporter to retest only after a build containing the fix is available.
-  Updated: 2026-05-20T21:08:00+08:00
-- Status: todo
-  Owner: next implementation/debugging identity
-  Task: Investigate #68 candidate-bar dismiss composition cleanup across Android and iOS.
-  Context: Maintainer-created issue; close directly when relevant fix lands.
-  Next: Fix platform behavior and close with a short note referencing the fix/build; do not post a tester invitation.
-  Updated: 2026-05-20T21:08:00+08:00
-- Status: todo
-  Owner: next implementation/debugging identity
-  Task: Implement #69 candidate-bar idle-tool flicker fix.
-  Context: `docs/#69_ISSUE.md` exists. Likely root cause is idle/tool icon visibility being coupled directly to transient empty candidate lists during continuous input.
-  Next: Add delayed/explicit true-idle state handling on Android and iOS; close directly when a relevant fix lands.
-  Updated: 2026-05-20T21:08:00+08:00
+  Task: Watch #67 candidate dropdown false-trigger retest.
+  Context: Fix landed in 6.1.7 and retest request was posted after reopening the auto-closed community issue.
+  Next: Wait for reporter confirmation or negative retest; do not close until reporter confirms fixed or maintainer explicitly instructs closure.
+  Updated: 2026-05-21T00:12:29+08:00
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
 - Original memory noted #55 was replied to asking the reporter to test 6.1.1.
 - Original memory noted #58 was replied to asking the reporter to test 6.1.1 and provide a small sample table if import still fails.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.6`; #55 is closed after positive reporter confirmation; #65/#66 are closed as maintainer-created tracking issues; #54 and #64 are closed as completed; #62 is closed after reporter confirmation on 6.1.6; #63 source-level fix is included in 6.1.6 and a retest request was posted after that APK landed, but the reporter says 6.1.6 still outputs Simplified Chinese; #67 is tracked as a bug; #68 is tracked as a maintainer-created cross-platform dismiss/composition bug; and #69 is tracked as a maintainer-created cross-platform candidate-bar flicker bug with investigation doc present.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55 is closed after positive reporter confirmation; #65/#66 are closed as maintainer-created tracking issues; #54 and #64 are closed as completed; #62 is closed after reporter confirmation on 6.1.6; #63 source-level fix is included in 6.1.6 and a retest request was posted after that APK landed, but the reporter says 6.1.6 still outputs Simplified Chinese; #67 has a 6.1.7 retest request pending after the fixing commit auto-closed it; #68 and #69 are maintainer-created tracking issues closed after their fixes landed in 6.1.7.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, cross-agent handoff/continuation notes, or shared task-board items change.
