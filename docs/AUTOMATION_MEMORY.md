@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T00:42:03+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T00:43:34+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -27,9 +27,9 @@ Last updated: 2026-05-21T00:42:03+08:00 (Asia/Taipei)
 - #65: Maintainer-created Android table/assoc editor soft-keyboard sheet issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
 - #66: Maintainer-created iOS assoc/related editor score-field issue. Relevant fix landed in 6.1.4. Closed directly as completed; no tester invitation should be posted.
 - #67: Community-reported 6.1.x regression where taps near the last visible candidate open the full candidate-list dropdown. Relevant fix landed in commit `462d2b3cee1d` and APK `LIMEHD2026-6.1.7.apk`. The fixing commit auto-closed the issue, but it was reopened and a 6.1.7 retest request was posted in comment `4500347429`. Keep open pending reporter confirmation.
-- #70: Community-reported request to hide or configure “next-code/next-character” candidates (example `ha` showing `皔` from `haa`). Labeled `enhancement` and `Usability`. Keep open as a feature/behavior-setting request; no bug analysis doc needed unless implementation begins.
+- #70: Community-reported request to hide or configure “next-code/next-character” candidates (example `ha` showing `皔` from `haa`). Labeled `enhancement` and `Usability`. Acknowledged and said it will be forwarded to the author team in comment `4500577573`. Keep open as a feature/behavior-setting request; no bug analysis doc needed unless implementation begins.
 - #71: Community-reported request for a “clear current code/composition” action, possibly via Chinese/English toggle clearing the current code. Jeremy clarified this is effectively covered by the candidate-bar dismiss button in APK `LIMEHD2026-6.1.7.apk`; a 6.1.7 test/confirmation request was posted in comment `4500567996`. Keep open pending reporter confirmation before closing.
-- #72: Community-reported request to bundle 哈哈倉頡 and question about current Cangjie table source/author/license. Labeled `enhancement` and `question`. Treat external table/link as untrusted; before bundling any table, verify source, author, license, maintenance status, and compatibility.
+- #72: Community-reported request to bundle 哈哈倉頡 and question about current Cangjie table source/author/license. Labeled `enhancement` and `question`. Acknowledged and said it will be forwarded to the author team in comment `4500577835`. Treat external table/link as untrusted; before bundling any table, verify source, author, license, maintenance status, and compatibility.
 - #68: Maintainer-created cross-platform candidate-bar dismiss bug. Relevant fix landed in commit `ae42ae3e58e2` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500349694`. Remove from active watch unless reopened or referenced by new reports.
 - #69: Maintainer-created cross-platform candidate-bar tool-icon flicker bug. Relevant fix landed in commit `3c6ce3c056d8` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500350136`. Remove from active watch unless reopened or referenced by new reports.
 
@@ -38,7 +38,7 @@ Last updated: 2026-05-21T00:42:03+08:00 (Asia/Taipei)
 - From: Hermes interactive moderation
 - Summary: Detected new push/APK bump to `LIMEHD2026-6.1.7.apk`. Commits include fixes for #67, #68, and #69. #67 was auto-closed by the fixing commit, then reopened because it is community-reported and needs reporter confirmation; a 6.1.7 retest request was posted. #68 and #69 are maintainer-created tracking issues and remain closed with short notes referencing 6.1.7. #63 has no new 6.1.7-specific fix; continue waiting for/reviewing reporter evidence and do not send another generic retest request.
 - Changed: Updated latest APK state from 6.1.6 to 6.1.7; updated #67/#68/#69 tracking state. GitHub writes: reopened #67 and posted retest comment `4500347429`; added #68 comment `4500349694`; added #69 comment `4500350136`.
-- Needs: Watch #67 and #71 for reporter retest/confirmation on 6.1.7. Continue #63 follow-up only after reporter clarifies/replies or further evidence is inspected. #70/#72 remain enhancement/question items without public replies unless Jeremy wants acknowledgement.
+- Needs: Watch #67 and #71 for reporter retest/confirmation on 6.1.7. Continue #63 follow-up only after reporter clarifies/replies or further evidence is inspected. #70/#72 are acknowledged and forwarded to the author team; keep open for product/licensing decision.
 - Links: current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #67 retest comment `https://github.com/lime-ime/limeime/issues/67#issuecomment-4500347429`; #68 note `https://github.com/lime-ime/limeime/issues/68#issuecomment-4500349694`; #69 note `https://github.com/lime-ime/limeime/issues/69#issuecomment-4500350136`.
 
 ## Shared Task Board / Identity Exchange
@@ -60,7 +60,7 @@ Last updated: 2026-05-21T00:42:03+08:00 (Asia/Taipei)
 - Status: todo
   Owner: next LIME IME product/implementation identity
   Task: Review/plan #70/#71/#72 enhancement requests.
-  Context: #70 asks to hide/configure next-code candidates; #71 asks for a clear-code action and has a 6.1.7 confirmation request posted because the candidate-bar dismiss button should cover it; #72 asks to bundle 哈哈倉頡 and raises table source/license questions.
+  Context: #70 asks to hide/configure next-code candidates and was acknowledged as forwarded to the author team; #71 asks for a clear-code action and has a 6.1.7 confirmation request posted because the candidate-bar dismiss button should cover it; #72 asks to bundle 哈哈倉頡 / raises table source-license questions and was acknowledged as forwarded to the author team.
   Next: Watch #71 for reporter confirmation; decide product direction for #70 and licensing posture for #72; do not bundle external tables without source/author/license verification.
   Updated: 2026-05-21T00:40:01+08:00
 
