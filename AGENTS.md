@@ -23,6 +23,7 @@
 
 - During interactive sessions, judge whether a user request is a one-time action or a persistent rule.
 - If it is a persistent automation rule, update both local `automation-memory.md` and the scheduled task memory file.
+- Also judge whether the scheduled automation prompt in `automation.toml` must be updated, because scheduled sessions may not automatically load `AGENTS.md`.
 - If it is mutable current state, update `docs/AUTOMATION_MEMORY.md`.
 - If it is a high-level project maintenance principle, update `AGENTS.md`.
 - If unsure whether a request should become persistent project or automation memory, ask the user explicitly.
