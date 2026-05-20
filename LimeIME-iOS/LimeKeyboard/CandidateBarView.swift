@@ -102,6 +102,21 @@ final class CandidateBarView: UIView {
 
     // MARK: - State
     private var candidates:  [Mapping] = []
+    private static let idleToolsRevealDelay: TimeInterval = 0.12
+    private var idleToolsRevealWorkItem: DispatchWorkItem?
+    private var idleToolsRevealReady = true
+    private var idleToolsSuppressed = false {
+        didSet {
+            guard oldValue != idleToolsSuppressed else { return }
+            if idleToolsSuppressed {
+                cancelIdleToolsReveal()
+                idleToolsRevealReady = false
+            } else if candidates.isEmpty && !idleToolsRevealReady {
+                scheduleIdleToolsReveal()
+            }
+            rebuildButtons()
+        }
+    }
 
 
     /// Currently-highlighted candidate index, or -1 when no cell should be drawn highlighted.
@@ -412,6 +427,10 @@ final class CandidateBarView: UIView {
     /// left-edge label to update.
     func setComposingCode(_ code: String) { _ = code }
 
+    func setIdleToolsSuppressed(_ suppressed: Bool) {
+        idleToolsSuppressed = suppressed
+    }
+
     // MARK: - Composing region (RC3 Option A)
 
     /// Recompute the composing label's text. Width/height are static;
@@ -451,8 +470,10 @@ final class CandidateBarView: UIView {
     ///     lists (related phrases, Chinese punctuation, English suggestions) so no cell is
     ///     drawn highlighted — matches Android `CandidateView.setSuggestions` rule.
     func setCandidates(_ mappings: [Mapping], selectedIndex: Int = -1) {
+        let hadCandidates = !candidates.isEmpty
         candidates = mappings
         self.selectedIndex = (selectedIndex >= 0 && selectedIndex < mappings.count) ? selectedIndex : -1
+        updateIdleToolsRevealState(hadCandidates: hadCandidates)
         rebuildButtons()
         // layoutIfNeeded must come BEFORE setContentOffset(.zero).
         // During the layout pass UIScrollView internally adjusts contentOffset to
@@ -589,11 +610,68 @@ final class CandidateBarView: UIView {
         let hasCandidates = !candidates.isEmpty
         let allowEmoji    = !isPad
         let allowOptions  = true
-        moreButton.isHidden    = !hasCandidates
-        moreSep.isHidden       = !hasCandidates
-        dismissButton.isHidden = !hasCandidates
-        emojiButton.isHidden   = hasCandidates  || !allowEmoji
-        optionsButton.isHidden = hasCandidates  || !allowOptions
+        let showIdleTools = CandidateBarView.shouldShowIdleTools(
+            hasCandidates: hasCandidates,
+            idleRevealReady: idleToolsRevealReady,
+            idleToolsSuppressed: idleToolsSuppressed,
+            allowTool: true)
+        let showActiveChrome = CandidateBarView.shouldShowActiveChrome(
+            hasCandidates: hasCandidates,
+            showIdleTools: showIdleTools,
+            idleRevealReady: idleToolsRevealReady)
+        moreButton.isHidden    = !showActiveChrome
+        moreSep.isHidden       = !showActiveChrome
+        dismissButton.isHidden = !showActiveChrome
+        emojiButton.isHidden   = !showIdleTools || !allowEmoji
+        optionsButton.isHidden = !showIdleTools || !allowOptions
+    }
+
+    static func shouldShowIdleTools(
+        hasCandidates: Bool,
+        idleRevealReady: Bool,
+        idleToolsSuppressed: Bool,
+        allowTool: Bool
+    ) -> Bool {
+        return !hasCandidates && idleRevealReady && !idleToolsSuppressed && allowTool
+    }
+
+    static func shouldShowActiveChrome(
+        hasCandidates: Bool,
+        showIdleTools: Bool,
+        idleRevealReady: Bool
+    ) -> Bool {
+        return hasCandidates || (!showIdleTools && !idleRevealReady)
+    }
+
+    private func updateIdleToolsRevealState(hadCandidates: Bool) {
+        if !candidates.isEmpty {
+            cancelIdleToolsReveal()
+            idleToolsRevealReady = false
+        } else if idleToolsSuppressed {
+            cancelIdleToolsReveal()
+            idleToolsRevealReady = false
+        } else if hadCandidates {
+            idleToolsRevealReady = false
+            scheduleIdleToolsReveal()
+        } else {
+            idleToolsRevealReady = true
+        }
+    }
+
+    private func scheduleIdleToolsReveal() {
+        cancelIdleToolsReveal()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.idleToolsRevealReady = true
+            self.rebuildButtons()
+        }
+        idleToolsRevealWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + CandidateBarView.idleToolsRevealDelay, execute: workItem)
+    }
+
+    private func cancelIdleToolsReveal() {
+        idleToolsRevealWorkItem?.cancel()
+        idleToolsRevealWorkItem = nil
     }
 
     private func makeCandidateButton(mapping: Mapping, index: Int) -> CandidateButton {
@@ -713,6 +791,7 @@ final class CandidateBarView: UIView {
     }
 
     @objc private func moreTapped() {
+        guard !candidates.isEmpty else { return }
         if feedbackVibration { impactFeedback.impactOccurred() }
         // Reset scroll on expand so when the expanded panel dismisses the
         // user lands back on the first row instead of wherever they had

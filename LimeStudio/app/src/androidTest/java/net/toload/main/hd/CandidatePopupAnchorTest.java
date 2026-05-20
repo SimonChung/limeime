@@ -151,4 +151,19 @@ public class CandidatePopupAnchorTest {
         assertTrue(CandidateInInputViewContainer.shouldShowCollapseGlyph(false, true, false));
         assertFalse(CandidateInInputViewContainer.shouldShowCollapseGlyph(true, true, false));
     }
+
+    @Test
+    public void idleToolsWaitForRevealDelayAndNoComposition() {
+        assertFalse(CandidateInInputViewContainer.shouldShowIdleTools(false, true, false));
+        assertFalse(CandidateInInputViewContainer.shouldShowIdleTools(true, false, false));
+        assertFalse(CandidateInInputViewContainer.shouldShowIdleTools(true, true, true));
+        assertTrue(CandidateInInputViewContainer.shouldShowIdleTools(true, true, false));
+    }
+
+    @Test
+    public void activeChromeStaysVisibleDuringDelayedEmptyTransition() {
+        assertTrue(CandidateInInputViewContainer.shouldShowActiveChrome(false, false, false));
+        assertTrue(CandidateInInputViewContainer.shouldShowActiveChrome(true, false, false));
+        assertFalse(CandidateInInputViewContainer.shouldShowActiveChrome(true, true, true));
+    }
 }

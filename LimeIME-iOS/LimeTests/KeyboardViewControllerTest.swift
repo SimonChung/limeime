@@ -371,6 +371,18 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertTrue(helper.contains("max(composingLength, mComposing.count)"))
     }
 
+    func testCandidateBarIdleToolVisibilityIsDelayedAndSuppressible() throws {
+        let sourceURL = projectFileURL("LimeKeyboard/CandidateBarView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("idleToolsRevealDelay: TimeInterval = 0.12"))
+        XCTAssertTrue(source.contains("idleToolsSuppressed"))
+        XCTAssertTrue(source.contains("scheduleIdleToolsReveal()"))
+        XCTAssertTrue(source.contains("return !hasCandidates && idleRevealReady && !idleToolsSuppressed && allowTool"))
+        XCTAssertTrue(source.contains("shouldShowActiveChrome"))
+        XCTAssertTrue(source.contains("return hasCandidates || (!showIdleTools && !idleRevealReady)"))
+    }
+
     private func emojiMapping(_ word: String) -> Mapping {
         Mapping(id: 0, code: "", word: word,
                 score: 0, baseScore: 0,

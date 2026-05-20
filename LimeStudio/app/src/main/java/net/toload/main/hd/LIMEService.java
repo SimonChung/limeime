@@ -3370,6 +3370,11 @@ public class LIMEService extends InputMethodService
         this.updateCandidates(false);
     }
 
+    public boolean isComposingOrSearchingCandidates() {
+        return (mComposing != null && mComposing.length() > 0)
+                || (queryThread != null && queryThread.isAlive());
+    }
+
     static int adjustedEmojiInsertionPosition(List<Mapping> list, int requestedPosition) {
         if (list == null || list.isEmpty()) {
             return 0;

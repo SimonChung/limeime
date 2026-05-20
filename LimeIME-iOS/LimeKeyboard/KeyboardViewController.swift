@@ -1344,6 +1344,7 @@ final class KeyboardViewController: UIInputViewController {
         hasCandidatesShown = false
         hasChineseSymbolCandidatesShown = false
         candidateBar.setComposingCode("")
+        candidateBar.setIdleToolsSuppressed(false)
         candidateBar.setCandidates([])
         hideComposingPopup()
     }
@@ -1367,6 +1368,7 @@ final class KeyboardViewController: UIInputViewController {
         composingLength  = 0
         selectedCandidate = nil
         hasCandidatesShown = false
+        candidateBar.setIdleToolsSuppressed(false)
         hideComposingPopup()
     }
 
@@ -1376,6 +1378,7 @@ final class KeyboardViewController: UIInputViewController {
         guard mPredictionOn, let ss = searchServer, !mComposing.isEmpty else {
             clearSuggestions(); return
         }
+        candidateBar.setIdleToolsSuppressed(true)
         // PROFILING: BEGIN — Stroke span (entry → stage-1 render). See docs/IOS_PROFILING.md.
         let strokeID = Prof.newID()
         Prof.begin("Stroke", id: strokeID)
@@ -1505,6 +1508,7 @@ final class KeyboardViewController: UIInputViewController {
             selectedIdx = -1
         }
         selectedCandidate = (selectedIdx >= 0) ? list[selectedIdx] : nil
+        candidateBar.setIdleToolsSuppressed(false)
 
         // Mixed mode (spec §6, Android CandidateView.setComposingText):
         // - Show keyname popup ABOVE the candidate bar (e.g. "日土" for Dayi "dj")
@@ -1794,6 +1798,7 @@ final class KeyboardViewController: UIInputViewController {
         mCandidateList     = []
         hasCandidatesShown = false
         selectedCandidate  = nil
+        candidateBar.setIdleToolsSuppressed(!mComposing.isEmpty)
         candidateBar.setCandidates([])
         // Keep the keyname popup visible while the user is still composing.
         // clearSuggestions() runs both when composing is fully cleared AND when
