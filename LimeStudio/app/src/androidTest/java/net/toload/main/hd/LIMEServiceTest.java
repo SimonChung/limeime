@@ -236,6 +236,42 @@ public class LIMEServiceTest {
         verify(candidateView).showLimeToast("大易輸入法");
     }
 
+    @Test
+    public void dismissCandidateComposingCancelsInputConnectionComposingText() throws Exception {
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+        when(inputConnection.finishComposingText()).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        LIMEService service = new TestableLIMEService();
+        CandidateView candidateView = createMockCandidateView();
+        injectMockComponents(service, candidateView, null, null, null);
+
+        Field composingField = LIMEService.class.getDeclaredField("mComposing");
+        composingField.setAccessible(true);
+        composingField.set(service, new StringBuilder("abc"));
+
+        Field candidateListField = LIMEService.class.getDeclaredField("mCandidateList");
+        candidateListField.setAccessible(true);
+        LinkedList<Mapping> candidateList = new LinkedList<>();
+        candidateList.add(new Mapping());
+        candidateListField.set(service, candidateList);
+
+        service.dismissCandidateComposing();
+
+        verify(candidateView).hideCandidatePopup();
+        verify(inputConnection).commitText("", 0);
+        verify(inputConnection).finishComposingText();
+        assertEquals(0, ((StringBuilder) composingField.get(service)).length());
+        assertTrue(((LinkedList<?>) candidateListField.get(service)).isEmpty());
+    }
+
     private static Mapping createCandidate(String code, String word) {
         Mapping mapping = new Mapping();
         mapping.setCode(code);

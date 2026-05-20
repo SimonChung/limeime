@@ -1348,6 +1348,19 @@ final class KeyboardViewController: UIInputViewController {
         hideComposingPopup()
     }
 
+    /// Cancel from the candidate-bar dismiss button, including the inline
+    /// composing text inserted into the host document by the iOS simulation.
+    private func cancelActiveComposingFromCandidateDismiss() {
+        hideLimeToast()
+        let inlineComposingLength = max(composingLength, mComposing.count)
+        if inlineComposingLength > 0 {
+            isSelfUpdate = true
+            for _ in 0..<inlineComposingLength { textDocumentProxy.deleteBackward() }
+            isSelfUpdate = false
+        }
+        cancelComposing()
+    }
+
     /// Reset composing tracking after text has been committed or cleared.
     private func finishComposing() {
         mComposing       = ""
@@ -1744,7 +1757,7 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func dismissExpandedAndComposing() {
         fireHapticIfEnabled()
         hideExpandedCandidates()
-        cancelComposing()
+        cancelActiveComposingFromCandidateDismiss()
     }
 
     /// Fires an impact haptic matching the current vibrateLevel, when vibrate preference
@@ -3135,7 +3148,7 @@ extension KeyboardViewController: CandidateBarViewDelegate {
 
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
         if isExpandedCandidatesVisible { hideExpandedCandidates() }
-        cancelComposing()
+        cancelActiveComposingFromCandidateDismiss()
     }
 
     func candidateBarViewDidRequestMore(_ view: CandidateBarView) {

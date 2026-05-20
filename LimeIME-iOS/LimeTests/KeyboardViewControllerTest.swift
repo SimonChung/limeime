@@ -352,6 +352,25 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertFalse(CandidateBarSystemChrome.usesLightForeground(systemUserInterfaceStyle: .unspecified))
     }
 
+    func testCandidateBarDismissRoutesThroughForcedComposingClear() throws {
+        let sourceURL = projectFileURL("LimeKeyboard/KeyboardViewController.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let pattern = #"func candidateBarViewDidRequestDismiss[\s\S]*?\n    \}"#
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(source.startIndex..<source.endIndex, in: source)
+        let match = try XCTUnwrap(regex.firstMatch(in: source, range: range))
+        let method = String(source[Range(match.range, in: source)!])
+
+        XCTAssertTrue(method.contains("cancelActiveComposingFromCandidateDismiss()"))
+        XCTAssertFalse(method.contains("cancelComposing()"))
+
+        let helperPattern = #"func cancelActiveComposingFromCandidateDismiss[\s\S]*?\n    \}"#
+        let helperRegex = try NSRegularExpression(pattern: helperPattern)
+        let helperMatch = try XCTUnwrap(helperRegex.firstMatch(in: source, range: range))
+        let helper = String(source[Range(helperMatch.range, in: source)!])
+        XCTAssertTrue(helper.contains("max(composingLength, mComposing.count)"))
+    }
+
     private func emojiMapping(_ word: String) -> Mapping {
         Mapping(id: 0, code: "", word: word,
                 score: 0, baseScore: 0,

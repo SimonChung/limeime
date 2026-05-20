@@ -4054,7 +4054,9 @@ public class LIMEService extends InputMethodService
         if (mCandidateView != null) {
             mCandidateView.hideCandidatePopup();
         }
-        clearComposing(false);
+        clearComposing(true);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.finishComposingText();
     }
 
     public void showLimeToast(CharSequence text) {
