@@ -1096,10 +1096,7 @@ public class CandidateView extends View implements View.OnClickListener {
     }
 
     static boolean isExpandEdgeTap(int touchX, int viewWidth, int expandButtonWidth, int totalWidth) {
-        return viewWidth > 0
-                && expandButtonWidth > 0
-                && totalWidth > viewWidth
-                && touchX >= viewWidth - expandButtonWidth;
+        return false;
     }
 
     static FrameLayout.LayoutParams popupFrameContentLayoutParams(int popHeight) {

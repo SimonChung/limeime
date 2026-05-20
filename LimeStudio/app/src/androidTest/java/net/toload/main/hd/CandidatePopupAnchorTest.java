@@ -132,8 +132,8 @@ public class CandidatePopupAnchorTest {
     }
 
     @Test
-    public void candidateStripRightEdgeTapExpandsOverflowCandidates() {
-        assertTrue(CandidateView.isExpandEdgeTap(455, 500, 48, 640));
+    public void candidateStripRightEdgeTapDoesNotStealLastCandidate() {
+        assertFalse(CandidateView.isExpandEdgeTap(455, 500, 48, 640));
         assertFalse(CandidateView.isExpandEdgeTap(451, 500, 48, 640));
         assertFalse(CandidateView.isExpandEdgeTap(455, 500, 48, 500));
     }
