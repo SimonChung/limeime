@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T22:17:43+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T22:18:43+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -61,7 +61,7 @@ Last updated: 2026-05-21T22:17:43+08:00 (Asia/Taipei)
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55/#54/#62/#64/#65/#66/#67/#68/#69/#70 are closed where noted; #63 remains open after a negative 6.1.6 retest but is no longer an active reminder/watch per Jeremy; #71 and #75 remain open bugs needing implementation/fix follow-up, with #75 now including both stale keyboard redraw and long-press popup dismissal paths; #70/#72/#73/#74 remain open enhancement/question/product-decision items.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55/#54/#62/#64/#65/#66/#67/#68/#69/#70 are closed where noted; #63 remains open after a negative 6.1.6 retest but is no longer an active reminder/watch per Jeremy; #71 and #75 remain open bugs needing implementation/fix follow-up, with #75 now including both stale keyboard redraw and long-press popup dismissal paths; #72/#73/#74 remain open enhancement/question/product-decision items, while #70 is maintainer-closed unless reporter follow-up reopens it.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, cross-agent handoff/continuation notes, or shared task-board items change.
