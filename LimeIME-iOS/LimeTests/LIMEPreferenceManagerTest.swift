@@ -34,7 +34,7 @@ final class LIMEPreferenceManagerTest: XCTestCase {
     }
 
     func testDefaultEnableEmojiPosition() {
-        XCTAssertEqual(prefs.enableEmojiPosition, 6)
+        XCTAssertEqual(prefs.enableEmojiPosition, 5)
     }
 
     func testMigratesDisabledEnableEmojiToPositionNone() {

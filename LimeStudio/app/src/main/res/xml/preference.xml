@@ -113,22 +113,24 @@
             android:summary="@string/auto_chinese_symbol_summary"
             android:title="@string/auto_chinese_symbol" />
         <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="candidate_switch"
-            android:summary="@string/candidate_switch_summary"
-            android:title="@string/candidate_switch" />
-        <CheckBoxPreference
             android:defaultValue="false"
             android:key="persistent_language_mode"
             android:summary="@string/persistent_language_mode_summary"
             android:title="@string/persistent_language_mode" />
         <ListPreference
-            android:defaultValue="6"
+            android:defaultValue="5"
             android:dialogTitle="@string/enable_emoji_position_dialog_title"
             android:entries="@array/emoji_display_position_title"
             android:entryValues="@array/emoji_display_position"
             android:key="enable_emoji_position"
             android:title="@string/enable_emoji_position" />
+        <ListPreference
+            android:defaultValue="20"
+            android:dialogTitle="@string/similiar_list"
+            android:entries="@array/similiar_codes"
+            android:entryValues="@array/similiar_codes"
+            android:key="similiar_list"
+            android:title="@string/similiar_list" />
         <PreferenceScreen
             android:key="reverse_lookup_screen"
             android:title="@string/im_reverse_lookup_screen_title">
@@ -279,13 +281,6 @@
             android:key="similiar_enable"
             android:summary="@string/similiar_enable_switch_summary"
             android:title="@string/similiar_enable_switch" />
-        <ListPreference
-            android:defaultValue="20"
-            android:dialogTitle="@string/similiar_list"
-            android:entries="@array/similiar_codes"
-            android:entryValues="@array/similiar_codes"
-            android:key="similiar_list"
-            android:title="@string/similiar_list" />
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="candidate_suggestion"

@@ -134,8 +134,11 @@ final class LIMEPreferenceManager {
         set { defaults.set(newValue, forKey: "auto_chinese_symbol") }
     }
 
+    /// Always returns `true`. The UI toggle was removed because free-scroll candidate
+    /// selection is the only sensible behaviour on modern iOS / Android; the paged
+    /// alternative is not used. The stored UserDefaults value (if any) is ignored.
     var candidateSwitch: Bool {
-        get { boolValue("candidate_switch", default: true) }
+        get { true }
         set { defaults.set(newValue, forKey: "candidate_switch") }
     }
 
@@ -152,7 +155,7 @@ final class LIMEPreferenceManager {
                 }
                 defaults.removeObject(forKey: "enable_emoji")
             }
-            return intValue("enable_emoji_position", default: 6)
+            return intValue("enable_emoji_position", default: 5)
         }
         set { defaults.set(newValue, forKey: "enable_emoji_position") }
     }

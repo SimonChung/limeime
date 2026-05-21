@@ -28,7 +28,7 @@ struct PreferencesTabView: View {
     @AppStorage("auto_chinese_symbol",      store: sharedDefaults) private var autoChineseSymbol: Bool = false
     @AppStorage("candidate_switch",         store: sharedDefaults) private var candidateSwitch: Bool = true
     @AppStorage("persistent_language_mode", store: sharedDefaults) private var persistentLanguageMode: Bool = false
-    @AppStorage("enable_emoji_position",    store: sharedDefaults) private var emojiPosition: Int = 6
+    @AppStorage("enable_emoji_position",    store: sharedDefaults) private var emojiPosition: Int = 5
 
     // §5.2.2 "鍵盤類型" (phonetic_keyboard_type) is IM-specific — rendered in
     // IMDetailView for the phonetic IM only, not in the Preferences tab.
@@ -127,7 +127,6 @@ struct PreferencesTabView: View {
                 Section(header: Text("輸入法行為")) {
                     Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧選字", "部份輸入法可能會影響中英混打功能") }
                     Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點模式", "無候選字詞時顯示中文標點選項") }
-                    Toggle(isOn: $candidateSwitch) { prefRow("滑動選取", "滑動選取輸入法建議文字") }
                     Toggle(isOn: $persistentLanguageMode) { prefRow("記憶中英模式", "下次切換前保持中英模式") }
                     Picker("設定 EMOJI 候選列顯示位置", selection: $emojiPosition) {
                         Text("不顯示 Emoji 候選字").tag(0)
@@ -135,6 +134,12 @@ struct PreferencesTabView: View {
                             Text("第 \(pos) 候選字後顯示").tag(pos)
                         }
                     }
+                    Picker("建議字顯示數量", selection: $similiarList) {
+                        ForEach(similiarOpts, id: \.self) { v in
+                            Text(v == 0 ? "關閉" : "\(v)").tag(v)
+                        }
+                    }
+                    .disabled(!similiarEnable)
                     NavigationLink(destination: ReverseLookupSettingsView()) {
                         Label("字根反查設定", systemImage: "magnifyingglass")
                     }
@@ -155,12 +160,6 @@ struct PreferencesTabView: View {
                 // MARK: §8.6
                 Section(header: Text("關聯字與學習")) {
                     Toggle(isOn: $similiarEnable) { prefRow("啟用關聯字庫", "啟用關聯字庫功能") }
-                    Picker("建議字顯示數量", selection: $similiarList) {
-                        ForEach(similiarOpts, id: \.self) { v in
-                            Text(v == 0 ? "關閉" : "\(v)").tag(v)
-                        }
-                    }
-                    .disabled(!similiarEnable)
                     Toggle(isOn: $candidateSuggestion) { prefRow("啟動自建關聯字", "依輸入文字自動建立關聯字") }
                     Toggle(isOn: $learnPhrase) { prefRow("自動學習新詞", "從常用關聯字學習新詞") }
                     Toggle(isOn: $learningSwitch) { prefRow("啟動選取排序", "依選取次數排序選字清單") }

@@ -361,10 +361,14 @@ public class LIMEPreferenceManager {
 		return sp.getBoolean("similiar_enable", true);
 	}
 	
+	/**
+	 * Always returns {@code true}. The {@code candidate_switch} preference UI was
+	 * removed because free-scroll candidate selection is the only sensible behaviour
+	 * on modern Android; the paged alternative is unused. The stored value (if any)
+	 * is ignored.
+	 */
 	public boolean getSelectDefaultOnSliding(){
-		
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		return sp.getBoolean("candidate_switch", true);
+		return true;
 	}
 	
 	public boolean getVibrateOnKeyPressed(){
@@ -390,7 +394,7 @@ public class LIMEPreferenceManager {
 			}
 			editor.apply();
 		}
-		return Integer.parseInt(sp.getString("enable_emoji_position", "6"));
+		return Integer.parseInt(sp.getString("enable_emoji_position", "5"));
 	}
 
 	public boolean getPersistentLanguageMode(){

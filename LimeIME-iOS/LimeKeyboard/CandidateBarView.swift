@@ -87,17 +87,54 @@ final class CandidateBarView: UIView {
     }
 
     // MARK: - Feedback
-    var feedbackVibration: Bool = false
-    var vibrateLevel: Int = 40  // 10–20→.light, 40→.medium, 60–80→.heavy
-
-    private var impactFeedback: UIImpactFeedbackGenerator {
-        let style: UIImpactFeedbackGenerator.FeedbackStyle
-        switch vibrateLevel {
-        case ..<30:   style = .light
-        case 30..<50: style = .medium
-        default:      style = .heavy
+    var feedbackVibration: Bool = false {
+        didSet {
+            guard oldValue != feedbackVibration else { return }
+            if feedbackVibration { ensureHapticGenerator() } else { hapticGenerator = nil }
         }
-        return UIImpactFeedbackGenerator(style: style)
+    }
+    var vibrateLevel: Int = 40 {
+        didSet {
+            guard oldValue != vibrateLevel else { return }
+            rebuildHapticGenerator()
+        }
+    }
+
+    // Stored haptic generator. See KeyboardView for the rationale — the previous
+    // computed-property pattern caused cold-start latency and dropped keystrokes.
+    private var hapticGenerator: UIFeedbackGenerator?
+    private var lastHapticAt: CFTimeInterval = 0
+    private let minHapticInterval: CFTimeInterval = 0.025
+
+    private func ensureHapticGenerator() {
+        if hapticGenerator == nil { rebuildHapticGenerator() }
+    }
+
+    private func rebuildHapticGenerator() {
+        guard feedbackVibration else { hapticGenerator = nil; return }
+        hapticGenerator = KeyboardView.makeHapticGenerator(for: vibrateLevel)
+        hapticGenerator?.prepare()
+    }
+
+    @inline(__always)
+    fileprivate func fireHaptic() {
+        guard feedbackVibration else { return }
+        let now = CACurrentMediaTime()
+        guard now - lastHapticAt >= minHapticInterval else { return }
+        lastHapticAt = now
+        ensureHapticGenerator()
+        guard let gen = hapticGenerator else { return }
+        if let impact = gen as? UIImpactFeedbackGenerator {
+            impact.impactOccurred()
+        } else if let sel = gen as? UISelectionFeedbackGenerator {
+            sel.selectionChanged()
+        }
+        gen.prepare()
+    }
+
+    func prepareHapticGenerator() {
+        ensureHapticGenerator()
+        hapticGenerator?.prepare()
     }
 
     // MARK: - State
@@ -769,30 +806,30 @@ final class CandidateBarView: UIView {
     @objc private func candidateTapped(_ sender: UIButton) {
         let index = sender.tag
         guard index < candidates.count else { return }
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         // Flash the highlight on the tapped cell before the commit animates.
         setSelectedIndex(index)
         delegate?.candidateBarView(self, didSelect: candidates[index])
     }
 
     @objc private func dismissTapped() {
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         delegate?.candidateBarViewDidRequestDismiss(self)
     }
 
     @objc private func emojiTapped() {
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         delegate?.candidateBarViewDidRequestEmoji(self)
     }
 
     @objc private func optionsTapped() {
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         delegate?.candidateBarViewDidRequestOptions(self)
     }
 
     @objc private func moreTapped() {
         guard !candidates.isEmpty else { return }
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         // Reset scroll on expand so when the expanded panel dismisses the
         // user lands back on the first row instead of wherever they had
         // scrolled. Skip on collapse — chevronExpanded reflects the *current*

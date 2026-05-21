@@ -4223,18 +4223,29 @@ public class LIMEService extends InputMethodService
             hideEmojiKeyboard();
         }
 
-        // Auto commit the text when user switch the keyboard from chi -> eng
+        // Cancel active composition when switching Chi -> Eng; other switches keep
+        // the legacy auto-commit behavior.
         try {
-            if (mComposing != null && mComposing.length() > 0) {
+            if (primaryCode == KEYCODE_SWITCH_TO_ENGLISH_MODE) {
+                if (mComposing != null && mComposing.length() > 0) {
+                    clearComposing(true);
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.finishComposingText();
+                } else {
+                    clearComposing(false);
+                }
+            } else if (mComposing != null && mComposing.length() > 0) {
                 getCurrentInputConnection().commitText(mComposing, 1);
                 finishComposing();
+                clearComposing(false);
+            } else {
+                clearComposing(false);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in composing finish", e);
             // ignore all possible error
         }
 
-        clearComposing(false);
         hideCandidateView();
 
 

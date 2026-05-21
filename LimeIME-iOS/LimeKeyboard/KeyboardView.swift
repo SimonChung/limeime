@@ -175,18 +175,76 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     }
 
     // MARK: - Feedback settings (spec §15)
-    var feedbackVibration: Bool = false
-    var feedbackSound:     Bool = false
-    var vibrateLevel: Int = 40  // 10–20→.light, 40→.medium, 60–80→.heavy
-
-    private var impactFeedback: UIImpactFeedbackGenerator {
-        let style: UIImpactFeedbackGenerator.FeedbackStyle
-        switch vibrateLevel {
-        case ..<30:  style = .light
-        case 30..<50: style = .medium
-        default:     style = .heavy
+    var feedbackVibration: Bool = false {
+        didSet {
+            guard oldValue != feedbackVibration else { return }
+            if feedbackVibration { ensureHapticGenerator() } else { hapticGenerator = nil }
         }
-        return UIImpactFeedbackGenerator(style: style)
+    }
+    var feedbackSound:     Bool = false
+    var vibrateLevel: Int = 40 {
+        didSet {
+            guard oldValue != vibrateLevel else { return }
+            rebuildHapticGenerator()
+        }
+    }
+
+    // Stored haptic generator. Held across keystrokes and re-prepared after each fire
+    // so the Taptic Engine stays warm. Rebuilding/preparing on every keypress (the old
+    // computed-property pattern) caused two bugs:
+    //   1. cold-start latency → the pulse arrived after the visible press, reading as
+    //      "haptic feels longer than the iOS system keyboard";
+    //   2. main-thread + haptic-subsystem load during rapid typing → UIKit dropped
+    //      intermediate .touchDown events, so middle keys in a fast burst were missed.
+    private var hapticGenerator: UIFeedbackGenerator?
+    private var lastHapticAt: CFTimeInterval = 0
+    private let minHapticInterval: CFTimeInterval = 0.025   // 40 Hz ceiling
+
+    private func ensureHapticGenerator() {
+        if hapticGenerator == nil { rebuildHapticGenerator() }
+    }
+
+    private func rebuildHapticGenerator() {
+        guard feedbackVibration else { hapticGenerator = nil; return }
+        hapticGenerator = Self.makeHapticGenerator(for: vibrateLevel)
+        hapticGenerator?.prepare()
+    }
+
+    /// 5 distinct intensities so each "震動強度" setting actually feels different.
+    /// Lowest level uses UISelectionFeedbackGenerator — the subtlest public-API tick,
+    /// closest in feel to Apple's stock keyboard. UIImpactFeedbackGenerator(.light)
+    /// is heavier/longer than the system keyboard tick, so it is not the floor.
+    static func makeHapticGenerator(for level: Int) -> UIFeedbackGenerator {
+        switch level {
+        case ..<15:  return UISelectionFeedbackGenerator()              // 10 特弱
+        case ..<30:  return UIImpactFeedbackGenerator(style: .soft)     // 20 弱
+        case ..<50:  return UIImpactFeedbackGenerator(style: .light)    // 40 中
+        case ..<70:  return UIImpactFeedbackGenerator(style: .medium)   // 60 強
+        default:     return UIImpactFeedbackGenerator(style: .heavy)    // 80 特強
+        }
+    }
+
+    @inline(__always)
+    fileprivate func fireHaptic() {
+        guard feedbackVibration else { return }
+        let now = CACurrentMediaTime()
+        guard now - lastHapticAt >= minHapticInterval else { return }
+        lastHapticAt = now
+        ensureHapticGenerator()
+        guard let gen = hapticGenerator else { return }
+        if let impact = gen as? UIImpactFeedbackGenerator {
+            impact.impactOccurred()
+        } else if let sel = gen as? UISelectionFeedbackGenerator {
+            sel.selectionChanged()
+        }
+        gen.prepare()   // re-warm engine for the next press
+    }
+
+    /// Pre-warm the Taptic Engine so the very first keypress is not cold.
+    /// Called by KeyboardViewController after applyFeedbackSettings().
+    func prepareHapticGenerator() {
+        ensureHapticGenerator()
+        hapticGenerator?.prepare()
     }
 
     // isPad: trait-collection-based (false in iPhone compat mode on iPad).
@@ -687,7 +745,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         guard gr.state == .began, let keyBtn = gr.view as? KeyButton else { return }
         keyBtn.wasLongPressed = true
         let keyRect = keyBtn.convert(keyBtn.bounds, to: self)
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         delegate?.keyboardView(self, didLongPressPopupKey: keyBtn.keyDef, sourceRect: keyRect)
     }
 
@@ -699,7 +757,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
         btn.onTap = { [weak self] in
             guard let self else { return }
-            if self.feedbackVibration { self.impactFeedback.impactOccurred() }
+            self.fireHaptic()
             if self.feedbackSound     { UIDevice.current.playInputClick() }
             self.delegate?.keyboardView(self, didPress: keyDef)
         }
@@ -950,7 +1008,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         updateShiftHoldTracking(for: keyDef, event: event)
 
         // Haptic / audio feedback (spec §15)
-        if feedbackVibration { impactFeedback.impactOccurred() }
+        fireHaptic()
         if feedbackSound     { UIDevice.current.playInputClick() }
 
         // Show key preview — phone only; iPad keys are large enough that press-state
@@ -1045,6 +1103,9 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         repeatTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.Gesture.repeatInterval,
                                            repeats: true) { [weak self] _ in
             guard let self = self, let keyDef = self.repeatKeyDef else { return }
+            // One haptic tick per repeated character, matching the iOS system keyboard
+            // (backspace and arrow keys). Throttled by fireHaptic()'s minHapticInterval.
+            self.fireHaptic()
             self.delegate?.keyboardView(self, didPress: keyDef)
         }
     }

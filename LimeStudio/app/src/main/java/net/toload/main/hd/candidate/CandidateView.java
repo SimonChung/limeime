@@ -324,7 +324,7 @@ public class CandidateView extends View implements View.OnClickListener {
                     sx -= (int) distanceX;
                 }
 
-                if (mLIMEPref.getParameterBoolean("candidate_switch", false)) {
+                if (mLIMEPref.getSelectDefaultOnSliding()) {
                     hasSlide = true;
                     mTargetScrollX = sx;
                     scrollTo(sx, getScrollY());

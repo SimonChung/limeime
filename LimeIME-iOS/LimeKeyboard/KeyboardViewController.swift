@@ -77,7 +77,7 @@ final class KeyboardViewController: UIInputViewController {
     private var similiarList:            Int  = 20    // max similar-code candidates
     private var numberRowInEnglish:      Bool = true  // show number row on English layout
     private var enableEmoji:             Bool = true  // mirrors Android getEmojiMode() default true
-    private var enableEmojiPosition:     Int  = 3     // mirrors Android getEmojiDisplayPosition() default 3
+    private var enableEmojiPosition:     Int  = 5     // mirrors Android getEmojiDisplayPosition() default 5
     private var keyboardSize:            CGFloat = 1.0  // mirrors Android getKeyboardSize(); 0.8=特小 0.9=小 1.0=一般 1.1=大 1.2=特大
     private var candidateFontScale:      CGFloat = 1.0  // mirrors Android getFontSize(); scales candidate bar fonts + bar height + composing popup
     private var candidateSwitch:         Bool = true    // mirrors Android candidate_switch; true=free scroll, false=paged
@@ -584,7 +584,7 @@ final class KeyboardViewController: UIInputViewController {
         similiarList            = (d?.object(forKey: "similiar_list")             as? Int)      ?? 20
         numberRowInEnglish      = (d?.object(forKey: "number_row_in_english")     as? Bool)     ?? true
         enableEmoji             = (d?.object(forKey: "enable_emoji")              as? Bool)     ?? true
-        enableEmojiPosition     = (d?.object(forKey: "enable_emoji_position")     as? Int)      ?? 3
+        enableEmojiPosition     = (d?.object(forKey: "enable_emoji_position")     as? Int)      ?? 5
         if let sizeStr = d?.string(forKey: "keyboard_size"), let sizeVal = Float(sizeStr) {
             keyboardSize = CGFloat(sizeVal)
         } else {
@@ -595,7 +595,9 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             candidateFontScale = 1.0
         }
-        candidateSwitch = (d?.object(forKey: "candidate_switch") as? Bool) ?? true
+        // candidate_switch UI toggle removed — free-scroll is now the only mode.
+        // See LIMEPreferenceManager.candidateSwitch (always true).
+        candidateSwitch = true
         showArrowKey      = d?.integer(forKey: "show_arrow_key")      ?? 0
         splitKeyboardMode = d?.integer(forKey: "split_keyboard_mode") ?? 0
         applyPrefsToSearchEngine()
@@ -624,6 +626,10 @@ final class KeyboardViewController: UIInputViewController {
         keyboardView?.keySizeScale      = keyboardSize
         candidateBar?.feedbackVibration = hasVibration
         candidateBar?.vibrateLevel      = vibrateLevel
+        // Pre-warm Taptic Engine so the very first keypress has no cold-start lag.
+        keyboardView?.prepareHapticGenerator()
+        candidateBar?.prepareHapticGenerator()
+        rebuildHapticGenerator()
         let prevFontScale = candidateBar?.fontScale
         candidateBar?.fontScale         = candidateFontScale
         candidateBar?.candidateSwitch   = candidateSwitch
@@ -1427,15 +1433,28 @@ final class KeyboardViewController: UIInputViewController {
                     // PROFILING: END
                     return
                 }
-                // PROFILING: BEGIN — T2 candidate bar reload (main thread).
-                let reloadID = Prof.newID()
-                Prof.begin("CandidateReload", id: reloadID)
-                // PROFILING: END
-                results.isEmpty ? self.clearSuggestions() : self.setSuggestions(results)
-                // PROFILING: BEGIN — T2 reload close + Stroke close.
-                Prof.end("CandidateReload", id: reloadID)
-                Prof.end("Stroke", id: strokeID)
-                // PROFILING: END
+                // P2 (see docs/IOS_MISS_KEY.md): defer the heavy candidate-bar reload
+                // one runloop tick so UIKit can dispatch any queued touchDown/touchUp
+                // events before the reload locks the main thread. Re-checks stale in
+                // case the user typed again during the hop.
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self, self.currentSearchID == sid else {
+                        // PROFILING: BEGIN — stale-stroke cancellation path (deferred).
+                        Prof.event("StrokeCancelled")
+                        Prof.end("Stroke", id: strokeID)
+                        // PROFILING: END
+                        return
+                    }
+                    // PROFILING: BEGIN — T2 candidate bar reload (main thread).
+                    let reloadID = Prof.newID()
+                    Prof.begin("CandidateReload", id: reloadID)
+                    // PROFILING: END
+                    results.isEmpty ? self.clearSuggestions() : self.setSuggestions(results)
+                    // PROFILING: BEGIN — T2 reload close + Stroke close.
+                    Prof.end("CandidateReload", id: reloadID)
+                    Prof.end("Stroke", id: strokeID)
+                    // PROFILING: END
+                }
             }
             // Stage 2: full fetch (FINAL_RESULT_LIMIT). Upgrades bar without scroll reset.
             // Only runs when stage 1 was truncated (see docs/TWO_STAGE_CANDI.md).
@@ -1764,18 +1783,35 @@ final class KeyboardViewController: UIInputViewController {
         cancelActiveComposingFromCandidateDismiss()
     }
 
+    // Stored haptic generator for the expanded-candidate panel chrome. See KeyboardView
+    // for the rationale — the previous "build a new generator each call" pattern caused
+    // cold-start latency and dropped touch events under fast input.
+    private var hapticGenerator: UIFeedbackGenerator?
+    private var lastHapticAt: CFTimeInterval = 0
+    private let minHapticInterval: CFTimeInterval = 0.025
+
+    private func rebuildHapticGenerator() {
+        guard hasVibration else { hapticGenerator = nil; return }
+        hapticGenerator = KeyboardView.makeHapticGenerator(for: vibrateLevel)
+        hapticGenerator?.prepare()
+    }
+
     /// Fires an impact haptic matching the current vibrateLevel, when vibrate preference
     /// is enabled. Used by keyboard-extension UI outside KeyboardView/CandidateBarView
     /// (e.g. the expanded-candidate collapse chevron).
     private func fireHapticIfEnabled() {
         guard hasVibration else { return }
-        let style: UIImpactFeedbackGenerator.FeedbackStyle
-        switch vibrateLevel {
-        case ..<30:   style = .light
-        case 30..<50: style = .medium
-        default:      style = .heavy
+        let now = CACurrentMediaTime()
+        guard now - lastHapticAt >= minHapticInterval else { return }
+        lastHapticAt = now
+        if hapticGenerator == nil { rebuildHapticGenerator() }
+        guard let gen = hapticGenerator else { return }
+        if let impact = gen as? UIImpactFeedbackGenerator {
+            impact.impactOccurred()
+        } else if let sel = gen as? UISelectionFeedbackGenerator {
+            sel.selectionChanged()
         }
-        UIImpactFeedbackGenerator(style: style).impactOccurred()
+        gen.prepare()
     }
 
     private func clearSuggestions() {
@@ -2065,7 +2101,11 @@ final class KeyboardViewController: UIInputViewController {
         dismissPopupKeyboard()
         if isSymbolMode { exitSymbolMode() }
         clearShiftState()
-        clearComposing(force: false)
+        if toEnglish {
+            cancelActiveComposingFromCandidateDismiss()
+        } else {
+            clearComposing(force: false)
+        }
         mEnglishOnly = toEnglish
         // Persist language mode if setting is enabled (spec §15)
         if mPersistentLanguageMode {

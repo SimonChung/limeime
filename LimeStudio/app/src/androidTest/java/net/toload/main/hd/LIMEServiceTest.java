@@ -2441,8 +2441,8 @@ public class LIMEServiceTest {
         
         Integer emojiDisplayPosition = prefManager.getEmojiDisplayPosition();
         assertNotNull("Emoji display position should not be null", emojiDisplayPosition);
-        assertEquals("Emoji display position should default to sixth candidate slot",
-                6, (int) emojiDisplayPosition);
+        assertEquals("Emoji display position should default to fifth candidate slot",
+                5, (int) emojiDisplayPosition);
         assertTrue("Emoji display position should be valid", emojiDisplayPosition >= 0);
 
         androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext)
@@ -2740,8 +2740,8 @@ public class LIMEServiceTest {
                   selkeyOption >= 0 && selkeyOption <= 2);
         
         int emojiDisplayPosition = prefManager.getEmojiDisplayPosition();
-        assertEquals("Emoji display position should default to sixth candidate slot",
-                6, emojiDisplayPosition);
+        assertEquals("Emoji display position should default to fifth candidate slot",
+                5, emojiDisplayPosition);
         
         Integer hanConvertOption = prefManager.getHanCovertOption();
         assertNotNull("Han convert option should not be null", hanConvertOption);
