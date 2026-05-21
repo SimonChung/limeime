@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T13:33:44+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T15:42:29+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -33,15 +33,15 @@ Last updated: 2026-05-21T13:33:44+08:00 (Asia/Taipei)
 - #68: Maintainer-created cross-platform candidate-bar dismiss bug. Relevant fix landed in commit `ae42ae3e58e2` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500349694`. Remove from active watch unless reopened or referenced by new reports.
 - #69: Maintainer-created cross-platform candidate-bar tool-icon flicker bug. Relevant fix landed in commit `3c6ce3c056d8` and APK `LIMEHD2026-6.1.7.apk`; issue is closed as completed with follow-up note comment `4500350136`. Remove from active watch unless reopened or referenced by new reports.
 - #73: New community request: make Android soft-keyboard Enter commit the raw English/code string while Space continues selecting/committing Chinese candidates, example `bgg` -> `bgg` on Enter. Reporter is on APK 6.1.7 / Android 15 and cites Trime as prior behavior. Classified as `enhancement` + `Usability`; automation labeled and acknowledged in comment `4504038619`. No bug investigation doc needed unless maintainers decide to implement.
-- #74: New community question/enhancement about Android「記憶中英模式」and inputType-driven switching. Reporter asks whether the option should make LIME always start in Chinese mode, and requests an option to keep the initial keyboard fixed on Chinese for 行列10 numeric-key Chinese input even in URL/number fields. Code inspection shows `LIMEService.initOnStartInput(...)` currently forces English-only/URL/number keyboard modes for number/datetime/phone/password/email/URI inputTypes before the persistent language-mode fallback. Classified as `question` + `enhancement` + `Usability`; acknowledgement posted as comment `4504857725`, explaining current behavior and forwarding the fixed-Chinese-start request for product/author-team evaluation.
+- #74: Community question/enhancement about Android「記憶中英模式」and inputType-driven switching. Reporter asks whether the option should make LIME always start in Chinese mode, and requests an option to keep the initial keyboard fixed on Chinese for 行列10 numeric-key Chinese input even in URL/number fields. Labels are `question` + `enhancement` + `Usability`. Maintainer `jrywu` explained in comment `4505846029` that Android fields have different types: URL/email switch to English-related keyboards, number uses the phone keyboard, and 記憶中英模式 only remembers the last English/Chinese keyboard for normal text fields. Keep open as a product/author-team evaluation item for whether an optional fixed-Chinese-start override should be added; no additional public reply is needed unless Jeremy/maintainer wants a follow-up.
 - #75: Community-reported Android Cangjie keyboard redraw/layering bug on 6.1.7 / Android 15: after tapping the numeric/symbol keyboard once and switching back to Chinese, stale numeric/symbol keyboard UI remains visible behind the Cangjie keys. Labeled `bug` + `Usability`, assigned to `jrywu`, acknowledgement/retest-after-fix note posted as comment `4505090642`, and analysis doc `docs/#75_ISSUE.md` exists. Keep open for implementation; do not ask for retest until a newer APK contains a clearly relevant keyboard switching/redraw fix.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-21T13:37:00+08:00
-- From: Hermes issue-opened webhook moderation
-- Summary: New issue #75 was triaged as a plausible Android Cangjie keyboard rendering bug: after switching to numeric keyboard and back to Chinese, stale number/symbol keyboard UI remains visible behind Cangjie keys. It was labeled `bug` + `Usability`, assigned to `jrywu`, acknowledged in comment `4505090642`, and documented in `docs/#75_ISSUE.md`.
-- Changed: Added #75 analysis doc and current-state entry. APK state remains `LIMEHD2026-6.1.7.apk`.
-- Needs: Implement/debug #75 in the Android keyboard switch/redraw path; do not ask for retest until a newer APK contains a relevant fix. Continue watching #63 for promised video/details and do targeted debugging only after new evidence. Product/author-team decisions are needed for #70/#72/#73/#74; #71 still needs bug implementation/fix follow-up. Watch #58 for sample table or follow-up import failure.
+- Time: 2026-05-21T15:42:29+08:00
+- From: Hermes issue-comment webhook moderation
+- Summary: Maintainer `jrywu` replied on #74 explaining current Android inputType behavior for 記憶中英模式: URL/email use English-related keyboards, number uses phone keyboard, and the option remembers English/Chinese only for normal text fields.
+- Changed: Updated #74 current-state entry with verified comment `4505846029`; no GitHub public write was needed. APK state remains `LIMEHD2026-6.1.7.apk`.
+- Needs: Keep #74 open as product/author-team evaluation for an optional fixed-Chinese-start override; product/author-team decisions are still needed for #70/#72/#73/#74; #71/#75 need bug implementation/fix follow-up; continue watching #63 and #58 as previously noted.
 - Links: #75 `https://github.com/lime-ime/limeime/issues/75`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #74 `https://github.com/lime-ime/limeime/issues/74`; #73 `https://github.com/lime-ime/limeime/issues/73`; #58 latest answer `https://github.com/lime-ime/limeime/issues/58#issuecomment-4504038716`; #71 latest acknowledgement `https://github.com/lime-ime/limeime/issues/71#issuecomment-4504038809`.
 
 ## Shared Task Board / Identity Exchange
@@ -56,9 +56,9 @@ Last updated: 2026-05-21T13:33:44+08:00 (Asia/Taipei)
 - Status: todo
   Owner: next LIME IME product/implementation identity
   Task: Review/plan #70/#72/#73/#74 enhancement requests and implement #71/#75 bug fixes.
-  Context: #70 asks to hide/configure next-code candidates and now has screenshot clarification; #75 is a Cangjie keyboard redraw/layering bug after numeric/symbol -> Chinese switching; #71 is now classified as a bug: during active composition, switching to English keyboard should cancel composition and output nothing, but stale composing code is currently inserted/leaked; #72 asks to bundle 哈哈倉頡 / raises table source-license questions; #73 asks Enter to commit raw code while Space keeps Chinese candidate commit behavior; #74 asks whether persistent Chinese/English mode can optionally override URL/number inputType switching so 行列10 numeric-key users can stay on the Chinese keyboard; #75 reports stale number/symbol keyboard UI visible behind Cangjie after `123` -> Chinese switching.
+  Context: #70 asks to hide/configure next-code candidates and now has screenshot clarification; #75 is a Cangjie keyboard redraw/layering bug after numeric/symbol -> Chinese switching; #71 is now classified as a bug: during active composition, switching to English keyboard should cancel composition and output nothing, but stale composing code is currently inserted/leaked; #72 asks to bundle 哈哈倉頡 / raises table source-license questions; #73 asks Enter to commit raw code while Space keeps Chinese candidate commit behavior; #74 asks whether persistent Chinese/English mode can optionally override URL/number inputType switching so 行列10 numeric-key users can stay on the Chinese keyboard (maintainer has explained current behavior; product decision remains); #75 reports stale number/symbol keyboard UI visible behind Cangjie after `123` -> Chinese switching.
   Next: Decide product direction for #70/#73/#74 and licensing posture for #72; implement/fix #71 using the same composition-cancel semantics as candidate-bar dismiss; investigate/fix #75 in Android keyboard switching/redraw path; debug #75 keyboard-switch redraw/state cleanup; do not bundle external tables without source/author/license verification.
-  Updated: 2026-05-21T13:37:00+08:00
+  Updated: 2026-05-21T15:42:29+08:00
 - Status: todo
   Owner: next LIME IME documentation/import identity
   Task: Watch #58 `.lime` v2 escaping follow-up.
