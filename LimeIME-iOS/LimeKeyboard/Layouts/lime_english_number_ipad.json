@@ -470,7 +470,7 @@
           ],
           "label": "中",
           "sublabel": "",
-          "widthPercent": 9.0,
+          "widthPercent": 11.5,
           "icon": "",
           "isModifier": true,
           "isRepeatable": false,
@@ -640,11 +640,11 @@
           "popupCharacters": ""
         },
         {
-          "code": 44,
+          "code": 39,
           "codes": [
-            44
+            39
           ],
-          "label": "\"\\n,",
+          "label": "\"\\n'",
           "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
@@ -662,7 +662,7 @@
           ],
           "label": "",
           "sublabel": "",
-          "widthPercent": 14.0,
+          "widthPercent": 11.5,
           "icon": "return",
           "isModifier": true,
           "isRepeatable": false,
