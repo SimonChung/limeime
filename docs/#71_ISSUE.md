@@ -20,28 +20,50 @@ This is analogous to the candidate-bar dismiss behavior fixed in 6.1.7: dismissi
 - During active composition, switching to English keyboard mode leaves the stale composing code as output.
 - The user then has to manually delete the leaked code, which defeats the purpose of using the switch key as a quick cancel path.
 
+## Current observations
+
+Relevant Android file:
+
+- `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
+
+The soft-keyboard Chinese-to-English key is handled by `onKey()` through `KEYCODE_SWITCH_TO_ENGLISH_MODE`, which calls `switchKeyboard(primaryCode)`.
+
+Inside `switchKeyboard(...)`, the current master branch first tries to auto-commit active composing text before changing modes:
+
+```java
+if (mComposing != null && mComposing.length() > 0) {
+    getCurrentInputConnection().commitText(mComposing, 1);
+    finishComposing();
+}
+clearComposing(false);
+```
+
+That behavior matches the remaining report: the raw composing code is committed/leaked when the user expected the language switch to cancel it.
+
+By contrast, the candidate-bar dismiss path now calls `dismissCandidateComposing()`, which hides the popup, calls `clearComposing(true)`, and then calls `InputConnection.finishComposingText()`. That path is closer to the desired cancel semantics.
+
+The physical-keyboard `switchChiEng()` path also uses `clearComposing(false)` before toggling mode. It should be reviewed for parity, because `false` does not force-clear the system composing buffer.
+
 ## Likely root cause
 
-The Chinese/English keyboard switch path likely changes keyboard/input mode without invoking the same composition-cancel/clear logic used by candidate-bar dismiss. As a result, the composing buffer or raw preedit text is finalized/leaked instead of being explicitly cancelled.
+The Chinese/English switch path still treats active composition as text to auto-commit before switching modes. For this issue, switching from Chinese composition to English should instead be a cancel operation when composition is active.
 
-Areas to inspect:
-
-- Android keyboard mode switch handling for Chinese/English toggle.
-- Composition/preedit clearing logic used by candidate-bar dismiss.
-- Any code path that commits raw composing text when leaving Chinese composition mode.
-- Cross-platform parity if the same composition state model is shared.
+Specifically, `switchKeyboard(...)` commits `mComposing` via `InputConnection.commitText(mComposing, 1)` before calling `clearComposing(false)`, so the stale raw code becomes normal editor text rather than being cleared.
 
 ## Proposed solution
 
-Route the Chinese/English switch behavior through the same safe composition-cancel logic used by candidate-bar dismiss, or explicitly clear/cancel the composing buffer before switching to English mode.
+Route Chinese-to-English switching through the same safe composition-cancel semantics used by candidate-bar dismiss, or explicitly cancel before switching mode:
 
-The fix should ensure that switching modes while composing does not call a raw-code commit path unless the user explicitly requested raw-code commit.
+1. For `KEYCODE_SWITCH_TO_ENGLISH_MODE`, if `mComposing.length() > 0`, do not call `commitText(mComposing, 1)`.
+2. Clear LIME state and the active Android composing state, likely by reusing/extracting the `dismissCandidateComposing()` logic or calling `clearComposing(true)` plus `finishComposingText()` on the current `InputConnection`.
+3. Keep any raw-code commit behavior limited to explicit user actions that mean “commit raw input”, not language-mode switching.
+4. Review the physical-keyboard `switchChiEng()` path so soft and physical Chinese/English switching are consistent.
 
 ## Follow-up questions
 
-- Does this reproduce only on Android, or also on iOS/desktop builds if applicable?
-- Is the stale output inserted immediately on switch, or only after the next key/action?
-- Should this behavior apply to all table input methods consistently?
+- Does this reproduce only on Android, or also on iOS if the same Chinese/English toggle behavior exists there?
+- Should switching from Chinese to symbol/emoji modes also cancel instead of commit active composing code, or is this issue limited to the explicit Chinese/English switch key?
+- Should language switching always cancel active composition, or should this become a setting if some users rely on the previous auto-commit behavior?
 
 ## Verification plan
 
@@ -51,3 +73,4 @@ The fix should ensure that switching modes while composing does not call a raw-c
 4. Verify that no raw code or stale text is inserted into the target editor.
 5. Repeat with the candidate-bar dismiss button and confirm both paths behave consistently.
 6. Repeat with at least one table where the typed code has valid candidates and one where it does not.
+7. Repeat with a physical keyboard Chinese/English switch shortcut, if supported, to confirm parity.
