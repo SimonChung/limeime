@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-22T01:18:06+08:00 (Asia/Taipei)
+Last updated: 2026-05-22T01:18:18+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -11,7 +11,7 @@ Last updated: 2026-05-22T01:18:06+08:00 (Asia/Taipei)
 - Latest GitHub Release observed: `v6.0.2` (published 2026-04-23).
 - Android pre-release/build artifacts are not necessarily public GitHub Releases.
 - Scheduled/API-only APK source of truth: `LimeStudio/app/release/output-metadata.json`.
-- Last observed pre-release APK: `LIMEHD2026-6.1.8.apk` (versionName 6.1.8), metadata observed 2026-05-22T01:06:40+08:00.
+- Last observed pre-release APK: `LIMEHD2026-6.1.8.apk` (versionName 6.1.8), metadata observed 2026-05-22T01:18:18+08:00; current push did not change APK metadata.
 - Raw APK URL pattern: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
 - No open pull requests were observed in the 2026-05-21T15:45:16+08:00 scheduled run.
 - No GitHub Discussions tab was observed for the repository in recent runs.
@@ -37,11 +37,11 @@ Last updated: 2026-05-22T01:18:06+08:00 (Asia/Taipei)
 - #75: Community-reported Android keyboard redraw/popup-lifecycle bugs on 6.1.7 / Android 15. Fix commit `9230916` landed and APK `LIMEHD2026-6.1.8.apk` contains the relevant keyboard popup/redraw changes. Retest request posted in `https://github.com/lime-ime/limeime/issues/75#issuecomment-4510656707` asking reporter to verify both the Cangjie `123` -> Chinese stale-layer path and the English long-press accented-popup dismissal path. Keep open pending reporter confirmation; do not close until reporter confirms fixed or maintainer/Jeremy instructs closure.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-22T01:06:40+08:00
-- From: Hermes GitHub webhook `push` by `jrywu`, range `61ea2a9...5c41c04`.
-- Summary: New APK metadata advanced from `LIMEHD2026-6.1.7.apk` to `LIMEHD2026-6.1.8.apk` (`versionName 6.1.8`). Hermes inspected the push compare, current APK metadata, live #75/#71 issue state, and docs/#75_ISSUE.md / docs/#71_ISSUE.md. Commit `9230916` is a clearly relevant #75 keyboard popup/redraw fix, so Hermes posted a #75 retest request with the raw APK link. Correction: commit `3d5d9c5` also includes the #71 Android and iOS Chinese/English switch composition-cancel fix. Hermes posted a #71 retest request for APK 6.1.8 in comment `4510759295`.
-- Needs: Watch #75 for reporter retest response; if fixed, react/close per policy after confirmation. Watch #71 for reporter retest response on 6.1.8; if fixed, react/close per policy. Keep #63 maintainer-closed/no routine reminders unless new actionable evidence appears.
-- Links: new APK `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.8.apk`; #75 retest `https://github.com/lime-ime/limeime/issues/75#issuecomment-4510656707`; #75 issue `https://github.com/lime-ime/limeime/issues/75`; #71 retest `https://github.com/lime-ime/limeime/issues/71#issuecomment-4510759295`; #71 issue `https://github.com/lime-ime/limeime/issues/71`.
+- Time: 2026-05-22T01:18:18+08:00
+- From: Hermes GitHub webhook `push` by `limeimetw`, range `737d06a...72db34f`.
+- Summary: This push only modified `docs/#71_ISSUE.md`; `LimeStudio/app/release/output-metadata.json` is unchanged at `LIMEHD2026-6.1.8.apk` (`versionName 6.1.8`), so no new APK follow-up was triggered. Live #71 already has a 6.1.8 retest request in comment `4510759295`, and the updated issue doc marks the #71 Android/iOS Chinese/English switch composition-cancel fix as present in 6.1.8 with reporter verification pending.
+- Needs: Watch #71 for reporter retest response on 6.1.8; if fixed, react/close per policy. Watch #75 for reporter retest response; if fixed, react/close per policy. Keep #63 maintainer-closed/no routine reminders unless new actionable evidence appears.
+- Links: APK `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.8.apk`; #71 retest `https://github.com/lime-ime/limeime/issues/71#issuecomment-4510759295`; #71 issue `https://github.com/lime-ime/limeime/issues/71`; #75 retest `https://github.com/lime-ime/limeime/issues/75#issuecomment-4510656707`.
 
 ## Shared Task Board / Identity Exchange
 - Purpose: This section is the repo-backed exchange area for Codex, Hermes, and future identities. Merge scheduled/background handoffs and task-board items here because local `.agents/shared/handoffs.md` and `.agents/shared/tasks.md` are not reliable for scheduled-session continuity.
