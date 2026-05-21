@@ -257,6 +257,40 @@ public class ArchitectureComplianceTest {
         assertFalse("ImportDialog should not instantiate LimeDB directly", usesLimeDBDirectly);
     }
 
+    @Test
+    public void testMiniKeyboardDismissesOnOutsideTouch() {
+        try {
+            Class<?> keyboardViewClass =
+                Class.forName("net.toload.main.hd.keyboard.LIMEKeyboardBaseView");
+
+            assertNotNull("Keyboard view should dismiss mini keyboard when tapping outside it",
+                keyboardViewClass.getDeclaredMethod(
+                    "dismissPopupKeyboardOnOutsideTouch", int.class, int.class, int.class));
+            assertNotNull("Keyboard view should identify touches outside the active mini keyboard",
+                keyboardViewClass.getDeclaredMethod("isTouchOutsideMiniKeyboard", int.class, int.class));
+        } catch (ClassNotFoundException e) {
+            fail("LIMEKeyboardBaseView.class not found: " + e.getMessage());
+        } catch (NoSuchMethodException e) {
+            fail("Mini-keyboard outside-touch dismissal method missing: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testKeyboardBufferDrawPaintsOpaqueBackground() {
+        try {
+            Class<?> keyboardViewClass =
+                Class.forName("net.toload.main.hd.keyboard.LIMEKeyboardBaseView");
+
+            assertNotNull("Keyboard redraw should have a dedicated background paint path",
+                keyboardViewClass.getDeclaredMethod(
+                    "drawKeyboardBackground", android.graphics.Canvas.class, int.class, int.class));
+        } catch (ClassNotFoundException e) {
+            fail("LIMEKeyboardBaseView.class not found: " + e.getMessage());
+        } catch (NoSuchMethodException e) {
+            fail("Keyboard redraw background paint method missing: " + e.getMessage());
+        }
+    }
+
     // Helper methods
 
     private void scanForLimeDBViolations(File dir, List<String> violations) {

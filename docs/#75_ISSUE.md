@@ -13,11 +13,11 @@ Primary reported reproduction:
 
 The screenshot shows Cangjie keys in the foreground while another keyboard layer or toolbar controls remain visible through/around the keys, suggesting a stale keyboard view/invalidation or mode-state problem rather than an input conversion issue.
 
-Additional reporter follow-up on the same issue: in English mode, long-pressing some European/accented letter popup keys can leave the popup visible indefinitely if the user does not select one; switching back to Chinese does not dismiss it. The reporter also suggests an option to disable accented/European letter popup display because many Traditional Chinese users may not need it.
+Additional reporter follow-up on the same issue: in English mode, long-pressing some European/accented letter popup keys can leave the popup visible indefinitely if the user does not select one; switching back to Chinese does not dismiss it. This mini-keyboard dismissal issue is a separate bug from the Cangjie symbol-layer artifact and should be checked on both Android and iOS. The reporter also suggests an option to disable accented/European letter popup display because many Traditional Chinese users may not need it. Current product decision: do not remove the popup mini-keyboard and do not add another preference for it, because LIME already has many preferences. Instead, fix the dismissal bug so touching outside the mini-keyboard dismisses it.
 
 ## Likely root cause
 
-Likely area: Android keyboard switching and redraw state in:
+For the Cangjie number/symbol remnants, likely area is Android keyboard switching and redraw state in:
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
 - `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEKeyboardSwitcher.java`
@@ -36,16 +36,22 @@ Most plausible technical causes to check:
 1. `LIMEKeyboardView` does not fully clear its canvas/background before drawing the new keyboard after a number/symbol -> Cangjie transition.
 2. `LIMEKeyboardSwitcher` leaves symbol/number mode state inconsistent when returning to Chinese, causing the wrong keyboard/background to be cached or redrawn.
 3. A Cangjie keyboard theme/key background is partially transparent, making stale pixels from the previous keyboard visible after layout switching.
-4. `LIMEKeyboardBaseView` mini-keyboard popup lifecycle may not be cancelled when the main keyboard mode changes. Source inspection shows `onLongPress(...)` opens `mMiniKeyboardPopup`, and dismissal currently happens through mini-key selection/cancel, `closing()`, or `handleBack()`; keyboard switching paths should verify they call a popup dismissal/closing path so a long-press accented-letter popup cannot survive English -> Chinese switching.
+4. The Cangjie symbol-layer artifact appears Android-specific. Current simulator attempts did not reproduce it, so treat the screenshot as the strongest evidence and ask for device/theme details only if needed.
+
+For the mini-keyboard dismissal bug, likely area is the popup lifecycle on both platforms:
+
+- Android: `LIMEKeyboardBaseView.onLongPress(...)` opens `mMiniKeyboardPopup`. Before the fix, dismissal happened through mini-key selection/cancel, `closing()`, or `handleBack()`, but the main keyboard touch path had no explicit outside-tap dismissal for multi-key popups.
+- iOS: `KeyboardViewController.showPopupKeyboard(...)` creates a full-size outside-tap overlay under `PopupKeyboardView`. The overlay must remain hittable in a keyboard extension; transparent touch targets can be ignored by iOS custom keyboards.
 
 ## Proposed solution
 
 Investigate and fix the keyboard switch path rather than changing input-method mapping logic:
 
-1. Reproduce on Android 15 / 6.1.7 with Cangjie:
+1. Treat the Cangjie symbol-layer artifact as Android-specific. Reproduce on Android 15 / 6.1.7 with Cangjie if possible:
    - Cangjie keyboard -> `123` numeric/symbol keyboard -> switch back to Chinese.
    - Test with default and any custom keyboard themes if possible.
-2. Reproduce the long-press popup path:
+   - Note: maintainer could not reproduce this artifact in simulator yet.
+2. Reproduce the long-press popup path on both Android and iOS:
    - English keyboard -> long-press a key with accented/European popup choices -> do not select an alternative -> switch to Chinese.
    - Confirm whether the mini-keyboard popup remains visible and whether Back/outside tap dismisses it.
 3. Add temporary logging around `LIMEService.switchKeyboard(...)`, `initialIMKeyboard()`, and `LIMEKeyboardSwitcher.setKeyboardMode(...)` for:
@@ -55,13 +61,17 @@ Investigate and fix the keyboard switch path rather than changing input-method m
    - selected keyboard XML id/name
    - active IM code
 4. Verify that returning to Cangjie uses `isSymbol=false`, `isIm=true`, and `R.xml.lime_cj` / Cangjie layout.
-5. Force a clean redraw when keyboard mode changes from symbol/number to Chinese:
+5. For the Android Cangjie artifact, force a clean redraw when keyboard mode changes from symbol/number to Chinese:
    - clear symbol state when explicitly returning to IM mode if needed;
-   - dismiss any active key preview / mini keyboard popup before or during keyboard mode changes;
    - invalidate the whole `LIMEKeyboardView` / parent input view;
    - ensure the keyboard view/background is opaque or clears the canvas before drawing keys.
-6. Consider a separate product setting for showing accented/European letter popup alternatives. This is not required to fix the stuck-popup bug, but the reporter explicitly requested configurability.
-7. Avoid broad cache resets unless needed; prefer a targeted mode-state, popup-dismissal, or redraw fix.
+   - Since the maintainer could not reproduce this in the simulator, treat this as a defensive rendering fix and ask the reporter to verify on the affected device.
+6. For mini-keyboard popups:
+   - dismiss active mini-keyboard popups on outside tap;
+   - dismiss active mini-keyboard popups before or during keyboard mode changes;
+   - keep mini-key selection behavior unchanged.
+7. Do not add a new preference for disabling accented/European popup alternatives at this time. The preferred fix is behavioral: the popup remains available, but the user can tap outside it to dismiss it.
+8. Avoid broad cache resets unless needed; prefer a targeted mode-state, popup-dismissal, or redraw fix.
 
 ## Follow-up questions
 
@@ -70,7 +80,7 @@ The current report includes reproduction steps, screenshots, app version, and An
 - Device model and whether a custom keyboard theme/keyboard size/split-keyboard option is enabled.
 - Whether the Cangjie number/symbol layering happens every time after `123` -> Chinese, or only after rotating/changing apps.
 - Whether the same layering issue appears in non-Cangjie keyboards.
-- Which English keys leave the accented/European popup stuck, and whether tapping Back or another non-key area dismisses it.
+- Which English keys leave the accented/European popup stuck, whether tapping Back or another non-key area dismisses it, and whether the same behavior appears on Android, iOS, or both.
 
 ## Verification plan
 
@@ -81,3 +91,9 @@ The current report includes reproduction steps, screenshots, app version, and An
   - Arrow keys, candidate strip, emoji key, microphone key, and `123` key still render correctly.
   - Other layouts (English, Array, Dayi, phonetic) still switch normally.
 - If a new APK includes the fix, ask the reporter to retest with the direct APK link and specifically confirm both the `123` -> Chinese Cangjie switching path and the English long-press popup dismissal path.
+
+## Suggested reporter reply
+
+Thank you for the detailed report and screenshots. We could not reproduce the Cangjie overlap issue in the simulator, but we found a possible rendering path where stale keyboard pixels may remain after switching layouts, so we added a defensive redraw fix. Could you help verify whether the next test build fixes the `123` / symbol keyboard overlapping behind Cangjie on your device?
+
+For the long-press popup mini-keyboard, we are not going to remove the popup or add another preference for disabling it, because LIME already has many preferences. However, we fixed the bug: after the next build, tapping outside the popup mini-keyboard should dismiss it.

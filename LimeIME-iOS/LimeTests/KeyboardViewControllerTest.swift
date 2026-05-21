@@ -352,6 +352,18 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertFalse(CandidateBarSystemChrome.usesLightForeground(systemUserInterfaceStyle: .unspecified))
     }
 
+    func testPopupKeyboardOutsideTapOverlayUsesTouchTrapFill() throws {
+        let sourceURL = projectFileURL("LimeKeyboard/KeyboardViewController.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let pattern = #"private func showPopupKeyboard[\s\S]*?\n    \}"#
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(source.startIndex..<source.endIndex, in: source)
+        let match = try XCTUnwrap(regex.firstMatch(in: source, range: range))
+        let method = String(source[Range(match.range, in: source)!])
+
+        XCTAssertTrue(method.contains("overlay.backgroundColor = LayoutMetrics.TouchTrap.fill"))
+    }
+
     func testCandidateBarDismissRoutesThroughForcedComposingClear() throws {
         let sourceURL = projectFileURL("LimeKeyboard/KeyboardViewController.swift")
         let source = try String(contentsOf: sourceURL, encoding: .utf8)

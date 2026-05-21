@@ -2062,6 +2062,7 @@ final class KeyboardViewController: UIInputViewController {
 
     /// Toggle Chinese ↔ English mode (spec §10 switchChiEng).
     private func switchChiEng(toEnglish: Bool) {
+        dismissPopupKeyboard()
         if isSymbolMode { exitSymbolMode() }
         clearShiftState()
         clearComposing(force: false)
@@ -2081,6 +2082,7 @@ final class KeyboardViewController: UIInputViewController {
     /// Cycle to next/previous LIME-internal IM (spec §10 switchToNextActivatedIM).
     private func switchToNextActivatedIM(forward: Bool) {
         guard !activatedIMs.isEmpty, let ss = searchServer else { return }
+        dismissPopupKeyboard()
         let count = activatedIMs.count
         activeIMIndex = forward
             ? (activeIMIndex + 1) % count
@@ -2116,6 +2118,7 @@ final class KeyboardViewController: UIInputViewController {
     /// Enter symbol keyboard mode (spec §10 switchToSymbol).
     private func switchToSymbol() {
         guard !isSymbolMode else { exitSymbolMode(); switchChiEng(toEnglish: true); return }
+        dismissPopupKeyboard()
         clearShiftState()
         isSymbolMode       = true
         preSymbolEnglish   = mEnglishOnly
@@ -2157,12 +2160,14 @@ final class KeyboardViewController: UIInputViewController {
     /// Cycle through symbol keyboard pages (spec §10 KEYCODE_SWITCH_SYMBOL_KEYBOARD).
     private func cycleSymbolPage() {
         guard isSymbolMode else { switchToSymbol(); return }
+        dismissPopupKeyboard()
         symbolPageIndex = (symbolPageIndex + 1) % symbolLayouts.count
         loadSymbolLayout(page: symbolPageIndex)
     }
 
     /// Load a symbol keyboard layout page.
     private func loadSymbolLayout(page: Int) {
+        dismissPopupKeyboard()
         clearShiftState()
         let id = symbolLayouts[page]
         let layout = LayoutLoader.load(id) ?? currentLayout
@@ -2174,6 +2179,7 @@ final class KeyboardViewController: UIInputViewController {
     /// Exit symbol mode and restore the previous keyboard layout.
     private func exitSymbolMode() {
         guard isSymbolMode else { return }
+        dismissPopupKeyboard()
         clearShiftState()
         isSymbolMode = false
         mEnglishOnly = preSymbolEnglish
@@ -2543,6 +2549,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let overlay = UIControl()
         overlay.frame = view.bounds
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.backgroundColor = LayoutMetrics.TouchTrap.fill
         overlay.addTarget(self, action: #selector(dismissPopupKeyboard), for: .touchUpInside)
         overlay.tag = 9877
         view.addSubview(overlay)
@@ -2623,6 +2630,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
     /// Switch to a LIME-internal IM by absolute index in activatedIMs.
     private func switchIM(toIndex i: Int) {
         guard i < activatedIMs.count else { return }
+        dismissPopupKeyboard()
         let im = activatedIMs[i]
         activeIMIndex = i
         activeIM = im.tableNick.isEmpty ? "phonetic" : im.tableNick

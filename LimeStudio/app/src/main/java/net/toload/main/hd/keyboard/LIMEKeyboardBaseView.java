@@ -770,6 +770,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
     public void setKeyboard(LIMEBaseKeyboard keyboard) {
         if (mKeyboard != null) {
             dismissKeyPreview();
+            dismissPopupKeyboard();
         }
         // Remove any pending messages, except dismissing preview
         mHandler.cancelKeyTimers();
@@ -1011,6 +1012,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
                 }
             }
             canvas.drawColor(0x00000000, PorterDuff.Mode.CLEAR);
+            drawKeyboardBackground(canvas, width, height);
             //final int keyCount = keys.length;
             for (final Key key : keys) {
                 if (drawSingleKey && invalidKey != key) {
@@ -1265,6 +1267,14 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         Canvas drawnCanvas = mBackCanvas;
         mBackCanvas = mCanvas;
         mCanvas = drawnCanvas;
+    }
+
+    private void drawKeyboardBackground(Canvas canvas, int width, int height) {
+        Drawable background = getBackground();
+        if (background != null) {
+            background.setBounds(0, 0, width, height);
+            background.draw(canvas);
+        }
     }
 
     // TODO: clean up this method.
@@ -1751,6 +1761,10 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         final int x = (int) me.getX(index);
         final int y = (int) me.getY(index);
 
+        if (dismissPopupKeyboardOnOutsideTouch(action, x, y)) {
+            return true;
+        }
+
         // Needs to be called after the gesture detector gets a turn, as it may have
         // displayed the mini keyboard
         if (mMiniKeyboard != null && (!isLargeScreen || mMiniKeyboard.getKeyboard().getKeys().size() == 1)) {  //Jeremy enable fling when popup keyboard only has 1 key '12,5,20
@@ -1826,6 +1840,30 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         }
 
         return true;
+    }
+
+    private boolean dismissPopupKeyboardOnOutsideTouch(int action, int x, int y) {
+        if (action != MotionEvent.ACTION_DOWN || !mMiniKeyboardPopup.isShowing()
+                || !isTouchOutsideMiniKeyboard(x, y)) {
+            return false;
+        }
+        mHandler.cancelKeyTimers();
+        dismissKeyPreview();
+        dismissPopupKeyboard();
+        return true;
+    }
+
+    private boolean isTouchOutsideMiniKeyboard(int x, int y) {
+        if (mMiniKeyboard == null) {
+            return false;
+        }
+        int left = mMiniKeyboardOriginX;
+        int top = mMiniKeyboardOriginY;
+        int width = mMiniKeyboard.getWidth() > 0 ? mMiniKeyboard.getWidth() : mMiniKeyboard.getMeasuredWidth();
+        int height = mMiniKeyboard.getHeight() > 0 ? mMiniKeyboard.getHeight() : mMiniKeyboard.getMeasuredHeight();
+        int right = left + width;
+        int bottom = top + height;
+        return x < left || x >= right || y < top || y >= bottom;
     }
 
     private void onCancelEvent(PointerTracker tracker, int x, int y, long eventTime) {
