@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T11:19:07+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T12:23:05+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -68,7 +68,7 @@ Last updated: 2026-05-21T11:19:07+08:00 (Asia/Taipei)
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
 - Original memory noted #55 was replied to asking the reporter to test 6.1.1.
 - Original memory noted #58 was replied to asking the reporter to test 6.1.1 and provide a small sample table if import still fails.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55 is closed after positive reporter confirmation; #65/#66 are closed as maintainer-created tracking issues; #54 and #64 are closed as completed; #62 is closed after reporter confirmation on 6.1.6; #63 source-level fix is included in 6.1.6 and a retest request was posted after that APK landed, but the reporter says 6.1.6 still outputs Simplified Chinese; #67 is closed after reporter confirmation on 6.1.7 and the 2026-05-21 close webhook was processed; #68 and #69 are maintainer-created tracking issues closed after their fixes landed in 6.1.7; #70/#71/#72/#73 remain open enhancement/question/product-decision items.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55 is closed after positive reporter confirmation; #65/#66 are closed as maintainer-created tracking issues; #54 and #64 are closed as completed; #62 is closed after reporter confirmation on 6.1.6; #63 source-level fix is included in 6.1.6 and a retest request was posted after that APK landed, but the reporter says 6.1.6 still outputs Simplified Chinese; #67 is closed after reporter confirmation on 6.1.7 and the 2026-05-21 close webhook was processed; #68 and #69 are maintainer-created tracking issues closed after their fixes landed in 6.1.7; #71 is now an open bug/usability implementation item; #70/#72/#73 remain open enhancement/question/product-decision items.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, cross-agent handoff/continuation notes, or shared task-board items change.
