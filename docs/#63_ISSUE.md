@@ -1,7 +1,8 @@
 # Issue #63 - Google Voice Input Returns Simplified Chinese
 
-**Status:** Implemented; device validation pending
-**Date:** 2026-05-18
+**Status:** Closed by maintainer as upstream/vendor recognizer limitation after device validation
+**Reported:** 2026-05-17
+**Closed:** 2026-05-21
 **Reporter:** andyhsieh009
 **GitHub:** https://github.com/lime-ime/limeime/issues/63
 **Scope:** Android voice input integration
@@ -58,18 +59,18 @@ The current quick fix broadens LIME's switch targets before `RecognizerIntent`:
 legacy Google voice IMEs, modern Google Speech Services/TTS voice IME, voice
 subtypes, heuristic `voice`/`speech` IDs, and Gboard as the last fallback.
 
-## Likely Root Cause
+## Root Cause Conclusion
 
-The likely root cause is not that `RecognizerIntent` must be used from a modern
-Android version onward. The preferred IME behavior is still to switch to an
-enabled voice IME first.
+The remaining behavior is best treated as an upstream/vendor recognizer
+limitation on the reporter's Xiaomi/Google setup, not as an actionable
+LIME-side locale-selection bug. LIME-side fixes removed the obvious ambiguous
+locale paths by forcing Traditional Chinese hints (`zh-TW` / `zh-HK`) and using
+the existing Han conversion commit path where LIME receives text it can convert.
 
-The likely root cause is:
-
-1. LIME falls back to `RecognizerIntent` with modern Google Speech Services.
-2. The fallback must avoid ambiguous or Simplified Chinese locale hints.
-3. LIME commits the recognized text without Simplified-to-Traditional
-   normalization.
+Reporter testing on 6.1.6 still produced Simplified Chinese even when LIME
+requested Traditional Chinese and when microphone permission was both disabled
+and enabled. That indicates the recognizer backend can return Simplified Chinese
+despite LIME passing Traditional Chinese hints.
 
 ## Implementation Summary
 
@@ -101,35 +102,47 @@ Implemented:
     below the status row, explicit buttons, and Android app-info fallback when
     Android has hard-denied the runtime permission.
 
-Still needs device validation on the reporter-like setup.
+Reporter-device validation on 6.1.6 did not resolve the Simplified Chinese output, leading to maintainer closure as an upstream/vendor limitation.
 
-## Why the Last Fix May Not Solve the Video Case
+## Why The LIME-Side Fixes Did Not Solve The Reporter Case
 
-The last fix hardened LIME's fallback result path:
+The LIME-side fixes hardened the fallback result path:
 
-1. `LIMEService.getVoiceIntent()` now resolves the fallback recognizer language
-   to `zh-TW` or `zh-HK`, never `zh-CN`.
-2. `VoiceInputActivity` now uses the same resolver even if it has to create an
+1. `LIMEService.getVoiceIntent()` resolves the fallback recognizer language to
+   `zh-TW` or `zh-HK`, never `zh-CN`.
+2. `VoiceInputActivity` uses the same resolver even if it has to create an
    emergency fallback intent.
 3. Voice results can pass through LIME's existing Han converter before commit
    when the global conversion option is enabled.
+4. Voice IME detection was broadened to include legacy Google voice IMEs, Google
+   TTS/Speech Services voice IME, voice subtypes, `voice`/`speech` IDs, and
+   Gboard as a fallback.
 
-That first fix did not broaden voice IME detection. SweetLime detects more
-switch targets, including the Google TTS/Speech Services voice IME, any enabled
-IME subtype whose mode is `voice`, enabled IME IDs containing `voice` or
-`speech`, and Gboard as a fallback.
+The reporter's 6.1.6 result shows that these mitigations were not enough on the
+Xiaomi/Google recognizer path. The remaining gap is platform behavior: modern
+Android/Google Speech Services may not expose or accept the legacy VoiceIME path
+that SweetLime reaches, and the recognizer path can still return Simplified
+Chinese despite LIME passing Traditional Chinese hints.
 
-LIME now has a quick fix matching that broader detection strategy. The remaining
-risk is platform behavior: switching to modern Google Speech Services or Gboard
-can still be a no-op on some emulator/new Android builds. If Android accepts the
-switch and the current IME changes, LIME reaches the voice IME path. If the
-switch does not take, LIME falls back to `RecognizerIntent`.
+## Maintainer Conclusion (2026-05-21)
 
-So if the reporter's phone does not expose one of LIME's two legacy voice IME
-IDs but does expose one of the broader SweetLime-style targets, the new quick
-fix may reach the second screenshot path. If the target is absent or the switch
-does not actually occur, LIME still reaches the first screenshot: Google's
-recognizer activity with `中文 (台灣)`.
+After reporter testing on 6.1.6, the issue was closed by maintainer `jrywu` as
+an upstream/vendor recognizer limitation rather than an actionable LIME bug:
+
+- The reporter clarified that SweetLime is the path producing normal
+  Traditional Chinese output.
+- LIME 6.1.6 still produced Simplified Chinese with LIME microphone permission
+  both disabled and enabled.
+- The maintainer observed that the Xiaomi/Google recognizer UI shows LIME
+  passing `zh-TW` / Chinese (Taiwan), but the recognizer still returns
+  Simplified Chinese.
+- SweetLime reaches the older legacy voice IME path; LIME 6 targets newer
+  Android API levels where that legacy UI is no longer available to invoke in
+  the same way, so LIME falls back to the recognizer/inline dictation paths.
+
+Future follow-up should only reopen or resume active watch if the reporter adds
+new device evidence, a vendor/Google workaround is found, or a new LIME-side
+voice integration approach becomes available.
 
 ## Inline Dictation Feasibility And Status
 
@@ -147,42 +160,28 @@ are two distinct choices:
    the current `InputConnection`.
 
 The second option is the path to the third screenshot's behavior. Phase 1 is
-now implemented in source: LIME can route to inline dictation when microphone
+implemented in source: LIME can route to inline dictation when microphone
 permission is granted, keep the keyboard visible, show listening/partial/error
 status in the candidate strip, and commit final text through the same
-Traditional-first Han conversion path. Phase 2 still needs real-device
-validation on the reporter-like Google voice setup.
+Traditional-first Han conversion path. The reporter's 6.1.6 test with
+microphone permission enabled is a negative real-device data point for this
+approach on the Xiaomi/Google recognizer backend.
 
-## Verification Request For Reporter
+## Verification / Follow-up Status
 
-Please help validate the two voice paths in this order:
+Reporter validation on 6.1.6 is complete enough for the current conclusion:
+LIME still receives Simplified Chinese from the Xiaomi/Google recognizer path
+even when LIME passes Traditional Chinese hints. No additional routine retest or
+evidence request is pending.
 
-1. **Without granting LIME microphone permission**, tap the microphone key and
-   test the Google/vendor voice input path first. This should keep LIME out of
-   direct audio capture and route through delegated VoiceIME when Android
-   exposes a usable voice IME, otherwise through the Google recognizer fallback.
-   Report whether the voice UI opens, whether LIME returns afterward, and
-   whether the committed result is Traditional or Simplified Chinese.
-2. **After that first test**, grant LIME microphone permission from the Setup
-   tab and test LIME inline dictation. This should keep the LIME keyboard
-   visible, show dictation status/partial text in the candidate strip, and
-   commit final text through the Traditional-first conversion path.
+If this issue is revisited, ask for only new information that could change the
+upstream/vendor-limitation conclusion, such as a Xiaomi/Google Speech Services
+update that changes recognizer behavior, a device where a modern callable
+VoiceIME path is available, or a concrete LIME-side API/workaround.
 
-For both tests, please include Android version, system language/locale, Google
-voice language setting, and one example phrase with expected Traditional output
-versus actual committed output.
+## Suggested Classification
 
-## User Follow-up
-
-Ask the reporter for:
-
-- Android system language/locale
-- Google voice input language setting screenshot
-- LIME version tested
-- whether 6.1.1 pre-release still reproduces the issue
-- example phrase showing expected Traditional output and actual Simplified
-  output
-
-## Suggested Label
-
-`bug`
+Closed by maintainer as upstream/vendor recognizer limitation after LIME-side
+mitigations and reporter validation. Keep historical `bug` label only if the
+project wants to preserve the original triage label; otherwise an
+`upstream limitation` / vendor-limitation classification is more accurate.
