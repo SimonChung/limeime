@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T15:42:29+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T16:29:35+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -34,14 +34,14 @@ Last updated: 2026-05-21T15:42:29+08:00 (Asia/Taipei)
 - #72: Community request to bundle 哈哈倉頡 and question current Cangjie table source/author/license. Labeled `enhancement` and `question`. Treat external table/link as untrusted; before bundling any table, verify source, author, license, maintenance status, and compatibility.
 - #73: Community request: make Android soft-keyboard Enter commit the raw English/code string while Space continues selecting/committing Chinese candidates, example `bgg` -> `bgg` on Enter. Reporter is on APK 6.1.7 / Android 15 and cites Trime. Classified as `enhancement` + `Usability`; automation acknowledged in comment `4504038619`. No bug investigation doc needed unless maintainers decide to implement.
 - #74: Community question/enhancement about Android `記憶中英模式` and inputType-driven switching. Reporter asks whether the option should make LIME always start in Chinese mode and requests an optional fixed-Chinese-start override for 行列10 numeric-key Chinese input even in URL/number fields. Labels are `question` + `enhancement` + `Usability`. Code inspection shows `LIMEService.initOnStartInput(...)` currently forces English-only/URL/number keyboard modes for number/datetime/phone/password/email/URI inputTypes before normal text-field language memory. Maintainer `jrywu` replied in verified comment `4505846029`, explaining that Android fields have different types: URL/email switch to English-related keyboards, number uses the phone keyboard, and `記憶中英模式` only remembers the previous English/Chinese keyboard for normal text fields. Keep open as product/author-team evaluation for whether an optional fixed-Chinese-start override should be added; no additional public reply is needed unless Jeremy/maintainer wants a follow-up.
-- #75: Community-reported Android Cangjie keyboard redraw/layering bug on 6.1.7 / Android 15: after tapping numeric/symbol keyboard once and switching back to Chinese, stale numeric/symbol keyboard UI remains visible behind the Cangjie keys. Labeled `bug` + `Usability`, assigned to `jrywu`, acknowledgement/retest-after-fix note posted as comment `4505090642`, and analysis doc `docs/#75_ISSUE.md` exists. Keep open for implementation; do not ask for retest until a newer APK contains a clearly relevant keyboard switching/redraw fix.
+- #75: Community-reported Android keyboard redraw/popup-lifecycle bugs on 6.1.7 / Android 15. Original report: after tapping numeric/symbol keyboard once and switching back to Cangjie/Chinese, stale numeric/symbol keyboard UI remains visible behind the Cangjie keys. New reporter follow-up in comment `4506232521`: in English mode, long-pressing some accented/European letter popup keys and not selecting one can leave the popup visible indefinitely, even after switching back to Chinese; reporter also suggests configurability to disable those accented alternatives. Labeled `bug` + `Usability`, assigned to `jrywu`, acknowledgement/retest-after-fix note posted as comment `4505090642`, and analysis doc `docs/#75_ISSUE.md` was updated with the popup path. Keep open for implementation; do not ask for retest until a newer APK contains a clearly relevant keyboard switching/redraw/popup-dismissal fix.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-21T15:45:16+08:00
-- From: Codex scheduled GitHub monitor
-- Summary: No new APK, release, PR, or discussion activity since the last observed state. New/changed moderation focus is #63 latest clarification: Sweetlime is the normal Traditional baseline; LIME 6.1.6 remains Simplified with and without microphone permission.
-- Needs: Debug #63 further; implement/fix #71 and #75; product/author-team decisions remain for #70/#72/#73/#74; watch #58 for sample-table follow-up.
-- Links: #63 `https://github.com/lime-ime/limeime/issues/63`; #75 `https://github.com/lime-ime/limeime/issues/75`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #74 `https://github.com/lime-ime/limeime/issues/74`; #73 `https://github.com/lime-ime/limeime/issues/73`; #58 latest answer `https://github.com/lime-ime/limeime/issues/58#issuecomment-4504038716`; #71 latest acknowledgement `https://github.com/lime-ime/limeime/issues/71#issuecomment-4504791937`.
+- Time: 2026-05-21T16:29:35+08:00
+- From: Hermes GitHub webhook `issue_comment.created`
+- Summary: Reporter `ejmoog` added #75 follow-up evidence: English long-press accented/European letter popup can stay visible indefinitely if no alternative is selected, and switching back to Chinese does not dismiss it. Hermes updated `docs/#75_ISSUE.md` and this mutable state to include popup lifecycle/dismissal alongside the original Cangjie `123` -> Chinese stale keyboard redraw bug. No public reply was posted because the existing acknowledgement/retest-after-fix note still covers follow-up, and no new APK/fix is available yet.
+- Needs: Debug #63 further; implement/fix #71 and #75. For #75, verify both the Cangjie stale keyboard redraw path and the English long-press popup dismissal path; consider whether accented/European popup configurability should be a product option. Product/author-team decisions remain for #70/#72/#73/#74; watch #58 for sample-table follow-up.
+- Links: #63 `https://github.com/lime-ime/limeime/issues/63`; #75 latest comment `https://github.com/lime-ime/limeime/issues/75#issuecomment-4506232521`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #74 `https://github.com/lime-ime/limeime/issues/74`; #73 `https://github.com/lime-ime/limeime/issues/73`; #58 latest answer `https://github.com/lime-ime/limeime/issues/58#issuecomment-4504038716`; #71 latest acknowledgement `https://github.com/lime-ime/limeime/issues/71#issuecomment-4504791937`.
 
 ## Shared Task Board / Identity Exchange
 - Purpose: This section is the repo-backed exchange area for Codex, Hermes, and future identities. Merge scheduled/background handoffs and task-board items here because local `.agents/shared/handoffs.md` and `.agents/shared/tasks.md` are not reliable for scheduled-session continuity.
@@ -55,9 +55,9 @@ Last updated: 2026-05-21T15:42:29+08:00 (Asia/Taipei)
 - Status: todo
   Owner: next LIME IME product/implementation identity
   Task: Review/plan #70/#72/#73/#74 enhancement requests and implement #71/#75 bug fixes.
-  Context: #70 asks to hide/configure next-code candidates; #71 is a composition-cancel bug when switching Chinese to English; #72 asks to bundle 哈哈倉頡 and raises source/license questions; #73 asks Enter to commit raw code while Space commits Chinese candidates; #74 asks for optional fixed-Chinese-start behavior despite Android inputType switching; #75 reports stale number/symbol keyboard UI visible behind Cangjie after `123` -> Chinese switching.
-  Next: Decide product direction for #70/#73/#74 and licensing posture for #72; implement/fix #71 using candidate-bar dismiss-style cancel semantics; investigate/fix #75 in Android keyboard switching/redraw path; do not bundle external tables without source/author/license verification.
-  Updated: 2026-05-21T15:45:16+08:00
+  Context: #70 asks to hide/configure next-code candidates; #71 is a composition-cancel bug when switching Chinese to English; #72 asks to bundle 哈哈倉頡 and raises source/license questions; #73 asks Enter to commit raw code while Space commits Chinese candidates; #74 asks for optional fixed-Chinese-start behavior despite Android inputType switching; #75 now covers two Android keyboard UI issues: stale number/symbol layer behind Cangjie after `123` -> Chinese switching, and English long-press accented/European popup not dismissing when switching back to Chinese.
+  Next: Decide product direction for #70/#73/#74 and licensing posture for #72; implement/fix #71 using candidate-bar dismiss-style cancel semantics; investigate/fix #75 in Android keyboard switching/redraw and mini-keyboard popup dismissal paths; consider whether accented/European popup alternatives should become configurable; do not bundle external tables without source/author/license verification.
+  Updated: 2026-05-21T16:29:35+08:00
 - Status: todo
   Owner: next LIME IME documentation/import identity
   Task: Watch #58 `.lime` v2 escaping follow-up.
@@ -67,7 +67,7 @@ Last updated: 2026-05-21T15:42:29+08:00 (Asia/Taipei)
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55/#54/#62/#64/#65/#66/#67/#68/#69 are closed where noted; #63 remains open after a negative 6.1.6 retest and latest reporter clarification; #71 and #75 remain open bugs needing implementation/fix follow-up; #70/#72/#73/#74 remain open enhancement/question/product-decision items.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.7`; #55/#54/#62/#64/#65/#66/#67/#68/#69 are closed where noted; #63 remains open after a negative 6.1.6 retest and latest reporter clarification; #71 and #75 remain open bugs needing implementation/fix follow-up, with #75 now including both stale keyboard redraw and long-press popup dismissal paths; #70/#72/#73/#74 remain open enhancement/question/product-decision items.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, cross-agent handoff/continuation notes, or shared task-board items change.
