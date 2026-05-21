@@ -20,59 +20,66 @@ This is analogous to the candidate-bar dismiss behavior fixed in 6.1.7: dismissi
 - During active composition, switching to English keyboard mode leaves the stale composing code as output.
 - The user then has to manually delete the leaked code, which defeats the purpose of using the switch key as a quick cancel path.
 
-## Current observations
+## Current fix status
+
+The relevant fix is included in bulk commit `3d5d9c5` (`refactor: keyboard quality pass, prefs cleanup, emoji default 5 (#71)`) and is present in test APK `LIMEHD2026-6.1.8.apk`.
 
 Relevant Android file:
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
 
+Android changed `switchKeyboard(int primaryCode)` so `KEYCODE_SWITCH_TO_ENGLISH_MODE` cancels active composition instead of committing stale raw code:
+
+```java
+if (primaryCode == KEYCODE_SWITCH_TO_ENGLISH_MODE) {
+    if (mComposing != null && mComposing.length() > 0) {
+        clearComposing(true);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.finishComposingText();
+    } else {
+        clearComposing(false);
+    }
+} else if (mComposing != null && mComposing.length() > 0) {
+    getCurrentInputConnection().commitText(mComposing, 1);
+    finishComposing();
+    clearComposing(false);
+} else {
+    clearComposing(false);
+}
+```
+
 Relevant iOS file:
 
 - `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift`
 
-The soft-keyboard Chinese-to-English key is handled by `onKey()` through `KEYCODE_SWITCH_TO_ENGLISH_MODE`, which calls `switchKeyboard(primaryCode)`.
-
-Inside `switchKeyboard(...)`, the current master branch first tries to auto-commit active composing text before changing modes:
-
-```java
-if (mComposing != null && mComposing.length() > 0) {
-    getCurrentInputConnection().commitText(mComposing, 1);
-    finishComposing();
-}
-clearComposing(false);
-```
-
-That behavior matches the remaining report: the raw composing code is committed/leaked when the user expected the language switch to cancel it.
-
-By contrast, the candidate-bar dismiss path now calls `dismissCandidateComposing()`, which hides the popup, calls `clearComposing(true)`, and then calls `InputConnection.finishComposingText()`. That path is closer to the desired cancel semantics.
-
-The physical-keyboard `switchChiEng()` path also uses `clearComposing(false)` before toggling mode. It should be reviewed for parity, because `false` does not force-clear the system composing buffer.
-
-On iOS, the `LimeKeyCode.switchToEnglish` key path calls `switchChiEng(toEnglish: true)`. That function dismisses popups, exits symbol mode if needed, clears shift state, then calls:
+iOS changed `switchChiEng(toEnglish:)` so switching to English uses the candidate-dismiss cancel path:
 
 ```swift
-clearComposing(force: false)
+if toEnglish {
+    cancelActiveComposingFromCandidateDismiss()
+} else {
+    clearComposing(force: false)
+}
 ```
 
-iOS simulates active composition by inserting inline composing characters into the host document and tracking their length in `composingLength`. The candidate-bar dismiss path already uses `cancelActiveComposingFromCandidateDismiss()`, which deletes the inline composing characters before resetting state. The Chinese-to-English switch path does not use that force/delete behavior, so active raw code can remain in the editor after the layout changes to English.
+This keeps legacy auto-commit behavior for other switch paths while making the explicit Chinese-to-English switch behave as a cancel operation.
 
-## Likely root cause
+Reporter verification is pending on APK `6.1.8`.
 
-The Chinese/English switch path does not consistently treat active composition as a cancel operation. For this issue, switching from Chinese composition to English should cancel active composition and remove inline composing text, not preserve or commit it.
+## Root cause addressed
 
-On Android, `switchKeyboard(...)` commits `mComposing` via `InputConnection.commitText(mComposing, 1)` before calling `clearComposing(false)`, so the stale raw code becomes normal editor text rather than being cleared.
+The Chinese/English switch path previously did not consistently treat active composition as a cancel operation. For this issue, switching from Chinese composition to English should cancel active composition and remove inline composing text, not preserve or commit it.
 
-On iOS, `switchChiEng(toEnglish:)` calls `clearComposing(force: false)`. Because the iOS composing simulation has already inserted the composing code inline into the host document, clearing state without deleting inline composing characters can leave the stale raw code as normal editor text.
+The 6.1.8 fix addresses the two known soft-keyboard paths:
 
-## Proposed solution
+1. Android `KEYCODE_SWITCH_TO_ENGLISH_MODE` now calls `clearComposing(true)` and `finishComposingText()` when composition is active, instead of committing `mComposing`.
+2. iOS `switchChiEng(toEnglish: true)` now calls `cancelActiveComposingFromCandidateDismiss()` instead of only `clearComposing(force: false)`.
 
-Route Chinese-to-English switching through the same safe composition-cancel semantics used by candidate-bar dismiss, or explicitly cancel before switching mode:
+## Implemented solution
 
-1. On Android, for `KEYCODE_SWITCH_TO_ENGLISH_MODE`, if `mComposing.length() > 0`, do not call `commitText(mComposing, 1)`.
-2. On Android, clear LIME state and the active Android composing state, likely by reusing/extracting the `dismissCandidateComposing()` logic or calling `clearComposing(true)` plus `finishComposingText()` on the current `InputConnection`.
-3. On iOS, make `switchChiEng(toEnglish: true)` cancel active composition with the same semantics as candidate-bar dismiss, likely by reusing `cancelActiveComposingFromCandidateDismiss()` or a smaller shared helper that deletes inline composing characters before resetting state.
-4. Keep any raw-code commit behavior limited to explicit user actions that mean “commit raw input”, not language-mode switching.
-5. Review the Android physical-keyboard `switchChiEng()` path and iOS IM-switch paths so soft, physical, and internal IM switching are consistent.
+The implemented behavior routes explicit Chinese-to-English switching through safe composition-cancel semantics while leaving other switch modes on the legacy commit/clear path.
+
+Remaining review item: verify whether any physical-keyboard Chinese/English switch shortcut needs parity with the soft-keyboard behavior.
 
 ## Follow-up questions
 
@@ -80,6 +87,8 @@ Route Chinese-to-English switching through the same safe composition-cancel sema
 - Should language switching always cancel active composition, or should this become a setting if some users rely on the previous auto-commit behavior?
 
 ## Verification plan
+
+Ask the reporter to test APK `6.1.8`:
 
 1. Start composing a code sequence that has not been committed yet.
 2. Tap the Chinese/English switch key while composition is active.
@@ -89,3 +98,5 @@ Route Chinese-to-English switching through the same safe composition-cancel sema
 6. Repeat with at least one table where the typed code has valid candidates and one where it does not.
 7. Repeat on iOS with the `abc` / Chinese toggle while composing, including iPhone and iPad layouts if possible.
 8. Repeat with a physical keyboard Chinese/English switch shortcut, if supported, to confirm parity.
+
+Follow-up policy: keep #71 open until the reporter confirms `6.1.8` fixed the Chinese/English switch behavior.
