@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-21T17:18:04+08:00 (Asia/Taipei)
+Last updated: 2026-05-21T17:24:25+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -19,7 +19,7 @@ Last updated: 2026-05-21T17:18:04+08:00 (Asia/Taipei)
 ## Current Issue States And Required Actions
 - #54: Community-reported Brave URL bar candidate overlap/white-band behavior. Relevant fix landed in APK `LIMEHD2026-6.1.5.apk`; a retest request was posted and the issue is closed as completed. Remove from active watch unless reopened or referenced by new reports.
 - #55: Community-reported key preview delay. Reporter confirmed improvement on 6.1.1 pre-release. Closed as completed; remove from active watch unless reopened or referenced by new reports.
-- #58: `.lime` pipe-format import/support question. Automation replied in comment `4504038716` explaining `@format@|lime-text-v2` and escaping ASCII `|` as `\|`, while noting fullwidth/vertical `︱` should normally be direct data. Labels are `question` and `documentation`. Keep open for reporter follow-up or doc/product decision; if import still fails, ask for a minimal sample table.
+- #58: `.lime` pipe-format import/support question. Automation replied in comment `4504038716` explaining `@format@|lime-text-v2` and escaping ASCII `|` as `\|`, while noting fullwidth/vertical `︱` should normally be direct data. Maintainer `jrywu` later pointed the reporter to `docs/CIN_LIME_SPEC.md#2-lime-format` in comment `4506696064`. Labels are `question` and `documentation`. Keep open for reporter follow-up or doc/product decision; if import still fails, ask for a minimal sample table.
 - #59: `.lime` format/name-display documentation question. Maintainer answered key format details and reporter thanked them. Still open with `question`/`documentation`; low-priority documentation follow-up, not an active bug watch.
 - #62: Community-reported Ext-B leading-character related-phrase issue. Reporter confirmed the 6.1.6 retest fixed/improved the remaining path; automation reacted and closed as completed. Remove from active watch unless reopened or referenced by new reports.
 - #63: Community-reported Google voice input outputs Simplified Chinese and previously duplicated text. Reporter tested 6.1.6 after the voice-input routing fix and said it still outputs Simplified Chinese. Latest clarification in comment `4501864655`: normal Traditional Chinese output is from Sweetlime; LIME 6.1.6 outputs Simplified Chinese both with microphone permission enabled and disabled. Issue remains open and assigned to `jrywu`. Next step is targeted debugging of why both Google/system voice path and LIME inline dictation path still resolve to Simplified on the reporter's Xiaomi HyperOS 3 / Android 16 environment; do not send another generic retest request until a new relevant fix lands.
@@ -37,11 +37,11 @@ Last updated: 2026-05-21T17:18:04+08:00 (Asia/Taipei)
 - #75: Community-reported Android keyboard redraw/popup-lifecycle bugs on 6.1.7 / Android 15. Original report: after tapping numeric/symbol keyboard once and switching back to Cangjie/Chinese, stale numeric/symbol keyboard UI remains visible behind the Cangjie keys. New reporter follow-up in comment `4506232521`: in English mode, long-pressing some accented/European letter popup keys and not selecting one can leave the popup visible indefinitely, even after switching back to Chinese; reporter also suggests configurability to disable those accented alternatives. Labeled `bug` + `Usability`, assigned to `jrywu`, acknowledgement/retest-after-fix note posted as comment `4505090642`, and analysis doc `docs/#75_ISSUE.md` was updated with the popup path. Keep open for implementation; do not ask for retest until a newer APK contains a clearly relevant keyboard switching/redraw/popup-dismissal fix.
 
 ## Operational Handoff / Next Actions
-- Time: 2026-05-21T17:18:04+08:00
+- Time: 2026-05-21T17:24:25+08:00
 - From: Hermes GitHub webhook `issue_comment.created`
-- Summary: Maintainer `jrywu` added a #70 follow-up after the reporter clarified the request to limit/disable `延伸編碼` candidates. The maintainer said this maps to the suggested-candidate display-count option and asked the reporter to try it. Hermes updated this mutable state; no public reply was posted.
-- Needs: Watch #70 for reporter confirmation or continued confusion after trying the suggested-candidate display-count option. Debug #63 further; implement/fix #71 and #75. Product/author-team decisions remain for #72/#73/#74, and #70 may still need product follow-up if the existing option does not satisfy the reporter.
-- Links: #70 maintainer comment `https://github.com/lime-ime/limeime/issues/70#issuecomment-4506632626`; #70 reporter clarification `https://github.com/lime-ime/limeime/issues/70#issuecomment-4506343665`; #63 `https://github.com/lime-ime/limeime/issues/63`; #75 latest comment `https://github.com/lime-ime/limeime/issues/75#issuecomment-4506232521`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #74 `https://github.com/lime-ime/limeime/issues/74`; #73 `https://github.com/lime-ime/limeime/issues/73`; #58 latest answer `https://github.com/lime-ime/limeime/issues/58#issuecomment-4504038716`; #71 latest acknowledgement `https://github.com/lime-ime/limeime/issues/71#issuecomment-4504791937`.
+- Summary: Maintainer `jrywu` added a #58 follow-up pointing the reporter to `docs/CIN_LIME_SPEC.md#2-lime-format` for the `.lime` v2 format details after prior automation explained `@format@|lime-text-v2` and `\|` escaping. Hermes verified the live issue comments and docs link, updated this mutable state, and did not post another public reply.
+- Needs: Watch #58 only for reporter follow-up or a failing sample table. Continue watching #70 for reporter confirmation after the suggested-candidate display-count option; debug #63; implement/fix #71 and #75; product/author-team decisions remain for #72/#73/#74.
+- Links: #58 maintainer comment `https://github.com/lime-ime/limeime/issues/58#issuecomment-4506696064`; #58 docs `https://github.com/lime-ime/limeime/blob/master/docs/CIN_LIME_SPEC.md#2-lime-format`; #70 maintainer comment `https://github.com/lime-ime/limeime/issues/70#issuecomment-4506632626`; #63 `https://github.com/lime-ime/limeime/issues/63`; #75 latest comment `https://github.com/lime-ime/limeime/issues/75#issuecomment-4506232521`; current APK raw URL `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.7.apk`; #74 `https://github.com/lime-ime/limeime/issues/74`; #73 `https://github.com/lime-ime/limeime/issues/73`; #71 latest acknowledgement `https://github.com/lime-ime/limeime/issues/71#issuecomment-4504791937`.
 
 ## Shared Task Board / Identity Exchange
 - Purpose: This section is the repo-backed exchange area for Codex, Hermes, and future identities. Merge scheduled/background handoffs and task-board items here because local `.agents/shared/handoffs.md` and `.agents/shared/tasks.md` are not reliable for scheduled-session continuity.
@@ -61,9 +61,9 @@ Last updated: 2026-05-21T17:18:04+08:00 (Asia/Taipei)
 - Status: todo
   Owner: next LIME IME documentation/import identity
   Task: Watch #58 `.lime` v2 escaping follow-up.
-  Context: Automation answered how to import ASCII `|` with `@format@|lime-text-v2` and `\|`; reporter may still provide a sample table if import fails.
-  Next: If reporter shares a failing sample, inspect importer/docs and update docs or bug investigation as appropriate.
-  Updated: 2026-05-21T15:45:16+08:00
+  Context: Automation answered how to import ASCII `|` with `@format@|lime-text-v2` and `\|`; maintainer `jrywu` also pointed the reporter to `docs/CIN_LIME_SPEC.md#2-lime-format` in comment `4506696064`. Reporter may still provide a sample table if import fails.
+  Next: If reporter shares a failing sample, inspect importer/docs and update docs or bug investigation as appropriate. No additional public reply is needed unless the reporter remains confused or provides new evidence.
+  Updated: 2026-05-21T17:24:25+08:00
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
