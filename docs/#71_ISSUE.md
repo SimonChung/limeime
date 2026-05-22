@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-Issue #71 was originally reported as a request for a convenient way to clear the current composing code. After the 6.1.7 candidate-bar dismiss fix, the remaining problem is a cross-platform bug in the Chinese/English keyboard switch behavior during active composition.
+Issue #71 was originally reported as a request for a convenient way to clear the current composing code. After the 6.1.7 candidate-bar dismiss fix, the remaining user-visible problem was the Chinese/English keyboard switch behavior during active composition.
 
 When the user is composing code and switches to the English keyboard, LIME IME should cancel the active composition and leave no text to output. The current behavior leaves the stale composing code as output after switching to English.
 
@@ -64,13 +64,13 @@ if toEnglish {
 
 This keeps legacy auto-commit behavior for other switch paths while making the explicit Chinese-to-English switch behave as a cancel operation.
 
-Reporter `ejmoog` confirmed on 2026-05-22 that APK `6.1.8` implements the requested Chinese/English switch behavior: "安裝了6.1.8，功能已實現，感謝！" The reporter then closed the issue as completed.
+Reporter `ejmoog` confirmed on 2026-05-22 that Android APK `6.1.8` implements the requested Chinese/English switch behavior: "安裝了6.1.8，功能已實現，感謝！" The reporter then closed the issue as completed. No separate iOS or physical-keyboard verification was provided in the issue thread.
 
 ## Root cause addressed
 
 The Chinese/English switch path previously did not consistently treat active composition as a cancel operation. For this issue, switching from Chinese composition to English should cancel active composition and remove inline composing text, not preserve or commit it.
 
-The 6.1.8 fix addresses the two known soft-keyboard paths:
+The 6.1.8 code change addresses the two known soft-keyboard paths; reporter verification in this issue covers the Android APK path:
 
 1. Android `KEYCODE_SWITCH_TO_ENGLISH_MODE` now calls `clearComposing(true)` and `finishComposingText()` when composition is active, instead of committing `mComposing`.
 2. iOS `switchChiEng(toEnglish: true)` now calls `cancelActiveComposingFromCandidateDismiss()` instead of only `clearComposing(force: false)`.
@@ -79,16 +79,11 @@ The 6.1.8 fix addresses the two known soft-keyboard paths:
 
 The implemented behavior routes explicit Chinese-to-English switching through safe composition-cancel semantics while leaving other switch modes on the legacy commit/clear path.
 
-Remaining review item: verify whether any physical-keyboard Chinese/English switch shortcut needs parity with the soft-keyboard behavior.
-
-## Follow-up questions
-
-- Should switching from Chinese to symbol/emoji modes also cancel instead of commit active composing code, or is this issue limited to the explicit Chinese/English switch key?
-- Should language switching always cancel active composition, or should this become a setting if some users rely on the previous auto-commit behavior?
+No remaining #71 watch item is needed. Broader product questions such as symbol/emoji switching, physical-keyboard parity, or making language-switch behavior configurable should be tracked separately only if they are requested or reproduced in a new issue.
 
 ## Verification result
 
-Reporter `ejmoog` tested APK `6.1.8` and confirmed the function is implemented. Original verification checklist used for the retest request:
+Reporter `ejmoog` tested Android APK `6.1.8` and confirmed the requested function is implemented. Original Android-focused verification checklist used for the retest request:
 
 1. Start composing a code sequence that has not been committed yet.
 2. Tap the Chinese/English switch key while composition is active.
@@ -96,7 +91,6 @@ Reporter `ejmoog` tested APK `6.1.8` and confirmed the function is implemented. 
 4. Verify that no raw code or stale text is inserted into the target editor.
 5. Repeat with the candidate-bar dismiss button and confirm both paths behave consistently.
 6. Repeat with at least one table where the typed code has valid candidates and one where it does not.
-7. Repeat on iOS with the `abc` / Chinese toggle while composing, including iPhone and iPad layouts if possible.
-8. Repeat with a physical keyboard Chinese/English switch shortcut, if supported, to confirm parity.
+7. iOS soft-keyboard and physical-keyboard parity were not verified by this reporter thread; treat those as out of scope for #71 unless a new report provides evidence.
 
-Follow-up status: resolved/closed after reporter confirmation on APK `6.1.8`. No active watch is needed unless the reporter reopens or new related evidence appears.
+Follow-up status: resolved/closed after reporter confirmation on Android APK `6.1.8`. No active watch is needed unless the reporter reopens or new related evidence appears.
