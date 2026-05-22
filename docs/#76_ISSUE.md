@@ -113,9 +113,17 @@ iOS:
   - Set `db.similarCodeCandidatesCap = 1`.
   - Assert at most one partial/extension candidate is returned, preserving exact matches and #49 score ordering.
 
+## Fix / APK / follow-up status
+
+Commit `7e1d57bdf6cc026d5d32e5fb670a7cebb6d316b9` fixed the confirmed `similiar_list = 0` / exact-match-only bug for Android and iOS database lookup paths by suppressing partial-match lookup when the configured cap is zero or lower, correcting partial-match cap handling, and adding Android/iOS tests. The repository then added Android release APK `LIMEHD2026-6.1.9.apk`, which contains this fix.
+
+GitHub auto-closed #76 through the fixing commit, but because #76 is community-reported and the reporter has not yet confirmed the APK result, Hermes reopened the issue and posted retest request `4519807270` with the direct 6.1.9 APK link. Current public follow-up state: open / pending reporter confirmation for the `建議字顯示數量 = 0` exact-match-only behavior.
+
+The learned-word / association / ranking-control concern remains separate from the fixed `similiar_list = 0` candidate-count bug. Do not imply that APK 6.1.9 fixes the learned-word/delete/ranking-control complaint unless separately verified.
+
 ## Follow-up questions
 
-No public follow-up is required before investigation. Maintainer `jrywu` has already explained in comment `4517136291` that `0` currently still emits one partial-match candidate and that a future change will make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
+Public follow-up for the confirmed candidate-count bug has now been posted after the fix reached APK 6.1.9. Maintainer `jrywu` had explained in comment `4517136291` that `0` previously still emitted one partial-match candidate and that a future change would make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
 
 The learned-word / association / ranking-control complaint should be treated as related product/usability context rather than as evidence that the planned count-bug fix would also address learned-word, association, or ranking behavior. The reporter's latest settings screenshot shows the relevant learning/association/ranking toggles unchecked, so next investigation should distinguish:
 
