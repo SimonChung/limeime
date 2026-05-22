@@ -69,7 +69,7 @@ Likely root cause is that Android `LimeDB.getMappingByCode(...)` and iOS `LimeDB
 
 The later `buildQueryResult(...)` limit logic adds a second bug: partial-match records are added before the limit is checked, so `0` still allows one partial row and positive values may allow one too many.
 
-This should be verified with an Android test or manual repro using `similiar_list=0`; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior.
+This was verified by reporter manual retest on Android APK `6.1.9` for the scoped `similiar_list=0` behavior; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior before the fix.
 
 ## Implemented fix
 
@@ -121,9 +121,9 @@ iOS:
 
 Commit `7e1d57bdf6cc026d5d32e5fb670a7cebb6d316b9` fixed the confirmed `similiar_list = 0` / exact-match-only bug for Android and iOS database lookup paths by suppressing partial-match lookup when the configured cap is zero or lower, correcting partial-match cap handling, and adding Android/iOS tests. The repository then added Android release APK `LIMEHD2026-6.1.9.apk`, which contains this fix.
 
-GitHub auto-closed #76 through the fixing commit, then Hermes reopened it for community confirmation and posted retest request `4519807270` with the direct 6.1.9 APK link. Reporter `ejmoog` then confirmed in comment `4520021201` that the problem was resolved, and closed the issue. Hermes added a thumbs-up reaction and posted closing acknowledgement `4520032322`. Current public follow-up state: resolved / reporter-confirmed closed for the Android APK 6.1.9 `建議字顯示數量 = 0` exact-match-only behavior.
+After GitHub auto-closed #76 through the fixing commit, Hermes reopened it and posted retest request `4519807270` because this was a community-reported issue requiring reporter/device confirmation. Reporter `ejmoog` then confirmed in comment `4520021201` that the problem was resolved (`確認，問題已解決，非常感謝！`) and closed the issue. Hermes added a thumbs-up reaction and posted acknowledgement `https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322`. Current public follow-up state: reporter-confirmed resolved / closed for the `建議字顯示數量 = 0` exact-match-only behavior on Android APK `6.1.9`.
 
-The learned-word / association / ranking-control concern remains separate from the fixed `similiar_list = 0` candidate-count bug. Do not imply that APK 6.1.9 fixes the learned-word/delete/ranking-control complaint unless separately verified.
+The learned-word / association / ranking-control concern remains separate from the fixed `similiar_list = 0` candidate-count bug. The reporter confirmation should not be read as verifying a broader learned-word/delete/ranking-control redesign.
 
 ## Follow-up questions
 
@@ -140,34 +140,31 @@ After the reporter-confirmed closure, keep learned-word delete/disable controls 
 
 ## Current follow-up status
 
-APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. The issue was reopened and a scoped retest request was posted in comment `4519807270`:
+Resolved / closed. APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. Retest request `4519807270` asked the reporter to verify that typing `ha` preserves exact `白` and no longer shows extension candidate `皔` / `haa`:
 
 - https://github.com/lime-ime/limeime/issues/76#issuecomment-4519807270
 - APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk
 
-Reporter `ejmoog` replied in comment `4520021201` that the problem is resolved and then closed the issue:
+Reporter `ejmoog` confirmed the scoped fix in comment `4520021201` and closed the issue:
 
 - https://github.com/lime-ime/limeime/issues/76#issuecomment-4520021201
 
-Hermes added a thumbs-up reaction to the reporter confirmation and posted a short closing acknowledgement in comment `4520032322`:
+Hermes added a thumbs-up reaction and posted acknowledgement `https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322`. Do not keep an active retest watch for #76 unless it is reopened or new evidence appears. The separate learned-word / association / ranking-control concern remains future product/usability context and was not verified by this closure.
 
-- https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322
+## Verification result
 
-Resolved scope is intentionally narrow: the Android APK 6.1.9 retest confirms the reported `建議字顯示數量 = 0` / `ha` exact-match-only behavior no longer shows the extension candidate `皔` / `haa`. The separate learned-word / association / ranking-control concern remains product/usability context for future investigation if it is reopened or reported separately, but it is not an active #76 reporter watch.
+Reporter-confirmed Android APK verification:
 
+- Test build: `LIMEHD2026-6.1.9.apk` / version `6.1.9`.
+- Requested scope: with `建議字顯示數量` / `similiar_list` set to `0`, typing `ha` should preserve exact candidate `白` and no longer show partial/extension candidate `皔` / `haa`.
+- Confirmation: reporter `ejmoog` replied `確認，問題已解決，非常感謝！` in comment `4520021201`, then closed the issue.
 
-## Verification plan
-
-- Set `建議字顯示數量` / `similiar_list` to `0`.
-- Type `ha` with the same or equivalent table.
-- Confirm the candidate bar shows the composing code and exact match `白` but no partial `皔`/`haa` candidate.
-- Set the value back to a positive value such as `10` or `20` and confirm partial/next-code candidates appear as expected.
-- Reporter `ejmoog` confirmed in comment `4520021201` that APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` resolved the reported behavior. Treat the Android APK `建議字顯示數量 = 0` / `ha` exact-match-only path as reporter-verified closed unless the issue is reopened or new evidence appears.
+This verifies the Android APK behavior for the scoped `similiar_list=0` candidate-count bug. It does not verify unrelated iOS behavior, positive-count cap-boundary behavior on a user device, or the adjacent learned-word / association / ranking-control complaint.
 
 ## 6.1.9 APK follow-up
 
 Android APK `LIMEHD2026-6.1.9.apk` includes commit `7e1d57b` (`Fix #76: suppress partial matches when similar_list is disabled`), which implements the exact-match-only behavior for `建議字顯示數量` / `similiar_list = 0` on Android and iOS and fixes the positive partial-match cap boundary.
 
-Because #76 is community-reported, it was kept open after the APK retest request until reporter validation. Reporter `ejmoog` confirmed in comment `4520021201` that the issue was resolved and closed #76. Hermes reacted to the confirmation and posted closing acknowledgement `4520032322`.
+The public retest request was posted in comment `4519807270` with direct APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk`. Reporter `ejmoog` confirmed the Android APK issue was resolved in comment `4520021201` and closed #76. No further 6.1.9 retest prompt is needed unless the issue is reopened or new evidence appears.
 
-Verified scope for closure is intentionally narrow: Android APK 6.1.9 resolved the reported `建議字顯示數量 = 0` / `ha` exact-match-only behavior by no longer showing the extension/partial candidate such as `haa` / `皔`. The adjacent learned-word / association / ranking-control concern was not verified as fixed by this APK; keep it as historical product/usability context only unless the reporter reopens #76 or a separate issue tracks it.
+Verified scope remains intentionally narrow: Android APK `6.1.9` fixed the `建議字顯示數量 = 0` / `ha` exact-match-only case reported in #76. The adjacent learned-word / association / ranking-control concern is not claimed fixed by this APK and should be handled separately if it resurfaces.
