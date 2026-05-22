@@ -75,26 +75,26 @@ This should be verified with an Android test or manual repro using `similiar_lis
 
 Commit `7e1d57b` implements the planned exact-only behavior for disabled similar-code candidates on both Android and iOS, adds focused tests for the zero-cap path and cap boundary behavior, and updates async iOS test stabilization. APK metadata now points to `LIMEHD2026-6.1.9.apk`, which contains the fix for Android retesting.
 
-## Proposed solution / investigation plan
+## Implemented solution
 
-- Verify locally that `皔` appears through the `expandBetweenSearchClause(...)` partial/extension path, not a separate runtime suggestion path.
-- Apply the fix on both Android and iOS.
-- When Android `getSimilarCodeCandidates()` / iOS `similarCodeCandidatesCap` returns `0`, build an exact-only `selectClause` instead of calling `expandBetweenSearchClause(...)`, while preserving any exact-match remap conditions required by `extraExactMatchClause`.
-- Update the positive-count limiting logic on both platforms so a partial-match candidate is counted and checked before it is added to `result`.
-- Preserve exact-match candidates such as `白`.
-- Verify that positive values allow the intended number of partial/next-code candidates without changing exact-match behavior or #49 partial-match score ordering.
-- Consider adding focused Android instrumentation coverage for `getMappingByCode(...)` with `similiar_list=0` and a positive count, because the disabled behavior depends on both SQL clause construction and result limiting.
+Commit `7e1d57b` supersedes the earlier investigation plan:
 
-## Existing coverage and new tests needed
+- Verified the extra `皔` / `haa` candidate came through the `expandBetweenSearchClause(...)` partial/extension path.
+- Applied the exact-only fix on both Android and iOS.
+- When Android `getSimilarCodeCandidates()` / iOS `similarCodeCandidatesCap` returns `0`, the lookup now builds an exact-only query instead of calling `expandBetweenSearchClause(...)`, while preserving exact-match behavior.
+- Updated the positive-count limiting logic so a partial-match candidate is counted and checked before it is added to `result`.
+- Preserved exact-match candidates such as `白` and positive-count partial candidate behavior.
+
+## Implemented/adjacent test coverage
 
 Android:
 
-- Existing adjacent tests, not expected to fail from the fix:
+- Adjacent pre-existing tests, not expected to fail from the fix:
   - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/LimeDBTest.java`
-    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently set `similiar_list` or assert exact-vs-partial count behavior.
+    - Pre-existing smoke tests did not cover `similiar_list` exact-vs-partial count behavior.
   - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/SearchServerTest.java`
-    - Partial-match cache/update tests exist for #49 behavior, especially `test_3_3_5_19_updateScoreCache_partial_match`, but they do not cover `similiar_list=0` query suppression.
-- Add or update focused Android instrumentation tests:
+    - Partial-match cache/update tests exist for #49 behavior, especially `test_3_3_5_19_updateScoreCache_partial_match`; commit `7e1d57b` adds focused disabled/cap-boundary coverage separately.
+- Commit `7e1d57b` adds/updates focused Android instrumentation tests:
   - Seed a test table with exact `ha -> 白` and extension `haa -> 皔`.
   - Set default shared preference `similiar_list` to `0`.
   - Assert `LimeDB.getMappingByCode("ha", true, false)` returns exact `白` and no partial `皔` / `haa`.
@@ -103,14 +103,14 @@ Android:
 
 iOS:
 
-- Existing adjacent tests, not expected to fail from the fix:
+- Adjacent pre-existing tests, not expected to fail from the fix:
   - `LimeIME-iOS/LimeTests/SearchServerTest.swift`
     - `test_prefs_similiarEnable_false_zeroes_cap` verifies preference wiring to `similarCodeCandidatesCap = 0`.
     - `test_prefs_similiarList_propagates_when_enabled` verifies positive cap propagation.
-    - These do not verify DB query suppression or partial-result limiting.
+    - These verify preference wiring; commit `7e1d57b` adds DB-level exact-only / cap-boundary coverage separately.
   - `LimeIME-iOS/LimeTests/LimeDBTest.swift`
-    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently assert `similarCodeCandidatesCap=0` exact-only behavior.
-- Add focused iOS XCTest coverage:
+    - Pre-existing smoke tests did not assert `similarCodeCandidatesCap=0` exact-only behavior.
+- Commit `7e1d57b` adds focused iOS XCTest coverage:
   - Seed temporary DB table with exact `ha -> 白` and extension `haa -> 皔`.
   - Set `db.similarCodeCandidatesCap = 0`.
   - Assert `db.getMappingByCode("ha", softKeyboard: true, getAllRecords: false)` returns exact `白` and no partial `皔` / `haa`.
