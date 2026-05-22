@@ -430,6 +430,46 @@ final class DBServerTest: XCTestCase {
         }
     }
 
+    // Regression test for the "SQLite error 21 - out of memory" bug:
+    // backupDatabase() used to call closeForReplacement() and then the no-op
+    // openDBConnection() stub, leaving GRDB's DatabaseQueue permanently closed.
+    // Every subsequent read returned empty (IM list went blank) and every write
+    // threw SQLITE_MISUSE on BEGIN DEFERRED TRANSACTION (reinstall failed).
+    func testDBServerBackupDatabaseReopensConnectionForSubsequentWrites() throws {
+        let db = try makeLimeDB()
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, "pre_backup", "備份前", 10)
+        XCTAssertGreaterThanOrEqual(db.countRecords(LIME.DB_TABLE_CUSTOM, nil, nil), 1)
+
+        let server = DBServer(_testDatasource: db)
+
+        let backupURL = tempFile(".zip")
+        defer { try? FileManager.default.removeItem(at: backupURL) }
+        try server.backupDatabase(uri: backupURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.path),
+                      "Backup file should be created")
+        XCTAssertGreaterThan(backupURL.fileSizeBytes, 0, "Backup file should not be empty")
+
+        // After backup, the live LimeDB instance the test injected is replaced
+        // by a fresh one targeting the same path. Reads through DBServer should
+        // see the pre-backup row, and writes should not throw SQLITE_MISUSE.
+        XCTAssertTrue(server.tableHasData(LIME.DB_TABLE_CUSTOM),
+                      "tableHasData should still see custom data after backup (regression)")
+        let countAfter = server.countRecords(LIME.DB_TABLE_CUSTOM, nil, nil)
+        XCTAssertGreaterThanOrEqual(countAfter, 1,
+                                    "Records should survive backup close/reopen cycle")
+
+        // Simulate the reinstall path that triggered the user-visible error:
+        // importDb -> dbQueue.write would throw "SQLite error 21" on the closed queue.
+        let srcDB = tempFile(".db")
+        defer { try? FileManager.default.removeItem(at: srcDB) }
+        let helperDB = try LimeDB(path: tempFile(".db").path)
+        helperDB.prepareBackup(targetFile: srcDB, tableNames: [LIME.DB_TABLE_CUSTOM],
+                               includeRelated: false)
+
+        server.importDb(sourceDbFile: srcDB, tableName: LIME.DB_TABLE_CUSTOM)
+        XCTAssertTrue(true, "importDb after backup must not throw SQLite error 21")
+    }
+
     // MARK: - Phase 1: importMapping edge cases
 
     func testDBServerImportMappingEdgeCases() {

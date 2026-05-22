@@ -220,10 +220,14 @@ final class DBServer {
     /// Backs up the database + shared preferences to the specified file URL.
     /// - Parameter uri: Destination file URL. For document-picker URLs the caller should
     ///   have already started the security-scoped resource; we also start it defensively.
-    func backupDatabase(uri: URL) throws {
+    func backupDatabase(uri: URL, progress: Progress? = nil) throws {
         guard let ds = datasource else {
             throw DBServerError.datasourceUnavailable
         }
+        // Capture the live DB path so the post-backup reopen targets the exact
+        // file the datasource was using (matches injected test DBs as well as
+        // the production App Group path).
+        let livePath = ds.dbPath()
 
         // Start security-scoped access on the destination URL for document-picker sources.
         let startedScopedAccess = uri.startAccessingSecurityScopedResource()
@@ -236,7 +240,7 @@ final class DBServer {
         backupDefaultSharedPreference(file: fileSharedPrefsBackup)
 
         // Hold DB and close before zipping
-        datasource?.holdDBConnection()
+        ds.holdDBConnection()
         closeDatabase()
 
         // Use a unique temp file to avoid TOCTOU / concurrent-invocation races.
@@ -245,15 +249,21 @@ final class DBServer {
         try? FileManager.default.removeItem(at: tempZip)
 
         defer {
-            // Mirror Java order: unHold first, then re-open the connection once.
-            ds.unHoldDBConnection()
-            ds.openDBConnection(true)
+            // closeDatabase() above called dbQueue.close(), permanently shutting
+            // GRDB's queue down. LimeDB.openDBConnection() is a no-op stub on iOS,
+            // so without rebuilding the datasource here every later write hits
+            // "SQLite error 21 - out of memory" (SQLITE_MISUSE on a closed handle):
+            // IM list reads return empty and reinstall fails until the app is
+            // relaunched. Mirror restoreDatabase()'s rebuild pattern.
+            datasource = nil
+            datasource = try? LimeDB(path: livePath)
+            datasource?.unHoldDBConnection()
             try? FileManager.default.removeItem(at: fileSharedPrefsBackup)
             try? FileManager.default.removeItem(at: tempZip)
         }
 
         do {
-            let dbURL     = dataDir.appendingPathComponent(DBServer.databaseName)
+            let dbURL     = URL(fileURLWithPath: livePath)
             let journalURL = dataDir.appendingPathComponent(DBServer.databaseJournal)
 
             // Build file list
@@ -270,8 +280,20 @@ final class DBServer {
 
             // Create zip archive
             let archive = try Archive(url: tempZip, accessMode: .create)
+            if let progress = progress {
+                progress.totalUnitCount = filesToZip.reduce(Int64(0)) { $0 + archive.totalUnitCountForAddingItem(at: $1.0) }
+            }
             for (fileURL, entryName) in filesToZip {
-                try archive.addEntry(with: entryName, fileURL: fileURL)
+                if let progress = progress {
+                    // makeProgressForAddingItem is internal in ZIPFoundation, so build
+                    // the child Progress ourselves from the public byte-count helper.
+                    let entryUnits = archive.totalUnitCountForAddingItem(at: fileURL)
+                    let entryProgress = Progress(totalUnitCount: entryUnits)
+                    progress.addChild(entryProgress, withPendingUnitCount: entryUnits)
+                    try archive.addEntry(with: entryName, fileURL: fileURL, progress: entryProgress)
+                } else {
+                    try archive.addEntry(with: entryName, fileURL: fileURL)
+                }
             }
 
             // Mark the temp zip with complete file protection (contains user dictionary data).

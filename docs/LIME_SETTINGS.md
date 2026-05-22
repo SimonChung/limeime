@@ -901,9 +901,11 @@ tabs. On iPhone the standard navigation large title is used and the custom title
 
 ### 7.2 Backup Behaviour
 
-1. Call `db.exportDB(to: tempPath)` to write a snapshot of `lime.db` to `FileManager.default.temporaryDirectory`.
-2. Present via `ShareLink(item: URL(fileURLWithPath: tempPath))` (SwiftUI) or `UIActivityViewController` (UIKit bridge) so the user can save to Files, send via AirDrop, etc.
-3. Clean up temp file after the share sheet is dismissed.
+1. Call `DBServer.shared.backupDatabase(uri: tempZip, progress:)` from a `Task.detached(priority: .userInitiated)`. The call is dispatched off the main actor — calling it via `MainActor.run` would block SwiftUI from rendering the progress overlay until the work finished. `DBServer` is a plain class (not `@MainActor`-isolated) and GRDB serializes the queue internally, so background dispatch is safe.
+2. `backupDatabase` zips `lime.db` (+ journal + filtered shared-prefs plist) into a temp `.zip` and accepts an optional `Progress` for ZIPFoundation to update during `addEntry`. The view observes `progress.fractionCompleted` via KVO and republishes to a `@State backupProgress: Double`.
+3. After `closeDatabase()` (required to checkpoint GRDB's WAL into the main file), the `defer` block **must** rebuild the datasource: `datasource = try? LimeDB(path: livePath)`. `LimeDB.openDBConnection()` is a no-op stub on iOS, so without the explicit rebuild every later `dbQueue.write` throws SQLITE_MISUSE 21 ("out of memory" in `sqlite3_errmsg`), the IM list silently empties (`tableHasData` swallows the error via `try?`), and reinstall fails with the same error. Mirror the pattern used by `restoreDatabase()`.
+4. Present via `ShareLink(item: URL(fileURLWithPath: tempZip))` (SwiftUI) or `UIActivityViewController` (UIKit bridge) so the user can save to Files, send via AirDrop, etc.
+5. Clean up temp file after the share sheet is dismissed.
 
 ### 7.3 Restore Behaviour
 
@@ -918,7 +920,23 @@ tabs. On iPhone the standard navigation large title is used and the custom title
 
 ### 7.4 Progress Overlay
 
-When backup export or restore copy is running, show a centred `ProgressView` overlay. The operation typically completes in < 1 s, so an overlay is preferable to a progress bar.
+When backup, restore, or initial-DB restore is running, show a centred modal overlay (dimmed background + rounded card). The overlay is gated by `isWorking` and renders one of three states:
+
+- **Generic** (`backupProgress == 0 && !preparingShare`): `ProgressView("處理中…")`. Used by the restore / restore-bundled paths or before the first ZIPFoundation callback fires on the backup path.
+- **Determinate** (`backupProgress > 0 && !preparingShare`): `Text("備份中… \(Int(backupProgress * 100))%")` above a `ProgressView(value: backupProgress)` (180 pt wide). Used during the zip phase of `backupDatabase` once ZIPFoundation starts reporting `fractionCompleted`. Required for large databases (e.g. 50 MB+ after many learned words) where the zip step is multi-second and a spinner alone reads as a freeze.
+- **Preparing share** (`preparingShare == true`): `ProgressView("準備備份中…")`. Bridges the gap between the zip finishing and the `UIActivityViewController` actually presenting. `UIActivityViewController(activityItems: [url])` does synchronous main-thread work (file-type sniffing, preview generation, activity discovery, etc.) that can block for several seconds on a multi-MB backup zip — without this phase the user sees a frozen screen with no spinner between "備份中… 100%" and the share sheet finally appearing.
+
+State transitions:
+
+1. Tap `備份資料庫` → `isWorking = true`, `backupProgress = 0`, `preparingShare = false` → overlay shows generic `處理中…` while the detached task is queued.
+2. ZIPFoundation `Progress.fractionCompleted` KVO fires → `Task { @MainActor in backupProgress = value }` → overlay flips to determinate `備份中… N%`.
+3. `backupDatabase` returns successfully → on `MainActor`: `backupProgress = 0`, `preparingShare = true`, `showShareSheet = true`. `isWorking` is **not** cleared here. Overlay flips to `準備備份中…` and stays visible during the synchronous `UIActivityViewController` init.
+4. Share sheet finishes presenting (it draws over the overlay). User saves / cancels.
+5. `.sheet(onDismiss:)` clears `isWorking`, `backupProgress`, `preparingShare` and removes the temp zip via `cleanupBackup()`.
+
+Error branch: catch sets `isWorking = false`, `preparingShare = false`, `backupProgress = 0`, and writes the error to `statusMessage`.
+
+**Why the preparing-share phase exists.** Verified on WJIP17 (iPhone 17 Pro): with a real-sized `lime.db` (post-learning, multi-MB), the dominant cost is *not* the zip — it is the `UIActivityViewController` initialization that runs synchronously on the main thread when SwiftUI presents `.sheet(isPresented: $showShareSheet)`. Tapping `備份資料庫` previously flashed the determinate bar for a fraction of a second and then locked the DB Manager view for ~20 seconds with no spinner until the share sheet eventually drew. Keeping `isWorking = true` and pivoting the overlay text to `準備備份中…` covers the whole window so the user always sees feedback. Do not move the `isWorking = false` / `preparingShare = false` resets back into the `MainActor.run` block that follows `try server.backupDatabase(...)` — that re-introduces the freeze.
 
 ---
 

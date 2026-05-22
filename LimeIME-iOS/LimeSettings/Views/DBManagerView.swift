@@ -22,6 +22,8 @@ struct DBManagerView: View {
     @State private var showFilePicker = false
     @State private var backupURL: URL?
     @State private var showShareSheet = false
+    @State private var backupProgress: Double = 0
+    @State private var preparingShare = false
     @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
@@ -105,18 +107,36 @@ struct DBManagerView: View {
                     performRestore(from: url)
                 }
             }
-            .sheet(isPresented: $showShareSheet, onDismiss: cleanupBackup) {
+            .sheet(isPresented: $showShareSheet, onDismiss: {
+                // Sheet dismissed by user — release the overlay we kept up
+                // through UIActivityViewController init (which can block the
+                // main thread for several seconds on a large backup zip).
+                isWorking = false
+                backupProgress = 0
+                preparingShare = false
+                cleanupBackup()
+            }) {
                 if let url = backupURL { ShareSheet(activityItems: [url]) }
             }
             .overlay {
                 if isWorking {
                     ZStack {
                         Color.black.opacity(0.3).ignoresSafeArea()
-                        ProgressView("處理中…")
-                            .padding(24)
-                            .background(RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemBackground))
-                                .shadow(radius: 8))
+                        VStack(spacing: 12) {
+                            if preparingShare {
+                                ProgressView("準備備份中…")
+                            } else if backupProgress > 0 {
+                                Text("備份中… \(Int(backupProgress * 100))%")
+                                ProgressView(value: backupProgress)
+                                    .frame(width: 180)
+                            } else {
+                                ProgressView("處理中…")
+                            }
+                        }
+                        .padding(24)
+                        .background(RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemBackground))
+                            .shadow(radius: 8))
                     }
                 }
             }
@@ -151,18 +171,47 @@ struct DBManagerView: View {
 
     private func performBackup() {
         isWorking = true
+        backupProgress = 0
+        preparingShare = false
+        let server = DBServer.shared
+        let progress = Progress()
+        // KVO observer publishes fractionCompleted updates back to SwiftUI.
+        // Captured in the Task closure so it stays alive for the duration of
+        // the backup; invalidated when the Task completes.
+        let observer = progress.observe(\.fractionCompleted, options: [.new]) { p, _ in
+            let value = p.fractionCompleted
+            Task { @MainActor in backupProgress = value }
+        }
         Task.detached(priority: .userInitiated) {
+            // Run the zip + file-copy on a background priority so the
+            // overlay actually renders. The previous version hopped back to
+            // the main actor for backupDB(), which blocked SwiftUI from
+            // drawing isWorking=true until the work finished.
+            defer { observer.invalidate() }
             do {
-                let url = try await MainActor.run { try self.setupController.backupDB() }
+                let dest = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("lime_backup_\(Int(Date().timeIntervalSince1970)).zip")
+                try server.backupDatabase(uri: dest, progress: progress)
+                // Switch the overlay into "準備備份中…" mode and keep isWorking=true.
+                // UIActivityViewController initialization can block the main
+                // thread for several seconds while it inspects a large zip
+                // (file-type sniffing, preview generation, activity discovery);
+                // letting isWorking flip to false here would cause a noticeable
+                // freeze with no feedback between the 100% bar and the share
+                // sheet finally appearing. The sheet's onDismiss handler clears
+                // isWorking/preparingShare.
                 await MainActor.run {
-                    self.isWorking = false
-                    self.backupURL = url
-                    self.showShareSheet = true
+                    self.backupProgress = 0
+                    self.preparingShare = true
+                    self.backupURL = dest
                     self.statusMessage = "備份已準備完成"
+                    self.showShareSheet = true
                 }
             } catch {
                 await MainActor.run {
                     self.isWorking = false
+                    self.backupProgress = 0
+                    self.preparingShare = false
                     self.statusMessage = "備份失敗：\(error.localizedDescription)"
                 }
             }
