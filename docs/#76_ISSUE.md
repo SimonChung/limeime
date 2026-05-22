@@ -69,28 +69,32 @@ Likely root cause is that Android `LimeDB.getMappingByCode(...)` and iOS `LimeDB
 
 The later `buildQueryResult(...)` limit logic adds a second bug: partial-match records are added before the limit is checked, so `0` still allows one partial row and positive values may allow one too many.
 
-This should be verified with an Android test or manual repro using `similiar_list=0`; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior.
+This was verified by reporter manual retest on Android APK `6.1.9` for the scoped `similiar_list=0` behavior; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior before the fix.
 
-## Proposed solution / investigation plan
+## Implemented fix
 
-- Verify locally that `皔` appears through the `expandBetweenSearchClause(...)` partial/extension path, not a separate runtime suggestion path.
-- Apply the fix on both Android and iOS.
-- When Android `getSimilarCodeCandidates()` / iOS `similarCodeCandidatesCap` returns `0`, build an exact-only `selectClause` instead of calling `expandBetweenSearchClause(...)`, while preserving any exact-match remap conditions required by `extraExactMatchClause`.
-- Update the positive-count limiting logic on both platforms so a partial-match candidate is counted and checked before it is added to `result`.
-- Preserve exact-match candidates such as `白`.
-- Verify that positive values allow the intended number of partial/next-code candidates without changing exact-match behavior or #49 partial-match score ordering.
-- Consider adding focused Android instrumentation coverage for `getMappingByCode(...)` with `similiar_list=0` and a positive count, because the disabled behavior depends on both SQL clause construction and result limiting.
+Commit `7e1d57b` implements the planned exact-only behavior for disabled similar-code candidates on both Android and iOS, adds focused tests for the zero-cap path and cap boundary behavior, and updates async iOS test stabilization. APK metadata now points to `LIMEHD2026-6.1.9.apk`, which contains the fix for Android retesting.
 
-## Existing coverage and new tests needed
+## Implemented solution
+
+Commit `7e1d57b` supersedes the earlier investigation plan:
+
+- Verified the extra `皔` / `haa` candidate came through the `expandBetweenSearchClause(...)` partial/extension path.
+- Applied the exact-only fix on both Android and iOS.
+- When Android `getSimilarCodeCandidates()` / iOS `similarCodeCandidatesCap` returns `0`, the lookup now builds an exact-only query instead of calling `expandBetweenSearchClause(...)`, while preserving exact-match behavior.
+- Updated the positive-count limiting logic so a partial-match candidate is counted and checked before it is added to `result`.
+- Preserved exact-match candidates such as `白` and positive-count partial candidate behavior.
+
+## Implemented/adjacent test coverage
 
 Android:
 
-- Existing adjacent tests, not expected to fail from the fix:
+- Adjacent pre-existing tests, not expected to fail from the fix:
   - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/LimeDBTest.java`
-    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently set `similiar_list` or assert exact-vs-partial count behavior.
+    - Pre-existing smoke tests did not cover `similiar_list` exact-vs-partial count behavior.
   - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/SearchServerTest.java`
-    - Partial-match cache/update tests exist for #49 behavior, especially `test_3_3_5_19_updateScoreCache_partial_match`, but they do not cover `similiar_list=0` query suppression.
-- Add or update focused Android instrumentation tests:
+    - Partial-match cache/update tests exist for #49 behavior, especially `test_3_3_5_19_updateScoreCache_partial_match`; commit `7e1d57b` adds focused disabled/cap-boundary coverage separately.
+- Commit `7e1d57b` adds/updates focused Android instrumentation tests:
   - Seed a test table with exact `ha -> 白` and extension `haa -> 皔`.
   - Set default shared preference `similiar_list` to `0`.
   - Assert `LimeDB.getMappingByCode("ha", true, false)` returns exact `白` and no partial `皔` / `haa`.
@@ -99,23 +103,31 @@ Android:
 
 iOS:
 
-- Existing adjacent tests, not expected to fail from the fix:
+- Adjacent pre-existing tests, not expected to fail from the fix:
   - `LimeIME-iOS/LimeTests/SearchServerTest.swift`
     - `test_prefs_similiarEnable_false_zeroes_cap` verifies preference wiring to `similarCodeCandidatesCap = 0`.
     - `test_prefs_similiarList_propagates_when_enabled` verifies positive cap propagation.
-    - These do not verify DB query suppression or partial-result limiting.
+    - These verify preference wiring; commit `7e1d57b` adds DB-level exact-only / cap-boundary coverage separately.
   - `LimeIME-iOS/LimeTests/LimeDBTest.swift`
-    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently assert `similarCodeCandidatesCap=0` exact-only behavior.
-- Add focused iOS XCTest coverage:
+    - Pre-existing smoke tests did not assert `similarCodeCandidatesCap=0` exact-only behavior.
+- Commit `7e1d57b` adds focused iOS XCTest coverage:
   - Seed temporary DB table with exact `ha -> 白` and extension `haa -> 皔`.
   - Set `db.similarCodeCandidatesCap = 0`.
   - Assert `db.getMappingByCode("ha", softKeyboard: true, getAllRecords: false)` returns exact `白` and no partial `皔` / `haa`.
   - Set `db.similarCodeCandidatesCap = 1`.
   - Assert at most one partial/extension candidate is returned, preserving exact matches and #49 score ordering.
 
+## Fix / APK / follow-up status
+
+Commit `7e1d57bdf6cc026d5d32e5fb670a7cebb6d316b9` fixed the confirmed `similiar_list = 0` / exact-match-only bug for Android and iOS database lookup paths by suppressing partial-match lookup when the configured cap is zero or lower, correcting partial-match cap handling, and adding Android/iOS tests. The repository then added Android release APK `LIMEHD2026-6.1.9.apk`, which contains this fix.
+
+After GitHub auto-closed #76 through the fixing commit, Hermes reopened it and posted retest request `4519807270` because this was a community-reported issue requiring reporter/device confirmation. Reporter `ejmoog` then confirmed in comment `4520021201` that the problem was resolved (`確認，問題已解決，非常感謝！`) and closed the issue. Hermes added a thumbs-up reaction and posted acknowledgement `https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322`. Current public follow-up state: reporter-confirmed resolved / closed for the `建議字顯示數量 = 0` exact-match-only behavior on Android APK `6.1.9`.
+
+The learned-word / association / ranking-control concern remains separate from the fixed `similiar_list = 0` candidate-count bug. The reporter confirmation should not be read as verifying a broader learned-word/delete/ranking-control redesign.
+
 ## Follow-up questions
 
-No public follow-up is required before investigation. Maintainer `jrywu` has already explained in comment `4517136291` that `0` currently still emits one partial-match candidate and that a future change will make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
+Public follow-up for the confirmed candidate-count bug has now been posted after the fix reached APK 6.1.9. Maintainer `jrywu` had explained in comment `4517136291` that `0` previously still emitted one partial-match candidate and that a future change would make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
 
 The learned-word / association / ranking-control complaint should be treated as related product/usability context rather than as evidence that the planned count-bug fix would also address learned-word, association, or ranking behavior. The reporter's latest settings screenshot shows the relevant learning/association/ranking toggles unchecked, so next investigation should distinguish:
 
@@ -124,14 +136,35 @@ The learned-word / association / ranking-control complaint should be treated as 
 - relation/association candidates coming from another setting path;
 - ranking/order changes caused by selection-history data despite `啟動選取排序` being off.
 
-After the `similiar_list=0` bug is fixed, decide whether to keep learned-word delete/disable controls in #76 or split them into a separate enhancement/usability tracking item so the retest request can ask about the candidate-count bug without overclaiming a broader learning/ranking redesign.
+After the reporter-confirmed closure, keep learned-word delete/disable controls as historical product/usability context only. If the reporter reopens #76 or a separate issue is created with actionable evidence, decide then whether it belongs in #76 or should be split into a separate enhancement/usability tracking item.
 
-If local reproduction unexpectedly fails, ask the reporter to confirm the active table/input method and whether any custom table is involved.
+## Current follow-up status
 
-## Verification plan
+Resolved / closed. APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. Retest request `4519807270` asked the reporter to verify that typing `ha` preserves exact `白` and no longer shows extension candidate `皔` / `haa`:
 
-- Set `建議字顯示數量` / `similiar_list` to `0`.
-- Type `ha` with the same or equivalent table.
-- Confirm the candidate bar shows the composing code and exact match `白` but no partial `皔`/`haa` candidate.
-- Set the value back to a positive value such as `10` or `20` and confirm partial/next-code candidates appear as expected.
-- After a fix lands in a newer Android APK, ask `ejmoog` to retest #76; do not close until reporter confirmation or maintainer instruction.
+- https://github.com/lime-ime/limeime/issues/76#issuecomment-4519807270
+- APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk
+
+Reporter `ejmoog` confirmed the scoped fix in comment `4520021201` and closed the issue:
+
+- https://github.com/lime-ime/limeime/issues/76#issuecomment-4520021201
+
+Hermes added a thumbs-up reaction and posted acknowledgement `https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322`. Do not keep an active retest watch for #76 unless it is reopened or new evidence appears. The separate learned-word / association / ranking-control concern remains future product/usability context and was not verified by this closure.
+
+## Verification result
+
+Reporter-confirmed Android APK verification:
+
+- Test build: `LIMEHD2026-6.1.9.apk` / version `6.1.9`.
+- Requested scope: with `建議字顯示數量` / `similiar_list` set to `0`, typing `ha` should preserve exact candidate `白` and no longer show partial/extension candidate `皔` / `haa`.
+- Confirmation: reporter `ejmoog` replied `確認，問題已解決，非常感謝！` in comment `4520021201`, then closed the issue.
+
+This verifies the Android APK behavior for the scoped `similiar_list=0` candidate-count bug. It does not verify unrelated iOS behavior, positive-count cap-boundary behavior on a user device, or the adjacent learned-word / association / ranking-control complaint.
+
+## 6.1.9 APK follow-up
+
+Android APK `LIMEHD2026-6.1.9.apk` includes commit `7e1d57b` (`Fix #76: suppress partial matches when similar_list is disabled`), which implements the exact-match-only behavior for `建議字顯示數量` / `similiar_list = 0` on Android and iOS and fixes the positive partial-match cap boundary.
+
+The public retest request was posted in comment `4519807270` with direct APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk`. Reporter `ejmoog` confirmed the Android APK issue was resolved in comment `4520021201` and closed #76. No further 6.1.9 retest prompt is needed unless the issue is reopened or new evidence appears.
+
+Verified scope remains intentionally narrow: Android APK `6.1.9` fixed the `建議字顯示數量 = 0` / `ha` exact-match-only case reported in #76. The adjacent learned-word / association / ranking-control concern is not claimed fixed by this APK and should be handled separately if it resurfaces.

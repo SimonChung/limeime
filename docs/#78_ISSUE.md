@@ -64,9 +64,9 @@ Because `hasCandidatesShown` is checked first, English prediction candidates can
 
 ## Root cause and resolution
 
-The suspected root cause was addressed by the maintainer's local fix, but behavioral confirmation is still pending manual verification because the fixing commit was not yet available on the remote. The likely issue remains that optional browse-only suggestion lists needed different handling from normal composing candidates in functional-key paths. In particular, `handleBackspace()` could clear a visible English prediction or related suggestion bar before performing the key's normal action.
+The suspected root cause was addressed by maintainer fix commit `2e278c46`, which is now present on remote `master` and included in Android APK `LIMEHD2026-6.1.9.apk`; behavioral confirmation for iOS/TestFlight-style delivery is still pending manual verification. The likely issue remains that optional browse-only suggestion lists needed different handling from normal composing candidates in functional-key paths. In particular, `handleBackspace()` could clear a visible English prediction or related suggestion bar before performing the key's normal action.
 
-Per the maintainer's closing comment, the reported local fix promotes English prediction Backspace handling ahead of generic candidate clearing, adds shared browse-only suggestion classification/dismissal for iOS, and mirrors the related-phrase Backspace behavior on Android by clearing candidate state before sending the delete key. These exact implementation details should be re-checked once the commit is pushed.
+Per the maintainer's closing comment, the reported local fix promotes English prediction Backspace handling ahead of generic candidate clearing, adds shared browse-only suggestion classification/dismissal for iOS, and mirrors the related-phrase Backspace behavior on Android by clearing candidate state before sending the delete key. These implementation details are now remotely available in commit `2e278c46`; keep the manual verification matrix below for iOS/TestFlight confidence and any future regression reports.
 
 ## Implemented local fix
 
@@ -76,11 +76,11 @@ Per `jrywu`'s closing comment, local commit `2e278c46` reportedly addressed thre
 - Related-phrase Backspace requires multiple taps: iOS uses `isBrowseOnlySuggestionList` / `dismissBrowseOnlySuggestionBar()`, while Android pre-clears `hasCandidatesShown` before issuing `KEYCODE_DEL`.
 - iOS Enter does not leave stale related/symbol bars visible when composing is empty: `handleEnterOrSpace(isEnter:)` dismisses browse-only bars in that path.
 
-A GitHub API lookup found no remote commit with SHA `2e278c46` when this doc was updated, so code-level verification should be repeated once the local commit is pushed.
+Commit `2e278c46` is now present on remote `master` and is included before APK `LIMEHD2026-6.1.9.apk`; the prior local-only caveat is resolved. Manual visual verification of the iOS scenarios remains recommended before treating this as fully verified in a TestFlight/public iOS build.
 
 ## Follow-up
 
-No public follow-up is required because this is maintainer-created and was closed by the maintainer after a local fix. Before any TestFlight or public retest note, finish/record manual visual verification and confirm the fixing commit is pushed to a tester-available branch/build. Capture exact reproduction sequences for:
+No public follow-up is required because this is maintainer-created and was closed by the maintainer after a local fix. Before any TestFlight or public retest note, finish/record manual visual verification and confirm the iOS fixing changes are in the tester-available iOS build. The cross-platform commit is already pushed to `master` and included in the Android 6.1.9 APK. Capture exact reproduction sequences for:
 
 - English prediction candidate visibility + Backspace / Space.
 - Related phrase visibility after a Chinese commit + Backspace / Space.
@@ -90,7 +90,7 @@ No public follow-up is required because this is maintainer-created and was close
 
 Maintainer-reported checks already completed: iOS Simulator build and Android `compileDebugJava`. Remaining verification before broader delivery:
 
-- Confirm commit `2e278c46` or its equivalent is pushed to the remote and included in the intended iOS/TestFlight build.
+- Confirm commit `2e278c46` or its equivalent is included in the intended iOS/TestFlight build; remote `master` and Android APK 6.1.9 already include it.
 - Add focused iOS unit tests if the keyboard controller can be tested with a mock `textDocumentProxy`; otherwise perform manual simulator/device verification.
 - English mode:
   - type an English prefix that shows predictions;
