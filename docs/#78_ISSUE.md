@@ -1,5 +1,15 @@
 # Issue #78: iOS optional suggestion candidates should not intercept functional keys
 
+## Current status
+
+Maintainer-created tracking issue #78 is closed as fixed by `jrywu` on 2026-05-22. The closing comment records a local cross-platform fix in commit `2e278c46` (not yet visible on GitHub at the time this webhook ran) covering:
+
+- iOS English prediction Backspace ordering;
+- iOS/Android related-phrase Backspace dismiss-and-delete behavior;
+- iOS Enter dismissal for stale related/symbol browse-only bars.
+
+The maintainer reported iOS simulator build and Android `compileDebugJava` checks as clean. Manual visual verification on the iPhone 17 Pro Max simulator is still release QA before TestFlight, but no public acknowledgement or community retest request is needed because this was maintainer-created and maintainer-closed.
+
 ## Problem statement
 
 Maintainer-created issue #78 tracks an iOS keyboard behavior problem: English prediction candidates and association/related candidates are optional suggestions, but some functional keys can treat them like active composing candidates.
@@ -73,24 +83,22 @@ For English prediction specifically, the existing English deletion branch alread
 - Preserve the existing Space behavior that already inserts a normal space for associated/English suggestion lists.
 - Consider whether Enter should insert newline for English/related suggestions consistently with the issue's “functional keys” wording; current code already avoids selection for `isAssociatedList`.
 
-## Follow-up questions
+## Follow-up status
 
-No public follow-up is required before implementation because this is maintainer-created and already labeled `bug` + `Usability`. During implementation verification, capture exact reproduction sequences for:
+No public follow-up is required because this is a maintainer-created tracking issue and `jrywu` closed it with a fix summary in comment `4517860543` (`https://github.com/lime-ime/limeime/issues/78#issuecomment-4517860543`). Do not post a community retest request for this issue unless the maintainer explicitly asks or new external evidence appears.
+
+The original verification sequences remain useful as release QA / regression checks before TestFlight or a public iOS build:
 
 - English prediction candidate visibility + Backspace / Space.
 - Related phrase visibility after a Chinese commit + Backspace / Space.
 - Normal composing candidates, to confirm existing candidate-selection behavior is not regressed.
 
-## Verification plan
+## Verification status
 
-- Add focused iOS unit tests if the keyboard controller can be tested with a mock `textDocumentProxy`; otherwise perform manual simulator/device verification.
-- English mode:
-  - type an English prefix that shows predictions;
-  - press Backspace and confirm text deletes immediately, predictions refresh or dismiss, and no candidate is committed/selected;
-  - press Space and confirm a space is inserted without selecting a suggestion.
-- Chinese related phrase mode:
-  - commit a Chinese word that shows related suggestions;
-  - press Backspace and confirm text deletes immediately rather than only hiding the bar;
-  - press Space and confirm a normal space is inserted.
-- Regression-check normal composing candidates where Space/Enter are still supposed to commit/select candidates.
-- After the fix lands in an iOS build/TestFlight or other tester-available build, request verification against the exact sequences above; do not close solely from labeling or implementation without maintainer/reporter confirmation.
+Maintainer-reported checks at closure:
+
+- iOS simulator build: clean.
+- Android `compileDebugJava`: clean.
+- iPhone 17 Pro Max simulator manual visual verification: pending before TestFlight.
+
+Scope note: this issue doc records maintainer-closed implementation status, not reporter-confirmed public-build verification. Keep it closed unless new iOS evidence appears or the maintainer reopens it for release QA follow-up.
