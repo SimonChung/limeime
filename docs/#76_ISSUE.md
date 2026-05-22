@@ -128,13 +128,22 @@ After the `similiar_list=0` bug is fixed, decide whether to keep learned-word de
 
 If local reproduction unexpectedly fails, ask the reporter to confirm the active table/input method and whether any custom table is involved.
 
+## Current follow-up status
+
+APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` now contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. The issue was reopened and a retest request was posted in comment `4519807270`:
+
+- https://github.com/lime-ime/limeime/issues/76#issuecomment-4519807270
+- APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk
+
+Retest scope is intentionally narrow: ask the reporter to verify that with `建議字顯示數量 = 0`, typing `ha` preserves the exact candidate `白` and no longer shows the extension candidate `皔` / `haa`. The separate learned-word / association / ranking-control concern remains open for follow-up and should not be claimed fixed by the 6.1.9 APK unless independently verified. Do not close #76 until reporter confirmation or maintainer instruction.
+
 ## Verification plan
 
 - Set `建議字顯示數量` / `similiar_list` to `0`.
 - Type `ha` with the same or equivalent table.
 - Confirm the candidate bar shows the composing code and exact match `白` but no partial `皔`/`haa` candidate.
 - Set the value back to a positive value such as `10` or `20` and confirm partial/next-code candidates appear as expected.
-- After a fix lands in a newer Android APK, ask `ejmoog` to retest #76; do not close until reporter confirmation or maintainer instruction.
+- APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` retest request is already posted in comment `4519807270`; wait for `ejmoog` to confirm whether `ha` now shows only exact candidate `白` and no partial `皔` / `haa`. Do not close until reporter confirmation or maintainer instruction.
 
 ## 6.1.9 APK follow-up
 
