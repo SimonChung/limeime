@@ -90,9 +90,17 @@ The current report includes reproduction steps, screenshots, app version, and An
   - English long-press accented/European popup does not remain stuck after switching to Chinese or changing keyboard mode.
   - Arrow keys, candidate strip, emoji key, microphone key, and `123` key still render correctly.
   - Other layouts (English, Array, Dayi, phonetic) still switch normally.
-- If a new APK includes the fix, ask the reporter to retest with the direct APK link and specifically confirm both the `123` -> Chinese Cangjie switching path and the English long-press popup dismissal path.
+- Completed: a 6.1.8 retest request was posted, and the reporter confirmed the issue resolved in one overall confirmation comment. Treat the issue as verified/resolved, without inferring separate itemized confirmation for each path.
 
-## Suggested reporter reply
+## Resolution / follow-up status
+
+- Fix commit `9230916` is included in APK `LIMEHD2026-6.1.8.apk`.
+- Reporter `ejmoog` confirmed in comment `4514371698` on 2026-05-22 that after installing 6.1.8, the issue was resolved.
+- Issue #75 is closed after reporter confirmation. No active retest/watch remains unless the reporter reopens or new evidence appears.
+
+## Historical reporter reply draft
+
+This draft was useful before the 6.1.8 retest; do not post it again now that the reporter has confirmed the issue resolved.
 
 Thank you for the detailed report and screenshots. We could not reproduce the Cangjie overlap issue in the simulator, but we found a possible rendering path where stale keyboard pixels may remain after switching layouts, so we added a defensive redraw fix. Could you help verify whether the next test build fixes the `123` / symbol keyboard overlapping behind Cangjie on your device?
 
