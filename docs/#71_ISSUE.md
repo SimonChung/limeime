@@ -64,7 +64,7 @@ if toEnglish {
 
 This keeps legacy auto-commit behavior for other switch paths while making the explicit Chinese-to-English switch behave as a cancel operation.
 
-Reporter verification is pending on APK `6.1.8`.
+Reporter `ejmoog` confirmed on 2026-05-22 that APK `6.1.8` implements the requested Chinese/English switch behavior: "安裝了6.1.8，功能已實現，感謝！" The reporter then closed the issue as completed.
 
 ## Root cause addressed
 
@@ -86,9 +86,9 @@ Remaining review item: verify whether any physical-keyboard Chinese/English swit
 - Should switching from Chinese to symbol/emoji modes also cancel instead of commit active composing code, or is this issue limited to the explicit Chinese/English switch key?
 - Should language switching always cancel active composition, or should this become a setting if some users rely on the previous auto-commit behavior?
 
-## Verification plan
+## Verification result
 
-Ask the reporter to test APK `6.1.8`:
+Reporter `ejmoog` tested APK `6.1.8` and confirmed the function is implemented. Original verification checklist used for the retest request:
 
 1. Start composing a code sequence that has not been committed yet.
 2. Tap the Chinese/English switch key while composition is active.
@@ -99,4 +99,4 @@ Ask the reporter to test APK `6.1.8`:
 7. Repeat on iOS with the `abc` / Chinese toggle while composing, including iPhone and iPad layouts if possible.
 8. Repeat with a physical keyboard Chinese/English switch shortcut, if supported, to confirm parity.
 
-Follow-up policy: keep #71 open until the reporter confirms `6.1.8` fixed the Chinese/English switch behavior.
+Follow-up status: resolved/closed after reporter confirmation on APK `6.1.8`. No active watch is needed unless the reporter reopens or new related evidence appears.
