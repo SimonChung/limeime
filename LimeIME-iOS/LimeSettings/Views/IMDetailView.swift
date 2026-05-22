@@ -205,7 +205,7 @@ struct IMDetailView: View {
                 }
             }
         }
-        .navigationTitle(im.label)
+        .constrainedDetailLayout(im.label)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

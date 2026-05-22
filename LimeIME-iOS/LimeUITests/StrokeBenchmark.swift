@@ -226,6 +226,8 @@ final class StrokeBenchmark: XCTestCase {
             return
         }
         urlBar.tap()
+        dismissSafariFirstLaunch(in: safari)
+
         // After tap, iOS 26 expands the tab-pill into a separate
         // search field. The originally-tapped pill stays in the tree,
         // so `firstMatch` would return it again. Find the
@@ -236,10 +238,17 @@ final class StrokeBenchmark: XCTestCase {
         let active = safari.descendants(matching: .textField).matching(activePred).firstMatch
         if active.waitForExistence(timeout: 3) {
             active.typeText(urlString + "\n")
+        } else if safari.keyboards.firstMatch.waitForExistence(timeout: 2) {
+            urlBar.typeText(urlString + "\n")
         } else {
-            // Fall back: type into whatever has focus by going through
-            // the keyboard directly via app-level typeText.
-            safari.typeText(urlString + "\n")
+            XCTFail("""
+                Safari URL field did not accept keyboard focus.
+                Field tree:
+                \(String(urlBar.debugDescription.prefix(2000)))
+
+                Safari tree:
+                \(String(safari.debugDescription.prefix(4000)))
+                """)
         }
     }
 
@@ -250,12 +259,17 @@ final class StrokeBenchmark: XCTestCase {
     private func dismissSafariFirstLaunch(in app: XCUIApplication) {
         let labels = ["Continue", "Got It", "Got it",
                       "Allow", "Don't Allow", "Not Now",
-                      "Maybe Later", "Skip"]
+                      "Maybe Later", "Skip", "Done"]
         for label in labels {
             let b = app.buttons[label]
             if b.waitForExistence(timeout: 1) {
                 b.tap()
             }
+        }
+
+        let privacyDone = app.buttons["PrivacyReportDoneButton"]
+        if privacyDone.waitForExistence(timeout: 1) {
+            privacyDone.tap()
         }
     }
 

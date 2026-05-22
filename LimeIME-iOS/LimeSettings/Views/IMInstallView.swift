@@ -57,6 +57,31 @@ struct IMInstallView: View {
 
     var body: some View {
         List {
+            // MARK: Search — inline TextField row.
+            // iOS 18's floating tab bar hoists any `.searchable(...)` field
+            // inside a TabView+NavigationStack into the tab pill, where it
+            // gets clipped on iPad 11". Rendering the field as a regular
+            // List row keeps the search local to this view and avoids the
+            // hoisting entirely.
+            Section {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("搜尋輸入法", text: $searchText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             // MARK: Status
             if !statusMessage.isEmpty {
                 Section(header: Text("狀態")) {
@@ -128,13 +153,12 @@ struct IMInstallView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .searchable(text: $searchText, prompt: "搜尋輸入法")
-        .navigationTitle("下載 / 匯入輸入法")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { downloadManager.refreshInstalledTables() } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
+        .constrainedDetailLayout("下載 / 匯入輸入法") {
+            Button {
+                downloadManager.refreshInstalledTables()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.title2.weight(.regular))
             }
         }
         .onAppear {

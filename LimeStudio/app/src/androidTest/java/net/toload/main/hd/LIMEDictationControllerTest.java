@@ -189,7 +189,7 @@ public class LIMEDictationControllerTest {
         private final List<DictationState> states = new ArrayList<>();
         private final List<String> partials = new ArrayList<>();
         private final List<String> finals = new ArrayList<>();
-        private int errorCode = -1;
+        private int errorCode = 0;
         private boolean shouldFallback;
         private boolean cancelled;
 

@@ -354,6 +354,22 @@ enum CandidateExpansionPolicy {
     }
 }
 
+enum KeyboardGesturePolicy {
+    static func shouldUseDualRowGesture(isPad: Bool, layoutId: String, keyDef: KeyDef) -> Bool {
+        isPad
+            && layoutId.contains("_ipad")
+            && keyDef.longPressCode != 0
+            && keyDef.longPressCode != LimeKeyCode.keyboardOptionsMenu.rawValue
+            && keyDef.popupKeyboard.isEmpty
+    }
+
+    static func shouldUseLimeOptionsMenuGesture(keyDef: KeyDef) -> Bool {
+        keyDef.code == LimeKeyCode.done.rawValue
+            || (keyDef.longPressCode == LimeKeyCode.keyboardOptionsMenu.rawValue
+                && keyDef.code != LimeKeyCode.globe.rawValue)
+    }
+}
+
 enum ShiftResetPolicy {
     static func shouldResetAfterCharacter(isShiftOn: Bool,
                                           capsLock: Bool,

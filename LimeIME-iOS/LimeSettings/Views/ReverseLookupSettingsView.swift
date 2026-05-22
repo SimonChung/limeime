@@ -11,6 +11,7 @@ import SwiftUI
 struct ReverseLookupSettingsView: View {
 
     @EnvironmentObject private var manageImController: ManageImController
+    @Environment(\.dismiss) private var dismiss
 
     private let prefs = LIMEPreferenceManager.shared
     @State private var lookupTargets: [LIMEPreferenceManager.ReverseLookupOption] = []
@@ -36,7 +37,7 @@ struct ReverseLookupSettingsView: View {
                 }
             }
         }
-        .navigationTitle("字根反查設定")
+        .constrainedDetailLayout("字根反查設定")
         .task { await loadLookupOptions() }
     }
 

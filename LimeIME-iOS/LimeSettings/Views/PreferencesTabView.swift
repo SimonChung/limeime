@@ -74,8 +74,24 @@ struct PreferencesTabView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            Form {
+        // Single-column NavigationStack on all size classes. The only nested
+        // destination is `ReverseLookupSettingsView` (reached via NavigationLink
+        // in the §8.4 section), so a split-view secondary column would just
+        // show an empty placeholder most of the time on iPad. NavigationStack
+        // gives a clean push-pop flow that matches the iPhone behaviour.
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Static page title, left-aligned to the 560pt content column
+                // edge. Sits above the scrolling Form so it never shrinks /
+                // animates on scroll the way `.navigationTitle(.large)` does.
+                Text("喜好設定")
+                    .font(.largeTitle.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+
+                Form {
                 // MARK: §8.1
                 Section(header: Text("鍵盤外觀")) {
                     Picker("鍵盤樣式", selection: $keyboardTheme) {
@@ -170,14 +186,21 @@ struct PreferencesTabView: View {
                     Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字") }
                 }
 
+                }
             }
-            .navigationTitle("喜好設定")
-            .navigationBarTitleDisplayMode(.large)
+            // iPad / wide-screen reading-width cap. Same 560pt width that
+            // SetupTabView and DBManagerView use so the Preferences form
+            // doesn't stretch edge-to-edge on iPad portrait/landscape. On
+            // iPhone this never engages because the screen is < 560pt.
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+            // Hide the system navigation bar so the custom static title above
+            // is the only one on screen. This view is a tab root (no back
+            // navigation needed at this level); pushed destinations like
+            // ReverseLookupSettingsView declare their own nav bar with a
+            // back button.
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear(perform: migrateRemovedPreferences)
-        } detail: {
-            Text("選擇設定項目")
-                .font(.title3)
-                .foregroundColor(.secondary)
         }
     }
 

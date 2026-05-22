@@ -74,16 +74,19 @@ final class KeyboardViewControllerTest: XCTestCase {
     // MARK: - iPad bottom-row tests (docs/IOS_KB_GAP.md §3.4)
 
     private let iPadLayoutsForBottomRowAudit: [String] = [
-        "lime_english_ipad", "lime_english_ipad_shift",
-        "lime_english_number_ipad", "lime_english_number_ipad_shift",
-        "lime_abc_ipad", "lime_abc_ipad_shift",
         "lime_phonetic_ipad", "lime_phonetic_ipad_shift",
-        "lime_array_ipad", "lime_cj_ipad",
-        "lime_dayi_ipad", "lime_et26_ipad", "lime_et_41_ipad",
-        "lime_ez_ipad", "lime_hs_ipad", "lime_hsu_ipad", "lime_wb_ipad",
-        "symbols1_ipad", "symbols2_ipad", "symbols3_ipad",
-        "lime_email_ipad", "lime_url_ipad",
-        "lime_number_ipad", "lime_shift_ipad",
+        "lime_array_ipad", "lime_array_ipad_shift",
+        "lime_array_number_ipad", "lime_array_number_ipad_shift",
+        "lime_cj_ipad", "lime_cj_ipad_shift",
+        "lime_cj_number_ipad", "lime_cj_number_ipad_shift",
+        "lime_dayi_ipad", "lime_dayi_ipad_shift",
+        "lime_dayi_sym_ipad", "lime_dayi_sym_ipad_shift",
+        "lime_et26_ipad", "lime_et26_ipad_shift",
+        "lime_et_41_ipad", "lime_et_41_ipad_shift",
+        "lime_ez_ipad", "lime_ez_ipad_shift",
+        "lime_hs_ipad", "lime_hs_ipad_shift",
+        "lime_hsu_ipad", "lime_hsu_ipad_shift",
+        "lime_wb_ipad", "lime_wb_ipad_shift",
     ]
 
     func testIPadBottomRowHasEmojiLeftOfSpaceAndNoVoiceKey() throws {
@@ -157,28 +160,36 @@ final class KeyboardViewControllerTest: XCTestCase {
                                   widthPercent: 6.6,
                                   longPressCode: 33)
 
-        XCTAssertFalse(KeyboardView.shouldUseDualRowGesture(isPad: true,
-                                                            layoutId: "lime_english_ipad",
-                                                            keyDef: keyboardKey))
-        XCTAssertFalse(KeyboardView.shouldUseDualRowGesture(isPad: true,
-                                                            layoutId: "lime_english_ipad",
-                                                            keyDef: globeKey))
-        XCTAssertTrue(KeyboardView.shouldUseDualRowGesture(isPad: true,
-                                                           layoutId: "lime_english_ipad",
-                                                           keyDef: dualGlyphKey))
-        XCTAssertTrue(KeyboardView.shouldUseDualRowGesture(isPad: true,
-                                                           layoutId: "lime_english_ipad_shift",
-                                                           keyDef: dualGlyphKey))
+        XCTAssertFalse(KeyboardGesturePolicy.shouldUseDualRowGesture(isPad: true,
+                                                                      layoutId: "lime_english_ipad",
+                                                                      keyDef: keyboardKey))
+        XCTAssertFalse(KeyboardGesturePolicy.shouldUseDualRowGesture(isPad: true,
+                                                                      layoutId: "lime_english_ipad",
+                                                                      keyDef: globeKey))
+        XCTAssertTrue(KeyboardGesturePolicy.shouldUseDualRowGesture(isPad: true,
+                                                                    layoutId: "lime_english_ipad",
+                                                                    keyDef: dualGlyphKey))
+        XCTAssertTrue(KeyboardGesturePolicy.shouldUseDualRowGesture(isPad: true,
+                                                                    layoutId: "lime_english_ipad_shift",
+                                                                    keyDef: dualGlyphKey))
     }
 
-    func testDayiSymbolIPadShiftQuestionKeyKeepsRootSublabel() throws {
+    func testDayiSymbolIPadShiftKeepsShiftedRootPunctuation() throws {
         let layout = try loadKeyboardLayoutFixture("lime_dayi_sym_ipad_shift")
         let keys = layout.rows.flatMap(\.keys)
-        let question = try XCTUnwrap(keys.first { $0.code == 63 },
-                                     "Dayi symbol iPad shift layout should keep the shifted ? key")
+        let expectedPunctuationByRoot: [String: (code: Int, label: String)] = [
+            "虫": (58, ":"),
+            "力": (60, "<"),
+            "舟": (62, ">"),
+            "竹": (63, "?")
+        ]
 
-        XCTAssertEqual(question.label, "?")
-        XCTAssertEqual(question.sublabel, "竹")
+        for (root, expected) in expectedPunctuationByRoot {
+            let key = try XCTUnwrap(keys.first { $0.sublabel == root },
+                                    "Dayi symbol iPad shift layout should keep shifted punctuation for \(root)")
+            XCTAssertEqual(key.code, expected.code)
+            XCTAssertEqual(key.label, expected.label)
+        }
     }
 
     func testGlobeRoutesToSystemPickerWhileKeyboardKeyRoutesToLimeOptionsMenu() {
@@ -193,8 +204,8 @@ final class KeyboardViewControllerTest: XCTestCase {
                               isModifier: true,
                               longPressCode: LimeKeyCode.keyboardOptionsMenu.rawValue)
 
-        XCTAssertTrue(KeyboardView.shouldUseLimeOptionsMenuGesture(keyDef: keyboardKey))
-        XCTAssertFalse(KeyboardView.shouldUseLimeOptionsMenuGesture(keyDef: globeKey))
+        XCTAssertTrue(KeyboardGesturePolicy.shouldUseLimeOptionsMenuGesture(keyDef: keyboardKey))
+        XCTAssertFalse(KeyboardGesturePolicy.shouldUseLimeOptionsMenuGesture(keyDef: globeKey))
     }
 
     func testKeyLayoutHasVoiceInputCode() {

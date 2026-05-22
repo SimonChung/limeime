@@ -42,7 +42,7 @@ struct KeyboardPickerView: View {
                 }
             }
         }
-        .navigationTitle("選擇鍵盤佈局")
+        .constrainedDetailLayout("選擇鍵盤佈局")
         .task { await loadKeyboards() }
     }
 

@@ -104,6 +104,12 @@ final class LimeUITests: XCTestCase {
             return
         }
 
+        let anyTextView = app.textViews.firstMatch
+        if anyTextView.waitForExistence(timeout: 3) {
+            anyTextView.tap()
+            return
+        }
+
         XCTFail("Safari address field not found. Tree:\n\(String(app.debugDescription.prefix(4000)))")
     }
 

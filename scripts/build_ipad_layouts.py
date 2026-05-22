@@ -776,6 +776,11 @@ def normalize_im_row_widths(row):
 #
 # Punct: < > ? : (60/62/63/58) â , . / ; (44/46/47/59)
 _SHIFTED_PUNCT_REVERT = {60: (44, ','), 62: (46, '.'), 63: (47, '/'), 58: (59, ';')}
+_SHIFTED_PUNCT_REVERT_EXCLUDED_SOURCES = {
+    # The Dayi symbol shift source intentionally maps the 竹 root to "?".
+    # Keep it as a shifted symbol on iPad instead of reverting it to "/".
+    "lime_dayi_sym_shift",
+}
 def apply_shift_key_rules(ipad_layout, source_id):
     """Post-process an iPad shift layout:
     1. Dual-slide keys (label X\\nY, no sublabel) in qwerty/asdf/zxcv rows â
@@ -817,7 +822,7 @@ def apply_shift_key_rules(ipad_layout, source_id):
                 elif sublabel and len(label) == 1 and 'a' <= label <= 'z':
                     # Rule 2: single lowercase letter with IM sublabel â capitalize
                     key["label"] = label.upper()
-                elif sublabel:
+                elif sublabel and source_id not in _SHIFTED_PUNCT_REVERT_EXCLUDED_SOURCES:
                     # Rule 3: shifted-punct with IM sublabel â revert to base punct
                     entry = _SHIFTED_PUNCT_REVERT.get(key.get("code"))
                     if entry:

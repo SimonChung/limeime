@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "FA6B7618-898E-424C-A59C-0CB94EDF520F",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:LimeIME.xcodeproj",
+      "identifier" : "8E0810E1C8E2E432E67648A5",
+      "name" : "LimeIME"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:LimeIME.xcodeproj",
+        "identifier" : "4E79250369850046806B9D14",
+        "name" : "LimeTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:LimeIME.xcodeproj",
+        "identifier" : "F96A2D7F2FA5A904004124A7",
+        "name" : "LimeUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

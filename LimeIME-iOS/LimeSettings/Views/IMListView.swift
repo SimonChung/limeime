@@ -45,19 +45,39 @@ struct IMListView: View {
         case related
         case install
     }
-    @State private var selection: DetailSelection?
+
+    /// Stack-based navigation path. Each `DetailSelection` push lands the
+    /// matching destination via `.navigationDestination(for: DetailSelection.self)`
+    /// below. Replaces the previous `NavigationSplitView` + sidebar/detail
+    /// columns; the IM tab now uses the same single-column constrained-width
+    /// pattern as the 喜好設定 / 字根反查設定 flow for visual consistency on iPad.
+    @State private var path: [DetailSelection] = []
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-                .navigationTitle("管理輸入法")
-                .navigationBarTitleDisplayMode(.large)
-                .onAppear { loadIMs() }
-                .onChange(of: manageImController.refreshToken) { _ in loadIMs() }
-        } detail: {
-            NavigationStack {
-                detailContent
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                // Static page title at the left edge of the 560pt content
+                // column, matching PreferencesTabView / ReverseLookupSettingsView.
+                Text("管理輸入法")
+                    .font(.largeTitle.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+
+                sidebar
             }
+            // Same 560pt reading-width cap as the other tab roots.
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+            // Tab root; no back navigation needed at this level. Pushed
+            // destinations declare their own nav bar.
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: DetailSelection.self) { sel in
+                destination(for: sel)
+            }
+            .onAppear { loadIMs() }
+            .onChange(of: manageImController.refreshToken) { _ in loadIMs() }
         }
     }
 
@@ -71,7 +91,7 @@ struct IMListView: View {
             } else if let err = errorMessage {
                 Text(err).foregroundColor(.secondary)
             } else {
-                List(selection: $selection) {
+                List {
                     Section(header: Text("已安裝的輸入法")) {
                         if imList.isEmpty {
                             Text("尚未匯入任何輸入法")
@@ -97,54 +117,54 @@ struct IMListView: View {
                                         toggleIM(imName: row.imName, enabled: newVal)
                                     }
                                 )
-                                HStack {
-                                    VStack(alignment: .leading) {
+                                NavigationLink(value: DetailSelection.im(rowId)) {
+                                    HStack {
                                         Text(row.label)
                                             .font(.body)
                                             .opacity(row.enabled ? 1.0 : 0.5)
+                                        Spacer()
+                                        Toggle("", isOn: enabledBinding)
+                                            .labelsHidden()
                                     }
-                                    Spacer()
-                                    Toggle("", isOn: enabledBinding)
-                                        .labelsHidden()
                                 }
-                                .tag(DetailSelection.im(row.id))
                             }
                             .onMove(perform: moveIMs)
                         }
                     }
 
                     Section(header: Text("關聯字庫")) {
-                        Label("關聯字庫", systemImage: "text.bubble")
-                            .tag(DetailSelection.related)
+                        NavigationLink(value: DetailSelection.related) {
+                            Label("關聯字庫", systemImage: "text.bubble")
+                        }
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
                     Button {
-                        selection = .install
+                        path.append(.install)
                     } label: {
                         Image(systemName: "plus")
                             .font(.title2.weight(.semibold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(16)
-                            .background(Color.blue)
-                            .clipShape(Circle())
+                            .background(Color.blue, in: Circle())
                             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
+                    .buttonStyle(.plain)
                     .padding([.bottom, .trailing], 20)
                 }
-                .listStyle(.sidebar)
+                .listStyle(.insetGrouped)
             }
         }
     }
 
-    // MARK: - Detail column
+    // MARK: - Push destinations
 
     @ViewBuilder
-    private var detailContent: some View {
-        switch selection {
+    private func destination(for sel: DetailSelection) -> some View {
+        switch sel {
         case .im(let id):
             if let row = imList.first(where: { $0.id == id }) {
-                IMDetailView(im: row, onRefresh: loadIMs, onDeleted: clearSelection)
+                IMDetailView(im: row, onRefresh: loadIMs, onDeleted: popToRoot)
             } else {
                 placeholder
             }
@@ -154,11 +174,9 @@ struct IMListView: View {
                           tableNick: "related", fullName: "",
                           enabled: true, sortOrder: 0, keyboardId: ""),
                 onRefresh: nil,
-                onDeleted: clearSelection)
+                onDeleted: popToRoot)
         case .install:
             IMInstallView(onRefresh: loadIMs)
-        case .none:
-            placeholder
         }
     }
 
@@ -168,12 +186,10 @@ struct IMListView: View {
             .foregroundColor(.secondary)
     }
 
-    /// Called by IMDetailView after a successful remove. Setting selection to
-    /// nil tells `NavigationSplitView` to dismiss the detail pane: on iPad
-    /// the detail column reverts to the placeholder; on iPhone the pushed
-    /// detail view pops back to this list.
-    private func clearSelection() {
-        selection = nil
+    /// Called by IMDetailView after a successful remove. Pops back to the
+    /// IM list root so the deleted IM's detail pane no longer shows.
+    private func popToRoot() {
+        path.removeAll()
     }
 
     // MARK: - Helpers

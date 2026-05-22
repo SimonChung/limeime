@@ -46,14 +46,18 @@ final class SetupImControllerTest: XCTestCase {
     private func makeZippedCustomLimedb() throws -> (dbURL: URL, zipURL: URL) {
         let dbURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".db")
+        let snapshotURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".db")
         let zipURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".limedb")
         let sourceDB = try LimeIME.LimeDB(path: dbURL.path)
         _ = sourceDB.openDBConnection(false)
         sourceDB.addOrUpdateMappingRecord("custom", "abc", "測試", 0)
+        try sourceDB.exportDB(to: snapshotURL.path)
 
         let archive = try Archive(url: zipURL, accessMode: .create)
-        try archive.addEntry(with: "custom.db", fileURL: dbURL)
+        try archive.addEntry(with: "custom.db", fileURL: snapshotURL)
+        try? FileManager.default.removeItem(at: snapshotURL)
         return (dbURL, zipURL)
     }
 
@@ -179,7 +183,7 @@ final class SetupImControllerTest: XCTestCase {
             dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
             progress: LimeIME.ProgressManager()
         )
-        let prefix = "lime_roundtrip_\(UUID().uuidString)"
+        let prefix = "lime_roundtrip_\(UUID().uuidString.lowercased())"
         seedCustomRoundTripRecords(db, prefix: prefix, scores: [0, 0, 0])
         let before = customRecordSnapshot(db, prefix: prefix)
         XCTAssertEqual(before.count, 3)

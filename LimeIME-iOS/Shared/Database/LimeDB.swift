@@ -2657,6 +2657,38 @@ final class LimeDB {
         try? dbQueue.write { db in
             try db.execute(sql: "ATTACH DATABASE '\(path)' AS sourceDB")
             defer { try? db.execute(sql: "DETACH DATABASE sourceDB") }
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS sourceDB.custom (
+                    _id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code      TEXT,
+                    word      TEXT,
+                    score     INTEGER DEFAULT 0,
+                    basescore INTEGER DEFAULT 0,
+                    code3r    TEXT
+                )
+            """)
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS sourceDB.im (
+                    _id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code       TEXT,
+                    title      TEXT,
+                    desc       TEXT,
+                    keyboard   TEXT,
+                    disable    BOOLEAN,
+                    selkey     TEXT,
+                    endkey     TEXT,
+                    spacestyle TEXT
+                )
+            """)
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS sourceDB.related (
+                    _id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pword     TEXT,
+                    cword     TEXT,
+                    basescore INTEGER DEFAULT 0,
+                    score     INTEGER DEFAULT 0
+                )
+            """)
             for t in tableNames where isValidTableName(t) {
                 try? db.execute(sql: "INSERT INTO sourceDB.custom SELECT * FROM \(t)")
             }
@@ -2844,7 +2876,7 @@ final class LimeDB {
         if FileManager.default.fileExists(atPath: destPath) {
             try FileManager.default.removeItem(at: destURL)
         }
-        try dbQueue.write { db in
+        try dbQueue.writeWithoutTransaction { db in
             try db.execute(sql: "VACUUM INTO ?", arguments: [destPath])
         }
     }
