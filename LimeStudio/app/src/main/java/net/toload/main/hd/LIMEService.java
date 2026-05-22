@@ -126,6 +126,17 @@ public class LIMEService extends InputMethodService
     static final int KEYCODE_SWITCH_TO_IM_MODE = -10;
     static final int KEYCODE_SWITCH_SYMBOL_KEYBOARD = -15;
 
+    static int getRestrictedFieldKeyboardMode(int inputType) {
+        if ((inputType & EditorInfo.TYPE_MASK_CLASS) == EditorInfo.TYPE_CLASS_NUMBER) {
+            return LIMEKeyboardSwitcher.MODE_PHONE;
+        }
+        return LIMEKeyboardSwitcher.MODE_TEXT;
+    }
+
+    static boolean getRestrictedFieldSymbolFlag(int inputType) {
+        return (inputType & EditorInfo.TYPE_MASK_CLASS) != EditorInfo.TYPE_CLASS_NUMBER;
+    }
+
     //Jeremy '16,7,22 To control delayed hiding candidate view and avoid hide and show candidate view in short time.
     private static final int DELAY_BEFORE_HIDE_CANDIDATE_VIEW = 200;
 
@@ -861,6 +872,11 @@ public class LIMEService extends InputMethodService
 
         switch (attribute.inputType & EditorInfo.TYPE_MASK_CLASS) {
             case EditorInfo.TYPE_CLASS_NUMBER:  //0x02
+                mEnglishOnly = true;
+                mKeyboardSwitcher.setKeyboardMode(activeIM,
+                        getRestrictedFieldKeyboardMode(attribute.inputType), mImeOptions, false,
+                        getRestrictedFieldSymbolFlag(attribute.inputType), false);
+                break;
             case EditorInfo.TYPE_CLASS_DATETIME: //0x04
                 mEnglishOnly = true;
                 mKeyboardSwitcher.setKeyboardMode(activeIM, LIMEKeyboardSwitcher.MODE_TEXT, mImeOptions, false, true, false);

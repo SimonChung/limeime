@@ -45,6 +45,15 @@ final class KeyboardViewController: UIInputViewController {
     // even when the JSON id matches the hardcoded fallback id ("lime_phonetic").
     private var currentLayout: LimeKeyLayout = LimeKeyLayout(id: "__unset__", rows: [])
 
+    // Track the field hints we last adapted to. `viewWillAppear` runs
+    // `initOnStartInput()` only when the keyboard view first appears, so
+    // without these we'd miss field changes that happen while the keyboard
+    // is already on screen (e.g. tapping from a Chinese-IM text field into
+    // an email/number field — the previous Chinese-IM layout would stay
+    // active until the keyboard is dismissed and re-popped).
+    private var lastSeenKeyboardType:  UIKeyboardType   = .default
+    private var lastSeenReturnKeyType: UIReturnKeyType  = .default
+
     // MARK: - Multi-tap State (T9-style cycling through codes[])
     private var mMultiTapCodes:    [Int]        = []
     private var mMultiTapIndex:    Int          = 0
@@ -316,6 +325,20 @@ final class KeyboardViewController: UIInputViewController {
     override func textDidChange(_ textInput: UITextInput?) {
         // Guard: skip checks triggered by our own insertText/deleteBackward (spec §12)
         guard !isSelfUpdate else { return }
+
+        // Field-change detection. When the user taps a new input while the
+        // keyboard is still on screen, `viewWillAppear` does NOT re-fire, so
+        // `initOnStartInput()` (where layout / mEnglishOnly / mPredictionOn /
+        // returnKeyType adapt to the field's hints) never runs for the new
+        // field. Compare the proxy's current keyboardType / returnKeyType
+        // against the last-seen values and re-adapt on any change.
+        let currentKB     = textDocumentProxy.keyboardType  ?? .default
+        let currentReturn = textDocumentProxy.returnKeyType ?? .default
+        if currentKB != lastSeenKeyboardType || currentReturn != lastSeenReturnKeyType {
+            initOnStartInput()
+            return
+        }
+
         // If the cursor changed externally while composing, cancel composing
         if composingLength > 0 {
             let before = textDocumentProxy.documentContextBeforeInput ?? ""
@@ -381,11 +404,28 @@ final class KeyboardViewController: UIInputViewController {
             }
         }
 
-        let isPhonePad = textDocumentProxy.keyboardType == .phonePad
+        // Match Apple's keyboard: adapt the Enter key icon/label to the host's
+        // returnKeyType (e.g. magnifier for URL/search fields, "Go" / "Send" labels).
+        // KeyboardView.didSet skips the rebuild if rowViews are empty (initial load)
+        // and triggers one otherwise; the subsequent setLayout below rebuilds with the
+        // already-updated returnKeyType, so there is no double-build on field focus.
+        keyboardView?.returnKeyType = textDocumentProxy.returnKeyType ?? .default
+
+        let kbType        = textDocumentProxy.keyboardType ?? .default
+        let isPhonePad    = kbType == .phonePad
+        let isNumericPad  = kbType == .numberPad
+                         || kbType == .decimalPad
+                         || kbType == .asciiCapableNumberPad
         let englishLayout = numberRowInEnglish ? "lime_english_number" : "lime_english"
         let layoutName: String
         if isPhonePad {
             layoutName = "phone_number"
+        } else if isNumericPad {
+            // Mirror Android's MODE_TEXT + isSymbol path: route number /
+            // decimal fields to the symbols keyboard (digits + punctuation),
+            // not the English-alphabet layout. `.phonePad` already has its
+            // own restricted T9-style layout above.
+            layoutName = "symbols1"
         } else if mEnglishOnly || activatedIMs.isEmpty {
             layoutName = englishLayout
         } else {
@@ -400,6 +440,11 @@ final class KeyboardViewController: UIInputViewController {
 
         clearComposing(force: false)
         tempEnglishWord = ""
+
+        // Record what we just adapted to so textDidChange's field-change
+        // detector doesn't re-trigger on the next keystroke.
+        lastSeenKeyboardType  = textDocumentProxy.keyboardType  ?? .default
+        lastSeenReturnKeyType = textDocumentProxy.returnKeyType ?? .default
     }
 
     // MARK: - Database Setup
@@ -2055,7 +2100,7 @@ final class KeyboardViewController: UIInputViewController {
                 LDComposingBuffer = ""
             }
         }
-        if learnPhrase { searchServer?.learnRelatedPhraseAndUpdateScore(candidate) }
+        searchServer?.learnRelatedPhraseAndUpdateScore(candidate)
         // Record committed candidate + its code for runtime phrase suggestion cross-check (spec §6)
         if smartChineseInput { searchServer?.addToSuggestionContext(candidate, code: candidate.code) }
 

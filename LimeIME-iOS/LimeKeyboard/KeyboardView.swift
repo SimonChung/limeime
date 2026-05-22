@@ -146,17 +146,11 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     var enableInputClicksWhenVisible: Bool { true }
 
     static func shouldUseDualRowGesture(isPad: Bool, layoutId: String, keyDef: KeyDef) -> Bool {
-        isPad
-            && layoutId.contains("_ipad")
-            && keyDef.longPressCode != 0
-            && keyDef.longPressCode != LimeKeyCode.keyboardOptionsMenu.rawValue
-            && keyDef.popupKeyboard.isEmpty
+        KeyboardGesturePolicy.shouldUseDualRowGesture(isPad: isPad, layoutId: layoutId, keyDef: keyDef)
     }
 
     static func shouldUseLimeOptionsMenuGesture(keyDef: KeyDef) -> Bool {
-        keyDef.code == LimeKeyCode.done.rawValue
-            || (keyDef.longPressCode == LimeKeyCode.keyboardOptionsMenu.rawValue
-                && keyDef.code != LimeKeyCode.globe.rawValue)
+        KeyboardGesturePolicy.shouldUseLimeOptionsMenuGesture(keyDef: keyDef)
     }
 
     weak var delegate: KeyboardViewDelegate?
@@ -274,6 +268,22 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private var keyHGap:         CGFloat { LayoutMetrics.KeyboardRow.keyHGap(isPad: isPad) }
     private var keyVGap:         CGFloat { LayoutMetrics.KeyboardRow.keyVGap(isPad: isPad) }
     private var keyCornerRadius: CGFloat { LayoutMetrics.KeyboardRow.keyCornerRadius(isPad: isPad) }
+
+    /// Set by KeyboardViewController in initOnStartInput from textDocumentProxy.returnKeyType.
+    /// Drives the Enter-key icon/label substitution applied in styleKeyContent — e.g. URL/search
+    /// fields render a magnifier instead of the JSON's "return" icon, matching Apple's keyboard.
+    var returnKeyType: UIReturnKeyType = .default {
+        didSet {
+            guard returnKeyType != oldValue else { return }
+            guard !rowViews.isEmpty else { return }
+            rowViews.forEach { $0.removeFromSuperview() }
+            rowViews.removeAll()
+            globeButton = nil
+            shiftKeyButtons.removeAll()
+            buildKeys()
+            updateShiftKeyIcon()
+        }
+    }
 
     /// Set by KeyboardViewController in viewWillLayoutSubviews; triggers a full rebuild.
     var isLandscape: Bool = false {
@@ -775,7 +785,16 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     /// Apply background color, corner radius and shadow to any key button.
     private func applyButtonStyle(_ btn: UIButton, keyDef: KeyDef,
                                   rowHeight: CGFloat, totalPercent: CGFloat) {
-        btn.backgroundColor = keyDef.isModifier ? modifierKeyColor : normalKeyColor
+        // Apple-style accent: when the Enter key represents a non-default
+        // primary action (.search / .go / .send / .next / .join / .done /
+        // .route / .continue), render the key with the system-blue tint to
+        // signal it submits the field. Default-return (.default) keeps the
+        // standard modifier-key background.
+        if enterKeyOverride(for: keyDef) != nil {
+            btn.backgroundColor = .systemBlue
+        } else {
+            btn.backgroundColor = keyDef.isModifier ? modifierKeyColor : normalKeyColor
+        }
         btn.layer.cornerRadius = keyCornerRadius
         btn.layer.masksToBounds = false
         btn.layer.shadowColor = UIColor.black.cgColor
@@ -785,19 +804,50 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         styleKeyContent(btn: btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: totalPercent)
     }
 
+    /// Apple-style Enter-key adaptation: if `keyDef` is the Enter key (code 10) and the host's
+    /// `returnKeyType` is non-default, substitute the appropriate icon (`magnifyingglass` for
+    /// `.search` / `.google` / `.yahoo`, `arrow.right` for `.go`) or text label (`Send` / `Next`
+    /// / `Join` / `Done` / `Route` / `Continue`). Returns nil for non-Enter keys or `.default`,
+    /// in which case the JSON's `return` icon is used unchanged.
+    private func enterKeyOverride(for keyDef: KeyDef) -> (icon: String, label: String)? {
+        guard keyDef.code == 10 else { return nil }
+        switch returnKeyType {
+        case .search, .google, .yahoo:
+            return (icon: "magnifyingglass", label: "")
+        case .go:       return (icon: "arrow.right", label: "")
+        case .send:     return (icon: "", label: "Send")
+        case .next:     return (icon: "", label: "Next")
+        case .join:     return (icon: "", label: "Join")
+        case .route:    return (icon: "", label: "Route")
+        case .done:     return (icon: "", label: "Done")
+        case .continue: return (icon: "", label: "Continue")
+        case .default, .emergencyCall:
+            return nil
+        @unknown default:
+            return nil
+        }
+    }
+
     ///   • Tall key  (height ≥ width): label small top,  sublabel large bottom — vertical stack
     ///   • Wide key  (width  > height): label small left, sublabel large right  — horizontal stack
     private func styleKeyContent(btn: UIButton, keyDef: KeyDef,
                                  rowHeight: CGFloat, totalPercent: CGFloat) {
         clearStyledKeyContent(from: btn)
-        let keyLabel = keyDef.isModifier ? palette.modifierLabel : palette.label
-        if !keyDef.icon.isEmpty {
+        let override    = enterKeyOverride(for: keyDef)
+        // Accent (blue) Enter keys use white foreground so the icon/label
+        // reads against the system-blue background applied in applyButtonStyle.
+        let keyLabel: UIColor = (override != nil)
+            ? .white
+            : (keyDef.isModifier ? palette.modifierLabel : palette.label)
+        let renderIcon  = override?.icon  ?? keyDef.icon
+        let renderLabel = override?.label ?? keyDef.label
+        if !renderIcon.isEmpty {
             // SF Symbol icon key — dismiss key uses a larger point size for legibility
-            let iconSize: CGFloat = keyDef.icon == "keyboard.chevron.compact.down"
+            let iconSize: CGFloat = renderIcon == "keyboard.chevron.compact.down"
                 ? LayoutMetrics.Key.dismissIconSize
                 : LayoutMetrics.Key.iconSize(isPad: isPad, isPadCompat: isPadCompat)
             let config = UIImage.SymbolConfiguration(pointSize: iconSize, weight: .regular)
-            let img = UIImage(systemName: keyDef.icon, withConfiguration: config)
+            let img = UIImage(systemName: renderIcon, withConfiguration: config)
             btn.setImage(img, for: .normal)
             btn.tintColor = keyLabel
         } else if !keyDef.sublabel.isEmpty {
@@ -845,7 +895,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             ])
         } else {
             // Single label key
-            btn.setTitle(keyDef.label, for: .normal)
+            btn.setTitle(renderLabel, for: .normal)
             btn.titleLabel?.font = keySingleLabelFont
             btn.titleLabel?.adjustsFontSizeToFitWidth = true
             btn.titleLabel?.minimumScaleFactor = 0.5

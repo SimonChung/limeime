@@ -10642,6 +10642,28 @@ public class LIMEServiceTest {
         assertTrue("initOnStartInput code paths simulated", true);
     }
 
+    @Test
+    public void test_5_23_40_NumberAndDecimalInputsUsePhoneKeyboardRoute() {
+        assertEquals("Number input should use the phone-number keyboard route",
+                LIMEKeyboardSwitcher.MODE_PHONE,
+                LIMEService.getRestrictedFieldKeyboardMode(EditorInfo.TYPE_CLASS_NUMBER));
+        assertFalse("Number input should not use the symbol keyboard route",
+                LIMEService.getRestrictedFieldSymbolFlag(EditorInfo.TYPE_CLASS_NUMBER));
+
+        int decimalInputType = EditorInfo.TYPE_CLASS_NUMBER | EditorInfo.TYPE_NUMBER_FLAG_DECIMAL;
+        assertEquals("Decimal input should use the phone-number keyboard route",
+                LIMEKeyboardSwitcher.MODE_PHONE,
+                LIMEService.getRestrictedFieldKeyboardMode(decimalInputType));
+        assertFalse("Decimal input should not use the symbol keyboard route",
+                LIMEService.getRestrictedFieldSymbolFlag(decimalInputType));
+
+        assertEquals("Datetime input keeps the existing symbol route",
+                LIMEKeyboardSwitcher.MODE_TEXT,
+                LIMEService.getRestrictedFieldKeyboardMode(EditorInfo.TYPE_CLASS_DATETIME));
+        assertTrue("Datetime input keeps the existing symbol keyboard flag",
+                LIMEService.getRestrictedFieldSymbolFlag(EditorInfo.TYPE_CLASS_DATETIME));
+    }
+
     /**
      * Tests translateKeyDown branches with mocks.
      * Targets lines 943-1082 (30% coverage)

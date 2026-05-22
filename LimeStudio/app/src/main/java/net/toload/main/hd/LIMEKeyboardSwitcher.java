@@ -415,12 +415,6 @@ public class LIMEKeyboardSwitcher {
 			case "lime_number_symbol_shift":
 				return R.xml.lime_number_symbol_shift;
 			
-			// Special keyboards
-			case "lime_url":
-				return R.xml.lime_url;
-			case "lime_email":
-				return R.xml.lime_email;
-			
 			default:
 				// Return 0 for unknown keyboard layouts (should not happen with valid database entries)
 				if (DEBUG) {
