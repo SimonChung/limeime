@@ -2077,7 +2077,7 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Related Phrase Display (spec §8 updateRelatedPhrase)
 
-    private func updateRelatedPhrase(getAllRecords: Bool = false) {
+    private func updateRelatedPhrase() {
         guard let committed = committedCandidate,
               !committed.word.isEmpty,
               !committed.isEmojiRecord,
@@ -2099,7 +2099,10 @@ final class KeyboardViewController: UIInputViewController {
 
         let word = committed.word
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-            let related = ss.getRelatedByWord(word, getAllRecords: getAllRecords)
+            // Always fetch the full related list — there is no stage-2 upgrade
+            // for related phrases, so a truncated fetch would leave the `…`
+            // sentinel stuck in the bar (see docs/#77_ISSUE.md fix 7).
+            let related = ss.getRelatedByWord(word, getAllRecords: true)
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, self.mComposing.isEmpty else { return }
                 if related.isEmpty {
