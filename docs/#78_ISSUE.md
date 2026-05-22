@@ -2,13 +2,16 @@
 
 ## Current status
 
-Maintainer-created tracking issue #78 is closed as fixed by `jrywu` on 2026-05-22. The closing comment records a local cross-platform fix in commit `2e278c46` (not yet visible on GitHub at the time this webhook ran) covering:
+Maintainer-created issue #78 was created by `limeimetw` and closed by `jrywu` on 2026-05-22 after `jrywu` reported a local cross-platform fix in commit `2e278c46`. A GitHub API lookup found no remote commit with SHA `2e278c46`, so this document records the maintainer-local resolution status rather than a tester-available build.
 
-- iOS English prediction Backspace ordering;
-- iOS/Android related-phrase Backspace dismiss-and-delete behavior;
-- iOS Enter dismissal for stale related/symbol browse-only bars.
+Reported fix scope from the maintainer comment:
 
-The maintainer reported iOS simulator build and Android `compileDebugJava` checks as clean. Manual visual verification on the iPhone 17 Pro Max simulator is still release QA before TestFlight, but no public acknowledgement or community retest request is needed because this was maintainer-created and maintainer-closed.
+- iOS English-prediction Backspace now reaches the English deletion path before generic candidate clearing.
+- Related/association browse-only suggestion bars no longer require a separate Backspace tap before deletion; iOS uses a shared browse-only classifier/helper and Android pre-clears candidate state before sending Backspace.
+- iOS Enter now dismisses stale browse-only related/symbol bars when composing is empty.
+- Chinese-punctuation Backspace and normal composing flows are intended to remain unchanged.
+
+Implementation checks reported by the maintainer: iOS Simulator build and Android `compileDebugJava` are clean. Manual visual verification on the iPhone simulator is still pending before TestFlight / tester-available delivery. No public retest request is needed yet because this is a maintainer-created tracking issue.
 
 ## Problem statement
 
@@ -66,39 +69,43 @@ The strongest suspicious branch is:
 
 Because `hasCandidatesShown` is checked first, English prediction candidates can prevent the English deletion path from running. The same generic branch also affects related/association suggestions when there is no active composing buffer. Cases 1 and 2 already consume non-empty `mComposing`, so this branch is not the normal composing-candidate path; it is mainly relevant to optional suggestions with an empty composing buffer, while Chinese punctuation has its own earlier Case 4 branch.
 
-## Likely root cause
+## Root cause and resolution
 
-Likely missing distinction/order handling for optional browse-only suggestion lists in `handleBackspace()`. `handleEnterOrSpace(isEnter:)` already recognizes optional associated lists and avoids selecting them, but Backspace still treats a visible related/English suggestion list as a reason to clear candidates before deleting text.
+The suspected root cause was addressed by the maintainer's local fix, but behavioral confirmation is still pending manual verification because the fixing commit was not yet available on the remote. The likely issue remains that optional browse-only suggestion lists needed different handling from normal composing candidates in functional-key paths. In particular, `handleBackspace()` could clear a visible English prediction or related suggestion bar before performing the key's normal action.
 
-For English prediction specifically, the existing English deletion branch already has the desired state update (`tempEnglishWord.removeLast()`, `deleteBackward()`, `updateEnglishPrediction()`); the main bug appears to be that this branch is ordered after the generic `hasCandidatesShown` clearing branch.
+Per the maintainer's closing comment, the reported local fix promotes English prediction Backspace handling ahead of generic candidate clearing, adds shared browse-only suggestion classification/dismissal for iOS, and mirrors the related-phrase Backspace behavior on Android by clearing candidate state before sending the delete key. These exact implementation details should be re-checked once the commit is pushed.
 
-## Proposed solution / investigation plan
+## Implemented local fix
 
-- Move or otherwise prioritize the `mEnglishOnly && !tempEnglishWord.isEmpty` branch before the generic `hasCandidatesShown` branch so English prediction Backspace deletes the typed character and refreshes predictions.
-- Add a helper such as `isBrowseOnlySuggestionList`, or a Backspace-specific classification similar to but not identical to `handleEnterOrSpace(isEnter:)`, so Backspace can differentiate:
-  - Chinese punctuation behavior, where hiding punctuation without deleting may still be intentional;
-  - related phrase suggestions;
-  - English prediction suggestions.
-- For related/association suggestions with no composing buffer, Backspace should dismiss stale optional suggestions as part of the normal delete flow, but still call `textDocumentProxy.deleteBackward()` once.
-- Preserve the existing Space behavior that already inserts a normal space for associated/English suggestion lists.
-- Consider whether Enter should insert newline for English/related suggestions consistently with the issue's “functional keys” wording; current code already avoids selection for `isAssociatedList`.
+Per `jrywu`'s closing comment, local commit `2e278c46` reportedly addressed three sub-bugs the maintainer says are documented in `docs/CANDI_FUNCTION_KEYS.md`:
 
-## Follow-up status
+- iOS Backspace on English prediction: the `mEnglishOnly && !tempEnglishWord.isEmpty` branch now runs before generic `hasCandidatesShown` clearing.
+- Related-phrase Backspace requires multiple taps: iOS uses `isBrowseOnlySuggestionList` / `dismissBrowseOnlySuggestionBar()`, while Android pre-clears `hasCandidatesShown` before issuing `KEYCODE_DEL`.
+- iOS Enter does not leave stale related/symbol bars visible when composing is empty: `handleEnterOrSpace(isEnter:)` dismisses browse-only bars in that path.
 
-No public follow-up is required because this is a maintainer-created tracking issue and `jrywu` closed it with a fix summary in comment `4517860543` (`https://github.com/lime-ime/limeime/issues/78#issuecomment-4517860543`). Do not post a community retest request for this issue unless the maintainer explicitly asks or new external evidence appears.
+A GitHub API lookup found no remote commit with SHA `2e278c46` when this doc was updated, so code-level verification should be repeated once the local commit is pushed.
 
-The original verification sequences remain useful as release QA / regression checks before TestFlight or a public iOS build:
+## Follow-up
+
+No public follow-up is required because this is maintainer-created and was closed by the maintainer after a local fix. Before any TestFlight or public retest note, finish/record manual visual verification and confirm the fixing commit is pushed to a tester-available branch/build. Capture exact reproduction sequences for:
 
 - English prediction candidate visibility + Backspace / Space.
 - Related phrase visibility after a Chinese commit + Backspace / Space.
 - Normal composing candidates, to confirm existing candidate-selection behavior is not regressed.
 
-## Verification status
+## Verification plan
 
-Maintainer-reported checks at closure:
+Maintainer-reported checks already completed: iOS Simulator build and Android `compileDebugJava`. Remaining verification before broader delivery:
 
-- iOS simulator build: clean.
-- Android `compileDebugJava`: clean.
-- iPhone 17 Pro Max simulator manual visual verification: pending before TestFlight.
-
-Scope note: this issue doc records maintainer-closed implementation status, not reporter-confirmed public-build verification. Keep it closed unless new iOS evidence appears or the maintainer reopens it for release QA follow-up.
+- Confirm commit `2e278c46` or its equivalent is pushed to the remote and included in the intended iOS/TestFlight build.
+- Add focused iOS unit tests if the keyboard controller can be tested with a mock `textDocumentProxy`; otherwise perform manual simulator/device verification.
+- English mode:
+  - type an English prefix that shows predictions;
+  - press Backspace and confirm text deletes immediately, predictions refresh or dismiss, and no candidate is committed/selected;
+  - press Space and confirm a space is inserted without selecting a suggestion.
+- Chinese related phrase mode:
+  - commit a Chinese word that shows related suggestions;
+  - press Backspace and confirm text deletes immediately rather than only hiding the bar;
+  - press Space and confirm a normal space is inserted.
+- Regression-check normal composing candidates where Space/Enter are still supposed to commit/select candidates.
+- After the fix lands in an iOS build/TestFlight or other tester-available build, request verification only if the maintainer wants external confirmation; the GitHub issue itself is already maintainer-closed.
