@@ -92,6 +92,12 @@ The current report includes reproduction steps, screenshots, app version, and An
   - Other layouts (English, Array, Dayi, phonetic) still switch normally.
 - If a new APK includes the fix, ask the reporter to retest with the direct APK link and specifically confirm both the `123` -> Chinese Cangjie switching path and the English long-press popup dismissal path.
 
+## Resolution / follow-up status
+
+- Fix commit `9230916` is included in APK `LIMEHD2026-6.1.8.apk`.
+- Reporter `ejmoog` confirmed in comment `4514371698` on 2026-05-22 that after installing 6.1.8, the issue was resolved.
+- Issue #75 is closed after reporter confirmation. No active retest/watch remains unless the reporter reopens or new evidence appears.
+
 ## Suggested reporter reply
 
 Thank you for the detailed report and screenshots. We could not reproduce the Cangjie overlap issue in the simulator, but we found a possible rendering path where stale keyboard pixels may remain after switching layouts, so we added a defensive redraw fix. Could you help verify whether the next test build fixes the `123` / symbol keyboard overlapping behind Cangjie on your device?
