@@ -71,6 +71,10 @@ The later `buildQueryResult(...)` limit logic adds a second bug: partial-match r
 
 This should be verified with an Android test or manual repro using `similiar_list=0`; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior.
 
+## Implemented fix
+
+Commit `7e1d57b` implements the planned exact-only behavior for disabled similar-code candidates on both Android and iOS, adds focused tests for the zero-cap path and cap boundary behavior, and updates async iOS test stabilization. APK metadata now points to `LIMEHD2026-6.1.9.apk`, which contains the fix for Android retesting.
+
 ## Proposed solution / investigation plan
 
 - Verify locally that `皔` appears through the `expandBetweenSearchClause(...)` partial/extension path, not a separate runtime suggestion path.
