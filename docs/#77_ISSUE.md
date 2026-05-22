@@ -45,35 +45,210 @@ Actual: `...` remains visible in the candidate list.
   - `candidateBarViewDidRequestMore(_:)` expands from `mCandidateList` without filtering `isHasMoreMarkRecord`; if expansion happens before the stage-2 full query updates `mCandidateList`, the expanded list may still contain the stage-1 `...` sentinel.
   - `candidateBarView(_:didSelect:)` forwards non-English suggestions directly to `pickCandidateManually(_:)`, so tapping the `...` sentinel can be treated like a real candidate unless guarded elsewhere.
 
+## Two display paths affected
+
+The `...` sentinel can appear in either of two UI surfaces, and the fix must
+address both:
+
+- **Path A — Candidate bar** (`CandidateBarView` horizontal strip).
+  Populated by `setSuggestions` → `setCandidates` from stage 1 (with sentinel)
+  and upgraded by `applyFullCandidateResults` → `appendCandidates` from stage 2
+  (no sentinel). Race in (1) below causes stage 2 to be silently dropped, so
+  the sentinel stays in the bar.
+- **Path B — Expanded candidate panel** (`expandedCandidatesPanel`, opened by
+  the fixed chevron or by tapping `...`).
+  - Normal-candidate path: built directly from `mCandidateList` at
+    `KeyboardViewController.swift:3232`. If stage 2 was dropped,
+    `mCandidateList` is the truncated stage-1 list and the expanded grid
+    carries the sentinel too. `expandedCandidateTapped(_:)` at
+    `KeyboardViewController.swift:1766` then forwards a sentinel tap to
+    `pickCandidateManually(_:)`.
+  - Related-phrase path: at `KeyboardViewController.swift:3217` it kicks off
+    a fresh `getRelatedByWord(... getAllRecords: true)` query, so the related
+    expanded grid does **not** carry the sentinel. The bar itself can still
+    carry it (no stage-2 upgrade for related phrases).
+
+The two paths share most of the fix: make sure the canonical list
+(`mCandidateList`) is the full stage-2 list before showing either surface, and
+treat the sentinel as a UI control at every tap entry point.
+
 ## Likely root cause
 
-There are two likely sentinel-handling gaps:
+There are three independent gaps. The dominant cause of the chronic "`...` always there" symptom is (1):
 
-1. Tapping the visible `...` candidate goes through the normal candidate selection path instead of being treated as a request for more candidates.
-2. The expanded candidate panel can be seeded from a list that still includes `hasMoreMark` if the user enters expansion before the background full-query result has replaced `mCandidateList`, or if a related-phrase path is still using the truncated list.
+1. **Stage 2 is silently dropped by a dispatch-ordering race** (primary cause of #77).
+   `updateCandidates()` in `KeyboardViewController.swift` dispatches the stage-1
+   bar reload using a **nested** `DispatchQueue.main.async` (added per
+   `docs/IOS_MISS_KEY.md` to absorb the queued touchDown/touchUp events before
+   the candidate-bar reload locks the main thread). Stage 2 dispatches its
+   `applyFullCandidateResults` with a single `DispatchQueue.main.async`.
 
-The stage-2 full query path itself appears intended to remove the sentinel because `getAllRecords: true` should not append `hasMoreMark`.
+   On a hot DB cache stage 2 finishes in a few ms. Main-queue order becomes:
+   - M1 (stage-1 outer) fires → enqueues M2 (stage-1 inner) to the queue tail.
+   - M3 (stage 2) fires next → `applyFullCandidateResults` guards on
+     `hasCandidatesShown`, which is still `false` because the inner M2 has not
+     run yet → **stage 2 bails out**.
+   - M2 fires → `setSuggestions(results)` populates the bar **with the `...`
+     sentinel** — and there is no further stage-2 follow-up to remove it.
+
+   Net effect: the user sees `...` for the entire stroke, never replaced.
+
+2. Tapping the visible `...` candidate goes through the normal candidate
+   selection path (`candidateTapped(_:)` → `didSelect` →
+   `pickCandidateManually`) instead of being treated as a request for more
+   candidates.
+
+3. The expanded candidate panel can be seeded from `mCandidateList` that still
+   includes `hasMoreMark` if the user enters expansion before the stage-2
+   result has replaced `mCandidateList`, or via the related-phrase path which
+   uses the same sentinel but currently has no stage-2 upgrade.
+
+The stage-2 DB query itself is correct: `getMappingByCode(code, getAllRecords:
+true)` skips the sentinel append at `LimeDB.swift:690`. The bug is purely on
+the iOS dispatch / sentinel-handling side, not the data layer.
+
+## Why TWO_STAGE_CANDI did not surface this
+
+`docs/TWO_STAGE_CANDI.md` fixed the scroll-position reset that occurred when
+stage 2 replaced the bar contents. That work assumed `applyFullCandidateResults`
+actually ran. It never reached the swap path during testing because the same
+P2 nested-dispatch race documented above was already silently dropping stage 2
+via the `hasCandidatesShown` guard. The doc says "stage 2 calls
+`candidateBar.appendCandidates`" — true in code, but the guard makes that
+conditional, and the condition fails in the race.
 
 ## Conservative fix plan
 
-1. Treat `Mapping.isHasMoreMarkRecord` as UI-only in all candidate-selection entry points:
-   - In `CandidateBarView.candidateTapped(_:)`, call `candidateBarViewDidRequestMore(_:)` instead of `didSelect` when the tapped mapping is `hasMoreMark`.
-   - In `KeyboardViewController.expandedCandidateTapped(_:)`, ignore or re-route `hasMoreMark` rather than calling `pickCandidateManually(_:)`.
-2. Filter `hasMoreMark` before showing expanded candidates:
-   - When using `mCandidateList` in `candidateBarViewDidRequestMore(_:)`, remove sentinel entries before `showExpandedCandidates(...)`.
-   - Keep the selected-index calculation based on the filtered list.
-3. If the full stage-2 fetch is still pending when the user requests more, either:
-   - show the filtered current list immediately and allow the pending full-query swap to update the bar, or
-   - issue/await a full `getMappingByCode(... getAllRecords: true)` for the current composing code before showing expansion.
-4. Add tests or manual checks for both normal candidate and related-phrase more flows.
+1. **Make stage 2 always land after stage 1's deferred reload** in
+   `KeyboardViewController.updateCandidates()`.
+   Two equivalent options; pick (a) for minimal diff:
+   - (a) Dispatch the stage-2 main hop with the same nested-async pattern as
+     stage 1 (outer `DispatchQueue.main.async { DispatchQueue.main.async { ... } }`)
+     so M3 is always enqueued after M2 on the main queue.
+   - (b) Chain the stage-2 swap from inside stage 1's inner M2 block (e.g.
+     capture `fullResults` into a `pendingFullResults` variable consumed at the
+     end of M2). This is more invasive but removes the ordering dependency.
+
+2. **Relax the `applyFullCandidateResults` guard** in
+   `KeyboardViewController.swift:1489`:
+   - Drop the `hasCandidatesShown` check, or replace the early-exit clause with
+     `guard currentSearchID == sid, !isShowingRelatedPhrases,
+     !hasChineseSymbolCandidatesShown, !mEnglishOnly, !full.isEmpty else { return }`.
+   - Rationale: if the same `sid` produced a non-empty full result for the
+     current composing code, the bar must show it regardless of whether the
+     stage-1 bar reload has landed yet. Stage 1 and stage 2 are by construction
+     mutually consistent for one `sid`.
+   - Set `hasCandidatesShown = true` inside `applyFullCandidateResults` for the
+     case where stage 2 lands before stage 1 (so subsequent code paths that
+     depend on `hasCandidatesShown` behave correctly).
+
+3. **Treat `Mapping.isHasMoreMarkRecord` as UI-only in all candidate-selection
+   entry points** (defense in depth even after fix 1+2 lands). Both display
+   paths need this:
+   - Path A (bar): in `CandidateBarView.candidateTapped(_:)`, call
+     `candidateBarViewDidRequestMore(_:)` instead of `didSelect` when the
+     tapped mapping is `hasMoreMark`.
+   - Path B (expanded grid): in
+     `KeyboardViewController.expandedCandidateTapped(_:)`
+     (`KeyboardViewController.swift:1766`), guard
+     `mapping.isHasMoreMarkRecord` — do nothing or re-route to
+     `candidateBarViewDidRequestMore(_:)` instead of `pickCandidateManually(_:)`.
+
+4. **Filter `hasMoreMark` before showing the expanded panel** (Path B):
+   - In `candidateBarViewDidRequestMore(_:)` at
+     `KeyboardViewController.swift:3207`, after capturing
+     `let all = mCandidateList`, drop entries where `isHasMoreMarkRecord`
+     before computing `idx` and calling `showExpandedCandidates(all,
+     selectedIndex: idx)`. The selected-index seeding rule must be applied to
+     the filtered list.
+   - This is required because the expanded grid is built directly from
+     `mCandidateList`, so any sentinel left in the canonical list leaks into
+     Path B.
+   - If the user opens the expanded grid while stage 2 is in flight, the
+     filtered grid is still consistent with what the user sees; stage 2 will
+     update `mCandidateList` on arrival but the grid itself does not currently
+     re-bind. Reloading the grid on stage 2 (see fix 5) is a nice-to-have.
+
+5. **Reload the expanded grid when stage 2 lands while it is visible** (Path
+   B), mirroring the bar upgrade:
+   - In `applyFullCandidateResults(_:sid:)`, after `mCandidateList = full`, if
+     `isExpandedCandidatesVisible && !isShowingRelatedPhrases`, recompute the
+     expanded list (filter sentinel, apply seed rule) and call
+     `reloadExpandedCandidates()`.
+   - Without this, a user who opens the expanded grid during stage 1 keeps
+     looking at the truncated 15-item set even after stage 2 lands.
+
+6. **If the full stage-2 fetch is still pending when the user requests more**,
+   either:
+   - show the filtered current list immediately and allow the pending
+     full-query swap to update both the bar and (via fix 5) the grid, or
+   - issue/await a full `getMappingByCode(... getAllRecords: true)` for the
+     current composing code before showing expansion. Option (a) matches the
+     responsiveness of the bar; option (b) trades a beat of latency for a
+     never-truncated grid.
+
+7. **Related-phrase path**: `getRelatedByWord(... getAllRecords: false)` also
+   emits `hasMoreMark` into the bar but has no stage-2 upgrade for the bar.
+   The expanded grid for related phrases is already correct
+   (`KeyboardViewController.swift:3217` fetches with `getAllRecords: true` on
+   demand), so the gap is only on Path A here. Either wire a stage-2 fetch
+   into `updateRelatedPhrase(...)` (mirroring the candidate path) or always
+   call related with `getAllRecords: true` to avoid the sentinel entirely. The
+   former matches Android more closely; the latter is simpler.
+
+8. **Constraints carried from TWO_STAGE_CANDI.md** — preserve in this fix:
+   - Keep `CandidateBarView.setCandidates` ordering: `layoutIfNeeded()` BEFORE
+     `setContentOffset(.zero)`.
+   - Stage 2 must still go through `appendCandidates`, not a fresh
+     `setCandidates`, so the scroll-offset preservation continues to work.
+
+9. Add tests or manual checks for all four surfaces: bar (normal candidate),
+   bar (related phrase), expanded grid (normal candidate), expanded grid
+   (related phrase). Each must show no `...` after stage 2 settles, and taps
+   on a stage-1 `...` must never commit literal `...`.
 
 ## Verification plan
 
-- Find an iOS table/code path with more than the initial candidate limit so the bar shows `...`.
-- Tap the `...` candidate entry itself: it should open/fetch the second-stage candidates and must not commit literal `...`.
-- Tap the fixed chevron while `...` is visible: the expanded list should not contain a `...` candidate after second-stage data is available.
-- Repeat the same path for related phrases if the related list can exceed the initial limit.
-- Confirm normal candidate selection, composing-code commit, and expanded-panel candidate taps still work.
+Find an iOS table/code path with more than the initial candidate limit
+(INITIAL_RESULT_LIMIT = 15) so stage 1 emits the `...` sentinel.
+
+### Path A — Candidate bar
+
+- Type the code and observe the bar without interacting:
+  - Expected after fix: `...` is visible only for the brief stage-1 window
+    (matching Android), then replaced by the full stage-2 list.
+  - Pre-fix behaviour: `...` remains visible for the entire stroke.
+- Confirm by `IOS_PROFILING` traces or log lines that
+  `applyFullCandidateResults` actually runs (not bailed) for the same `sid`
+  after stage 1.
+- Tap the `...` cell in the bar during the brief stage-1 window: it should
+  open the expanded panel (or trigger stage-2 fetch) and must not commit
+  literal `...`.
+
+### Path B — Expanded candidate panel
+
+- Tap the fixed chevron while `...` is visible in the bar: the expanded grid
+  must not contain a `...` cell (sentinel filtered before
+  `showExpandedCandidates`).
+- Open the expanded panel during the stage-1 window, keep it open, and let
+  stage 2 land: the grid must reload to show the full set (per fix 5). If fix
+  5 is deferred, at minimum confirm the displayed truncated set never carries
+  a `...` cell.
+- Tap a normal cell in the expanded grid: commits correctly.
+- Open the related-phrase expanded grid (after committing a candidate that
+  has related phrases beyond the initial limit): no `...` cell, full list
+  available immediately (Path B for related is already fetched with
+  `getAllRecords: true`).
+
+### Regression guards
+
+- Confirm normal candidate selection and composing-code commit still work.
+- Confirm scroll-position preservation still works on stage-2 arrival (per
+  `docs/TWO_STAGE_CANDI.md` — scroll right, type one more stroke, stage 2
+  must not snap back to offset 0).
+- Confirm `IOS_MISS_KEY.md` regression does not return: tap several keys
+  rapidly during stage-1 reload — touch events must still be processed
+  promptly.
 
 ## Follow-up / retest condition
 

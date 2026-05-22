@@ -806,6 +806,14 @@ final class CandidateBarView: UIView {
     @objc private func candidateTapped(_ sender: UIButton) {
         let index = sender.tag
         guard index < candidates.count else { return }
+        // The `…` (hasMoreMark) cell is a UI control, not a real candidate
+        // (see docs/#77_ISSUE.md). Re-route taps to the "more" delegate so the
+        // expanded panel opens instead of committing literal `…`.
+        if candidates[index].isHasMoreMarkRecord {
+            fireHaptic()
+            delegate?.candidateBarViewDidRequestMore(self)
+            return
+        }
         fireHaptic()
         // Flash the highlight on the tapped cell before the commit animates.
         setSelectedIndex(index)

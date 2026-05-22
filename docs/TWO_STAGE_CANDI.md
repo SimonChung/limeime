@@ -150,3 +150,161 @@ which preserves the user's scroll position. The scroll-reset bug is resolved.
   or physical keyboard selection changes) — that path is correct and unaffected.
 - The `layoutIfNeeded()` → `setContentOffset` ordering in `setCandidates` must be
   preserved in future refactors; reversing it will reintroduce the scroll-shift bug.
+
+---
+
+## Follow-up: stage-2 silently dropped (Issue #77)
+
+### Symptom
+
+iOS keeps the `...` (`hasMoreMark`) sentinel visible for the entire stroke.
+Android replaces it almost immediately when stage 2 lands. See `docs/#77_ISSUE.md`.
+
+### Root cause — dispatch ordering race introduced after this doc was written
+
+After this doc resolved the scroll-reset, a separate change in
+`docs/IOS_MISS_KEY.md` wrapped the stage-1 main-thread bar reload in a
+**nested** `DispatchQueue.main.async` so UIKit could drain queued
+touchDown/touchUp events before the candidate-bar reload locked the main
+thread. Stage 2 was left as a single `DispatchQueue.main.async`.
+
+Effective dispatch shape:
+
+```swift
+DispatchQueue.global { 
+    results = stage1Query()
+    DispatchQueue.main.async {        // M1
+        DispatchQueue.main.async {    // M2  ← nested P2 deferral (IOS_MISS_KEY.md)
+            setSuggestions(results)   //     sets hasCandidatesShown = true
+        }
+    }
+    guard wasTruncated else { return }
+    fullResults = stage2Query()       // sync on background, often only a few ms
+    DispatchQueue.main.async {        // M3
+        applyFullCandidateResults(fullResults, sid)  // guards on hasCandidatesShown
+    }
+}
+```
+
+Main-queue arrival order:
+
+1. M1 enqueued at t=0
+2. M3 enqueued at t = stage 2 query duration (often a few ms on a hot DB cache)
+
+Actual run order can become:
+
+- M1 fires → enqueues M2 to the queue tail.
+- **M3 fires before M2** → `hasCandidatesShown == false` (M2 has not run yet)
+  → `applyFullCandidateResults` bails out at the guard.
+- M2 fires → `setSuggestions(results)` populates the bar **with the `...`
+  sentinel** — and no stage-2 follow-up remains.
+
+Net effect: stage 2 is silently dropped, `...` stays visible for the whole stroke.
+
+### Why this doc did not detect it
+
+The fixes in Attempt 6 were validated using inputs that exercised the
+`appendCandidates` path. The race did not trigger when:
+
+- The DB query was cold and stage 2 was slow enough for M2 to run first, or
+- Debug builds were slow enough that the main queue drained M1→M2 between
+  background hops.
+
+Once profiling (`docs/IOS_PROFILING.md`) made stage 1 faster and the DB cache
+became hot in real usage, the race window widened and `...` became chronic.
+
+### Two display paths affected
+
+The sentinel can surface in either of two iOS candidate UIs, and the fix must
+cover both:
+
+- **Path A — Candidate bar** (`CandidateBarView`). The race below is the
+  primary cause of chronic `...` here. Stage 2 must actually land so
+  `appendCandidates` can replace the sentinel.
+- **Path B — Expanded candidate panel** (`expandedCandidatesPanel`, opened
+  via chevron or by tapping `...`). The grid is built from `mCandidateList`
+  at `KeyboardViewController.swift:3232`. If stage 2 was dropped (Path A bug),
+  `mCandidateList` still carries the sentinel and the grid does too.
+  Additionally `expandedCandidateTapped(_:)` at
+  `KeyboardViewController.swift:1766` does not currently skip sentinels.
+  Related-phrase expanded grid is fine — it issues
+  `getRelatedByWord(... getAllRecords: true)` on demand.
+
+### Fix
+
+Make stage 2 land **after** stage 1's deferred reload, remove the
+`hasCandidatesShown` guard that drops it when ordering inverts, and ensure
+the expanded grid stays consistent with the canonical list. See
+`docs/#77_ISSUE.md` for the full plan. Minimum diff:
+
+1. In `KeyboardViewController.updateCandidates()` — wrap stage 2's main hop in
+   the same nested `DispatchQueue.main.async` pattern as stage 1:
+
+   ```swift
+   DispatchQueue.main.async { [weak self] in
+       DispatchQueue.main.async { [weak self] in
+           guard let self = self else { return }
+           self.applyFullCandidateResults(fullResults, sid: sid)
+       }
+   }
+   ```
+
+   This guarantees M3 is enqueued after M2 because both are double-deferred and
+   FIFO ordering on `DispatchQueue.main` is preserved.
+
+2. In `KeyboardViewController.applyFullCandidateResults(_:sid:)` — drop the
+   `hasCandidatesShown` guard (or replace with `currentSearchID == sid` + the
+   list-mode guards). Set `hasCandidatesShown = true` inside this method for
+   the case where stage 2 lands before stage 1. This is defense in depth in
+   case the dispatch invariant is ever broken again.
+
+3. (Path B) In `applyFullCandidateResults`, after `mCandidateList = full`, if
+   `isExpandedCandidatesVisible && !isShowingRelatedPhrases`, recompute the
+   expanded list (filter sentinel + apply Android seed rule) and call
+   `reloadExpandedCandidates()`. Without this, a user who opens the expanded
+   grid during stage 1 keeps looking at the truncated 15-item set even after
+   stage 2 lands.
+
+4. (Path B) In `candidateBarViewDidRequestMore(_:)`
+   (`KeyboardViewController.swift:3207`) for the normal-candidate branch,
+   filter `isHasMoreMarkRecord` out of `mCandidateList` before computing the
+   selected index and calling `showExpandedCandidates(...)`.
+
+5. (Both paths) Guard sentinel taps:
+   - `CandidateBarView.candidateTapped(_:)` — route to
+     `candidateBarViewDidRequestMore(_:)` when the mapping is `hasMoreMark`.
+   - `KeyboardViewController.expandedCandidateTapped(_:)` — early-return /
+     re-route when the mapping is `hasMoreMark` instead of calling
+     `pickCandidateManually(_:)`.
+
+### Constraints preserved
+
+- `setCandidates` ordering (`layoutIfNeeded()` → `setContentOffset(.zero)`)
+  must remain unchanged.
+- Stage 2 must still go through `appendCandidates`, not a fresh `setCandidates`,
+  so scroll-offset preservation continues to work.
+- Stage 1 must still use its nested deferral (IOS_MISS_KEY.md requirement).
+
+### Verification
+
+Path A (bar):
+
+- After fix: `...` visible only briefly during stage 1, then replaced by the
+  full list. Matches Android behaviour.
+- `IOS_PROFILING` `CandidateSwap` span must consistently appear when stage 1
+  was truncated.
+
+Path B (expanded grid):
+
+- Open the expanded grid while `...` is in the bar: grid must not contain a
+  `...` cell.
+- Keep the grid open across the stage-1 → stage-2 transition: grid must
+  reload to show the full set after stage 2 lands.
+- Tap `...` in the bar or any sentinel that slips into the grid: must never
+  commit literal `...`.
+
+Regression guards:
+
+- Scroll-position preservation across stage-2 swap (the original scenario of
+  this doc) must still work.
+- `IOS_MISS_KEY` rapid-tap responsiveness must not regress.

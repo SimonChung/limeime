@@ -1470,30 +1470,45 @@ final class KeyboardViewController: UIInputViewController {
             if !fullResults.isEmpty, capturedEnableEmoji {
                 fullResults = ss.injectEmoji(into: fullResults, insertAt: capturedEmojiPosition)
             }
+            // Stage 2 must land AFTER the stage-1 bar reload. Stage 1 uses a
+            // nested DispatchQueue.main.async (P2 deferral, see IOS_MISS_KEY.md);
+            // if stage 2 uses a single async, M3 can fire before stage 1's inner
+            // M2 — applyFullCandidateResults then bails on hasCandidatesShown and
+            // the `…` sentinel is left in the bar (see docs/#77_ISSUE.md).
+            // Double-dispatch stage 2 so M3 is always enqueued after M2 (FIFO).
             DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                // PROFILING: BEGIN — T3 candidate swap (main thread).
-                let swapID = Prof.newID()
-                Prof.begin("CandidateSwap", id: swapID)
-                // PROFILING: END
-                self.applyFullCandidateResults(fullResults, sid: sid)
-                // PROFILING: BEGIN — T3 swap close.
-                Prof.end("CandidateSwap", id: swapID)
-                // PROFILING: END
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    // PROFILING: BEGIN — T3 candidate swap (main thread).
+                    let swapID = Prof.newID()
+                    Prof.begin("CandidateSwap", id: swapID)
+                    // PROFILING: END
+                    self.applyFullCandidateResults(fullResults, sid: sid)
+                    // PROFILING: BEGIN — T3 swap close.
+                    Prof.end("CandidateSwap", id: swapID)
+                    // PROFILING: END
+                }
             }
         }
     }
 
     /// Swap the full (un-truncated) candidate list into the bar after the background
     /// follow-up fetch completes. Preserves scroll position via appendCandidates.
+    ///
+    /// The `hasCandidatesShown` guard is intentionally omitted: under the
+    /// double-dispatch order (see updateCandidates), stage 2 normally lands
+    /// after the stage-1 inner block sets `hasCandidatesShown = true`, but if
+    /// it ever lands first, the full list must still be shown — stage 1 and
+    /// stage 2 are by construction mutually consistent for one `sid`. We set
+    /// `hasCandidatesShown` here as well so downstream code stays consistent.
     private func applyFullCandidateResults(_ full: [Mapping], sid: UInt64) {
         guard currentSearchID == sid,
-              hasCandidatesShown,
               !isShowingRelatedPhrases,
               !hasChineseSymbolCandidatesShown,
               !mEnglishOnly,
               !full.isEmpty else { return }
         mCandidateList = full
+        hasCandidatesShown = true
         let idx: Int
         if full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord) {
             idx = 1
@@ -1505,6 +1520,16 @@ final class KeyboardViewController: UIInputViewController {
         }
         selectedCandidate = (idx >= 0) ? full[idx] : nil
         candidateBar.appendCandidates(full, selectedIndex: idx)
+        // If the expanded grid is currently visible for normal candidates,
+        // reload it so the truncated stage-1 list (with `…` sentinel) is
+        // replaced by the full stage-2 list. Related-phrase expansion already
+        // fetches with getAllRecords: true on demand and is unaffected.
+        if isExpandedCandidatesVisible {
+            expandedCandidates = full
+            expandedSelectedIndex = idx
+            reloadExpandedCandidates()
+            updateExpandedScrollThumb()
+        }
     }
 
     /// Set candidate list and default selection (spec §6 Default Candidate Selection).
@@ -1766,8 +1791,13 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func expandedCandidateTapped(_ sender: UIButton) {
         let idx = sender.tag
         guard idx < expandedCandidates.count else { return }
-        fireHapticIfEnabled()
         let mapping = expandedCandidates[idx]
+        // The `…` sentinel is a UI control, not a real candidate. Defensive
+        // guard against any path that lets it slip into expandedCandidates
+        // (see docs/#77_ISSUE.md). Filtering in candidateBarViewDidRequestMore
+        // should keep this from triggering; treat it as a no-op if it does.
+        guard !mapping.isHasMoreMarkRecord else { return }
+        fireHapticIfEnabled()
         hideExpandedCandidates()
         pickCandidateManually(mapping)
     }
@@ -3228,8 +3258,12 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         ) else { return }
         // mCandidateList already holds the full emoji-injected list from the two-stage
         // fetch. Use it directly so the expanded grid shows exactly the same items as
-        // the candidate bar (including any injected emoji).
-        let all = mCandidateList
+        // the candidate bar (including any injected emoji). Filter the `…`
+        // (hasMoreMark) sentinel — it is a UI control, not a real candidate
+        // (see docs/#77_ISSUE.md). If the user requests expansion during the
+        // brief stage-1 window before stage 2 lands, the sentinel must not
+        // appear in the grid.
+        let all = mCandidateList.filter { !$0.isHasMoreMarkRecord }
         // Apply the Android CandidateView seeding rule so the expanded grid
         // highlights the same default entry the bar does.
         let idx: Int
