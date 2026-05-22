@@ -121,7 +121,7 @@ iOS:
 
 Commit `7e1d57bdf6cc026d5d32e5fb670a7cebb6d316b9` fixed the confirmed `similiar_list = 0` / exact-match-only bug for Android and iOS database lookup paths by suppressing partial-match lookup when the configured cap is zero or lower, correcting partial-match cap handling, and adding Android/iOS tests. The repository then added Android release APK `LIMEHD2026-6.1.9.apk`, which contains this fix.
 
-GitHub auto-closed #76 through the fixing commit, but because #76 is community-reported and the reporter has not yet confirmed the APK result, Hermes reopened the issue and posted retest request `4519807270` with the direct 6.1.9 APK link. Current public follow-up state: open / pending reporter confirmation for the `建議字顯示數量 = 0` exact-match-only behavior.
+GitHub auto-closed #76 through the fixing commit, then Hermes reopened it for community confirmation and posted retest request `4519807270` with the direct 6.1.9 APK link. Reporter `ejmoog` then confirmed in comment `4520021201` that the problem was resolved, and closed the issue. Hermes added a thumbs-up reaction and posted closing acknowledgement `4520032322`. Current public follow-up state: resolved / reporter-confirmed closed for the Android APK 6.1.9 `建議字顯示數量 = 0` exact-match-only behavior.
 
 The learned-word / association / ranking-control concern remains separate from the fixed `similiar_list = 0` candidate-count bug. Do not imply that APK 6.1.9 fixes the learned-word/delete/ranking-control complaint unless separately verified.
 
@@ -136,18 +136,25 @@ The learned-word / association / ranking-control complaint should be treated as 
 - relation/association candidates coming from another setting path;
 - ranking/order changes caused by selection-history data despite `啟動選取排序` being off.
 
-After the `similiar_list=0` bug is fixed, decide whether to keep learned-word delete/disable controls in #76 or split them into a separate enhancement/usability tracking item so the retest request can ask about the candidate-count bug without overclaiming a broader learning/ranking redesign.
-
-If local reproduction unexpectedly fails, ask the reporter to confirm the active table/input method and whether any custom table is involved.
+After the reporter-confirmed closure, keep learned-word delete/disable controls as historical product/usability context only. If the reporter reopens #76 or a separate issue is created with actionable evidence, decide then whether it belongs in #76 or should be split into a separate enhancement/usability tracking item.
 
 ## Current follow-up status
 
-APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` now contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. The issue was reopened and a retest request was posted in comment `4519807270`:
+APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` contains the targeted fix for the `建議字顯示數量 = 0` next-code / partial-match candidate bug. The issue was reopened and a scoped retest request was posted in comment `4519807270`:
 
 - https://github.com/lime-ime/limeime/issues/76#issuecomment-4519807270
 - APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk
 
-Retest scope is intentionally narrow: ask the reporter to verify that with `建議字顯示數量 = 0`, typing `ha` preserves the exact candidate `白` and no longer shows the extension candidate `皔` / `haa`. The separate learned-word / association / ranking-control concern remains open for follow-up and should not be claimed fixed by the 6.1.9 APK unless independently verified. Do not close #76 until reporter confirmation or maintainer instruction.
+Reporter `ejmoog` replied in comment `4520021201` that the problem is resolved and then closed the issue:
+
+- https://github.com/lime-ime/limeime/issues/76#issuecomment-4520021201
+
+Hermes added a thumbs-up reaction to the reporter confirmation and posted a short closing acknowledgement in comment `4520032322`:
+
+- https://github.com/lime-ime/limeime/issues/76#issuecomment-4520032322
+
+Resolved scope is intentionally narrow: the Android APK 6.1.9 retest confirms the reported `建議字顯示數量 = 0` / `ha` exact-match-only behavior no longer shows the extension candidate `皔` / `haa`. The separate learned-word / association / ranking-control concern remains product/usability context for future investigation if it is reopened or reported separately, but it is not an active #76 reporter watch.
+
 
 ## Verification plan
 
@@ -155,12 +162,12 @@ Retest scope is intentionally narrow: ask the reporter to verify that with `建�
 - Type `ha` with the same or equivalent table.
 - Confirm the candidate bar shows the composing code and exact match `白` but no partial `皔`/`haa` candidate.
 - Set the value back to a positive value such as `10` or `20` and confirm partial/next-code candidates appear as expected.
-- APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` retest request is already posted in comment `4519807270`; wait for `ejmoog` to confirm whether `ha` now shows only exact candidate `白` and no partial `皔` / `haa`. Do not close until reporter confirmation or maintainer instruction.
+- Reporter `ejmoog` confirmed in comment `4520021201` that APK `LIMEHD2026-6.1.9.apk` / version `6.1.9` resolved the reported behavior. Treat the Android APK `建議字顯示數量 = 0` / `ha` exact-match-only path as reporter-verified closed unless the issue is reopened or new evidence appears.
 
 ## 6.1.9 APK follow-up
 
 Android APK `LIMEHD2026-6.1.9.apk` includes commit `7e1d57b` (`Fix #76: suppress partial matches when similar_list is disabled`), which implements the exact-match-only behavior for `建議字顯示數量` / `similiar_list = 0` on Android and iOS and fixes the positive partial-match cap boundary.
 
-Because #76 is community-reported and was closed/reopened around the fixing commit before reporter validation, the issue should remain open until `ejmoog` confirms the Android APK result or the maintainer explicitly decides otherwise. A scoped retest request was posted in comment `4519807270` with direct APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk`.
+Because #76 is community-reported, it was kept open after the APK retest request until reporter validation. Reporter `ejmoog` confirmed in comment `4520021201` that the issue was resolved and closed #76. Hermes reacted to the confirmation and posted closing acknowledgement `4520032322`.
 
-Retest scope for this APK is intentionally narrow: verify that with `建議字顯示數量 = 0`, typing `ha` shows the exact candidate such as `白` but no extension/partial candidate such as `haa` / `皔`. The adjacent learned-word / association / ranking-control concern is not claimed fixed by this APK and still needs separate product/bug classification if further action is needed.
+Verified scope for closure is intentionally narrow: Android APK 6.1.9 resolved the reported `建議字顯示數量 = 0` / `ha` exact-match-only behavior by no longer showing the extension/partial candidate such as `haa` / `皔`. The adjacent learned-word / association / ranking-control concern was not verified as fixed by this APK; keep it as historical product/usability context only unless the reporter reopens #76 or a separate issue tracks it.
