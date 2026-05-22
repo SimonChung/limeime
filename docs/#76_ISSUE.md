@@ -11,7 +11,7 @@ Example from the report:
 - Actual candidate display in LIME: `白` plus an extra next-code / prefix-extension candidate `皔` (code `haa`).
 - Comparison screenshots show gcin displaying only `白`, while LIME still displays the extra `皔` candidate.
 
-The report strongly suggests the related display-count setting did not produce the expected "disabled" behavior, but the exact current preference value in the #76 screenshot still needs confirmation if the issue cannot be reproduced locally.
+The report strongly suggests the related display-count setting did not produce the expected "disabled" behavior. Maintainer comment `4517136291` confirms that when the suggested-candidate count is set to `0`, the current implementation still sends one `ha*` partial-match candidate, and that the intended follow-up is to make `0` truly mean zero partial/extension candidates.
 
 ## Reproduction notes from current evidence
 
@@ -21,7 +21,7 @@ The report strongly suggests the related display-count setting did not produce t
 4. Type `ha`.
 5. Observe whether the candidate bar still includes one next-code / prefix-extension candidate after the exact match.
 
-The reporter's screenshots are visual evidence only; the precise preference value used in the screenshot should still be confirmed if needed.
+The reporter's screenshots are visual evidence. The exact setting value used in the screenshot is still inferred from the #70/#76 discussion and the single-extra-candidate behavior, but maintainer comment `4517136291` confirms the product-level `建議字顯示數量 = 0` path currently still emits one `ha*` partial-match candidate.
 
 ## Code inspection
 
@@ -36,13 +36,13 @@ Relevant Android preference and query paths on `master`:
   - `buildQueryResult(...)` reads `int sLimit = mLIMEPref.getSimilarCodeCandidates();`.
   - For non-exact / partial-match records, it currently adds the mapping to `result`, then increments `sCount`, then breaks if `sCount > sLimit`.
 
-This appears to make the limit inclusive-after-add instead of pre-add. If `similiar_list` is the setting intended to control this code-extension display, then `sLimit == 0` can still allow the first partial-match record to be added before the loop breaks, and positive values may also allow one more partial-match record than the configured number.
+This appears to make the limit inclusive-after-add instead of pre-add. The code inspection maps the product setting `建議字顯示數量` to `similiar_list`; maintainer comment `4517136291` confirms the observed product behavior that setting the count to `0` still sends one `ha*` partial-match candidate today, and the fix direction is to make `0` truly suppress those partial/extension candidates. Positive values may also allow one more partial-match record than the configured number and should be checked.
 
 ## Likely root cause
 
 Likely off-by-one / post-add limit check in `LimeDB.buildQueryResult(...)` for partial-match candidates, combined with the UI exposing `0` as a valid `建議字顯示數量` value. The expected product behavior is that `0` disables these extra next-code / prefix-extension candidates, while exact matches remain visible.
 
-This should be verified with an Android test or manual repro using `similiar_list=0`; also verify that `similiar_list` is indeed the setting that governs the candidate shown in the reporter's screenshot.
+This should be verified with an Android test or manual repro using `similiar_list=0`; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior.
 
 ## Proposed solution / investigation plan
 
@@ -54,10 +54,9 @@ This should be verified with an Android test or manual repro using `similiar_lis
 
 ## Follow-up questions
 
-No public follow-up is required before investigation, but if behavior cannot be reproduced locally, ask the reporter to confirm:
+No public follow-up is required before investigation. Maintainer `jrywu` has already explained in comment `4517136291` that `0` currently still emits one partial-match candidate and that a future change will make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
 
-- The exact `建議字顯示數量` value they used while taking the LIME screenshot.
-- The active table/input method and whether any custom table is involved.
+If local reproduction unexpectedly fails, ask the reporter to confirm the active table/input method and whether any custom table is involved.
 
 ## Verification plan
 
