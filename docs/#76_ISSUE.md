@@ -135,3 +135,11 @@ If local reproduction unexpectedly fails, ask the reporter to confirm the active
 - Confirm the candidate bar shows the composing code and exact match `白` but no partial `皔`/`haa` candidate.
 - Set the value back to a positive value such as `10` or `20` and confirm partial/next-code candidates appear as expected.
 - After a fix lands in a newer Android APK, ask `ejmoog` to retest #76; do not close until reporter confirmation or maintainer instruction.
+
+## 6.1.9 APK follow-up
+
+Android APK `LIMEHD2026-6.1.9.apk` includes commit `7e1d57b` (`Fix #76: suppress partial matches when similar_list is disabled`), which implements the exact-match-only behavior for `建議字顯示數量` / `similiar_list = 0` on Android and iOS and fixes the positive partial-match cap boundary.
+
+Because #76 is community-reported and was closed/reopened around the fixing commit before reporter validation, the issue should remain open until `ejmoog` confirms the Android APK result or the maintainer explicitly decides otherwise. A scoped retest request was posted in comment `4519808965` with direct APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.9.apk`.
+
+Retest scope for this APK is intentionally narrow: verify that with `建議字顯示數量 = 0`, typing `ha` shows the exact candidate such as `白` but no extension/partial candidate such as `haa` / `皔`. The adjacent learned-word / association / ranking-control concern is not claimed fixed by this APK and still needs separate product/bug classification if further action is needed.
