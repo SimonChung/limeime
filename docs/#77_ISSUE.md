@@ -27,6 +27,7 @@ Actual: `...` remains visible in the candidate list.
 - Assignee after triage: `jrywu`
 - Reporter/source: maintainer-created tracking issue (`limeimetw`)
 - Public acknowledgement: not needed; this is a maintainer-created tracking bug.
+- Current status: closed by `jrywu` on 2026-05-22 after local fix and simulator verification.
 
 ## Relevant code paths inspected
 
@@ -250,6 +251,12 @@ Find an iOS table/code path with more than the initial candidate limit
   rapidly during stage-1 reload — touch events must still be processed
   promptly.
 
-## Follow-up / retest condition
+## Resolution / follow-up status
 
-This is maintainer-created, so no public reporter retest request is needed. Keep the issue open until the iOS fix is implemented and verified in a newer iOS build/TestFlight or maintainer-confirmed local build.
+Maintainer `jrywu` closed this issue on 2026-05-22 after posting the local-fix summary in issue comment `4517540556`. The implementation is recorded as commit `c828a2d2` and, per the maintainer's summary, addressed the two visible surfaces involved in this report:
+
+- Candidate bar: stage-2 full-result application was deferred consistently with the stage-1 nested main-queue reload, `applyFullCandidateResults` can land for the current search id, and `hasCandidatesShown` is set when the full result is applied.
+- Expanded grid: `hasMoreMark` / `...` sentinel records are filtered before display, and the visible grid is reloaded when stage 2 lands while it is open.
+- Tap safety: candidate-bar and expanded-grid taps on the sentinel are routed/guarded as UI controls rather than committed as a literal candidate.
+
+Verification noted by the maintainer: visual simulator check on iPhone 17 Pro Max with 注音 `ru` (ㄐㄧ); `...` no longer persists in the candidate bar or expanded grid. This local visual check verifies the reported persistence symptom for the maintainer-created tracking issue. The broader regression matrix above, including related-phrase paths and sentinel tap timing, remains useful if similar behavior is reported again, but no public reporter retest request or active watch is needed now unless new iOS evidence appears.
