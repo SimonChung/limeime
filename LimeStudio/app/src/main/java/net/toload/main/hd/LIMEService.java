@@ -4134,7 +4134,16 @@ public class LIMEService extends InputMethodService
                 && (hasCandidatesShown)// repalce isCandaiteShwon() with hasCandidatesShwn by Jeremy '12,5,6
                 //&& mLIMEPref.getAutoChineseSymbol()
                 && !hasChineseSymbolCandidatesShown) {
-            clearComposing(false);  //Jeremy '12,4,21 composing length 0, no need to force commit again.
+            // #78 Bug 2 backport (iOS parity, see docs/CANDI_FUNCTION_KEYS.md):
+            // related-phrase suggestions are browse-only — Backspace must dismiss the
+            // stale bar AND delete the previous character in one tap, rather than only
+            // clearing candidates (which under autoChineseSymbol then surfaces the
+            // Chinese-punctuation list and requires 2–3 taps to actually delete).
+            // Pre-clearing hasCandidatesShown prevents clearSuggestions() inside
+            // clearComposing(false) from sliding into updateChineseSymbol().
+            hasCandidatesShown = false;
+            clearComposing(false);
+            keyDownUp(KeyEvent.KEYCODE_DEL, false);
         } else if (!mEnglishOnly
                 //&& mCandidateView !=null && isCandidateShown()
                 && hasCandidatesShown //Replace isCandidateShown() with hasCandidatesShown by Jeremy '12,5,6

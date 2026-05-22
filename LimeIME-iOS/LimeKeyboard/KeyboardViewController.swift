@@ -1020,6 +1020,29 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Space / Enter Handling (spec §4)
 
+    /// True when the visible candidate list is an optional / browse-only suggestion list
+    /// (related phrases, Chinese punctuation, or English predictions) — i.e. Space/Enter
+    /// must NOT commit a candidate and Backspace must NOT swallow the delete (see
+    /// docs/CANDI_FUNCTION_KEYS.md and docs/#78_ISSUE.md).
+    private var isBrowseOnlySuggestionList: Bool {
+        isShowingRelatedPhrases
+            || hasChineseSymbolCandidatesShown
+            || (mEnglishOnly && hasCandidatesShown)
+    }
+
+    /// Dismiss a stale browse-only suggestion bar (related phrases / Chinese
+    /// punctuation) without touching the host document. Used after Backspace /
+    /// Enter / Space when composing is empty and the bar was optional.
+    /// Mirrors Android's `hideCandidateView()` in the same branch.
+    private func dismissBrowseOnlySuggestionBar() {
+        isShowingRelatedPhrases         = false
+        hasChineseSymbolCandidatesShown = false
+        hasCandidatesShown              = false
+        mCandidateList                  = []
+        selectedCandidate               = nil
+        candidateBar.setCandidates([])
+    }
+
     private func handleEnterOrSpace(isEnter: Bool) {
         let isPhonetic = searchServer?.isPhoneticTable ?? false
 
@@ -1027,9 +1050,7 @@ final class KeyboardViewController: UIInputViewController {
         // suggestions) are "browse only" — space/enter must insert a normal space/newline
         // rather than commit the first entry. Mirrors Android's "no default selection"
         // rule for these record types (CandidateView.setSuggestions rule 3).
-        let isAssociatedList = isShowingRelatedPhrases
-            || hasChineseSymbolCandidatesShown
-            || (mEnglishOnly && hasCandidatesShown)
+        let isAssociatedList = isBrowseOnlySuggestionList
 
         // Determine whether to pick the highlighted candidate (spec §4 conditions)
         let shouldPick: Bool
@@ -1068,6 +1089,11 @@ final class KeyboardViewController: UIInputViewController {
                 if mEnglishOnly {
                     resetTempEnglishWord()
                     clearSuggestions()
+                } else if isAssociatedList && mComposing.isEmpty {
+                    // #78 Bug 3: dismiss stale browse-only bar (related phrases /
+                    // Chinese punctuation) once Enter/Space has inserted its literal
+                    // character. Matches Android's hideCandidateView() in the same path.
+                    dismissBrowseOnlySuggestionBar()
                 }
             }
         }
@@ -1191,24 +1217,39 @@ final class KeyboardViewController: UIInputViewController {
             clearComposing(force: true)
 
         } else if hasCandidatesShown && hasChineseSymbolCandidatesShown {
-            // Case 4: Chinese punctuation list shown → hide it without deleting (spec §11)
+            // Case 4: Chinese punctuation list shown → hide it without deleting (spec §11,
+            // intentional "cancel" gesture — same as Android).
             hasChineseSymbolCandidatesShown = false
             hasCandidatesShown  = false
             selectedCandidate   = nil
             mCandidateList      = []
             candidateBar.setCandidates([])
 
-        } else if hasCandidatesShown {
-            // Case 3: composing empty, candidates shown → use clearSuggestions so autoChineseSymbol triggers
-            clearSuggestions()
-
         } else if mEnglishOnly && !tempEnglishWord.isEmpty {
-            // Case 5: English prediction word → delete last char and re-query
+            // Case 5 (#78 Bug 1): English prediction word → delete last char and re-query.
+            // Must run before the generic hasCandidatesShown branch so the English
+            // delete path is actually reached when predictions are visible. Mirrors
+            // Android (whose equivalent branches are gated by !mEnglishOnly).
             tempEnglishWord.removeLast()
             isSelfUpdate = true
             textDocumentProxy.deleteBackward()
             isSelfUpdate = false
             updateEnglishPrediction()
+
+        } else if isBrowseOnlySuggestionList {
+            // #78 Bug 2: composing empty, optional/browse-only list visible (related
+            // phrases, or English predictions with empty tempEnglishWord). Dismiss the
+            // stale bar AND perform the normal delete in one tap — do not slide into
+            // the Chinese-punctuation list via clearSuggestions().
+            dismissBrowseOnlySuggestionBar()
+            isSelfUpdate = true
+            textDocumentProxy.deleteBackward()
+            isSelfUpdate = false
+
+        } else if hasCandidatesShown {
+            // Case 3 (residual): generic candidates with empty composing not matching any
+            // browse-only category — use clearSuggestions so autoChineseSymbol may trigger.
+            clearSuggestions()
 
         } else {
             // Case 6: no composing, no candidates → pass delete to text field

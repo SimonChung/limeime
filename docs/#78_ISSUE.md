@@ -1,4 +1,10 @@
-# Issue #78: iOS optional suggestion candidates should not intercept functional keys
+# Issue #78: iOS optional suggestion candidates should not intercept functional keys (FIXED)
+
+**Status**: Fixed. See "Resolution" section at the bottom for the actual
+implementation. The original problem statement / inspection / proposal below
+is preserved for history.
+
+
 
 ## Problem statement
 
@@ -94,3 +100,54 @@ No public follow-up is required before implementation because this is maintainer
   - press Space and confirm a normal space is inserted.
 - Regression-check normal composing candidates where Space/Enter are still supposed to commit/select candidates.
 - After the fix lands in an iOS build/TestFlight or other tester-available build, request verification against the exact sequences above; do not close solely from labeling or implementation without maintainer/reporter confirmation.
+
+## Resolution
+
+Implemented in master. Cross-platform; full bug catalogue + before/after
+discussion lives in [docs/CANDI_FUNCTION_KEYS.md](CANDI_FUNCTION_KEYS.md).
+
+### iOS — `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift`
+
+- New computed property `isBrowseOnlySuggestionList` — true when the visible
+  bar is related phrases, Chinese punctuation, or English predictions.
+  Shared by both `handleBackspace()` and `handleEnterOrSpace(isEnter:)`.
+- New helper `dismissBrowseOnlySuggestionBar()` — clears
+  `isShowingRelatedPhrases`, `hasChineseSymbolCandidatesShown`,
+  `hasCandidatesShown`, `mCandidateList`, `selectedCandidate`, and the bar
+  view, without touching the host document. Mirrors Android's
+  `hideCandidateView()` in the equivalent path.
+- `handleBackspace()` reordered (Bug 1) so the English-prediction delete
+  path is reached when predictions are visible. A new branch above the
+  residual `hasCandidatesShown` clear handles related-phrase Backspace
+  (Bug 2): dismiss bar + `deleteBackward()` in one tap. Chinese punctuation
+  case 4 still dismisses without deleting (intentional cancel gesture).
+- `handleEnterOrSpace(isEnter:)` (Bug 3) now calls
+  `dismissBrowseOnlySuggestionBar()` after `insertText("\n" / " ")` when the
+  visible list was browse-only and composing is empty, so the stale bar is
+  cleared rather than left visible.
+
+### Android — `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java`
+
+- `handleBackspace()` related-phrase branch (`!mEnglishOnly &&
+  hasCandidatesShown && !hasChineseSymbolCandidatesShown`) now pre-clears
+  `hasCandidatesShown = false` (so `clearSuggestions()` inside
+  `clearComposing(false)` does NOT slide into `updateChineseSymbol()`),
+  then calls `keyDownUp(KeyEvent.KEYCODE_DEL, false)`. One Backspace
+  dismisses the related bar and deletes one character.
+- Android English-prediction Backspace was already correct (its
+  candidate-clearing branches are gated by `!mEnglishOnly`); no change
+  needed for Bug 1.
+- Android Enter/Space already called `hideCandidateView()` in the no-pick
+  path when composing is empty; no change needed for Bug 3.
+
+### Verification
+
+- Build: iOS Simulator (`xcodebuild`) and Android (`./gradlew
+  :app:compileDebugJava`) both clean.
+- Manual on-device visual verification of the three scenarios (English
+  prediction Backspace, related-phrase Backspace, Enter dismiss) on the
+  iPhone 17 Pro Max simulator with LIME active is pending and recommended
+  before considering the iOS bug officially confirmed in TestFlight. See
+  `docs/CANDI_FUNCTION_KEYS.md` "Verification" section for the full
+  matrix.
+
