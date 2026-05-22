@@ -33,24 +33,79 @@ Relevant Android preference and query paths on `master`:
 - `LimeStudio/app/src/main/java/net/toload/main/hd/global/LIMEPreferenceManager.java`
   - `getSimilarCodeCandidates()` reads `similiar_list`, defaulting to `20`.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java`
+  - `getMappingByCode(...)` builds `selectClause = expandBetweenSearchClause(codeCol, code) + extraSelectClause;` before reading the cursor.
+  - `expandBetweenSearchClause(...)` deliberately includes shorter-prefix exact records and longer next-code records. For input `ha`, the query shape is equivalent to `code = 'h' OR (code >= 'ha' AND code < 'hb')`, so records such as `haa` / `皔` are fetched before result limiting.
+  - `exactMatchCondition` marks only rows whose code equals the typed code (`ha`) as exact. Longer codes such as `haa` are therefore marked partial.
   - `buildQueryResult(...)` reads `int sLimit = mLIMEPref.getSimilarCodeCandidates();`.
   - For non-exact / partial-match records, it currently adds the mapping to `result`, then increments `sCount`, then breaks if `sCount > sLimit`.
 
-This appears to make the limit inclusive-after-add instead of pre-add. The code inspection maps the product setting `建議字顯示數量` to `similiar_list`; maintainer comment `4517136291` confirms the observed product behavior that setting the count to `0` still sends one `ha*` partial-match candidate today, and the fix direction is to make `0` truly suppress those partial/extension candidates. Positive values may also allow one more partial-match record than the configured number and should be checked.
+Relevant iOS preference and query paths on `master`:
+
+- `LimeIME-iOS/Shared/Search/SearchServer.swift`
+  - `similiarList` defaults to `20`.
+  - `applyPrefsToDatabase()` maps `similiarEnable ? similiarList : 0` into `db.similarCodeCandidatesCap`.
+- `LimeIME-iOS/Shared/Database/LimeDB.swift`
+  - `similarCodeCandidatesCap` defaults to `20`.
+  - `getMappingByCode(...)` mirrors Android and always builds `let selectClause = expandBetweenSearchClause(column: codeCol, code: queryCode) + extraSelectClause`.
+  - `expandBetweenSearchClause(...)` mirrors Android's prefix/extension range query.
+  - The result loop mirrors Android's post-add partial count: append mapping, increment `sCount`, then break when `sCount > sLimit`.
+
+The code inspection maps the product setting `建議字顯示數量` to `similiar_list`; maintainer comment `4517136291` confirms the observed product behavior that setting the count to `0` still sends one `ha*` partial-match candidate today, and the fix direction is to make `0` truly suppress those partial/extension candidates.
+
+There are two related issues to handle:
+
+- For `similiar_list = 0`, the DB query should not include the partial/extension branch in the first place. Fetching `haa` and then relying on `buildQueryResult(...)` to discard it leaves the disabled setting implemented too late in the pipeline and can still interact with cache/runtime suggestion paths.
+- For positive `similiar_list` values, the post-add limit check in `buildQueryResult(...)` appears to allow one more partial-match record than requested because it adds the mapping before checking `sCount > sLimit`.
 
 ## Likely root cause
 
-Likely off-by-one / post-add limit check in `LimeDB.buildQueryResult(...)` for partial-match candidates, combined with the UI exposing `0` as a valid `建議字顯示數量` value. The expected product behavior is that `0` disables these extra next-code / prefix-extension candidates, while exact matches remain visible.
+Likely root cause is that Android `LimeDB.getMappingByCode(...)` and iOS `LimeDB.getMappingByCode(...)` always use `expandBetweenSearchClause(...)`, even when the similar-code candidate cap is `0`. That expanded clause intentionally fetches next-code / prefix-extension records such as `haa` for typed code `ha`; those rows are then marked partial by `exactMatchCondition`.
+
+The later `buildQueryResult(...)` limit logic adds a second bug: partial-match records are added before the limit is checked, so `0` still allows one partial row and positive values may allow one too many.
 
 This should be verified with an Android test or manual repro using `similiar_list=0`; the internal `similiar_list` / `buildQueryResult(...)` path remains a code-inspection inference, while the maintainer comment confirms the product-level `建議字顯示數量 = 0` behavior.
 
 ## Proposed solution / investigation plan
 
-- Verify locally that `皔` appears through the `similiar_list` / partial-match path, not a separate runtime suggestion path.
-- Update the limiting logic so no partial-match candidate is added when `getSimilarCodeCandidates()` returns `0`.
+- Verify locally that `皔` appears through the `expandBetweenSearchClause(...)` partial/extension path, not a separate runtime suggestion path.
+- Apply the fix on both Android and iOS.
+- When Android `getSimilarCodeCandidates()` / iOS `similarCodeCandidatesCap` returns `0`, build an exact-only `selectClause` instead of calling `expandBetweenSearchClause(...)`, while preserving any exact-match remap conditions required by `extraExactMatchClause`.
+- Update the positive-count limiting logic on both platforms so a partial-match candidate is counted and checked before it is added to `result`.
 - Preserve exact-match candidates such as `白`.
-- Verify that positive values allow the intended number of partial/next-code candidates without changing exact-match behavior.
-- Consider adding a focused unit/instrumentation test for `buildQueryResult(...)` or a lower-level query helper if feasible.
+- Verify that positive values allow the intended number of partial/next-code candidates without changing exact-match behavior or #49 partial-match score ordering.
+- Consider adding focused Android instrumentation coverage for `getMappingByCode(...)` with `similiar_list=0` and a positive count, because the disabled behavior depends on both SQL clause construction and result limiting.
+
+## Existing coverage and new tests needed
+
+Android:
+
+- Existing adjacent tests, not expected to fail from the fix:
+  - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/LimeDBTest.java`
+    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently set `similiar_list` or assert exact-vs-partial count behavior.
+  - `LimeStudio/app/src/androidTest/java/net/toload/main/hd/SearchServerTest.java`
+    - Partial-match cache/update tests exist for #49 behavior, especially `test_3_3_5_19_updateScoreCache_partial_match`, but they do not cover `similiar_list=0` query suppression.
+- Add or update focused Android instrumentation tests:
+  - Seed a test table with exact `ha -> 白` and extension `haa -> 皔`.
+  - Set default shared preference `similiar_list` to `0`.
+  - Assert `LimeDB.getMappingByCode("ha", true, false)` returns exact `白` and no partial `皔` / `haa`.
+  - Set `similiar_list` to a positive value such as `1`.
+  - Assert at most one partial/extension candidate is returned, preserving exact matches and #49 score ordering.
+
+iOS:
+
+- Existing adjacent tests, not expected to fail from the fix:
+  - `LimeIME-iOS/LimeTests/SearchServerTest.swift`
+    - `test_prefs_similiarEnable_false_zeroes_cap` verifies preference wiring to `similarCodeCandidatesCap = 0`.
+    - `test_prefs_similiarList_propagates_when_enabled` verifies positive cap propagation.
+    - These do not verify DB query suppression or partial-result limiting.
+  - `LimeIME-iOS/LimeTests/LimeDBTest.swift`
+    - Many `getMappingByCode(...)` smoke tests exist, but they do not currently assert `similarCodeCandidatesCap=0` exact-only behavior.
+- Add focused iOS XCTest coverage:
+  - Seed temporary DB table with exact `ha -> 白` and extension `haa -> 皔`.
+  - Set `db.similarCodeCandidatesCap = 0`.
+  - Assert `db.getMappingByCode("ha", softKeyboard: true, getAllRecords: false)` returns exact `白` and no partial `皔` / `haa`.
+  - Set `db.similarCodeCandidatesCap = 1`.
+  - Assert at most one partial/extension candidate is returned, preserving exact matches and #49 score ordering.
 
 ## Follow-up questions
 

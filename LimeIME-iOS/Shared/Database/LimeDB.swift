@@ -586,9 +586,14 @@ final class LimeDB {
         let escapedCode = queryCode.replacingOccurrences(of: "'", with: "''")
         let codeLen = queryCode.count
         let limitClause = getAllRecords ? LimeDB.FINAL_RESULT_LIMIT : LimeDB.INITIAL_RESULT_LIMIT
-        let selectClause = expandBetweenSearchClause(column: codeCol, code: queryCode) + extraSelectClause
         // Mirrors Android: " (" + codeCol + " ='" + escapedCode + "' " + extraExactMatchClause + ") "
         let exactMatchCondition = " (\(codeCol) ='\(escapedCode)' \(extraExactClause)) "
+        let selectClause: String
+        if similarCodeCandidatesCap <= 0 {
+            selectClause = exactMatchCondition
+        } else {
+            selectClause = expandBetweenSearchClause(column: codeCol, code: queryCode) + extraSelectClause
+        }
 
         // Jeremy '15, 6, 1 between search clause without using related column for better sorting order.
         var sortClause = "( exactmatch = 1 and ( score > 0 or  basescore >0) and length(word)=1) desc, exactmatch desc,"
@@ -657,11 +662,11 @@ final class LimeDB {
             // mirrors Android: rsize++ is outside duplicateCheck block
             let inserted = duplicateCheck.insert(word).inserted
             if inserted {
-                result.append(m)
                 if m.isPartialMatchToCodeRecord {
+                    if sCount >= sLimit { break }
                     sCount += 1
-                    if sCount > sLimit { break }
                 }
+                result.append(m)
             }
             rsize += 1
         }

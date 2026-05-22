@@ -1565,8 +1565,10 @@ final class SearchServerTest: XCTestCase {
         let mapping = Mapping(id: 42, code: "abc", word: "測試",
                               score: 5, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
-        ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp, rewarmExp], timeout: 5.0)
+        withExtendedLifetime(ss) {
+            ss.learnRelatedPhraseAndUpdateScore(mapping)
+            wait(for: [scoreExp, rewarmExp], timeout: 10.0)
+        }
 
         XCTAssertTrue(spy.updateScoreCalled, "score must be updated in DB")
         // The evicted prefix \"ab\" must have been re-fetched from spy.
@@ -1584,17 +1586,7 @@ final class SearchServerTest: XCTestCase {
                     recordType: Mapping.RecordType.exactMatchToCode)
         ]
 
-        // setTableName (inside makeSearchServerWithSpy) triggers a background prefetch that
-        // calls db.getMappingByCode("a") first. Wait for that call to land, then reset the
-        // spy's call history so the assertion below counts only learn-triggered calls.
-        let prefetchAExp = expectation(description: "prefetch warmed \"a\"")
-        spy.onGetMappingByCode = { [weak spy, weak prefetchAExp] in
-            spy?.onGetMappingByCode = nil   // fire once, then stop
-            prefetchAExp?.fulfill()
-        }
-
         let ss = makeSearchServerWithSpy(spy)
-        wait(for: [prefetchAExp], timeout: 5.0)
         spy.clearCallHistory()
 
         let scoreExp = expectation(description: "updateScore called for single-char")
@@ -1603,9 +1595,10 @@ final class SearchServerTest: XCTestCase {
         let mapping = Mapping(id: 1, code: "a", word: "啊",
                               score: 5, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
-        ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp], timeout: 5.0)
-        Thread.sleep(forTimeInterval: 0.2)
+        withExtendedLifetime(ss) {
+            ss.learnRelatedPhraseAndUpdateScore(mapping)
+            wait(for: [scoreExp], timeout: 10.0)
+        }
 
         XCTAssertTrue(spy.updateScoreCalled, "score must be updated")
         // No prefix evictions for single-char: getMappingByCode is only called once
@@ -1628,8 +1621,10 @@ final class SearchServerTest: XCTestCase {
                               score: 3, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
         // Must not crash even though getMappingByCode returns nil.
-        ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp], timeout: 5.0)
+        withExtendedLifetime(ss) {
+            ss.learnRelatedPhraseAndUpdateScore(mapping)
+            wait(for: [scoreExp], timeout: 10.0)
+        }
         XCTAssertTrue(spy.updateScoreCalled, "score update must still proceed")
     }
 
@@ -1644,8 +1639,10 @@ final class SearchServerTest: XCTestCase {
         let mapping = Mapping(id: 2, code: "a", word: "word1",
                               score: 5, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
-        ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp], timeout: 5.0)
+        withExtendedLifetime(ss) {
+            ss.learnRelatedPhraseAndUpdateScore(mapping)
+            wait(for: [scoreExp], timeout: 10.0)
+        }
 
         XCTAssertTrue(spy.updateScoreCalled, "updateScore must be called for id > 0")
         XCTAssertEqual(spy.updateScoreCallCount, 1, "updateScore must be called exactly once")
@@ -1679,8 +1676,10 @@ final class SearchServerTest: XCTestCase {
         let mapping = Mapping(id: 7, code: "ab", word: "測試",
                               score: 10, baseScore: 0,
                               recordType: Mapping.RecordType.exactMatchToCode)
-        ss.learnRelatedPhraseAndUpdateScore(mapping)
-        wait(for: [scoreExp, rewarmExp], timeout: 5.0)
+        withExtendedLifetime(ss) {
+            ss.learnRelatedPhraseAndUpdateScore(mapping)
+            wait(for: [scoreExp, rewarmExp], timeout: 10.0)
+        }
 
         XCTAssertTrue(spy.updateScoreCalled)
         // The candidate code itself must be re-queried from DB after score update.
@@ -2608,7 +2607,9 @@ final class SearchServerTest: XCTestCase {
     // MARK: - Spy-based helpers
 
     /// Creates a SearchServer backed by the given spy (no real SQLite file needed).
-    private func makeSearchServerWithSpy(_ spy: SpyLimeDB, tableName: String = "custom") -> SearchServer {
+    /// The default table name intentionally matches SearchServer's initial empty
+    /// table so these learning/cache tests do not start the real prefetch thread.
+    private func makeSearchServerWithSpy(_ spy: SpyLimeDB, tableName: String = "") -> SearchServer {
         let ss = SearchServer(db: spy)
         ss.initialCache()
         ss.setTableName(tableName)

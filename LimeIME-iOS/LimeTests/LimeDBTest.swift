@@ -282,6 +282,42 @@ final class LimeDBTest: XCTestCase {
         }
     }
 
+    func testLimeDBGetMappingByCodeSimilarCapZeroSuppressesPartialMatches() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.similarCodeCandidatesCap = 0
+
+        let code = "issue76ha\(Int(Date().timeIntervalSince1970 * 1000))"
+        let extensionCode = code + "a"
+        db.addOrUpdateMappingRecord(code, "白")
+        db.addOrUpdateMappingRecord(extensionCode, "皔")
+
+        let results = try XCTUnwrap(db.getMappingByCode(code, softKeyboard: true, getAllRecords: false))
+
+        XCTAssertTrue(results.contains { $0.code == code && $0.word == "白" && $0.isExactMatchToCodeRecord },
+                      "Exact match should remain visible")
+        XCTAssertFalse(results.contains { $0.code == extensionCode && $0.word == "皔" && $0.isPartialMatchToCodeRecord },
+                       "Partial extension candidate should be suppressed when similarCodeCandidatesCap is 0")
+    }
+
+    func testLimeDBGetMappingByCodePositiveSimilarCapDoesNotAllowOneExtraPartialMatch() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.similarCodeCandidatesCap = 1
+
+        let code = "issue76limit\(Int(Date().timeIntervalSince1970 * 1000))"
+        db.addOrUpdateMappingRecord(code, "白")
+        db.addOrUpdateMappingRecord(code + "a", "皔")
+        db.addOrUpdateMappingRecord(code + "b", "晧")
+
+        let results = try XCTUnwrap(db.getMappingByCode(code, softKeyboard: true, getAllRecords: false))
+
+        XCTAssertTrue(results.contains { $0.code == code && $0.word == "白" && $0.isExactMatchToCodeRecord },
+                      "Exact match should remain visible")
+        XCTAssertLessThanOrEqual(results.filter(\.isPartialMatchToCodeRecord).count, 1,
+                                 "Partial matches should not exceed similarCodeCandidatesCap")
+    }
+
     func testLimeDBGetMappingByCodeWithAllRecords() throws {
         let db = try makeLimeDB()
         db.setTableName(LIME.DB_TABLE_CUSTOM)

@@ -1926,8 +1926,13 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                     //Jeremy '15, 6, 1 between search clause without using related column for better sorting order.
                     //if(betweenSearch){
-                    selectClause = expandBetweenSearchClause(codeCol, code) + extraSelectClause;
                     String exactMatchCondition = " (" + codeCol + " ='" + escapedCode + "' " + extraExactMatchClause + ") ";
+                    int similarCodeCandidates = mLIMEPref.getSimilarCodeCandidates();
+                    if (similarCodeCandidates <= 0) {
+                        selectClause = exactMatchCondition;
+                    } else {
+                        selectClause = expandBetweenSearchClause(codeCol, code) + extraSelectClause;
+                    }
                     // Sort key order (issue #49 follow-up):
                     //   1. exactmatch-with-score single-char priority
                     //   2. exactmatch DESC                      -- exact hits always above partial hits
@@ -2886,12 +2891,12 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 }
 
                 if (duplicateCheck.add(m.getWord())) {
-                    result.add(m);
-
                     if(m.isPartialMatchToCodeRecord()) {
+                        if(sCount >= sLimit) break;
                         sCount ++;
-                        if(sCount >sLimit) break;
                     }
+
+                    result.add(m);
                 }
                 rsize++;
                 if(DEBUG)

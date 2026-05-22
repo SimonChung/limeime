@@ -28,6 +28,7 @@ import android.content.Context;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.preference.PreferenceManager;
 
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Record;
@@ -336,6 +337,98 @@ public class LimeDBTest {
             assertTrue("Results should not be empty if record exists", 
                       results.size() >= 0);
         }
+    }
+
+    @Test(timeout = 5000)
+    public void testLimeDBGetMappingByCodeSimilarListZeroSuppressesPartialMatches() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection. Database may be on hold from a previous operation. Test cannot proceed.");
+        }
+
+        String oldLimit = PreferenceManager.getDefaultSharedPreferences(appContext)
+                .getString("similiar_list", "20");
+        try {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putString("similiar_list", "0").commit();
+
+            limeDB.setTableName("custom");
+            String code = "issue76ha" + System.currentTimeMillis();
+            String extensionCode = code + "a";
+            limeDB.addOrUpdateMappingRecord(code, "白");
+            limeDB.addOrUpdateMappingRecord(extensionCode, "皔");
+
+            List<Mapping> results = limeDB.getMappingByCode(code, true, false);
+
+            assertNotNull("Results should not be null", results);
+            assertTrue("Exact match should remain visible",
+                    containsMapping(results, code, "白", false));
+            assertFalse("Partial extension candidate should be suppressed when similiar_list is 0",
+                    containsMapping(results, extensionCode, "皔", true));
+        } finally {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putString("similiar_list", oldLimit).commit();
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void testLimeDBGetMappingByCodePositiveSimilarListDoesNotAllowOneExtraPartialMatch() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection. Database may be on hold from a previous operation. Test cannot proceed.");
+        }
+
+        String oldLimit = PreferenceManager.getDefaultSharedPreferences(appContext)
+                .getString("similiar_list", "20");
+        try {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putString("similiar_list", "1").commit();
+
+            limeDB.setTableName("custom");
+            String code = "issue76limit" + System.currentTimeMillis();
+            limeDB.addOrUpdateMappingRecord(code, "白");
+            limeDB.addOrUpdateMappingRecord(code + "a", "皔");
+            limeDB.addOrUpdateMappingRecord(code + "b", "晧");
+
+            List<Mapping> results = limeDB.getMappingByCode(code, true, false);
+
+            assertNotNull("Results should not be null", results);
+            assertTrue("Exact match should remain visible",
+                    containsMapping(results, code, "白", false));
+            assertTrue("Partial matches should not exceed similiar_list",
+                    countPartialMatches(results) <= 1);
+        } finally {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putString("similiar_list", oldLimit).commit();
+        }
+    }
+
+    private boolean containsMapping(List<Mapping> results, String code, String word, boolean partial) {
+        if (results == null) return false;
+        for (Mapping mapping : results) {
+            if (mapping != null
+                    && code.equals(mapping.getCode())
+                    && word.equals(mapping.getWord())
+                    && (!partial || mapping.isPartialMatchToCodeRecord())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int countPartialMatches(List<Mapping> results) {
+        int count = 0;
+        if (results == null) return count;
+        for (Mapping mapping : results) {
+            if (mapping != null && mapping.isPartialMatchToCodeRecord()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @Test(timeout = 5000) // 5 second timeout to prevent infinite hang
