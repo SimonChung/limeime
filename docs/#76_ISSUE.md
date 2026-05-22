@@ -23,6 +23,8 @@ The report strongly suggests the related display-count setting did not produce t
 
 The reporter's screenshots are visual evidence. The exact setting value used in the screenshot is still inferred from the #70/#76 discussion and the single-extra-candidate behavior, but maintainer comment `4517136291` confirms the product-level `建議字顯示數量 = 0` path currently still emits one `ha*` partial-match candidate.
 
+Latest reporter follow-up comment `4519464729` adds an adjacent learned-word / association / ranking-control concern: the reporter showed LIME suggesting or learning `重要` when typing `重`, said they do not know when that learned word was created or how to delete it, and requested a way to disable self-learned words, association/related candidates, and automatic ranking changes. That comment broadens the product/usability discussion but does not invalidate the narrower confirmed implementation bug: `建議字顯示數量 = 0` should still suppress next-code / partial-match candidates while preserving exact matches.
+
 ## Code inspection
 
 Relevant Android preference and query paths on `master`:
@@ -55,6 +57,8 @@ This should be verified with an Android test or manual repro using `similiar_lis
 ## Follow-up questions
 
 No public follow-up is required before investigation. Maintainer `jrywu` has already explained in comment `4517136291` that `0` currently still emits one partial-match candidate and that a future change will make it truly `0`. He also advised that setting suggested candidates to `0` disables useful LIME learning/連打詞 workflows, but that product recommendation does not change the bug-fix requirement for the explicit setting value.
+
+The latest learned-word / association / ranking-control complaint should be treated as related product/usability context rather than as evidence that the planned count-bug fix would also address learned-word, association, or ranking behavior. After the `similiar_list=0` bug is fixed, decide whether to keep learned-word delete/disable controls in #76 or split them into a separate enhancement/usability tracking item so the retest request can ask about the candidate-count bug without overclaiming a broader learning/ranking redesign.
 
 If local reproduction unexpectedly fails, ask the reporter to confirm the active table/input method and whether any custom table is involved.
 
