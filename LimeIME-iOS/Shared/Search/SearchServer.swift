@@ -157,7 +157,7 @@ final class SearchServer {
         }
 
         // LD phrase learning for runtime-built phrase selection. Mirrors Android lines 1075-1103.
-        if mapping.isRuntimeBuiltPhraseRecord {
+        if learnPhrasePref && mapping.isRuntimeBuiltPhraseRecord {
             suggestionLock.lock()
             let bestList = suggestionLoL.last ?? []
             suggestionLock.unlock()
@@ -596,6 +596,7 @@ final class SearchServer {
 
     /// Buffer a mapping for LD phrase learning. When ending=true, saves the accumulated list.
     func addLDPhrase(_ mapping: Mapping?, ending: Bool) {
+        guard learnPhrasePref else { return }
         learnLock.lock()
         defer { learnLock.unlock() }
         if let m = mapping { ldPhraseList.append(m) }
@@ -1388,5 +1389,11 @@ final class SearchServer {
     internal var _testLdPhraseListArray: [[Mapping]] {
         learnLock.lock(); defer { learnLock.unlock() }
         return ldPhraseListArray
+    }
+
+    internal func _testSetRuntimeSuggestionList(_ list: [(mapping: Mapping, code: String)]) {
+        suggestionLock.lock()
+        suggestionLoL = [list]
+        suggestionLock.unlock()
     }
 }

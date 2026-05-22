@@ -837,12 +837,13 @@ public class SearchServer {
         }
 
         List<List<String>> pages = new ArrayList<>();
-        if (dbadapter == null) {
+        LimeDB db = dbadapter;
+        if (db == null) {
             return pages;
         }
         List<Mapping> recent = loadRecentEmoji(32);
         pages.add(mappingWords(recent));
-        pages.addAll(dbadapter.loadEmojiCategoryPages());
+        pages.addAll(db.loadEmojiCategoryPages());
         emojiCategoryPagesCache = copyEmojiCategoryPages(pages);
         return pages;
     }
@@ -1115,8 +1116,16 @@ public class SearchServer {
      * @return List of mappings.
 	 */
     private List<Mapping> getMappingByCodeFromCacheOrDB(String queryCode, Boolean getAllRecords) {
+        LimeDB db = dbadapter;
+        if (db == null) {
+            return new LinkedList<>();
+        }
+
         String cachedKey = cacheKey(queryCode);
         assert cachedKey != null;
+        if (cachedKey.isEmpty()) {
+            return new LinkedList<>();
+        }
         List<Mapping> cacheTemp = cache.get(cachedKey);
 
         if (DEBUG)
@@ -1126,7 +1135,7 @@ public class SearchServer {
             // 25/Jul/2011 by Art
             // Just ignore error when something wrong with the result set
             try {
-                cacheTemp = dbadapter.getMappingByCode(queryCode, !isPhysicalKeyboardPressed, getAllRecords);
+                cacheTemp = db.getMappingByCode(queryCode, !isPhysicalKeyboardPressed, getAllRecords);
                 if (cacheTemp != null) cache.put(cachedKey, cacheTemp);
                 //Jeremy '12,6,5 check if need to update code remap cache
                 if (cacheTemp != null
@@ -1227,7 +1236,9 @@ public class SearchServer {
         }
 
         // learn ld phrase if the select mapping is run-time suggestion
-        if (selectedMapping.isRuntimeBuiltPhraseRecord() && suggestionLoL != null && !suggestionLoL.isEmpty()) {
+        if (mLIMEPref != null && mLIMEPref.getLearnPhrase()
+                && selectedMapping.isRuntimeBuiltPhraseRecord()
+                && suggestionLoL != null && !suggestionLoL.isEmpty()) {
 
             final List<Pair<Mapping, String>> bestSuggestionList = new LinkedList<>(suggestionLoL.get(suggestionLoL.size() - 1));
             final String selectedWord = selectedMapping.getWord();
@@ -1738,6 +1749,10 @@ List<Mapping> scorelistSnapshot = null;
      */
     public void addLDPhrase(Mapping mapping,//String id, String code, String word, int score,
                             boolean ending) {
+        if (mLIMEPref != null && !mLIMEPref.getLearnPhrase()) {
+            return;
+        }
+
         if (LDPhraseListArray == null)
             LDPhraseListArray = new ArrayList<>();
         if (LDPhraseList == null)

@@ -205,6 +205,25 @@ final class SearchServerTest: XCTestCase {
         XCTAssertTrue(len == "dualcode".count || len == "dual".count)
     }
 
+    func test_getRealCodeLength_runtime_phrase_learning_disabled_by_learnPhrasePref() throws {
+        let spy = SpyLimeDB()
+        let ss = makeSearchServerWithSpy(spy, tableName: LIME.DB_TABLE_DAYI)
+        ss.learnPhrasePref = false
+        let seed = Mapping(id: 1, code: "p", word: "pre", score: 0, baseScore: 0,
+                           recordType: Mapping.RecordType.exactMatchToCode)
+        ss._testSetRuntimeSuggestionList([(mapping: seed, code: "p")])
+
+        let runtime = Mapping(id: 0, code: "p", word: "prefix", score: 0, baseScore: 0,
+                              recordType: Mapping.RecordType.runtimeBuiltPhrase)
+        let noWrite = expectation(description: "runtime phrase learning write suppressed")
+        noWrite.isInverted = true
+        spy.onAddOrUpdateMappingRecord = { noWrite.fulfill() }
+        XCTAssertEqual(1, ss.getRealCodeLength(mapping: runtime, composing: "prefix"))
+        wait(for: [noWrite], timeout: 1.0)
+        XCTAssertEqual(0, spy.addOrUpdateMappingRecordCallCount,
+                       "runtime phrase learning must not write when learn_phrase=false")
+    }
+
     func test_3_2_4_1_lcs_identical_partial_none_empty() throws {
         let ss = try makeSearchServer()
         XCTAssertEqual("abc", ss.lcs("abc", "abc"))
@@ -1012,6 +1031,22 @@ final class SearchServerTest: XCTestCase {
         // Nil mapping with ending=true should just flush existing list (which is empty)
         ss.addLDPhrase(nil, ending: true)
         XCTAssertTrue(true)
+    }
+
+    func test_addLDPhrase_noop_when_learnPhrasePref_disabled() throws {
+        let spy = SpyLimeDB()
+        let ss = makeSearchServerWithSpy(spy)
+        ss.learnPhrasePref = false
+
+        let m1 = Mapping(id: 1, code: "a", word: "蘋", score: 0, baseScore: 0,
+                         recordType: Mapping.RecordType.exactMatchToCode)
+        let m2 = Mapping(id: 2, code: "b", word: "果", score: 0, baseScore: 0,
+                         recordType: Mapping.RecordType.exactMatchToCode)
+        ss.addLDPhrase(m1, ending: false)
+        ss.addLDPhrase(m2, ending: true)
+        ss.learnLDPhrase()
+
+        XCTAssertEqual(spy.addOrUpdateMappingRecordCallCount, 0)
     }
 
     func test_3_7_3_1_learnLDPhrase_empty_state_no_crash() throws {
@@ -2644,11 +2679,14 @@ final class SpyLimeDB: LimeDBProtocol {
     private(set) var updateScoreCalled: Bool = false
     private(set) var updateScoreCallCount: Int = 0
     private(set) var addOrUpdateRelatedPhraseRecordCalled: Bool = false
+    private(set) var addOrUpdateMappingRecordCallCount: Int = 0
 
     /// Called each time getMappingByCode finishes — use with XCTestExpectation.
     var onGetMappingByCode: (() -> Void)? = nil
     /// Called each time updateScore finishes.
     var onUpdateScore: (() -> Void)? = nil
+    /// Called each time an add/update mapping write is requested.
+    var onAddOrUpdateMappingRecord: (() -> Void)? = nil
 
     /// Resets all call-tracking state. Use in tests to establish a clean baseline
     /// after setup side-effects (e.g. background prefetch) have settled.
@@ -2658,6 +2696,7 @@ final class SpyLimeDB: LimeDBProtocol {
         updateScoreCalled = false
         updateScoreCallCount = 0
         addOrUpdateRelatedPhraseRecordCalled = false
+        addOrUpdateMappingRecordCallCount = 0
         spyLock.unlock()
     }
 
@@ -2697,8 +2736,18 @@ final class SpyLimeDB: LimeDBProtocol {
         spyLock.unlock()
         return 0
     }
-    func addOrUpdateMappingRecord(code: String, word: String, tableName: String) throws {}
-    func addOrUpdateMappingRecord(_ table: String, _ code: String, _ word: String, _ score: Int) {}
+    func addOrUpdateMappingRecord(code: String, word: String, tableName: String) throws {
+        spyLock.lock()
+        addOrUpdateMappingRecordCallCount += 1
+        spyLock.unlock()
+        onAddOrUpdateMappingRecord?()
+    }
+    func addOrUpdateMappingRecord(_ table: String, _ code: String, _ word: String, _ score: Int) {
+        spyLock.lock()
+        addOrUpdateMappingRecordCallCount += 1
+        spyLock.unlock()
+        onAddOrUpdateMappingRecord?()
+    }
 
     // MARK: LimeDBProtocol — emoji / misc lookups
     func emojiConvert(_ source: String, _ emoji: Int) -> [Mapping] { [] }
