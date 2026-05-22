@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-22T10:20:00+08:00 (Asia/Taipei)
+Last updated: 2026-05-22T10:20:15+08:00 (Asia/Taipei)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -61,7 +61,7 @@ Last updated: 2026-05-22T10:20:00+08:00 (Asia/Taipei)
 
 ## Historical Project-Memory Baseline
 - Original automation/project memory said Android `6.1.1` was the latest known pre-release APK and gave this direct link: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.1.apk`.
-- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.8`; #55/#54/#62/#63/#64/#65/#66/#67/#68/#69/#70 are closed where noted; #63 was maintainer-closed as an upstream Xiaomi/Android recognizer limitation after LIME-side 6.1.6 mitigations and is no longer an active reminder/watch per Jeremy; #71 has a 6.1.8 retest request pending for the Chinese/English switch composition-cancel fix; #75 is reporter-confirmed fixed on 6.1.8 and closed; #72/#74 remain open enhancement/question/product-decision items, while #70 and #73 are maintainer-closed unless reporter follow-up reopens them.
+- Newer observed state supersedes that baseline where noted above: current observed pre-release APK is `6.1.8`; #55/#54/#62/#63/#64/#65/#66/#67/#68/#69/#70/#71/#75 are closed where noted; #63 was maintainer-closed as an upstream Xiaomi/Android recognizer limitation after LIME-side 6.1.6 mitigations and is no longer an active reminder/watch per Jeremy; #71 is reporter-confirmed fixed on 6.1.8 and closed; #75 is reporter-confirmed fixed on 6.1.8 and closed; #72/#74 remain open enhancement/question/product-decision items, while #70 and #73 are maintainer-closed unless reporter follow-up reopens them.
 
 ## Update Instructions
 - Scheduled runs should update this file through GitHub API when current issue states, APK observations, run outcomes, cross-agent handoff/continuation notes, or shared task-board items change.
