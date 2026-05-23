@@ -39,7 +39,7 @@ mEmojiSearchField = new TextView(mThemeContext);
 mEmojiSearchField.setBackground(makeRoundRect(0xF2FFFFFF, dp(26)));
 ```
 
-`updateEmojiSearchText()` also hard-codes the placeholder/hint color and active search text color:
+`updateEmojiSearchText()` also hard-codes the empty-state search text color and active search text color. This is a `TextView`, so the placeholder is implemented by manually setting the field text to `搜尋表情符號` rather than by using native `EditText` hint styling:
 
 ```java
 mEmojiSearchField.setTextColor(0xFF8A8A8A);
@@ -68,9 +68,10 @@ Preliminary assessment: the confirmed source-level issue is Android-specific so 
 Android:
 
 1. Replace the hard-coded `0xF2FFFFFF` emoji search-field background with a theme-aware color.
-2. Replace hard-coded placeholder/hint gray and active black search text with theme-aware text colors. The Android control is a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
-3. Ensure hint text, entered query text, and the search icon remain readable on both light and dark themes.
-4. Keep rounded search-field shape and existing padding/height.
+2. Replace hard-coded empty-state gray and active black search text with theme-aware text colors. The Android control is a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
+3. Apply a theme-aware tint or replacement drawable for the compound search icon currently attached with `android.R.drawable.ic_menu_search`.
+4. Ensure empty-state text, entered query text, and the search icon remain readable on both light and dark themes.
+5. Keep rounded search-field shape and existing padding/height.
 
 Possible implementation direction:
 
@@ -89,7 +90,7 @@ Android manual checks:
 
 - Dark theme / system dark mode: emoji search field is not bright white.
 - Light theme: search field still has clear contrast and looks intentional.
-- Placeholder text (`搜尋表情符號`) is readable.
+- Empty-state search text (`搜尋表情符號`) is readable.
 - Typed search query text is readable.
 - Search icon remains visible.
 - Search mode still opens the English keyboard and filters emoji as before.
