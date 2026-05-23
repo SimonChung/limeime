@@ -85,6 +85,7 @@
 
                     <!-- 名稱 row -->
                     <LinearLayout
+                        android:id="@+id/row_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
@@ -106,6 +107,15 @@
                             android:textAppearance="?attr/textAppearanceBody2"
                             android:textColor="?android:attr/textColorSecondary"
                             android:gravity="end" />
+
+                        <ImageView
+                            android:id="@+id/iv_edit_name"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="6dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?android:attr/textColorSecondary"
+                            android:contentDescription="@string/im_detail_edit_name_title" />
                     </LinearLayout>
 
                     <View
@@ -138,6 +148,15 @@
                             android:textColor="?android:attr/textColorSecondary"
                             android:gravity="end"
                             android:text="-" />
+
+                        <ImageView
+                            android:id="@+id/iv_edit_version"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="6dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?android:attr/textColorSecondary"
+                            android:contentDescription="@string/im_detail_edit_version_title" />
                     </LinearLayout>
 
                     <View

@@ -1123,7 +1123,7 @@ final class LimeDB {
     func getAllImConfigs() throws -> [ImConfig] {
         // Known key-value field names — rows with these titles are config entries, not IM seed rows.
         let kvFields: Set<String> = ["keyboard","disable","selkey","endkey","spacestyle",
-                                     "imkeys","imkeynames","name","label"]
+                                     "imkeys","imkeynames","name","label","version"]
         let allRows = getImConfigList(nil, nil)
 
         // Group all rows by IM code.
@@ -2734,6 +2734,28 @@ final class LimeDB {
                     try? db.execute(sql: "INSERT INTO \(t) SELECT * FROM sourceDB.custom")
                 } else {
                     try? db.execute(sql: "INSERT INTO \(t) SELECT * FROM sourceDB.\(t)")
+                }
+            }
+            let hasImTable = ((try? Int.fetchOne(db,
+                sql: "SELECT COUNT(*) FROM sourceDB.sqlite_master WHERE type='table' AND name='im'")) ?? 0) > 0
+            if hasImTable && !valid.isEmpty {
+                if valid.count == 1, let tableName = valid.first {
+                    try? db.execute(sql: "DELETE FROM im WHERE code = ?", arguments: [tableName])
+                    try? db.execute(sql: """
+                        INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                        SELECT ?, title, desc, keyboard, disable, selkey, endkey, spacestyle
+                        FROM sourceDB.im
+                    """, arguments: [tableName])
+                } else {
+                    try? db.execute(sql: """
+                        DELETE FROM im
+                        WHERE code IN (SELECT code FROM sourceDB.im)
+                    """)
+                    try? db.execute(sql: """
+                        INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
+                        SELECT code, title, desc, keyboard, disable, selkey, endkey, spacestyle
+                        FROM sourceDB.im
+                    """)
                 }
             }
             if includeRelated {

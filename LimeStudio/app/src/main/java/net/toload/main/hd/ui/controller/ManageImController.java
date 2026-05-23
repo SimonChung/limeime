@@ -2,6 +2,7 @@ package net.toload.main.hd.ui.controller;
 
 import android.util.Log;
 
+import net.toload.main.hd.DBServer;
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Keyboard;
 import net.toload.main.hd.ui.view.ManageImView;
@@ -380,6 +381,69 @@ public class ManageImController extends BaseController {
     }
 
     /**
+     * Updates user-editable IM metadata in the shared `im` table.
+     *
+     * <p>Mirrors the iOS ManageImController path: display name is stored as
+     * {@code title='name'} and version as {@code title='version'} for the IM code.
+     *
+     * @param table the IM table / code
+     * @param name the display name; must not be blank
+     * @param version the version label; blank is allowed
+     * @return true when values were persisted, false when validation or storage failed
+     */
+    public boolean updateIMMetadata(String table, String name, String version) {
+        String trimmedTable = table == null ? "" : table.trim();
+        String trimmedName = name == null ? "" : name.trim();
+        String trimmedVersion = version == null ? "" : version.trim();
+        if (trimmedTable.isEmpty() || trimmedName.isEmpty()) {
+            return false;
+        }
+
+        try {
+            return updateIMMetadataField(trimmedTable, "name", trimmedName)
+                    && updateIMMetadataField(trimmedTable, "version", trimmedVersion);
+        } catch (Exception e) {
+            handleError(manageImView, "Failed to update IM metadata: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Updates one editable IM metadata field.
+     *
+     * @param table the IM table / code
+     * @param field either {@code name} or {@code version}
+     * @param value the value to store; blank is allowed only for version
+     * @return true when the value was persisted
+     */
+    public boolean updateIMMetadataField(String table, String field, String value) {
+        String trimmedTable = table == null ? "" : table.trim();
+        String trimmedField = field == null ? "" : field.trim();
+        String trimmedValue = value == null ? "" : value.trim();
+        if (trimmedTable.isEmpty()) return false;
+        if (!"name".equals(trimmedField) && !"version".equals(trimmedField)) return false;
+        if ("name".equals(trimmedField) && trimmedValue.isEmpty()) return false;
+
+        try {
+            DBServer dbServer = DBServer.getInstance();
+            if (dbServer != null) {
+                dbServer.setImConfig(trimmedTable, trimmedField, trimmedValue);
+            } else if (searchServer != null) {
+                searchServer.setImConfig(trimmedTable, trimmedField, trimmedValue);
+            } else {
+                return false;
+            }
+            if (searchServer != null) {
+                searchServer.initialCache();
+            }
+            return true;
+        } catch (Exception e) {
+            handleError(manageImView, "Failed to update IM metadata field: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
      * Sets the enabled/disabled state of an IM entry in the `im` table.
      *
      * <p>Updates the {@code disable} column for the row with the given id.
@@ -425,4 +489,3 @@ public class ManageImController extends BaseController {
 
 
 }
-

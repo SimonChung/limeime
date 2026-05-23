@@ -11,6 +11,7 @@
 		05655700F55F7F2F05431516 /* KeyboardPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55ACA3BC6FDCE9C013025EB0 /* KeyboardPickerView.swift */; };
 		05CE854A1417A2D45839D8D2 /* DBServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE1BC618A27E7629062FC20 /* DBServer.swift */; };
 		0638AFC436CE8D769E24B98D /* SetupImControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9627C2D44209CBC7935864D /* SetupImControllerTest.swift */; };
+		06A7B8C9D0E1F20314253647 /* IntegrationTestBackupRestore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A7B8C9D0E1F20314253646 /* IntegrationTestBackupRestore.swift */; };
 		079D51B244090D1F399274BD /* ViewProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B737A52F55888952FFB32FC /* ViewProtocols.swift */; };
 		08271101006B46D88ED3D38C /* lime_dayi_ipad_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = F7D18AE89D0A449F88EDC8FE /* lime_dayi_ipad_shift.json */; };
 		10DB1613D02240168ECB59FA /* lime_phonetic_ipad_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = 1E074B7B383D4AF7B2C63A4F /* lime_phonetic_ipad_shift.json */; };
@@ -263,6 +264,7 @@
 		43AF70BA22361D8084D34B7F /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		45BBFE60A3BC8E3A9EFBFED2 /* lime_english_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_number_shift.json; sourceTree = "<group>"; };
 		46C07357EED170657A3BF133 /* LimeDBTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeDBTest.swift; sourceTree = "<group>"; };
+		06A7B8C9D0E1F20314253646 /* IntegrationTestBackupRestore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTestBackupRestore.swift; sourceTree = "<group>"; };
 		47B9D489710C3F87093FD8EB /* PreferencesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesTabView.swift; sourceTree = "<group>"; };
 		48A1A8F3D03D778777ACC688 /* lime_array_number_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_array_number_shift.json; sourceTree = "<group>"; };
 		48FEB852B9A94B23940F61BF /* lime_dayi_sym_ipad_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi_sym_ipad_shift.json; sourceTree = "<group>"; };
@@ -452,6 +454,7 @@
 			children = (
 				B4F8A3C2D6E95F0A3B2C7D8E /* EngineLatencyBenchmark.swift */,
 				CC3A5071216F1AB96116BC3F /* DBServerTest.swift */,
+				06A7B8C9D0E1F20314253646 /* IntegrationTestBackupRestore.swift */,
 				8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */,
 				46C07357EED170657A3BF133 /* LimeDBTest.swift */,
 				A616F712F666B45F6A993A5C /* LIMEPreferenceManagerTest.swift */,
@@ -1043,6 +1046,7 @@
 				30A1639B07058FC030BD00CF /* LIMEPreferenceManagerTest.swift in Sources */,
 				8B72D83300CAD566BFCF3FE2 /* KeyboardViewControllerTest.swift in Sources */,
 				8C4D2C17B8A1495297103E44 /* LimeToastState.swift in Sources */,
+				06A7B8C9D0E1F20314253647 /* IntegrationTestBackupRestore.swift in Sources */,
 				E02BE727FF878D591A3D34B5 /* LimeDB.swift in Sources */,
 				BD134223224AF768213904BA /* LimeDBProtocol.swift in Sources */,
 				9B1ECA9BBCEE603587497032 /* LimeDBTest.swift in Sources */,

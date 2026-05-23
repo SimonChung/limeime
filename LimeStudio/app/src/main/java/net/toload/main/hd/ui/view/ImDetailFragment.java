@@ -4,15 +4,19 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
+import android.util.TypedValue;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -55,6 +59,7 @@ public class ImDetailFragment extends Fragment {
     private TextView tvImRecords;
     private TextView txtImVersion;
     private TextView tvKeyboardValue;
+    private TextView tvHeading;
 
     public static ImDetailFragment newInstance(ImConfig im) {
         ImDetailFragment f = new ImDetailFragment();
@@ -98,7 +103,7 @@ public class ImDetailFragment extends Fragment {
         toolbar.setFocusable(true);
         toolbar.setTitle("");
 
-        TextView tvHeading = rootView.findViewById(R.id.tv_im_detail_heading);
+        tvHeading = rootView.findViewById(R.id.tv_im_detail_heading);
         if (tvHeading != null) {
             tvHeading.setText(imDesc != null ? imDesc : "");
         }
@@ -130,6 +135,9 @@ public class ImDetailFragment extends Fragment {
             tvImName.setText(imDesc);
         }
 
+        LinearLayout rowName = rootView.findViewById(R.id.row_name);
+        LinearLayout rowVersion = rootView.findViewById(R.id.row_version);
+
         // Keyboard row click -> show picker
         LinearLayout rowKeyboard = rootView.findViewById(R.id.row_keyboard);
         rowKeyboard.setOnClickListener(v -> showKeyboardPicker());
@@ -155,16 +163,32 @@ public class ImDetailFragment extends Fragment {
         if (isRelated) {
             View sectionKeyboard = rootView.findViewById(R.id.section_keyboard);
             View sectionOptions = rootView.findViewById(R.id.section_options);
-            View rowVersion = rootView.findViewById(R.id.row_version);
             View dividerVersion = rootView.findViewById(R.id.divider_version);
+            View editNameIcon = rootView.findViewById(R.id.iv_edit_name);
             TextView tvSectionTableLabel = rootView.findViewById(R.id.tv_section_table_label);
             TextView tvManageTableLabel = rootView.findViewById(R.id.tv_manage_table_label);
             if (sectionKeyboard != null) sectionKeyboard.setVisibility(View.GONE);
             if (sectionOptions != null) sectionOptions.setVisibility(View.GONE);
             if (rowVersion != null) rowVersion.setVisibility(View.GONE);
             if (dividerVersion != null) dividerVersion.setVisibility(View.GONE);
+            if (editNameIcon != null) editNameIcon.setVisibility(View.GONE);
             if (tvSectionTableLabel != null) tvSectionTableLabel.setText(R.string.im_detail_section_related);
             if (tvManageTableLabel != null) tvManageTableLabel.setText(R.string.im_detail_manage_related);
+        }
+
+        if (!isRelated) {
+            if (rowName != null) {
+                rowName.setClickable(true);
+                rowName.setFocusable(true);
+                applySelectableBackground(rowName);
+                rowName.setOnClickListener(v -> showMetadataFieldEditor("name"));
+            }
+            if (rowVersion != null) {
+                rowVersion.setClickable(true);
+                rowVersion.setFocusable(true);
+                applySelectableBackground(rowVersion);
+                rowVersion.setOnClickListener(v -> showMetadataFieldEditor("version"));
+            }
         }
 
         // 備份選項 switch - bound to SharedPreferences (skipped for related since options card is hidden)
@@ -388,6 +412,87 @@ public class ImDetailFragment extends Fragment {
                 .show();
     }
 
+    private void applySelectableBackground(View view) {
+        if (view == null || activity == null) return;
+        TypedValue outValue = new TypedValue();
+        activity.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
+        view.setBackgroundResource(outValue.resourceId);
+    }
+
+    private void showMetadataFieldEditor(String field) {
+        if (activity == null || tableCode == null || "related".equals(tableCode)) return;
+        final boolean editingName = "name".equals(field);
+        final boolean editingVersion = "version".equals(field);
+        if (!editingName && !editingVersion) return;
+
+        LinearLayout form = new LinearLayout(activity);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        form.setPadding(padding, 8, padding, 0);
+
+        EditText valueInput = new EditText(activity);
+        valueInput.setSingleLine(true);
+        valueInput.setHint(editingName ? R.string.im_detail_label_name : R.string.im_detail_label_version);
+        valueInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        CharSequence currentText = editingName
+                ? (tvImName != null ? tvImName.getText() : "")
+                : (txtImVersion != null ? txtImVersion.getText() : "");
+        String currentValue = currentText == null ? "" : currentText.toString();
+        valueInput.setText(!editingName && "-".equals(currentValue) ? "" : currentValue);
+        form.addView(valueInput, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+                .setTitle(editingName ? R.string.im_detail_edit_name_title : R.string.im_detail_edit_version_title)
+                .setView(form)
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .setPositiveButton(R.string.manage_im_save, null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String editedValue = valueInput.getText() == null ? "" : valueInput.getText().toString().trim();
+            if (editingName && editedValue.isEmpty()) {
+                valueInput.setError(getString(R.string.im_detail_edit_metadata_empty_name));
+                return;
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            final ManageImController ctrl = manageImController;
+            final Activity act = activity;
+            final String table = tableCode;
+            new Thread(() -> {
+                boolean saved = ctrl != null && ctrl.updateIMMetadataField(table, field, editedValue);
+                if (act == null) return;
+                act.runOnUiThread(() -> {
+                    if (!isAdded() || activity == null) return;
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    if (!saved) {
+                        Toast.makeText(activity, R.string.im_detail_edit_metadata_failed, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (editingName) {
+                        imDesc = editedValue;
+                        if (tvImName != null) tvImName.setText(editedValue);
+                        if (tvHeading != null) tvHeading.setText(editedValue);
+                    } else if (txtImVersion != null) {
+                        txtImVersion.setText(editedValue.isEmpty() ? "-" : editedValue);
+                    }
+                    refreshListPane();
+                    dialog.dismiss();
+                });
+            }).start();
+        }));
+        dialog.show();
+    }
+
+    private void refreshListPane() {
+        Fragment parent = getParentFragment();
+        if (parent == null) return;
+        Fragment listFragment = parent.getChildFragmentManager().findFragmentById(R.id.im_list_pane);
+        if (listFragment instanceof ImListFragment) {
+            ((ImListFragment) listFragment).refreshList();
+        }
+    }
+
     private void loadRecordCount() {
         final ManageImController ctrl = manageImController;
         final Activity act = activity;
@@ -518,5 +623,6 @@ public class ImDetailFragment extends Fragment {
         tvImRecords = null;
         txtImVersion = null;
         tvKeyboardValue = null;
+        tvHeading = null;
     }
 }

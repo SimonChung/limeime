@@ -10,6 +10,16 @@ import SwiftUI
 
 struct IMDetailView: View {
 
+    private enum MetadataField: String, Identifiable {
+        case name
+        case version
+
+        var id: String { rawValue }
+        var label: String { self == .name ? "名稱" : "版本" }
+        var title: String { self == .name ? "編輯名稱" : "編輯版本" }
+        var dbField: String { rawValue }
+    }
+
     let im: IMRow
     let onRefresh: (() -> Void)?
     /// Called by the parent (`IMListView`) after a successful remove. The
@@ -49,11 +59,18 @@ struct IMDetailView: View {
     @State private var isExporting = false
     @State private var shareURL: URL?
     @State private var showShareSheet = false
+    @State private var displayName: String
+    @State private var displayVersion: String = "—"
+    @State private var editMetadataValue: String = ""
+    @State private var editingMetadataField: MetadataField?
+    @State private var metadataError: String?
+    @State private var isSavingMetadata = false
 
     init(im: IMRow, onRefresh: (() -> Void)? = nil, onDeleted: (() -> Void)? = nil) {
         self.im = im
         self.onRefresh = onRefresh
         self.onDeleted = onDeleted
+        _displayName = State(initialValue: im.label)
     }
 
     private var mappingVersion: String {
@@ -86,9 +103,22 @@ struct IMDetailView: View {
     var body: some View {
         List {
             Section(header: Text("輸入法資訊")) {
-                LabeledContent("名稱", value: im.label)
-                if im.tableNick != "related" {
-                    LabeledContent("版本", value: mappingVersion)
+                if im.tableNick == "related" {
+                    LabeledContent("名稱", value: displayName)
+                } else {
+                    Button {
+                        beginMetadataEdit(.name)
+                    } label: {
+                        editableMetadataRow(label: "名稱", value: displayName)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        beginMetadataEdit(.version)
+                    } label: {
+                        editableMetadataRow(label: "版本", value: displayVersion)
+                    }
+                    .buttonStyle(.plain)
                 }
                 LabeledContent("筆數", value: totalRecord)
             }
@@ -165,7 +195,7 @@ struct IMDetailView: View {
                     }
                 } else {
                     NavigationLink(destination: RecordListView(tableName: im.tableNick,
-                                                               imLabel: im.label)) {
+                                                               imLabel: displayName)) {
                         Label("瀏覽 / 編輯資料表", systemImage: "tablecells")
                     }
                 }
@@ -215,7 +245,7 @@ struct IMDetailView: View {
             }
         }
         .setupMatchedGroupedSurface()
-        .constrainedDetailLayout(im.label) {
+        .constrainedDetailLayout(displayName) {
             Button {
                 showSharePicker = true
             } label: {
@@ -237,6 +267,40 @@ struct IMDetailView: View {
                 ShareSheet(activityItems: [url])
             }
         }
+        .sheet(item: $editingMetadataField) { field in
+            NavigationStack {
+                Form {
+                    Section(header: Text("輸入法資訊")) {
+                        TextField(field.label, text: $editMetadataValue)
+                    }
+                    if let metadataError {
+                        Section {
+                            Text(metadataError)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+                .navigationTitle(field.title)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") { editingMetadataField = nil }
+                            .disabled(isSavingMetadata)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            saveMetadataField(field)
+                        } label: {
+                            if isSavingMetadata {
+                                ProgressView()
+                            } else {
+                                Text("儲存")
+                            }
+                        }
+                        .disabled(isSavingMetadata)
+                    }
+                }
+            }
+        }
         .overlay {
             if isExporting {
                 ZStack {
@@ -250,6 +314,7 @@ struct IMDetailView: View {
             }
         }
         .task {
+            refreshMetadataFields()
             if im.tableNick == "related" {
                 let n = await manageImController.countRelated()
                 totalRecord = "\(n)"
@@ -268,8 +333,8 @@ struct IMDetailView: View {
             Button("取消", role: .cancel) {}
         } message: {
             Text(backupOnDelete
-                ? "此操作將清除「\(im.label)」的所有對應資料。\n已學習記錄將先備份，可在重新匯入時還原。確定繼續？"
-                : "此操作將清除「\(im.label)」的所有對應資料，無法還原。確定繼續？")
+                ? "此操作將清除「\(displayName)」的所有對應資料。\n已學習記錄將先備份，可在重新匯入時還原。確定繼續？"
+                : "此操作將清除「\(displayName)」的所有對應資料，無法還原。確定繼續？")
         }
         .alert("清除關聯字庫", isPresented: $showClearRelatedAlert) {
             Button("清除", role: .destructive) {
@@ -281,6 +346,63 @@ struct IMDetailView: View {
             Button("取消", role: .cancel) {}
         } message: {
             Text("此操作將清除所有關聯字資料，無法還原。確定繼續？")
+        }
+    }
+
+    // MARK: - Metadata helpers
+
+    private func refreshMetadataFields() {
+        let version = mappingVersion
+        displayName = im.label
+        displayVersion = version
+        editMetadataValue = ""
+    }
+
+    @ViewBuilder
+    private func editableMetadataRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .foregroundColor(.primary)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func beginMetadataEdit(_ field: MetadataField) {
+        metadataError = nil
+        editMetadataValue = field == .name ? displayName : (displayVersion == "—" ? "" : displayVersion)
+        editingMetadataField = field
+    }
+
+    private func saveMetadataField(_ field: MetadataField) {
+        metadataError = nil
+        isSavingMetadata = true
+        Task {
+            let result = await manageImController.updateIMMetadataField(tableNick: im.tableNick,
+                                                                        field: field.dbField,
+                                                                        value: editMetadataValue)
+            await MainActor.run {
+                isSavingMetadata = false
+                switch result {
+                case .success:
+                    let trimmedValue = editMetadataValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if field == .name {
+                        displayName = trimmedValue
+                    } else {
+                        displayVersion = trimmedValue.isEmpty ? "—" : trimmedValue
+                    }
+                    editingMetadataField = nil
+                    onRefresh?()
+                case .failure(let error):
+                    metadataError = error.localizedDescription
+                }
+            }
         }
     }
 

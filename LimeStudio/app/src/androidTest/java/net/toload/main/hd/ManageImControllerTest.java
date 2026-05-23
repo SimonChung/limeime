@@ -14,7 +14,10 @@ import org.junit.runner.RunWith;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for ManageImController asynchronous loading paths.
@@ -67,5 +70,43 @@ public class ManageImControllerTest {
         controller.loadRecordsAsync("nonexistent_table", "", false, 0, 10);
 
         assertNotNull("Invalid table should report error", errorRef.get());
+    }
+
+    @Test
+    public void updateIMMetadata_persistsNameAndVersion() {
+        android.content.Context context = ApplicationProvider.getApplicationContext();
+        DBServer dbServer = DBServer.getInstance(context);
+        SearchServer searchServer = new SearchServer(context);
+        ManageImController controller = new ManageImController(searchServer);
+
+        String suffix = String.valueOf(System.currentTimeMillis());
+        String editedName = "Edited Custom " + suffix;
+        String editedVersion = "Version " + suffix;
+
+        assertTrue(controller.updateIMMetadata("custom", editedName, editedVersion));
+        assertEquals(editedName, dbServer.getImConfig("custom", "name"));
+        assertEquals(editedVersion, dbServer.getImConfig("custom", "version"));
+    }
+
+    @Test
+    public void updateIMMetadata_rejectsEmptyName() {
+        SearchServer searchServer = new SearchServer(ApplicationProvider.getApplicationContext());
+        ManageImController controller = new ManageImController(searchServer);
+
+        assertFalse(controller.updateIMMetadata("custom", "   ", "Version 2026.05"));
+    }
+
+    @Test
+    public void updateIMMetadataField_persistsIndependentVersion() {
+        android.content.Context context = ApplicationProvider.getApplicationContext();
+        DBServer dbServer = DBServer.getInstance(context);
+        SearchServer searchServer = new SearchServer(context);
+        ManageImController controller = new ManageImController(searchServer);
+
+        String suffix = String.valueOf(System.currentTimeMillis());
+        String editedVersion = "Independent Version " + suffix;
+
+        assertTrue(controller.updateIMMetadataField("custom", "version", editedVersion));
+        assertEquals(editedVersion, dbServer.getImConfig("custom", "version"));
     }
 }

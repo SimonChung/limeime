@@ -145,6 +145,20 @@ public class LimeDB103IntegrationTest {
     }
 
     @Test
+    public void restoreBareLimeDbBackupMovesDatabaseIntoAndroidDatabaseFolder() throws Exception {
+        File oldDb = createSeedVariant("lime_restore_bare_102_no_emoji.db", 102, true, false);
+        File restoreZip = new File(appContext.getCacheDir(), "lime_restore_bare_102_no_emoji.zip");
+        createDatabaseRestoreZip(oldDb, restoreZip, LIME.DATABASE_NAME);
+
+        DBServer.getInstance(appContext).restoreDatabase(restoreZip.getPath());
+
+        assertTrue("restored DB should exist in Android databases folder", appDb.exists());
+        assertEquals(103, queryUserVersion());
+        assertEmojiSchemaExists();
+        assertEmojiDataLoaded();
+    }
+
+    @Test
     public void factoryResetRestores103SeedAndEmojiData() throws Exception {
         replaceAppDatabaseWith(createSeedVariant("lime_factory_103_no_emoji.db", 103, true, false));
 
@@ -269,9 +283,13 @@ public class LimeDB103IntegrationTest {
     }
 
     private void createDatabaseRestoreZip(File dbFile, File zipFile) throws IOException {
+        createDatabaseRestoreZip(dbFile, zipFile, "databases/" + LIME.DATABASE_NAME);
+    }
+
+    private void createDatabaseRestoreZip(File dbFile, File zipFile, String entryName) throws IOException {
         ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(zipFile));
         try {
-            zip.putNextEntry(new ZipEntry("databases/" + LIME.DATABASE_NAME));
+            zip.putNextEntry(new ZipEntry(entryName));
             InputStream input = new FileInputStream(dbFile);
             try {
                 byte[] buffer = new byte[8192];

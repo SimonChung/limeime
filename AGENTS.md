@@ -41,8 +41,14 @@
 - Keep public replies short, polite, and action-oriented.
 - Do not close community issues unless the reporter confirms fixed, or the maintainer/user explicitly instructs closure.
 
+## Source Encoding
+
+- Default source-file encoding remains UTF-8.
+- Exception: Java source files must be saved as UTF-8 without BOM because `javac` rejects a leading BOM.
+- Do not add a BOM to `.java` files when editing them, even if a broader encoding rule says to save source files with BOM.
+
 ## GitHub Pages
 
-- The project site `https://lime-ime.github.io/limeime/` is served from the `gh-pages` branch.
-- Page source is `gh-pages/index.html`.
-- README-to-Pages sync reads `master:README.md` and updates `gh-pages:index.html` only when content differs.
+- The project site `https://lime-ime.github.io/limeime/` is served from the `master` branch.
+- Site pages and test pages should be committed on `master`; prefer existing served paths such as `docs/` unless the maintainer explicitly approves a new root file.
+- The old `gh-pages` branch is historical and should not be treated as the current source for site updates.

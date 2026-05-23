@@ -786,6 +786,10 @@ final class DBServer {
         datasource?.getImConfig(imCode, field) ?? ""
     }
 
+    func setImConfig(_ imCode: String, _ field: String, _ value: String) {
+        datasource?.setImConfig(imCode, field, value)
+    }
+
     func updateIMEnabled(imName: String, enabled: Bool) {
         datasource?.updateIMEnabled(imName: imName, enabled: enabled)
     }

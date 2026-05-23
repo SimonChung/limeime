@@ -422,8 +422,12 @@ NavigationStack (continued)
 └── IMDetailView(im: IMRow)
     └── List
         ├── Section "輸入法資訊"  (hidden when im.tableNick == "related")
-        │   ├── LabeledContent "名稱"    im.label
-        │   ├── LabeledContent "版本"    UserDefaults[tableNick + "mapping_version"] ?? "—"
+        │   ├── Editable row "名稱"    im.label
+        │   │   └── tap → single-field editor "編輯名稱" → ManageImController.updateIMMetadataField(tableNick, "name", value)
+        │   │       → DBServer.setImConfig(tableNick, "name", value) → im table row title="name"
+        │   ├── Editable row "版本"    DBServer.getImConfig(tableNick, "version") ?? legacy mapping_version ?? "—"
+        │   │   └── tap → single-field editor "編輯版本" → ManageImController.updateIMMetadataField(tableNick, "version", value)
+        │   │       → DBServer.setImConfig(tableNick, "version", value) → im table row title="version"
         │   └── LabeledContent "筆數"    manageImController.countRecords(table: im.tableNick) — fetched in .task
         ├── Section "軟鍵盤配置"  (hidden when im.tableNick == "related")
         │   └── NavigationLink "鍵盤佈局：\(currentKeyboard.name)" → KeyboardPickerView(im:)
@@ -456,6 +460,14 @@ NavigationStack (continued)
                    └── invalidate (triggers IMListView reload)
                 → dismiss IMDetailView; onRefresh()
 ```
+
+**Editable metadata rows**:
+- `名稱` and `版本` stay as independent rows, not a combined editor.
+- Each row must show an edit/disclosure affordance (`chevron.right` on iOS, trailing chevron row on Android) so users can tell the field is editable.
+- `名稱` cannot be empty; `版本` may be empty, displayed as `—`, and still persists an empty `title="version"` value when saved.
+- Saving writes only the tapped field through the Controller → `DBServer.setImConfig(...)` path. UI code must not write directly to `LimeDB`.
+- After a successful save, the detail page updates immediately and the IM list refreshes so the list label uses the edited name.
+- The synthetic `related` row is read-only for metadata and hides the version row.
 
 **Synthetic 關聯字庫 row**: `IMRow(id: -1, imName: "related", label: "關聯字庫", tableNick: "related", ...)` — constructed inline in `IMListView`; `.task` skips keyboard loading for this row.
 

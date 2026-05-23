@@ -1,4 +1,4 @@
-// ManageImController.swift
+﻿// ManageImController.swift
 // LimeIME-iOS
 //
 // Async record CRUD + pagination for the IM Table Editor.
@@ -197,6 +197,49 @@ final class ManageImController: BaseController {
             server.setImConfigKeyboard(tableNick, keyboard)
         }.value
         ManageImController.markKeyboardCacheDirty()
+    }
+
+    func updateIMMetadata(tableNick: String, name: String, version: String) async -> Result<Void, Error> {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedVersion = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tableNick.isEmpty else {
+            return .failure(ControllerError.validation("輸入法代碼不能為空"))
+        }
+        guard !trimmedName.isEmpty else {
+            return .failure(ControllerError.validation("名稱不能為空"))
+        }
+
+        let server = self.dbServer
+        await Task.detached(priority: .userInitiated) {
+            server.setImConfig(tableNick, "name", trimmedName)
+            server.setImConfig(tableNick, "version", trimmedVersion)
+        }.value
+
+        ManageImController.markKeyboardCacheDirty()
+        invalidate()
+        return .success(())
+    }
+
+    func updateIMMetadataField(tableNick: String, field: String, value: String) async -> Result<Void, Error> {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tableNick.isEmpty else {
+            return .failure(ControllerError.validation("輸入法代碼不能為空"))
+        }
+        guard field == "name" || field == "version" else {
+            return .failure(ControllerError.validation("欄位不正確"))
+        }
+        guard field != "name" || !trimmedValue.isEmpty else {
+            return .failure(ControllerError.validation("名稱不能為空"))
+        }
+
+        let server = self.dbServer
+        await Task.detached(priority: .userInitiated) {
+            server.setImConfig(tableNick, field, trimmedValue)
+        }.value
+
+        ManageImController.markKeyboardCacheDirty()
+        invalidate()
+        return .success(())
     }
 
     // MARK: - Protocol-based methods (kept for unit tests with mock views)

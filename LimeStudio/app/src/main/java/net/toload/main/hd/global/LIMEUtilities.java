@@ -186,7 +186,7 @@ public class LIMEUtilities {
 
                 String entryPath;
                 if (baseFolderPath.isEmpty()) {
-                    entryPath = sourceFilePath;
+                    entryPath = item.getName();
                 } else {
                     entryPath = sourceFilePath.substring(baseFolderPath.length());
                 }

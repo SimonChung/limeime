@@ -733,6 +733,25 @@ final class LimeDBTest: XCTestCase {
         XCTAssertTrue(output.contains("@cname@|Friendly Name"))
     }
 
+    func testExportTxtTableUsesEditedNameAndVersionMetadata() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord("aa", "測")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Edited Friendly Name")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Edited Version 2026")
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        let configs = db.getImConfigList(LIME.DB_TABLE_CUSTOM, nil)
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL, imConfig: configs))
+
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertTrue(output.contains("@version@|Edited Version 2026"))
+        XCTAssertTrue(output.contains("@cname@|Edited Friendly Name"))
+    }
+
     func testImportTxtFileSupportsLimeTextV2EscapedFieldsAndScores() throws {
         let db = try makeLimeDB()
         let importURL = FileManager.default.temporaryDirectory
@@ -1176,6 +1195,28 @@ final class LimeDBTest: XCTestCase {
         let destDB = try makeLimeDB()
         destDB.importDb(sourceFile: backupURL, tableNames: [LIME.DB_TABLE_CUSTOM], overwriteExisting: false, includeRelated: false)
         XCTAssertTrue(true)
+    }
+
+    func testLimeDBImportDbMergesImMetadataLikeAndroid() throws {
+        let srcURL = FileManager.default.temporaryDirectory.appendingPathComponent("import_im_src.db")
+        defer { try? FileManager.default.removeItem(at: srcURL) }
+        let srcDB = try LimeDB(path: srcURL.path)
+        srcDB.setTableName(LIME.DB_TABLE_CUSTOM)
+        srcDB.addOrUpdateMappingRecord("im_meta_code", "匯入設定")
+        srcDB.setImConfig(LIME.DB_TABLE_CUSTOM, "keyboard", "lime_abc")
+        srcDB.setImConfig(LIME.DB_TABLE_CUSTOM, "selkey", "1234567890")
+
+        let backupURL = FileManager.default.temporaryDirectory.appendingPathComponent("import_im_backup.db")
+        defer { try? FileManager.default.removeItem(at: backupURL) }
+        srcDB.prepareBackup(targetFile: backupURL, tableNames: [LIME.DB_TABLE_CUSTOM], includeRelated: false)
+
+        let destDB = try makeLimeDB()
+        destDB.setImConfig(LIME.DB_TABLE_CUSTOM, "keyboard", "old_keyboard")
+
+        destDB.importDb(sourceFile: backupURL, tableNames: [LIME.DB_TABLE_CUSTOM], overwriteExisting: true, includeRelated: false)
+
+        XCTAssertEqual(destDB.getImConfig(LIME.DB_TABLE_CUSTOM, "keyboard"), "lime_abc")
+        XCTAssertEqual(destDB.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"), "1234567890")
     }
 
     func testLimeDBImportBackupWithOverwriteExisting() throws {
@@ -2281,6 +2322,38 @@ final class LimeDBTest: XCTestCase {
                        "label must come from the title='name' kv row, not seedRow.title")
         XCTAssertEqual(pinyin?.fullName, "拼音輸入法",
                        "fullName must equal the title='name' kv row desc")
+    }
+
+    func testGetAllImConfigsDoesNotUseVersionAsSeedRow() throws {
+        let db = try makeLimeDB()
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "source", "ZZZ Source")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "AAA Version")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Custom")
+        let keyboard = KeyboardConfig(id: 1,
+                                      code: "lime",
+                                      name: "LIME",
+                                      desc: "LIME Keyboard",
+                                      type: "qwerty",
+                                      image: "",
+                                      imkb: "lime",
+                                      imshiftkb: "lime_shift",
+                                      engkb: "lime_abc",
+                                      engshiftkb: "lime_abc_shift",
+                                      symbolkb: "symbols",
+                                      symbolshiftkb: "symbols_shift",
+                                      isDisabled: false)
+        db.setImConfigKeyboard(LIME.DB_TABLE_CUSTOM, keyboard)
+
+        let rows = db.getImConfigList(LIME.DB_TABLE_CUSTOM, nil)
+        let sourceRow = rows.first(where: { $0.title == "source" })
+        let versionRow = rows.first(where: { $0.title == "version" })
+        let configs = try db.getAllImConfigs()
+        let custom = configs.first(where: { $0.tableNick == LIME.DB_TABLE_CUSTOM })
+
+        XCTAssertNotNil(custom)
+        XCTAssertEqual(custom?.label, "Friendly Custom")
+        XCTAssertEqual(custom?.id, Int64(sourceRow?.id ?? -1))
+        XCTAssertNotEqual(custom?.id, Int64(versionRow?.id ?? -1))
     }
 
     // MARK: - 36. DB 103 integrated seed / upgrade / restore paths

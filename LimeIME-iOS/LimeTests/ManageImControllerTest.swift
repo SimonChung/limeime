@@ -106,6 +106,58 @@ final class ManageImControllerTest: XCTestCase {
         }
     }
 
+    // MARK: - updateIMMetadata
+
+    func testUpdateIMMetadataPersistsNameAndVersion() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageImController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let result = await controller.updateIMMetadata(tableNick: testTable,
+                                                       name: "Edited Custom",
+                                                       version: "Version 2026.05")
+
+        guard case .success = result else {
+            XCTFail("Expected metadata update to succeed, got \(result)")
+            return
+        }
+        XCTAssertEqual(db.getImConfig(testTable, "name"), "Edited Custom")
+        XCTAssertEqual(db.getImConfig(testTable, "version"), "Version 2026.05")
+    }
+
+    func testUpdateIMMetadataRejectsEmptyName() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageImController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let result = await controller.updateIMMetadata(tableNick: testTable,
+                                                       name: "   ",
+                                                       version: "Version 2026.05")
+
+        guard case .failure = result else {
+            XCTFail("Expected empty name validation failure, got \(result)")
+            return
+        }
+        XCTAssertNil(db.getImConfig(testTable, "name"))
+        XCTAssertNil(db.getImConfig(testTable, "version"))
+    }
+
+    func testUpdateIMMetadataFieldPersistsIndependentVersion() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageImController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let result = await controller.updateIMMetadataField(tableNick: testTable,
+                                                            field: "version",
+                                                            value: "Independent Version")
+
+        guard case .success = result else {
+            XCTFail("Expected metadata field update to succeed, got \(result)")
+            return
+        }
+        XCTAssertEqual(db.getImConfig(testTable, "version"), "Independent Version")
+    }
+
     // MARK: - updateRecord
 
     func testUpdateRecordAfterAdd() async throws {

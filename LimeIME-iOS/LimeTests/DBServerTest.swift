@@ -103,6 +103,17 @@ final class DBServerTest: XCTestCase {
         XCTAssertTrue(onHold == true || onHold == false, "Database hold state should be boolean")
     }
 
+    func testDBServerSetImConfigPersistsMetadata() throws {
+        let db = try makeLimeDB()
+        let server = DBServer(_testDatasource: db)
+
+        server.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Edited Name")
+        server.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Edited Version")
+
+        XCTAssertEqual(server.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "Edited Name")
+        XCTAssertEqual(server.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "Edited Version")
+    }
+
     // MARK: - Phase 1: importDbRelated / importDb basic
 
     func testDBServerImportBackupRelatedDb() throws {

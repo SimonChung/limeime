@@ -237,6 +237,42 @@ public class  DBServer {
 	}
 
 	/**
+	 * Gets IM information for a specific field.
+	 *
+	 * <p>This method delegates to {@link LimeDB#getImConfig(String, String)} so DBServer
+	 * callers can use the same metadata proxy surface as iOS DBServer.
+	 *
+	 * @param imCode The IM code (e.g., LIME.DB_TABLE_PHONETIC, LIME.DB_TABLE_DAYI)
+	 * @param field The field name to retrieve
+	 * @return The field value, or empty string if not found or database error
+	 */
+	public String getImConfig(String imCode, String field) {
+		if (datasource == null) {
+			Log.e(TAG, "getImConfig(): datasource is null");
+			return "";
+		}
+		return datasource.getImConfig(imCode, field);
+	}
+
+	/**
+	 * Sets IM information for a specific field.
+	 *
+	 * <p>This method delegates to {@link LimeDB#setImConfig(String, String, String)} so
+	 * DBServer callers can store IM metadata without reaching into LimeDB directly.
+	 *
+	 * @param imCode The IM code (e.g., LIME.DB_TABLE_PHONETIC, LIME.DB_TABLE_DAYI)
+	 * @param field The field name to set
+	 * @param value The value to store
+	 */
+	public void setImConfig(String imCode, String field, String value) {
+		if (datasource == null) {
+			Log.e(TAG, "setImConfig(): datasource is null");
+			return;
+		}
+		datasource.setImConfig(imCode, field, value);
+	}
+
+	/**
 	 * Imports a related database file into the related table.
 	 *
 	 * <p>This method acts as a convenience wrapper for {@link LimeDB#importDbRelated(File)}
@@ -661,7 +697,7 @@ public class  DBServer {
 			}
 
 
-		// If source doesn't exist, do not create output zip file — fail fast
+		// If source doesn't exist, do not create output zip file â fail fast
 		if (sourceFile == null || !sourceFile.exists() || !sourceFile.isFile()) {
 			Log.e(TAG, "zip(): source file does not exist: " + sourceFile);
 			return;
