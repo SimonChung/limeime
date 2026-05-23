@@ -39,13 +39,15 @@ mEmojiSearchField = new TextView(mThemeContext);
 mEmojiSearchField.setBackground(makeRoundRect(0xF2FFFFFF, dp(26)));
 ```
 
-`updateEmojiSearchText()` also hard-codes active search text to black:
+`updateEmojiSearchText()` also hard-codes the placeholder/hint color and active search text color:
 
 ```java
+mEmojiSearchField.setTextColor(0xFF8A8A8A);
+...
 mEmojiSearchField.setTextColor(ContextCompat.getColor(this, android.R.color.black));
 ```
 
-The likely root cause is these hard-coded light colors in the Android emoji search field. They do not branch on the selected keyboard/theme palette or dark-mode state.
+The likely root cause is these hard-coded light-theme colors in the Android emoji search field. They do not branch on the selected keyboard/theme palette or dark-mode state.
 
 ## iOS impact check
 
@@ -66,7 +68,7 @@ Preliminary assessment: the confirmed source-level issue is Android-specific so 
 Android:
 
 1. Replace the hard-coded `0xF2FFFFFF` emoji search-field background with a theme-aware color.
-2. Replace hard-coded active black text with theme-aware text color. The Android control is a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
+2. Replace hard-coded placeholder/hint gray and active black search text with theme-aware text colors. The Android control is a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
 3. Ensure hint text, entered query text, and the search icon remain readable on both light and dark themes.
 4. Keep rounded search-field shape and existing padding/height.
 
