@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LIME Keyboard Type Fields</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f7f9;
+      color: #19212c;
+    }
+
+    body {
+      margin: 0;
+      padding: 18px;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: #53606f;
+      line-height: 1.45;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0;
+      font-size: 14px;
+      font-weight: 650;
+      color: #2e3a47;
+    }
+
+    input,
+    textarea {
+      box-sizing: border-box;
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      padding: 13px 12px;
+      border: 1px solid #bdc7d4;
+      border-radius: 8px;
+      background: white;
+      color: #16202b;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>LIME Keyboard Type Fields</h1>
+    <p>Tap each field to compare the keyboard layout selected by Android input type.</p>
+
+    <label>
+      Normal text
+      <textarea autocomplete="off" placeholder="Expected: normal LIME text keyboard"></textarea>
+    </label>
+
+    <label>
+      URL
+      <input type="url" inputmode="url" autocomplete="off" placeholder="https://example.com/search">
+    </label>
+
+    <label>
+      Email
+      <input type="email" inputmode="email" autocomplete="off" placeholder="name@example.com">
+    </label>
+
+    <label>
+      Password
+      <input type="password" autocomplete="off" placeholder="Password field">
+    </label>
+
+    <label>
+      Phone
+      <input type="tel" inputmode="tel" autocomplete="off" placeholder="0912-345-678">
+    </label>
+
+    <label>
+      Number
+      <input type="number" inputmode="numeric" autocomplete="off" placeholder="12345">
+    </label>
+
+    <label>
+      Decimal
+      <input type="number" inputmode="decimal" step="0.01" autocomplete="off" placeholder="123.45">
+    </label>
+
+    <label>
+      Date
+      <input type="date" autocomplete="off">
+    </label>
+
+    <label>
+      Time
+      <input type="time" autocomplete="off">
+    </label>
+
+    <label>
+      Search
+      <input type="search" inputmode="search" autocomplete="off" placeholder="搜尋或輸入文字">
+    </label>
+  </main>
+</body>
+</html>
