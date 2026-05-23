@@ -4,7 +4,7 @@
 
 1. **iOS current/spec** — `LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift`, aligned to `docs/LIME_SETTINGS.md` §8 and Android current preference strings
 2. **Android pre-back-port** — commit `6791ab7b` (parent of the "Step 3" back-port series), three flat `PreferenceCategory` blocks (`lime_keyboard` / `lime_im` / `lime_mapping`)
-3. **Android current** — HEAD `app/src/main/res/xml/preference.xml`, 7 sectioned categories + 1 nested sub-screen, aligned to iOS §8.1–§8.7 (with §8.3 and §8.8 consolidated away, §8.9 folded into §8.4.1)
+3. **Android current** — HEAD `app/src/main/res/xml/preference.xml`, 7 sectioned categories + 1 nested sub-screen, aligned to iOS §8.1–§8.7 (with §8.3 and §8.8 consolidated away, §8.9 folded into §8.4.1; `auto_cap` moved into §8.7)
 
 ## Legend
 
@@ -62,11 +62,12 @@
 | `learn_phrase` | Toggle / CheckBox | true · 自動學習新詞 · §8.6 關聯字與學習 | true · 自動學習新詞 · lime_mapping · summary=從常用關聯字學習新詞 | true · 自動學習新詞 · pref_section_related_learning | Promote frequent phrases into the dictionary. |
 | `learning_switch` | Toggle / CheckBox | true · 啟動選取排序 · §8.6 關聯字與學習 | true · 啟動選取排序 · lime_mapping · summary=依選取次數排序選字清單 | true · 啟動選取排序 · pref_section_related_learning | Sort candidate list by selection frequency. |
 
-## 8.7 English Dictionary (英文字典)
+## 8.7 English Keyboard (英文鍵盤)
 
 | Pref Key | Type | iOS (default · label · category) | Android pre-back-port (default · label · category) | Android current (default · label · category) | Function |
 |---|---|---|---|---|---|
-| `english_dictionary_enable` | Toggle / CheckBox | true · 啟用英文字典 · §8.7 英文字典 · subtext=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · lime_mapping · summary=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · pref_section_english_dictionary | Show English suggestions while in English IM mode. |
+| `english_dictionary_enable` | Toggle / CheckBox | true · 啟用英文字典 · §8.7 英文鍵盤 · subtext=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · lime_mapping · summary=當使用 英文 輸入模式時，顯示英文建議字 | true · 啟用英文字典 · pref_section_english_dictionary | Show English suggestions while in English IM mode. |
+| `auto_cap` | Toggle / CheckBox | true · 首字自動大寫 · §8.7 英文鍵盤 · subtext=在英文模式下，句首字母自動轉為大寫 | true · 首字自動大寫 · lime_keyboard · summary=英文段落輸入首字自動大寫 *(legacy XML entry, not shown in pre-back-port lime_keyboard category)* | true · 首字自動大寫 · pref_section_english_dictionary · summary=英文段落輸入首字自動大寫 | Auto-capitalize the first letter of English sentences. iOS gates `updateShiftForAutoCap()` (which reads `textDocumentProxy.autocapitalizationType`) on this pref. Android `LIMEService.loadSettings()` reads via `LIMEPreferenceManager.getAutoCaptalization()`. |
 
 ## 5.2 IMDetailView — per-IM prefs (cross-listed)
 
@@ -163,7 +164,7 @@ Pre-back-port had **3 flat categories** (`lime_keyboard` / `lime_im` / `lime_map
 | lime_im | pref_section_physical_keyboard | disable_physical_selkey, selkey_option |
 | lime_mapping (對應表) | pref_section_im_behaviour (§8.4) | candidate_switch |
 | lime_mapping | pref_section_related_learning (§8.6) | similiar_enable, similiar_list, candidate_suggestion, learn_phrase, learning_switch |
-| lime_mapping | pref_section_english_dictionary (§8.7) | english_dictionary_enable |
+| lime_mapping | pref_section_english_dictionary (§8.7) | english_dictionary_enable, auto_cap *(auto_cap newly surfaced in §8.7)* |
 | lime_mapping | pref_section_physical_keyboard | english_dictionary_physical_keyboard, physical_keyboard_sort |
 | lime_im | *(removed)* | auto_commit, phonetic_keyboard_type, han_convert_notify |
 | lime_mapping | *(removed)* | accept_number_index, accept_symbol_index |

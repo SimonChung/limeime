@@ -43,8 +43,9 @@ struct PreferencesTabView: View {
     @AppStorage("learn_phrase",           store: sharedDefaults) private var learnPhrase: Bool = true
     @AppStorage("learning_switch",        store: sharedDefaults) private var learningSwitch: Bool = true
 
-    // MARK: §8.7 English Dictionary
+    // MARK: §8.7 English Keyboard
     @AppStorage("english_dictionary_enable", store: sharedDefaults) private var englishDictEnable: Bool = true
+    @AppStorage("auto_cap",                  store: sharedDefaults) private var autoCap: Bool = true
 
     // MARK: Options
 
@@ -126,6 +127,7 @@ struct PreferencesTabView: View {
                         }
                     }
                 }
+                .setupMatchedSectionBlock()
 
                 // MARK: §8.2
                 Section(header: Text("鍵盤回饋")) {
@@ -138,6 +140,7 @@ struct PreferencesTabView: View {
                     .disabled(!vibrateOnKeypress)
                     Toggle("打字音效", isOn: $soundOnKeypress)
                 }
+                .setupMatchedSectionBlock()
 
                 // MARK: §8.4
                 Section(header: Text("輸入法行為")) {
@@ -160,6 +163,7 @@ struct PreferencesTabView: View {
                         Label("字根反查設定", systemImage: "magnifyingglass")
                     }
                 }
+                .setupMatchedSectionBlock()
 
                 // §5.2.2 — 鍵盤類型 lives in IMDetailView for the phonetic IM, not here.
 
@@ -172,6 +176,7 @@ struct PreferencesTabView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                .setupMatchedSectionBlock()
 
                 // MARK: §8.6
                 Section(header: Text("關聯字與學習")) {
@@ -180,13 +185,17 @@ struct PreferencesTabView: View {
                     Toggle(isOn: $learnPhrase) { prefRow("自動學習新詞", "從常用關聯字學習新詞") }
                     Toggle(isOn: $learningSwitch) { prefRow("啟動選取排序", "依選取次數排序選字清單") }
                 }
+                .setupMatchedSectionBlock()
 
                 // MARK: §8.7
-                Section(header: Text("英文字典")) {
+                Section(header: Text("英文鍵盤")) {
                     Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字") }
+                    Toggle(isOn: $autoCap) { prefRow("首字自動大寫", "在英文模式下，句首字母自動轉為大寫") }
                 }
+                .setupMatchedSectionBlock()
 
                 }
+                .setupMatchedGroupedSurface()
             }
             // iPad / wide-screen reading-width cap. Same 560pt width that
             // SetupTabView and DBManagerView use so the Preferences form
