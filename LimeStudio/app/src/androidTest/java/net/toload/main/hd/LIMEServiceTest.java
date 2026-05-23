@@ -10664,6 +10664,27 @@ public class LIMEServiceTest {
                 LIMEService.getRestrictedFieldSymbolFlag(EditorInfo.TYPE_CLASS_DATETIME));
     }
 
+    @Test
+    public void test_5_23_40_UriAndSearchTextUsePersistedLanguageModeRoute() {
+        assertFalse("URI fields should follow normal text persisted-language routing",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_URI));
+        assertFalse("Web edit/search text should follow normal text persisted-language routing",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT));
+        assertFalse("Generic text should follow normal text persisted-language routing",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_NORMAL));
+
+        assertTrue("Email fields remain English-only",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_EMAIL_ADDRESS));
+        assertTrue("Web email fields remain English-only",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS));
+        assertTrue("Password fields remain English-only",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_PASSWORD));
+        assertTrue("Web password fields remain English-only",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_WEB_PASSWORD));
+        assertTrue("Visible password fields remain English-only",
+                LIMEService.isForcedEnglishTextVariation(EditorInfo.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD));
+    }
+
     /**
      * Tests translateKeyDown branches with mocks.
      * Targets lines 943-1082 (30% coverage)

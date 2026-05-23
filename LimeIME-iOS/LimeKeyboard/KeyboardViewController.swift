@@ -5,6 +5,15 @@
 
 final class KeyboardViewController: UIInputViewController {
 
+    static func isForcedEnglishKeyboardType(_ keyboardType: UIKeyboardType) -> Bool {
+        switch keyboardType {
+        case .numberPad, .decimalPad, .asciiCapableNumberPad, .phonePad, .emailAddress:
+            return true
+        default:
+            return false
+        }
+    }
+
     // MARK: - Components
     private var candidateBar: CandidateBarView!
     private var keyboardView:  KeyboardView!
@@ -373,7 +382,7 @@ final class KeyboardViewController: UIInputViewController {
             mEnglishOnly = true; mPredictionOn = true
         case .phonePad:
             mEnglishOnly = true; mPredictionOn = false
-        case .emailAddress, .URL:
+        case .emailAddress:
             mEnglishOnly = true; mPredictionOn = false
         default:
             // Restore persisted language mode if enabled (spec §15)

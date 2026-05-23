@@ -4,8 +4,10 @@ Context: GitHub issue [#74](https://github.com/lime-ime/limeime/issues/74) asks
 LIME to respect field-specific input types: phone / number / date-time fields
 should open a restricted numeric layout with no `中` / `abc` / `EN` mode-switch
 keys, and persisted Chinese/English mode should not leak into those restricted
-fields. URL is a separate product decision because address bars are often used
-for Chinese search keywords.
+fields. URL/address-bar/search fields are treated like normal text because
+address bars are often used for Chinese keyword search. With persisted
+language mode on they restore the remembered Chinese/English state; with it
+off they start in Chinese mode like normal text.
 
 This doc tracks how each field type is currently handled on Android, and what
 remains to be done on iOS and Android to satisfy #74.
@@ -36,11 +38,11 @@ Notation in the cells below:
 | Number — `TYPE_CLASS_NUMBER` / `.numberPad`, `.decimalPad`, `.asciiCapableNumberPad` | `mEnglishOnly = true`, `MODE_PHONE` with `isSymbol = false`. Switcher path: `setKeyboardMode(MODE_PHONE, isSymbol=false)` → `getKeyboardXMLID("phone_number")` → **`phone_number.xml`**. This intentionally reuses the restricted phone-number layout for integer and decimal fields, so no `EN` / `中` mode keys are exposed. | All three `UIKeyboardType`s → `mEnglishOnly = true`, `mPredictionOn = true`. Layout = **`symbols1`** ([KeyboardViewController.swift:387-396](../LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift#L387-L396)). **iPhone loads:** `symbols1.json`. **iPad loads:** `symbols1_ipad.json` (via `LayoutLoader`'s `_ipad` substitution). `lime_number.json` / `lime_number_ipad.json` remain unused (they're the Chinese-IM family's numbers layer, with an `EN` key — see Layout assets section below). | iOS still uses `symbols1` for number/decimal. A stricter mode-key-free iOS numeric layout remains a possible future improvement, but is out of scope for the current Android-only routing change. | None for the current Android decision — `TYPE_CLASS_NUMBER` now reuses the restricted `phone_number.xml` route. |
 | Date/time — `TYPE_CLASS_DATETIME` / (no iOS equivalent) | In practice, native/browser date-time controls show the Android system date/time picker, so LIME is normally not asked to display a keyboard. The fallback code path still maps `TYPE_CLASS_DATETIME` to `MODE_TEXT + isSymbol` → **`symbols1.xml`** if a host invokes the IME directly. | N/A. iOS hosts use `UIDatePicker`; no `UIKeyboardType` is delivered to the extension for date/time. | N/A. | None for the observed date/time picker path. Keep the fallback path unchanged unless a real host app/WebView is found that sends `TYPE_CLASS_DATETIME` to LIME and requires a custom restricted layout. |
 | Email — `TYPE_TEXT_VARIATION_EMAIL_ADDRESS` (text class) / `.emailAddress` | `mEnglishOnly = true`, `mPredictionOn = false`, `MODE_EMAIL` ([LIMEService.java:921-927](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L921-L927)). Switcher path ([LIMEKeyboardSwitcher.java:510-530](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEKeyboardSwitcher.java#L510-L530)): non-WB IM → **`lime_english_number(.xml)`** (or `lime_english_number_shift.xml`) when pref `numberRow` is true; **`lime_english.xml`** / `lime_english_shift.xml` when false. WB IM → **`lime_abc.xml`** / `lime_abc_shift.xml`. (`lime_email.xml` and its `R.xml.lime_email` switch-case entry have been removed in the #74 cleanup — they were never loaded by any code path.) | `.emailAddress` → `mEnglishOnly = true`, `mPredictionOn = false`, then the English layout family is selected. **iPhone loads:** `lime_english_number.json` (default) or `lime_english.json`. **iPad loads:** `lime_english_number_ipad.json` — always, since the number-row toggle is hidden on iPad. (`lime_email.json` / `lime_email_ipad.json` removed in #74 cleanup.) | **Decision (#74):** keep current behaviour — `.emailAddress` stays `mEnglishOnly = true` with `lime_english_number*` loaded on both iPhone and iPad. The number-row English layout already exposes `.` / `@` / `-` / `_`, so a dedicated email layout adds nothing. Cleanup: removed the never-loaded `lime_email.json` / `lime_email_ipad.json` assets and their `project.pbxproj` references. | **Decision (#74):** keep current behaviour — `MODE_EMAIL` already loads `lime_english_number(_shift)` / `lime_english(_shift)` (or `lime_abc*` for WB IM). Cleanup: removed the never-loaded `lime_email.xml` asset and its `R.xml.lime_email` switch-case entry in `LIMEKeyboardSwitcher.getKeyboardXMLID`. |
-| URL — `TYPE_TEXT_VARIATION_URI` (text class) / `.URL` | `mEnglishOnly = true`, `mPredictionOn = false`, `MODE_URL` ([LIMEService.java:929-935](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L929-L935)). Switcher path ([LIMEKeyboardSwitcher.java:489-509](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEKeyboardSwitcher.java#L489-L509)): identical to `MODE_EMAIL` — non-WB IM gets **`lime_english_number(.xml)`** or **`lime_english.xml`** depending on pref; WB IM gets **`lime_abc.xml`**. `lime_url.xml` is registered but never loaded. | `.URL` → `mEnglishOnly = true`, `mPredictionOn = false`. Same layout selection as Email. **iPhone loads:** `lime_english_number.json` (default) or `lime_english.json`. **iPad loads:** `lime_english_number_ipad.json` — always, since the number-row toggle is hidden on iPad. (`lime_url.json` / `lime_url_ipad.json` removed in #74 cleanup.) | **Decision (#74):** keep current behaviour — `.URL` stays `mEnglishOnly = true` with `lime_english_number*` loaded. Modern address bars do see Chinese keyword search, but the `中` mode key on `lime_english_number*` (the IM-family English layer) already lets users switch into the active Chinese IM when they want to. Cleanup: removed the never-loaded `lime_url.json` / `lime_url_ipad.json` assets and their `project.pbxproj` references. | **Decision (#74):** keep current behaviour — `MODE_URL` already loads `lime_english_number(_shift)` / `lime_english(_shift)` (or `lime_abc*` for WB IM), same as iOS. The `中` mode key on those layouts already provides a path into Chinese IM when needed. Cleanup: removed the never-loaded `lime_url.xml` asset and its `R.xml.lime_url` switch-case entry in `LIMEKeyboardSwitcher.getKeyboardXMLID`. |
+| URL/search — `TYPE_TEXT_VARIATION_URI` / search-like text fields / `.URL`, `.webSearch` | URL/search follows the generic text/default branch. When `persistent_language_mode` is on, LIME restores `language_mode`; when it is off, URL/search starts in Chinese mode like normal text. If the remembered mode is Chinese, `initialIMKeyboard()` loads the active IM layout. Search fields additionally depend on the host's `imeOptions` for the Enter/search key icon. | `.URL` / `.webSearch` follow the default branch. When `persistent_language_mode` is on, LIME reads `persisted_english_mode`; otherwise it starts in Chinese mode like normal text. `returnKeyType` still adapts the Enter key for search/go actions. | None — matches the #74 URL/search decision. | None — matches the #74 URL/search decision. |
 | Password — `TYPE_TEXT_VARIATION_PASSWORD` / `TYPE_TEXT_VARIATION_WEB_PASSWORD` / `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD` | `mEnglishOnly = true`, `mPredictionOn = false`, routed to **`MODE_EMAIL`** ([LIMEService.java:911-919](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L911-L919)). Same layouts as the Email row: **`lime_english_number.xml`** / **`lime_english.xml`** / `lime_abc.xml` for WB IM. Candidate bar suppressed so password text is never echoed to suggestions. | iOS extensions cannot reliably read `isSecureTextEntry`; iOS swaps in the system secure keyboard, bypassing LIME entirely. No explicit handling in `initOnStartInput`. | None — platform-handled. | None. Android already disables prediction and forces English. |
 | Short-message / IM body — `TYPE_TEXT_VARIATION_SHORT_MESSAGE` / (no iOS equivalent) | `mEnglishOnly = false`, `MODE_IM` ([LIMEService.java:937-939](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L937-L939)). Switcher path: `isIm=true` branch → `kConfig.getImkb()` / `getImshiftkb()` ([LIMEKeyboardSwitcher.java:532-540](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEKeyboardSwitcher.java#L532-L540)) → the active IM's keyboard layout (e.g. **`lime.xml`** for phonetic, **`lime_cj.xml`** for Cangjie, **`lime_dayi.xml`**, **`lime_array.xml`**, …). | N/A. iOS has no SMS-body keyboard-type hint. | N/A. | None. |
 | Generic text (`default`) / `.default`, `.asciiCapable`, `.twitter`, `.webSearch`, … | `default` branch ([LIMEService.java:942-956](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L942-L956)). Persisted-mode on + English mode last selected → `MODE_TEXT` non-IM English → **`lime_english_number.xml`** / **`lime_english.xml`** (pref `numberRow`); WB IM → **`lime_abc.xml`**. Persisted-mode off or last mode = Chinese → `initialIMKeyboard()` → IM-specific layout (**`lime.xml`** / **`lime_cj.xml`** / **`lime_dayi.xml`** / **`lime_array.xml`** / **`lime_phonetic.xml`** etc., resolved via `kConfig.getImkb()`) ([LIMEKeyboardSwitcher.java:541-568](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEKeyboardSwitcher.java#L541-L568)). | `default` branch reads `persisted_english_mode` from `sharedDefaults` when `mPersistentLanguageMode` is on ([KeyboardViewController.swift:355-362](../LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift#L355-L362)). Layout selection via `resolvedLayoutId(for: activeIM)` ([KeyboardViewController.swift:510-545](../LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift#L510-L545)).<br>**`mEnglishOnly = true` branch — iPhone loads:** `lime_english_number.json` (default) or `lime_english.json`.<br>**`mEnglishOnly = true` branch — iPad loads:** `lime_english_number_ipad.json` (always — the number-row toggle is hidden on iPad).<br>**`mEnglishOnly = false` branch — iPhone loads** (one of, depending on active IM): `lime_phonetic.json`, `lime_cj.json`, `lime_dayi.json`, `lime_array.json`, `lime_et26.json`, `lime_hsu.json`, `lime_et_41.json`, `lime_ez.json`, `phone_simple.json` (for `array10`).<br>**`mEnglishOnly = false` branch — iPad loads** (matching the iPhone choice via `LayoutLoader` substitution): `lime_phonetic_ipad.json`, `lime_cj_ipad.json`, `lime_dayi_ipad.json`, `lime_array_ipad.json`, `lime_et26_ipad.json`, `lime_hsu_ipad.json`, `lime_et_41_ipad.json`, `lime_ez_ipad.json`. `phone_simple` has no `_ipad` variant — iPad falls back to `phone_simple.json`. | None — already matches Android. | None. |
-| Persisted Chinese/English mode in restricted fields | Restricted branches (`TYPE_CLASS_NUMBER`, `TYPE_CLASS_DATETIME`, `TYPE_CLASS_PHONE`, email/password/URL variations) set `mEnglishOnly = true` directly and never read `mLIMEPref.getLanguageMode()` ([LIMEService.java:862-941](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L862-L941)). For date/time, the system picker path normally bypasses LIME entirely. | Restricted iOS branches (`.numberPad`, `.decimalPad`, `.asciiCapableNumberPad`, `.emailAddress`, `.URL`) set `mEnglishOnly = true` before the `default` branch reads `persisted_english_mode`, so persisted mode is already isolated from restricted fields. `.phonePad` is normally system-owned and bypasses LIME; the Swift fallback branch is also English-only if ever invoked. | None — already isolated. (Once `.URL` is moved out of the restricted block per the URL decision, the remaining restricted types still bypass persisted mode.) | Confirm `TYPE_CLASS_NUMBER` stays isolated after routing to the restricted phone layout. No Android date/time keyboard change is needed for the normal system-picker path. |
+| Persisted Chinese/English mode in restricted fields | Restricted branches (`TYPE_CLASS_NUMBER`, `TYPE_CLASS_DATETIME`, `TYPE_CLASS_PHONE`, email/password variations) set `mEnglishOnly = true` directly and never read `mLIMEPref.getLanguageMode()`. URL/search is intentionally excluded from this restricted bucket and follows generic text. For date/time, the system picker path normally bypasses LIME entirely. | Restricted iOS branches (`.numberPad`, `.decimalPad`, `.asciiCapableNumberPad`, `.emailAddress`) set `mEnglishOnly = true` before the `default` branch reads `persisted_english_mode`, so persisted mode is isolated from restricted fields. `.URL` / `.webSearch` intentionally follow default text. `.phonePad` is normally system-owned and bypasses LIME; the Swift fallback branch is also English-only if ever invoked. | None. | Confirm `TYPE_CLASS_NUMBER` stays isolated after routing to the restricted phone layout. No Android date/time keyboard change is needed for the normal system-picker path. |
 | Remembered Chinese/English mode in normal text fields | When `mPersistentLanguageMode` is on, last mode is stored in prefs and restored in the `default` branch on next `onStartInput`. ([LIMEService.java:942-956](../LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java#L942-L956)) | Same behaviour via `sharedDefaults` `"persisted_english_mode"` ([KeyboardViewController.swift:357-361](../LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift#L357-L361)). | None. | None. Already #74-compliant for normal text. |
 
 ## Layout assets that already exist
@@ -65,12 +67,12 @@ Registered in `LIMEKeyboardSwitcher.getKeyboardXMLID`
     (loaded via `kConfig.getImkb()`).
   - `lime_english.xml` / `lime_english_number.xml` and their `_shift`
     variants — the English alphabet layer of the IM family (carries `中` at
-    `-10`). Loaded by `MODE_TEXT` English / `MODE_EMAIL` / `MODE_URL` /
+    `-10`). Loaded by `MODE_TEXT` English / `MODE_EMAIL` /
     persisted-English-mode paths, **even when no Chinese IM is active**.
     The `中` key is effectively a no-op in that case but the layout is
     re-used as the English-only fallback.
   - `lime_abc.xml` / `lime_abc_shift.xml` — the English alphabet layer
-    used by the WB IM in `MODE_EMAIL` / `MODE_URL`.
+    used by the WB IM in `MODE_EMAIL`.
   - `lime_number.xml`, `lime_number_shift.xml`, `lime_number_symbol.xml`,
     `lime_number_symbol_shift.xml` — pure-numbers layer with `EN` return
     key at `-9` ([lime_number.xml:91](../LimeStudio/app/src/main/res/xml/lime_number.xml#L91)).
@@ -80,9 +82,10 @@ Registered in `LIMEKeyboardSwitcher.getKeyboardXMLID`
 - **Symbol layouts (loaded on demand):** `symbols1.xml`, `symbols2.xml`,
   `symbols3.xml`. `MODE_TEXT + isSymbol` opens `symbols1.xml`, which is
   also what number/date-time fields hit today.
-- **Removed in #74 cleanup:** `lime_url.xml`, `lime_email.xml` were unused
-  (`MODE_URL` and `MODE_EMAIL` route to `lime_english_number.xml` /
-  `lime_english.xml` directly, with `lime_abc*` for WB IM). Both XML files
+- **Removed in #74 cleanup:** `lime_url.xml`, `lime_email.xml` were unused.
+  URL/search now follows the generic text path, and `MODE_EMAIL` routes to
+  `lime_english_number.xml` / `lime_english.xml` directly, with `lime_abc*`
+  for WB IM. Both XML files
   and their `R.xml` switch-case entries in `LIMEKeyboardSwitcher.getKeyboardXMLID`
   have been deleted.
 - **Missing for #74:** no new XML is required for the current Android number
@@ -114,7 +117,7 @@ Registered in `LIMEKeyboardSwitcher.getKeyboardXMLID`
     / `_ipad` / `_ipad_shift` variants — the English alphabet layer of the
     IM family (carries `中` at `-10`). Re-used as the iOS English-only
     fallback for `.numberPad` / `.decimalPad` / `.asciiCapableNumberPad`
-    / `.emailAddress` / `.URL` / persisted-English-mode, even with no IM
+    / `.emailAddress` / persisted-English-mode, even with no IM
     active. On iPad, only the `_number_ipad*` variants are loaded because
     the number-row toggle is hidden in iPad settings
     ([PreferencesTabView.swift:96-98](../LimeIME-iOS/LimeSettings/Views/PreferencesTabView.swift#L96-L98));
@@ -135,8 +138,8 @@ Registered in `LIMEKeyboardSwitcher.getKeyboardXMLID`
   passed `"lime_url"` or `"lime_email"` to `LayoutLoader.load`). All four
   files have been deleted, and their PBXBuildFile / PBXFileReference /
   PBXGroup / PBXResourcesBuildPhase entries have been removed from
-  `LimeIME.xcodeproj/project.pbxproj`. The `.URL` and `.emailAddress`
-  paths continue to load `lime_english_number.json` (iPhone) /
+  `LimeIME.xcodeproj/project.pbxproj`. The `.emailAddress`
+  path continues to load `lime_english_number.json` (iPhone) /
   `lime_english_number_ipad.json` (iPad).
 - **Missing for #74:** a mode-key-free `lime_numeric_field.json` (digits
   + decimal + sign + delete + enter + globe, no `-2` / `-9` / `-10`) for
@@ -145,11 +148,11 @@ Registered in `LIMEKeyboardSwitcher.getKeyboardXMLID`
 ### iPad-specific notes
 
 - `lime_url_ipad.json` and `lime_email_ipad.json` are **intentionally unused**
-  even after #74. iPad always loads `lime_english_number_ipad.json` for
-  English-only email/URL fields (the `number_row_in_english` toggle is hidden
-  on iPad — see notation at top of table), and that layout already provides
-  the full number row plus `.` / `@` / `-` / `/`, so a dedicated iPad
-  email/URL layout adds nothing.
+  even after #74. URL/search now follows normal text/persisted mode, while
+  iPad still loads `lime_english_number_ipad.json` for English-only email
+  fields (the `number_row_in_english` toggle is hidden on iPad — see notation
+  at top of table). That layout already provides the full number row plus
+  `.` / `@` / `-` / `/`, so a dedicated iPad email layout adds nothing.
 - Do **not** wire `lime_number_ipad.json` to `.numberPad / .decimalPad /
   .asciiCapableNumberPad`. The file exists, but it carries an `EN` key
   (`code: -9 / switchToEnglish`) because it is the numbers layer for a
@@ -247,12 +250,10 @@ dismiss the keyboard and re-pop.
    dependent and only testable manually. iOS Safari Web Extensions: same
    question against `.numberPad` / `.decimalPad` / `.phonePad`.
 5. ~~URL/URI product direction (allow Chinese for search vs strict English).~~
-   **Resolved (#74):** keep current behaviour on both platforms — URL fields
-   stay `mEnglishOnly = true` with the IM-family English layout
-   (`lime_english_number*` on Android and iOS). The `中` mode key on that
-   layout already lets users switch into the active Chinese IM for
-   keyword search, so no behavioural change is required. The previously
-   contemplated "URL = normal text" plan was withdrawn. Cleanup actions:
+   **Resolved (#74):** URL/search fields are normal text on both platforms.
+   They follow `persistent_language_mode` / `persisted_english_mode` so browser
+   address bars can start in Chinese when the user last selected Chinese.
+   Cleanup actions:
    deleted the unused `lime_url.xml` / `lime_url*.json` assets, their
    pbxproj entries, and the `R.xml.lime_url` switch-case entry.
 
@@ -261,7 +262,9 @@ dismiss the keyboard and re-pop.
 Run on both Android and iOS with LIME enabled, then verify each case:
 
 - Normal text — remembered Chinese/English mode still works.
-- URL/URI — opens English-only with the IM-family English layout (`lime_english_number*`). The `中` mode key is still present, so tapping it switches into the active Chinese IM for keyword search.
+- URL/URI/search — follows normal text behavior and remembered Chinese/English mode.
+  With persisted language mode off, URL/search starts in Chinese mode like
+  normal text.
 - Email and password — English-only, no prediction.
 - Phone — Android shows the restricted `phone_number.xml` layout with no mode
   key; iOS shows the system phone/symbol keyboard.

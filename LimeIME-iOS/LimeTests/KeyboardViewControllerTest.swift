@@ -30,6 +30,18 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(LimeKeyCode.emojiCategoryFlags.rawValue, -212)
     }
 
+    func testURLAndSearchKeyboardTypesUsePersistedLanguageModeRoute() {
+        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.URL))
+        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.webSearch))
+        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.default))
+
+        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.emailAddress))
+        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.numberPad))
+        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.decimalPad))
+        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.asciiCapableNumberPad))
+        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.phonePad))
+    }
+
     func testEnglishLayoutHasChineseSwitchOnBottomRow() {
         let rows = LimeKeyLayout.english.rows
         let bottomCodes = rows.last?.keys.map(\.code) ?? []

@@ -137,6 +137,14 @@ public class LIMEService extends InputMethodService
         return (inputType & EditorInfo.TYPE_MASK_CLASS) != EditorInfo.TYPE_CLASS_NUMBER;
     }
 
+    static boolean isForcedEnglishTextVariation(int variation) {
+        return variation == EditorInfo.TYPE_TEXT_VARIATION_PASSWORD
+                || variation == EditorInfo.TYPE_TEXT_VARIATION_WEB_PASSWORD
+                || variation == EditorInfo.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                || variation == EditorInfo.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                || variation == EditorInfo.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS;
+    }
+
     //Jeremy '16,7,22 To control delayed hiding candidate view and avoid hide and show candidate view in short time.
     private static final int DELAY_BEFORE_HIDE_CANDIDATE_VIEW = 200;
 
@@ -924,31 +932,11 @@ public class LIMEService extends InputMethodService
                 }
 
                 // Switch keyboard here.
-                if (variation == EditorInfo.TYPE_TEXT_VARIATION_PASSWORD
-                        || variation == EditorInfo.TYPE_TEXT_VARIATION_WEB_PASSWORD
-                        || variation == EditorInfo.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) {
+                if (isForcedEnglishTextVariation(variation)) {
                     mPredictionOn = false;
-                    //isModePassword = true;
                     mEnglishOnly = true;
-                    //onIM = false;//Jeremy '12,4,29 use mEnglishOnly instead of onIM
-                    mKeyboardSwitcher.setKeyboardMode(activeIM, LIMEKeyboardSwitcher.MODE_EMAIL,
-                            mImeOptions, false, false, false);
-                    break;
-                } else if (variation == EditorInfo.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-                        || variation == EditorInfo.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS) {
-                    mEnglishOnly = true;
-                    //onIM = false; //Jeremy '12,4,29 use mEnglishOnly instead of onIM
-                    mPredictionOn = false;
                     mKeyboardSwitcher.setKeyboardMode(activeIM,
                             LIMEKeyboardSwitcher.MODE_EMAIL, mImeOptions, false, false, false);
-                    break;
-                } else if (variation == EditorInfo.TYPE_TEXT_VARIATION_URI) {
-                    mPredictionOn = false;
-                    mEnglishOnly = true;
-                    //onIM = false; //Jeremy '12,4,29 use mEnglishOnly instead of onIM
-                    //isModeURL = true;
-                    mKeyboardSwitcher.setKeyboardMode(activeIM,
-                            LIMEKeyboardSwitcher.MODE_URL, mImeOptions, false, false, false);
                     break;
                 } else if (variation == EditorInfo.TYPE_TEXT_VARIATION_SHORT_MESSAGE) {
                     mEnglishOnly = false;
