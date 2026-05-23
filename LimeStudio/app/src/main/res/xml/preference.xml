@@ -298,7 +298,7 @@
             android:title="@string/learning_switch" />
     </PreferenceCategory>
 
-    <!-- 7. 英文字典 -->
+    <!-- 7. 英文鍵盤 -->
     <PreferenceCategory
         android:key="pref_section_english_dictionary"
         android:title="@string/pref_section_english_dictionary">
@@ -307,6 +307,11 @@
             android:key="english_dictionary_enable"
             android:summary="@string/enable_english_dictionary_summary"
             android:title="@string/enable_english_dictionary" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="auto_cap"
+            android:summary="@string/auto_cap_summary"
+            android:title="@string/auto_cap" />
     </PreferenceCategory>
 
     <!-- 9. 外接鍵盤 -->

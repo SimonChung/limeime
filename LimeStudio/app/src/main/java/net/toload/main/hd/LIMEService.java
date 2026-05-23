@@ -996,7 +996,7 @@ public class LIMEService extends InputMethodService
         mPersistentLanguageMode = mLIMEPref.getPersistentLanguageMode();
         activeIM = mLIMEPref.getActiveIM();
         hasQuickSwitch = mLIMEPref.getSwitchEnglishModeHotKey();
-        mAutoCap = true;
+        mAutoCap = mLIMEPref.getAutoCaptalization();
 
         mPersistentLanguageMode = mLIMEPref.getPersistentLanguageMode();
         mShowArrowKeys = mLIMEPref.getShowArrowKeys();

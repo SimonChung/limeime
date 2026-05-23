@@ -43,8 +43,9 @@ struct PreferencesTabView: View {
     @AppStorage("learn_phrase",           store: sharedDefaults) private var learnPhrase: Bool = true
     @AppStorage("learning_switch",        store: sharedDefaults) private var learningSwitch: Bool = true
 
-    // MARK: §8.7 English Dictionary
+    // MARK: §8.7 English Keyboard
     @AppStorage("english_dictionary_enable", store: sharedDefaults) private var englishDictEnable: Bool = true
+    @AppStorage("auto_cap",                  store: sharedDefaults) private var autoCap: Bool = true
 
     // MARK: Options
 
@@ -182,8 +183,9 @@ struct PreferencesTabView: View {
                 }
 
                 // MARK: §8.7
-                Section(header: Text("英文字典")) {
+                Section(header: Text("英文鍵盤")) {
                     Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字") }
+                    Toggle(isOn: $autoCap) { prefRow("首字自動大寫", "在英文模式下，句首字母自動轉為大寫") }
                 }
 
                 }

@@ -1142,6 +1142,7 @@ final class KeyboardViewController: UIInputViewController {
                 }
             }
         }
+        updateShiftForAutoCap()
     }
 
     // MARK: - Character Handling (spec §5 handleCharacter / Character Acceptance Rules)
@@ -1241,6 +1242,7 @@ final class KeyboardViewController: UIInputViewController {
         isSelfUpdate = false
         updateEnglishPrediction()
         consumeShiftAfterCharacter()
+        updateShiftForAutoCap()
     }
 
     // MARK: - Backspace Handling (spec §5 handleBackspace — 6 cases)
@@ -1398,6 +1400,8 @@ final class KeyboardViewController: UIInputViewController {
         // auto-shifting them to uppercase breaks all DB lookups.
         guard mEnglishOnly else { return }
         guard !isShiftOn, !mCapsLock else { return }
+        // User-toggleable per §8.7 英文鍵盤 → 首字自動大寫
+        guard LIMEPreferenceManager.shared.autoCap else { return }
         // iOS provides autocapitalizationType directly (spec §2 iOS note)
         guard let capType = textDocumentProxy.autocapitalizationType,
               capType == .sentences || capType == .allCharacters || capType == .words else { return }
