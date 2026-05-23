@@ -9,6 +9,11 @@ protocol CandidateBarViewDelegate: AnyObject {
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView)
     func candidateBarViewDidRequestEmoji(_ view: CandidateBarView)
     func candidateBarViewDidRequestOptions(_ view: CandidateBarView)
+    /// Legacy iPhone globe mode: short tap on the candidate-bar chevron
+    /// asks the host to dismiss the keyboard outright (spec:
+    /// docs/IPHONE_LEGACY_KB.md). Distinct from `…RequestDismiss` which
+    /// only hides expanded candidates + cancels composing.
+    func candidateBarViewDidRequestKeyboardDismiss(_ view: CandidateBarView)
 }
 
 final class CandidateBarView: UIView {
@@ -23,6 +28,23 @@ final class CandidateBarView: UIView {
     private let dismissButton = UIButton(type: .system)
     private let emojiButton   = UIButton(type: .system)
     private let optionsButton = UIButton(type: .system)
+
+    /// Set by KeyboardViewController. When true, `optionsButton` paints as
+    /// `keyboard.chevron.compact.down`, taps dismiss the keyboard, long-press
+    /// shows the LIME options menu, and it stays visible regardless of bar
+    /// state (spec: docs/IPHONE_LEGACY_KB.md).
+    var legacyGlobeMode: Bool = false {
+        didSet {
+            guard oldValue != legacyGlobeMode else { return }
+            applyLegacyOptionsBinding()
+        }
+    }
+
+    /// Long-press recognizer attached to `optionsButton` in legacy mode so a
+    /// long press routes to the LIME options menu while a short tap dismisses.
+    /// Kept as a weak property so `applyLegacyOptionsBinding()` can remove it
+    /// when leaving legacy mode.
+    private weak var legacyOptionsLongPress: UILongPressGestureRecognizer?
     /// Leading region that displays the composing keyname. iPad uses this
     /// in lieu of the in-keyboard composingPopupLabel strip (which wastes
     /// vertical space). iPhone keeps the strip and leaves this collapsed.
@@ -446,6 +468,10 @@ final class CandidateBarView: UIView {
         // the launchers above it so their full-height touch traps receive taps.
         bringSubviewToFront(emojiButton)
         bringSubviewToFront(optionsButton)
+
+        // Seed the optionsButton role from the current legacyGlobeMode flag.
+        // No-op when not in legacy mode (default state matches the constructor).
+        applyLegacyOptionsBinding()
     }
 
     // MARK: - Public API
@@ -660,7 +686,9 @@ final class CandidateBarView: UIView {
         moreSep.isHidden       = !showActiveChrome
         dismissButton.isHidden = !showActiveChrome
         emojiButton.isHidden   = !showIdleTools || !allowEmoji
-        optionsButton.isHidden = !showIdleTools || !allowOptions
+        // Legacy iPhone globe mode: optionsButton owns dismiss + LIME menu and
+        // must remain reachable regardless of bar state (spec: docs/IPHONE_LEGACY_KB.md).
+        optionsButton.isHidden = legacyGlobeMode ? false : (!showIdleTools || !allowOptions)
     }
 
     static func shouldShowIdleTools(
@@ -828,6 +856,73 @@ final class CandidateBarView: UIView {
     @objc private func emojiTapped() {
         fireHaptic()
         delegate?.candidateBarViewDidRequestEmoji(self)
+    }
+
+    /// Swap the right-edge `optionsButton`'s role based on `legacyGlobeMode`.
+    /// Legacy mode: keyboard-down chevron, tap dismisses, long-press → LIME menu,
+    /// always visible. Standard mode: hamburger ☰, tap → LIME menu, visibility
+    /// driven by composing state (existing behavior).
+    private func applyLegacyOptionsBinding() {
+        // Tap target swap. Remove both possible targets defensively so repeated
+        // flips never accumulate handlers.
+        optionsButton.removeTarget(self, action: #selector(optionsTapped),
+                                    for: .touchUpInside)
+        optionsButton.removeTarget(self, action: #selector(legacyDismissTapped),
+                                    for: .touchUpInside)
+
+        // Long-press recognizer: remove any prior instance before re-adding.
+        if let lp = legacyOptionsLongPress {
+            optionsButton.removeGestureRecognizer(lp)
+            legacyOptionsLongPress = nil
+        }
+
+        let iconName: String
+        let iconScale: CGFloat = 1.10
+        if legacyGlobeMode {
+            iconName = "keyboard.chevron.compact.down"
+            optionsButton.addTarget(self, action: #selector(legacyDismissTapped),
+                                     for: .touchUpInside)
+            let lp = UILongPressGestureRecognizer(target: self,
+                                                   action: #selector(legacyOptionsLongPressed(_:)))
+            lp.minimumPressDuration = LayoutMetrics.Gesture.specialKeyHoldDuration
+            optionsButton.addGestureRecognizer(lp)
+            legacyOptionsLongPress = lp
+        } else {
+            iconName = "line.3.horizontal"
+            optionsButton.addTarget(self, action: #selector(optionsTapped),
+                                     for: .touchUpInside)
+        }
+
+        let cfg = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * iconScale,
+            weight: .regular)
+        if let image = UIImage(systemName: iconName, withConfiguration: cfg) {
+            optionsButton.setImage(image, for: .normal)
+            optionsButton.setTitle(nil, for: .normal)
+        } else {
+            optionsButton.setImage(nil, for: .normal)
+            optionsButton.setTitle(legacyGlobeMode ? "⌄" : "☰", for: .normal)
+        }
+
+        // Force visibility in legacy mode so the dismiss/menu surface is
+        // always reachable, even when no candidates are composing. The
+        // standard-mode visibility rule (hidden when not composing) is owned
+        // by other call sites and only takes effect when this function does
+        // NOT override.
+        if legacyGlobeMode {
+            optionsButton.isHidden = false
+        }
+    }
+
+    @objc private func legacyDismissTapped() {
+        fireHaptic()
+        delegate?.candidateBarViewDidRequestKeyboardDismiss(self)
+    }
+
+    @objc private func legacyOptionsLongPressed(_ gr: UILongPressGestureRecognizer) {
+        guard gr.state == .began else { return }
+        fireHaptic()
+        delegate?.candidateBarViewDidRequestOptions(self)
     }
 
     @objc private func optionsTapped() {

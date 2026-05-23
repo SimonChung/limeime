@@ -167,6 +167,17 @@ final class KeyboardViewController: UIInputViewController {
     /// (`UIDevice.current.userInterfaceIdiom` is the wrong signal here.)
     private var isOnPad: Bool { traitCollection.userInterfaceIdiom == .pad }
 
+    /// True when iOS reports it cannot supply a globe key for us (legacy
+    /// home-button iPhones: SE 2/3, 8). Drives the in-keyboard globe affordance
+    /// (spec: docs/IPHONE_LEGACY_KB.md). Excludes iPad and any `_ipad` layout
+    /// so the existing dual-key iPad story (`-200` globe + `-3` dismiss) is
+    /// untouched.
+    private var legacyGlobeMode: Bool {
+        needsInputModeSwitchKey
+            && !isOnPad
+            && !currentLayout.id.contains("_ipad")
+    }
+
     // MARK: - Keyboard Geometry
     private var baseCandidateBarHeight: CGFloat { LayoutMetrics.ComposingPopup.barBaseHeight(isPad: isOnPad) }
     private var candidateBarHeight: CGFloat { baseCandidateBarHeight * candidateFontScale }
@@ -279,7 +290,7 @@ final class KeyboardViewController: UIInputViewController {
         let doSplit = isPad && (splitKeyboardMode == 1 || (splitKeyboardMode == 2 && landscape))
         keyboardView?.splitMode = doSplit
         applyHeight()
-        updateGlobeKeyVisibility()
+        updateGlobeAndDismissBindings()
     }
 
     // MARK: - Trait / Theme Change (spec §2)
@@ -297,7 +308,7 @@ final class KeyboardViewController: UIInputViewController {
                 currentLayout = reloaded
                 keyboardView?.setLayout(reloaded)
             }
-            updateGlobeKeyVisibility()
+            updateGlobeAndDismissBindings()
             applyHeight()
         }
         guard let prev = previousTraitCollection else { return }
@@ -317,7 +328,7 @@ final class KeyboardViewController: UIInputViewController {
         // reset composing and reload the layout.
         if prev.horizontalSizeClass != traitCollection.horizontalSizeClass {
             cancelComposing()
-            updateGlobeKeyVisibility()
+            updateGlobeAndDismissBindings()
             applyHeight()
         }
     }
@@ -340,6 +351,7 @@ final class KeyboardViewController: UIInputViewController {
         let currentReturn = textDocumentProxy.returnKeyType ?? .default
         if currentKB != lastSeenKeyboardType || currentReturn != lastSeenReturnKeyType {
             initOnStartInput()
+            updateGlobeAndDismissBindings()
             return
         }
 
@@ -351,6 +363,13 @@ final class KeyboardViewController: UIInputViewController {
             }
         }
         updateShiftForAutoCap()
+
+        // Re-evaluate legacyGlobeMode on every text-input change. iOS toggles
+        // `needsInputModeSwitchKey` on hardware-keyboard attach/detach and on
+        // some field transitions; without this call the legacy globe binding
+        // would stick until the next layout pass (spec: docs/IPHONE_LEGACY_KB.md
+        // § Risks/pitfalls — first-tap latency).
+        updateGlobeAndDismissBindings()
     }
 
     // MARK: - Initialization (spec §2 initOnStartInput)
@@ -2384,16 +2403,21 @@ final class KeyboardViewController: UIInputViewController {
         applyHeight()
     }
 
-    // MARK: - Globe Key Visibility (spec §10)
+    // MARK: - Globe Key Visibility (spec §10) and Legacy iPhone Dismiss Bindings
 
-    /// The keyboard key (code -3) is always visible — it is the primary dismiss affordance
-    /// and doubles as the long-press globe menu entry point (spec §10).
-    /// Only legacy code-200 globe keys (hardcoded fallback layouts) are conditionally shown.
-    private func updateGlobeKeyVisibility() {
+    /// Single refresh point for all globe-related view state (spec §10 and
+    /// docs/IPHONE_LEGACY_KB.md). Must be called whenever `needsInputModeSwitchKey`
+    /// could have changed (textWillChange/textDidChange) or after any layout
+    /// rebuild (setLayout, shift toggle, symbol mode, IM switch).
+    private func updateGlobeAndDismissBindings() {
         let isPad = isOnPad
         // On iPad with an _ipad layout, globe is always visible (matches Apple's stock keyboard).
         let globeVisible = (isPad && currentLayout.id.contains("_ipad")) || needsInputModeSwitchKey
         keyboardView?.setGlobeKeyVisible(globeVisible)
+
+        let legacy = legacyGlobeMode
+        keyboardView?.legacyGlobeMode = legacy
+        candidateBar.legacyGlobeMode = legacy
     }
 
     // MARK: - Emoji / Surrogate Pair Detection (spec §8)
@@ -2708,10 +2732,11 @@ extension KeyboardViewController: KeyboardViewDelegate {
     func keyboardView(_ view: KeyboardView, didLongPress keyDef: KeyDef) {
         // Keyboard key (code -3): show the LIME options menu (spec §10).
         // Globe long-press is routed through UIInputViewController.handleInputModeList.
-        // Per spec §10: briefly show globe icon preview to satisfy Apple's globe affordance requirement,
-        // then display the inline options menu.
+        // The globe-icon preview popup that used to flash before the menu is
+        // removed — modern iPhones, iPad, and legacy iPhones each have a
+        // dedicated globe affordance elsewhere (system action bar, in-keyboard
+        // globe key, or candidate-bar ☰), so the preview is redundant.
         if keyDef.code == LimeKeyCode.done.rawValue {
-            showGlobeKeyPreview(for: keyDef, in: view)
             showGlobeMenu(from: view)
         }
         // Space key: show LIME-internal IM picker only (spec §10: NOT iOS keyboard switch)
@@ -3357,6 +3382,12 @@ extension KeyboardViewController: CandidateBarViewDelegate {
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
         if isExpandedCandidatesVisible { hideExpandedCandidates() }
         cancelActiveComposingFromCandidateDismiss()
+    }
+
+    func candidateBarViewDidRequestKeyboardDismiss(_ view: CandidateBarView) {
+        if isExpandedCandidatesVisible { hideExpandedCandidates() }
+        cancelActiveComposingFromCandidateDismiss()
+        dismissKeyboard()
     }
 
     func candidateBarViewDidRequestMore(_ view: CandidateBarView) {
