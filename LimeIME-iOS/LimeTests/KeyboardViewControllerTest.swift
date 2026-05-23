@@ -31,15 +31,15 @@ final class KeyboardViewControllerTest: XCTestCase {
     }
 
     func testURLAndSearchKeyboardTypesUsePersistedLanguageModeRoute() {
-        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.URL))
-        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.webSearch))
-        XCTAssertFalse(KeyboardViewController.isForcedEnglishKeyboardType(.default))
+        XCTAssertFalse(KeyboardTypePolicy.isForcedEnglishKeyboardType(.URL))
+        XCTAssertFalse(KeyboardTypePolicy.isForcedEnglishKeyboardType(.webSearch))
+        XCTAssertFalse(KeyboardTypePolicy.isForcedEnglishKeyboardType(.default))
 
-        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.emailAddress))
-        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.numberPad))
-        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.decimalPad))
-        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.asciiCapableNumberPad))
-        XCTAssertTrue(KeyboardViewController.isForcedEnglishKeyboardType(.phonePad))
+        XCTAssertTrue(KeyboardTypePolicy.isForcedEnglishKeyboardType(.emailAddress))
+        XCTAssertTrue(KeyboardTypePolicy.isForcedEnglishKeyboardType(.numberPad))
+        XCTAssertTrue(KeyboardTypePolicy.isForcedEnglishKeyboardType(.decimalPad))
+        XCTAssertTrue(KeyboardTypePolicy.isForcedEnglishKeyboardType(.asciiCapableNumberPad))
+        XCTAssertTrue(KeyboardTypePolicy.isForcedEnglishKeyboardType(.phonePad))
     }
 
     func testEnglishLayoutHasChineseSwitchOnBottomRow() {

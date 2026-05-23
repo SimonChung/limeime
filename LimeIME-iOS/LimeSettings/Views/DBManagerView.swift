@@ -1,4 +1,4 @@
-// DBManagerView.swift
+﻿// DBManagerView.swift
 // LimeIME-iOS
 //
 // DB backup and restore — the 資料庫 tab.
@@ -170,9 +170,13 @@ struct DBManagerView: View {
     // MARK: - Backup
 
     private func performBackup() {
-        isWorking = true
-        backupProgress = 0
-        preparingShare = false
+        var presentationState = BackupSharePresentationState(
+            isWorking: isWorking,
+            backupProgress: backupProgress,
+            preparingShare: preparingShare,
+            showShareSheet: showShareSheet)
+        presentationState.startBackup()
+        apply(presentationState)
         let server = DBServer.shared
         let progress = Progress()
         // KVO observer publishes fractionCompleted updates back to SwiftUI.
@@ -192,20 +196,16 @@ struct DBManagerView: View {
                 let dest = FileManager.default.temporaryDirectory
                     .appendingPathComponent("lime_backup_\(Int(Date().timeIntervalSince1970)).zip")
                 try server.backupDatabase(uri: dest, progress: progress)
-                // Switch the overlay into "準備備份中…" mode and keep isWorking=true.
-                // UIActivityViewController initialization can block the main
-                // thread for several seconds while it inspects a large zip
-                // (file-type sniffing, preview generation, activity discovery);
-                // letting isWorking flip to false here would cause a noticeable
-                // freeze with no feedback between the 100% bar and the share
-                // sheet finally appearing. The sheet's onDismiss handler clears
-                // isWorking/preparingShare.
                 await MainActor.run {
-                    self.backupProgress = 0
-                    self.preparingShare = true
+                    var presentationState = BackupSharePresentationState(
+                        isWorking: self.isWorking,
+                        backupProgress: self.backupProgress,
+                        preparingShare: self.preparingShare,
+                        showShareSheet: self.showShareSheet)
+                    presentationState.finishBackupAndPresentShare()
+                    self.apply(presentationState)
                     self.backupURL = dest
                     self.statusMessage = "備份已準備完成"
-                    self.showShareSheet = true
                 }
             } catch {
                 await MainActor.run {
@@ -216,6 +216,13 @@ struct DBManagerView: View {
                 }
             }
         }
+    }
+
+    private func apply(_ presentationState: BackupSharePresentationState) {
+        isWorking = presentationState.isWorking
+        backupProgress = presentationState.backupProgress
+        preparingShare = presentationState.preparingShare
+        showShareSheet = presentationState.showShareSheet
     }
 
     private func cleanupBackup() {
@@ -259,6 +266,27 @@ struct DBManagerView: View {
             }
             isWorking = false
         }
+    }
+}
+
+struct BackupSharePresentationState {
+    var isWorking = false
+    var backupProgress = 0.0
+    var preparingShare = false
+    var showShareSheet = false
+
+    mutating func startBackup() {
+        isWorking = true
+        backupProgress = 0
+        preparingShare = false
+        showShareSheet = false
+    }
+
+    mutating func finishBackupAndPresentShare() {
+        isWorking = false
+        backupProgress = 0
+        preparingShare = false
+        showShareSheet = true
     }
 }
 

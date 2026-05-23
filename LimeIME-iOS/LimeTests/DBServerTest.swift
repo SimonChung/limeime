@@ -916,6 +916,106 @@ final class DBServerTest: XCTestCase {
         XCTAssertTrue(true, "restoreDatabase should complete without crashing")
     }
 
+    func testDBServerBackupRestoreDatabaseCarriesPreferenceCompatibilityManifest() throws {
+        let db = try makeLimeDB()
+        let server = DBServer(_testDatasource: db)
+        let backupURL = tempFile(".zip")
+        defer { try? FileManager.default.removeItem(at: backupURL) }
+
+        let sharedDefaults = UserDefaults(suiteName: "group.net.toload.limeime") ?? UserDefaults.standard
+        let standardDefaults = UserDefaults.standard
+        let expected = fullIOSPrefsTableFixture()
+        let sharedKeys = expected.keys.filter { !isStandardOnlyPreferenceKey($0) }
+        let standardKeys = expected.keys.filter { isStandardOnlyPreferenceKey($0) }
+        let originalShared = snapshotDefaults(sharedKeys, defaults: sharedDefaults)
+        let originalStandard = snapshotDefaults(standardKeys, defaults: standardDefaults)
+
+        for (key, value) in expected {
+            let defaults = isStandardOnlyPreferenceKey(key) ? standardDefaults : sharedDefaults
+            defaults.set(value, forKey: key)
+        }
+        sharedDefaults.synchronize()
+        standardDefaults.synchronize()
+
+        try server.backupDatabase(uri: backupURL)
+
+        let manifest = try readPreferenceManifest(from: backupURL)
+        XCTAssertEqual(manifest.schema, 1)
+        XCTAssertEqual(manifest.preferences.count, expected.count, "Full DB backup must export exactly the seeded iOS PREFS_TABLE preference set")
+        assertPreferenceManifest(manifest.preferences, equals: expected)
+
+        for (key, value) in mutatedIOSPrefsTableFixture() {
+            let defaults = isStandardOnlyPreferenceKey(key) ? standardDefaults : sharedDefaults
+            defaults.set(value, forKey: key)
+        }
+        sharedDefaults.synchronize()
+        standardDefaults.synchronize()
+
+        server.restoreDatabase(srcFilePath: backupURL.path)
+
+        assertDefaults(sharedDefaults, standardDefaults: standardDefaults, equal: expected)
+
+        restoreDefaults(originalShared, defaults: sharedDefaults)
+        restoreDefaults(originalStandard, defaults: standardDefaults)
+        sharedDefaults.synchronize()
+        standardDefaults.synchronize()
+    }
+
+    func testDBServerRestoresAndroidStylePreferenceFixture() throws {
+        let db = try makeLimeDB()
+        let server = DBServer(_testDatasource: db)
+        let fixtureURL = tempFile(".zip")
+        defer { try? FileManager.default.removeItem(at: fixtureURL) }
+
+        let sharedDefaults = UserDefaults(suiteName: "group.net.toload.limeime") ?? UserDefaults.standard
+        let standardDefaults = UserDefaults.standard
+        let expected = fullIOSPrefsTableFixture()
+        let sharedKeys = expected.keys.filter { !isStandardOnlyPreferenceKey($0) }
+        let standardKeys = expected.keys.filter { isStandardOnlyPreferenceKey($0) }
+        let originalShared = snapshotDefaults(sharedKeys, defaults: sharedDefaults)
+        let originalStandard = snapshotDefaults(standardKeys, defaults: standardDefaults)
+
+        let manifestValues = expected.merging(androidOnlyPrefsTableFixture()) { current, _ in current }
+        try writeCrossPlatformFixtureZip(
+            to: fixtureURL,
+            databaseURL: URL(fileURLWithPath: db.dbPath()),
+            sourcePlatform: "android",
+            preferences: manifestValues)
+
+        for (key, value) in mutatedIOSPrefsTableFixture() {
+            let defaults = isStandardOnlyPreferenceKey(key) ? standardDefaults : sharedDefaults
+            defaults.set(value, forKey: key)
+        }
+        for key in androidOnlyPrefsTableFixture().keys {
+            sharedDefaults.removeObject(forKey: key)
+        }
+        sharedDefaults.synchronize()
+        standardDefaults.synchronize()
+
+        server.restoreDatabase(srcFilePath: fixtureURL.path)
+
+        assertDefaults(sharedDefaults, standardDefaults: standardDefaults, equal: expected)
+        for key in androidOnlyPrefsTableFixture().keys {
+            XCTAssertNil(sharedDefaults.object(forKey: key), "\(key) is Android-only and must not restore on iOS")
+        }
+
+        restoreDefaults(originalShared, defaults: sharedDefaults)
+        restoreDefaults(originalStandard, defaults: standardDefaults)
+        sharedDefaults.synchronize()
+        standardDefaults.synchronize()
+    }
+
+    func testBackupSharePresentationReleasesBlockingOverlayBeforeSheetDismissal() {
+        var state = BackupSharePresentationState()
+
+        state.startBackup()
+        state.finishBackupAndPresentShare()
+
+        XCTAssertFalse(state.isWorking, "Backup completion must release the blocking overlay before presenting the share sheet")
+        XCTAssertFalse(state.preparingShare, "Preparing message must not wait for ShareSheet dismissal")
+        XCTAssertTrue(state.showShareSheet, "Share sheet should still be requested after backup finishes")
+    }
+
     // MARK: - Phase 2.4: Shared Preferences backup/restore pair
 
     func testDBServerBackupDefaultSharedPreferenceAndRestorePair() {
@@ -945,6 +1045,247 @@ final class DBServerTest: XCTestCase {
         defaults.synchronize()
 
         XCTAssertTrue(true, "Shared preferences backup/restore pair should complete")
+    }
+
+    private struct PreferenceManifest: Decodable {
+        let schema: Int
+        let preferences: [String: PreferenceValue]
+    }
+
+    private enum PreferenceValue: Decodable {
+        case int(Int)
+        case bool(Bool)
+        case string(String)
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let boolValue = try? container.decode(Bool.self) {
+                self = .bool(boolValue)
+            } else if let intValue = try? container.decode(Int.self) {
+                self = .int(intValue)
+            } else {
+                self = .string(try container.decode(String.self))
+            }
+        }
+
+        var intValue: Int? {
+            if case .int(let value) = self { return value }
+            return nil
+        }
+
+        var boolValue: Bool? {
+            if case .bool(let value) = self { return value }
+            return nil
+        }
+
+        var stringValue: String? {
+            if case .string(let value) = self { return value }
+            return nil
+        }
+    }
+
+    private func readPreferenceManifest(from zipURL: URL) throws -> PreferenceManifest {
+        let archive = try XCTUnwrap(Archive(url: zipURL, accessMode: .read))
+        let entry = try XCTUnwrap(archive.first { $0.path == "preferences/lime_prefs.json" })
+        let outURL = tempFile(".json")
+        defer { try? FileManager.default.removeItem(at: outURL) }
+        _ = try archive.extract(entry, to: outURL, skipCRC32: false)
+        let data = try Data(contentsOf: outURL)
+        return try JSONDecoder().decode(PreferenceManifest.self, from: data)
+    }
+
+    private func writeCrossPlatformFixtureZip(
+        to zipURL: URL,
+        databaseURL: URL,
+        sourcePlatform: String,
+        preferences: [String: Any]
+    ) throws {
+        try? FileManager.default.removeItem(at: zipURL)
+        let archive = try XCTUnwrap(Archive(url: zipURL, accessMode: .create))
+        try archive.addEntry(with: "databases/lime.db", fileURL: databaseURL)
+
+        let legacyURL = tempFile(".bak")
+        defer { try? FileManager.default.removeItem(at: legacyURL) }
+        try Data("legacy-sidecar-not-needed-when-json-exists".utf8).write(to: legacyURL)
+        try archive.addEntry(with: DBServer.sharedPrefsBackupName, fileURL: legacyURL)
+
+        let manifestURL = tempFile(".json")
+        defer { try? FileManager.default.removeItem(at: manifestURL) }
+        let manifest: [String: Any] = [
+            "schema": 1,
+            "sourcePlatform": sourcePlatform,
+            "preferences": preferences
+        ]
+        let data = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
+        try data.write(to: manifestURL)
+        try archive.addEntry(with: DBServer.preferenceManifestPath, fileURL: manifestURL)
+    }
+
+    private func restoreUserDefault(_ value: Any?, forKey key: String, defaults: UserDefaults) {
+        guard let value = value else {
+            defaults.removeObject(forKey: key)
+            return
+        }
+        defaults.set(value, forKey: key)
+    }
+
+    private func snapshotDefaults<S: Sequence>(_ keys: S, defaults: UserDefaults) -> [String: Any?] where S.Element == String {
+        var snapshot: [String: Any?] = [:]
+        for key in keys {
+            snapshot[key] = defaults.object(forKey: key)
+        }
+        return snapshot
+    }
+
+    private func restoreDefaults(_ snapshot: [String: Any?], defaults: UserDefaults) {
+        for (key, value) in snapshot {
+            restoreUserDefault(value ?? nil, forKey: key, defaults: defaults)
+        }
+    }
+
+    private func isStandardOnlyPreferenceKey(_ key: String) -> Bool {
+        key.hasPrefix("backup_on_delete_") || key.hasPrefix("restore_on_import_")
+    }
+
+    private func fullIOSPrefsTableFixture() -> [String: Any] {
+        [
+            "keyboard_theme": 4,
+            "keyboard_size": "1",
+            "font_size": "2",
+            "number_row_in_english": false,
+            "show_arrow_key": 2,
+            "split_keyboard_mode": 1,
+            "vibrate_on_keypress": false,
+            "vibrate_level": 80,
+            "sound_on_keypress": true,
+            "smart_chinese_input": false,
+            "auto_chinese_symbol": true,
+            "candidate_switch": true,
+            "persistent_language_mode": true,
+            "enable_emoji_position": 3,
+            "similiar_list": 30,
+            "han_convert_option": 2,
+            "similiar_enable": false,
+            "candidate_suggestion": false,
+            "learn_phrase": false,
+            "learning_switch": false,
+            "english_dictionary_enable": false,
+            "auto_cap": false,
+            "custom_im_reverselookup": "dayi",
+            "cj_im_reverselookup": "phonetic",
+            "scj_im_reverselookup": "cj",
+            "cj5_im_reverselookup": "scj",
+            "ecj_im_reverselookup": "cj5",
+            "dayi_im_reverselookup": "bpmf",
+            "bpmf_im_reverselookup": "dayi",
+            "phonetic_im_reverselookup": "custom",
+            "ez_im_reverselookup": "array",
+            "array_im_reverselookup": "array10",
+            "array10_im_reverselookup": "ez",
+            "wb_im_reverselookup": "hs",
+            "hs_im_reverselookup": "pinyin",
+            "pinyin_im_reverselookup": "none",
+            "phonetic_keyboard_type": "standard",
+            "auto_commit": 3,
+            "accept_number_index": true,
+            "accept_symbol_index": true,
+            "backup_on_delete_phonetic": false,
+            "restore_on_import_phonetic": false
+        ]
+    }
+
+    private func androidOnlyPrefsTableFixture() -> [String: Any] {
+        [
+            "hide_software_keyboard_typing_with_physical": false,
+            "switch_english_mode": true,
+            "switch_english_mode_shift": false,
+            "disable_physical_selkey": true,
+            "selkey_option": 2,
+            "english_dictionary_physical_keyboard": true,
+            "physical_keyboard_sort": true
+        ]
+    }
+
+    private func mutatedIOSPrefsTableFixture() -> [String: Any] {
+        [
+            "keyboard_theme": 6,
+            "keyboard_size": "2",
+            "font_size": "1",
+            "number_row_in_english": true,
+            "show_arrow_key": 0,
+            "split_keyboard_mode": 0,
+            "vibrate_on_keypress": true,
+            "vibrate_level": 40,
+            "sound_on_keypress": false,
+            "smart_chinese_input": true,
+            "auto_chinese_symbol": false,
+            "candidate_switch": false,
+            "persistent_language_mode": false,
+            "enable_emoji_position": 5,
+            "similiar_list": 20,
+            "han_convert_option": 0,
+            "similiar_enable": true,
+            "candidate_suggestion": true,
+            "learn_phrase": true,
+            "learning_switch": true,
+            "english_dictionary_enable": true,
+            "auto_cap": true,
+            "custom_im_reverselookup": "none",
+            "cj_im_reverselookup": "none",
+            "scj_im_reverselookup": "none",
+            "cj5_im_reverselookup": "none",
+            "ecj_im_reverselookup": "none",
+            "dayi_im_reverselookup": "none",
+            "bpmf_im_reverselookup": "none",
+            "phonetic_im_reverselookup": "none",
+            "ez_im_reverselookup": "none",
+            "array_im_reverselookup": "none",
+            "array10_im_reverselookup": "none",
+            "wb_im_reverselookup": "none",
+            "hs_im_reverselookup": "none",
+            "pinyin_im_reverselookup": "none",
+            "phonetic_keyboard_type": "eten",
+            "auto_commit": 0,
+            "accept_number_index": false,
+            "accept_symbol_index": false,
+            "backup_on_delete_phonetic": true,
+            "restore_on_import_phonetic": true
+        ]
+    }
+
+    private func assertPreferenceManifest(_ actual: [String: PreferenceValue], equals expected: [String: Any]) {
+        for (key, expectedValue) in expected {
+            guard let actualValue = actual[key] else {
+                XCTFail("Missing preference manifest value \(key)")
+                continue
+            }
+            switch expectedValue {
+            case let expectedInt as Int:
+                XCTAssertEqual(actualValue.intValue, expectedInt, "\(key) should be backed up as an integer")
+            case let expectedBool as Bool:
+                XCTAssertEqual(actualValue.boolValue, expectedBool, "\(key) should be backed up as a boolean")
+            case let expectedString as String:
+                XCTAssertEqual(actualValue.stringValue, expectedString, "\(key) should be backed up as a string")
+            default:
+                XCTFail("Unsupported fixture value for \(key)")
+            }
+        }
+    }
+
+    private func assertDefaults(_ sharedDefaults: UserDefaults, standardDefaults: UserDefaults, equal expected: [String: Any]) {
+        for (key, expectedValue) in expected {
+            let defaults = isStandardOnlyPreferenceKey(key) ? standardDefaults : sharedDefaults
+            switch expectedValue {
+            case let expectedInt as Int:
+                XCTAssertEqual(defaults.integer(forKey: key), expectedInt, "\(key) should restore as an integer")
+            case let expectedBool as Bool:
+                XCTAssertEqual(defaults.bool(forKey: key), expectedBool, "\(key) should restore as a boolean")
+            case let expectedString as String:
+                XCTAssertEqual(defaults.string(forKey: key), expectedString, "\(key) should restore as a string")
+            default:
+                XCTFail("Unsupported fixture value for \(key)")
+            }
+        }
     }
 
     // MARK: - Phase 2.5: User Records backup/restore (via LimeDB)

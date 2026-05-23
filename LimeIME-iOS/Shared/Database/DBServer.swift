@@ -31,6 +31,7 @@ final class DBServer {
     static let databaseName            = "lime.db"
     static let databaseJournal         = "lime.db-journal"
     static let sharedPrefsBackupName   = "shared_prefs.bak"
+    static let preferenceManifestPath  = PreferenceBackupAdapter.manifestPath
     static let databaseBackupName      = "backup.zip"
     static let databaseExt             = ".db"
     static let dbTableRelated          = "related"
@@ -235,9 +236,12 @@ final class DBServer {
 
         let dataDir = dataDirURL
         let fileSharedPrefsBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
+        let filePreferenceManifest = dataDir.appendingPathComponent(DBServer.preferenceManifestPath)
         // Remove existing shared prefs backup
         try? FileManager.default.removeItem(at: fileSharedPrefsBackup)
         backupDefaultSharedPreference(file: fileSharedPrefsBackup)
+        try? FileManager.default.removeItem(at: filePreferenceManifest)
+        backupPreferenceCompatibilityManifest(file: filePreferenceManifest)
 
         // Hold DB and close before zipping
         ds.holdDBConnection()
@@ -259,6 +263,7 @@ final class DBServer {
             datasource = try? LimeDB(path: livePath)
             datasource?.unHoldDBConnection()
             try? FileManager.default.removeItem(at: fileSharedPrefsBackup)
+            try? FileManager.default.removeItem(at: filePreferenceManifest)
             try? FileManager.default.removeItem(at: tempZip)
         }
 
@@ -276,6 +281,9 @@ final class DBServer {
             }
             if FileManager.default.fileExists(atPath: fileSharedPrefsBackup.path) {
                 filesToZip.append((fileSharedPrefsBackup, DBServer.sharedPrefsBackupName))
+            }
+            if FileManager.default.fileExists(atPath: filePreferenceManifest.path) {
+                filesToZip.append((filePreferenceManifest, DBServer.preferenceManifestPath))
             }
 
             // Create zip archive
@@ -356,6 +364,7 @@ final class DBServer {
 
         let dataDir = dataDirURL
         let sharedPrefBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
+        let preferenceManifest = dataDir.appendingPathComponent(DBServer.preferenceManifestPath)
 
         datasource?.holdDBConnection()
         closeDatabase()
@@ -385,7 +394,11 @@ final class DBServer {
             print("[DBServer] restore defer: reopening at \(dbURL.path), exists=\(FileManager.default.fileExists(atPath: dbURL.path)), restoreSucceeded=\(restoreSucceeded)")
             datasource = try? LimeDB(path: dbURL.path)
             if restoreSucceeded {
-                if FileManager.default.fileExists(atPath: sharedPrefBackup.path) {
+                if FileManager.default.fileExists(atPath: preferenceManifest.path),
+                   restorePreferenceCompatibilityManifest(file: preferenceManifest) {
+                    try? FileManager.default.removeItem(at: preferenceManifest)
+                    try? FileManager.default.removeItem(at: sharedPrefBackup)
+                } else if FileManager.default.fileExists(atPath: sharedPrefBackup.path) {
                     restoreDefaultSharedPreference(file: sharedPrefBackup)
                     try? FileManager.default.removeItem(at: sharedPrefBackup)
                 }
@@ -396,6 +409,7 @@ final class DBServer {
 
         // Clean up any leftover temp file from a previous failed restore.
         try? FileManager.default.removeItem(at: tempDBPath)
+        try? FileManager.default.removeItem(at: preferenceManifest)
 
         do {
             let archive: Archive
@@ -405,13 +419,28 @@ final class DBServer {
                 print("[DBServer] restoreDatabase: cannot open archive at \(srcFilePath): \(error)")
                 return
             }
-            // Extract only the DB file — skip directory entries and unknown files.
+            // Extract the DB plus preference sidecars — skip directory entries and unknown files.
             // We look for lime.db at any depth (handles both iOS layout "lime.db"
-            // and Android layout "databases/lime.db").
+            // and Android layout "databases/lime.db"). Keep scanning after the DB
+            // because iOS backups append preferences/lime_prefs.json after lime.db.
             var dbExtracted = false
             for entry in archive {
                 guard entry.type == .file else { continue }
-                guard URL(fileURLWithPath: entry.path).lastPathComponent == DBServer.databaseName else { continue }
+                if entry.path == DBServer.preferenceManifestPath {
+                    try? FileManager.default.createDirectory(
+                        at: preferenceManifest.deletingLastPathComponent(),
+                        withIntermediateDirectories: true)
+                    try? FileManager.default.removeItem(at: preferenceManifest)
+                    _ = try archive.extract(entry, to: preferenceManifest, skipCRC32: false)
+                    continue
+                }
+                if URL(fileURLWithPath: entry.path).lastPathComponent == DBServer.sharedPrefsBackupName {
+                    try? FileManager.default.removeItem(at: sharedPrefBackup)
+                    _ = try archive.extract(entry, to: sharedPrefBackup, skipCRC32: false)
+                    continue
+                }
+                guard !dbExtracted,
+                      URL(fileURLWithPath: entry.path).lastPathComponent == DBServer.databaseName else { continue }
                 try? FileManager.default.removeItem(at: tempDBPath)
                 _ = try archive.extract(entry, to: tempDBPath, skipCRC32: false)
                 try? FileManager.default.setAttributes(
@@ -419,7 +448,6 @@ final class DBServer {
                 let size = ((try? FileManager.default.attributesOfItem(atPath: tempDBPath.path))?[.size] as? Int) ?? -1
                 print("[DBServer] restore: extracted '\(entry.path)' to temp, size=\(size)")
                 dbExtracted = true
-                break
             }
             guard dbExtracted else {
                 print("[DBServer] restoreDatabase: lime.db not found in archive")
@@ -500,6 +528,32 @@ final class DBServer {
             try writeProtected(data, to: file)
         } catch {
             print("[DBServer] backupDefaultSharedPreference: error — \(error)")
+        }
+    }
+
+    func backupPreferenceCompatibilityManifest(file: URL) {
+        let defaults = UserDefaults(suiteName: DBServer.appGroupID) ?? UserDefaults.standard
+        do {
+            try FileManager.default.createDirectory(
+                at: file.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
+            let data = try PreferenceBackupAdapter.exportManifestData(defaults: defaults, sourcePlatform: "ios")
+            try writeProtected(data, to: file)
+        } catch {
+            print("[DBServer] backupPreferenceCompatibilityManifest: error — \(error)")
+        }
+    }
+
+    @discardableResult
+    func restorePreferenceCompatibilityManifest(file: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: file.path) else { return false }
+        let defaults = UserDefaults(suiteName: DBServer.appGroupID) ?? UserDefaults.standard
+        do {
+            let data = try Data(contentsOf: file)
+            return try PreferenceBackupAdapter.restoreManifestData(data, defaults: defaults)
+        } catch {
+            print("[DBServer] restorePreferenceCompatibilityManifest: error — \(error)")
+            return false
         }
     }
 

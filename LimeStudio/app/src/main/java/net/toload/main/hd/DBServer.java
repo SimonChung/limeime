@@ -37,6 +37,7 @@ import androidx.core.content.ContextCompat;
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
+import net.toload.main.hd.global.PreferenceBackupAdapter;
 import net.toload.main.hd.global.LIMEProgressListener;
 import net.toload.main.hd.global.LIMEUtilities;
 import net.toload.main.hd.limedb.LimeDB;
@@ -50,8 +51,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -400,6 +403,8 @@ public class  DBServer {
         File fileSharedPrefsBackup = new File(dataDir, LIME.SHARED_PREFS_BACKUP_NAME);
         if(fileSharedPrefsBackup.exists() && !fileSharedPrefsBackup.delete()) Log.w(TAG, "Failed to delete existing shared preferences backup file");
         backupDefaultSharedPreference(fileSharedPrefsBackup);
+        File filePreferenceManifest = new File(dataDir, PreferenceBackupAdapter.MANIFEST_PATH);
+        backupPreferenceCompatibilityManifest(filePreferenceManifest);
 
         // create backup file list.
         String limeDBPath = ctx.getDatabasePath(LIME.DATABASE_NAME).getAbsolutePath();
@@ -416,6 +421,7 @@ public class  DBServer {
         backupFileList.add(limeDBPath);
         backupFileList.add(limeDBJournalPath);
         backupFileList.add(LIME.SHARED_PREFS_BACKUP_NAME);
+        backupFileList.add(PreferenceBackupAdapter.MANIFEST_PATH);
 
         // hold database connection and close database.
         datasource.holdDBConnection(); //Jeremy '15,5,23
@@ -455,6 +461,7 @@ public class  DBServer {
                 datasource.openDBConnection(true);
             }
             if (fileSharedPrefsBackup.exists() && !fileSharedPrefsBackup.delete()) Log.w(TAG, "Failed to delete shared preferences backup file in finally");
+            if (filePreferenceManifest.exists() && !filePreferenceManifest.delete()) Log.w(TAG, "Failed to delete preference manifest in finally");
             if (tempZip.exists() && !tempZip.delete()) Log.w(TAG, "Failed to delete temp zip file in finally");
 
             showNotificationMessage(appContext.getText(R.string.l3_initial_backup_end) + "");
@@ -469,6 +476,7 @@ public class  DBServer {
 
         //cleanup the shared preference backup file.
         if(fileSharedPrefsBackup.exists() && !fileSharedPrefsBackup.delete()) Log.w(TAG, "Failed to delete shared preferences backup file at end");
+        if(filePreferenceManifest.exists() && !filePreferenceManifest.delete()) Log.w(TAG, "Failed to delete preference manifest at end");
 
 
     }
@@ -521,25 +529,33 @@ public class  DBServer {
 			closeDatabase();
             //restore shared preference
             File sharedPref = new File(dataDir, LIME.SHARED_PREFS_BACKUP_NAME);
+            File preferenceManifest = new File(dataDir, PreferenceBackupAdapter.MANIFEST_PATH);
 
+            boolean unzipSucceeded = false;
             try {
 				LIMEUtilities.unzip(srcFilePath, dataDir, true);
+                unzipSucceeded = true;
 			} catch (Exception e) {
 				Log.e(TAG, "Error unzipping restore file", e);
 				showNotificationMessage(appContext.getText(R.string.l3_initial_restore_error) + "");
-			}
-			finally {
-				showNotificationMessage(appContext.getText(R.string.l3_initial_restore_end) + "");
 			}
 
 				datasource.unHoldDBConnection(); //Jeremy '15,5,23
 				datasource.openDBConnection(true);
 				datasource.ensureCurrentDatabase();
 
+                if (!unzipSucceeded) {
+                    return;
+                }
 
-				restoreDefaultSharedPreference(sharedPref);
+				showNotificationMessage(appContext.getText(R.string.l3_initial_restore_end) + "");
+
+                if (!restorePreferenceCompatibilityManifest(preferenceManifest)) {
+                    restoreDefaultSharedPreference(sharedPref);
+                }
             //Delete the shared preference backup file after restored.
             if(sharedPref.exists() && !sharedPref.delete()) Log.w(TAG, "Failed to delete shared preferences backup file after restore");
+            if(preferenceManifest.exists() && !preferenceManifest.delete()) Log.w(TAG, "Failed to delete preference manifest after restore");
 			//mLIMEPref.setResetCacheFlag(true);
             net.toload.main.hd.SearchServer.resetCache(true);
 
@@ -553,6 +569,36 @@ public class  DBServer {
 		}
 
 	}
+
+    private void backupPreferenceCompatibilityManifest(File manifestFile) {
+        if (manifestFile == null) return;
+        File parent = manifestFile.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            Log.w(TAG, "Failed to create preference manifest directory");
+            return;
+        }
+        if (manifestFile.exists() && !manifestFile.delete()) {
+            Log.w(TAG, "Failed to delete existing preference manifest");
+        }
+
+        try {
+            try (OutputStream output = new FileOutputStream(manifestFile)) {
+                output.write(PreferenceBackupAdapter.exportManifestBytes(appContext));
+            }
+        } catch (IOException | org.json.JSONException e) {
+            Log.e(TAG, "Error writing preference manifest", e);
+        }
+    }
+
+    private boolean restorePreferenceCompatibilityManifest(File manifestFile) {
+        if (manifestFile == null || !manifestFile.exists()) return false;
+        try (InputStream input = new FileInputStream(manifestFile)) {
+            return PreferenceBackupAdapter.restoreManifest(appContext, input);
+        } catch (IOException | org.json.JSONException e) {
+            Log.e(TAG, "Error restoring preference manifest", e);
+            return false;
+        }
+    }
 
 	public void backupDefaultSharedPreference(File sharePrefs) {
 		if(sharePrefs.exists() && !sharePrefs.delete()) Log.w(TAG, "Failed to delete existing shared preferences backup file");
@@ -581,7 +627,7 @@ public class  DBServer {
     @SuppressWarnings("unchecked")
 	public void restoreDefaultSharedPreference(File sharePrefs )
 	{
-        try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(sharePrefs))) {
+        try (ObjectInputStream inputStream = new LegacyPreferenceObjectInputStream(new FileInputStream(sharePrefs))) {
             try {
                 SharedPreferences.Editor prefEdit = appContext.getSharedPreferences(appContext.getPackageName() + "_preferences", Context.MODE_PRIVATE).edit();
                 prefEdit.clear();
@@ -589,6 +635,10 @@ public class  DBServer {
                 for (Map.Entry<String, ?> entry : entries.entrySet()) {
                     Object v = entry.getValue();
                     String key = entry.getKey();
+
+                    if ("PAYMENT_FLAG".equals(key)) {
+                        continue;
+                    }
 
                     if (v instanceof Boolean)
                         prefEdit.putBoolean(key, (Boolean) v);
@@ -598,10 +648,8 @@ public class  DBServer {
                         prefEdit.putInt(key, (Integer) v);
                     else if (v instanceof Long)
                         prefEdit.putLong(key, (Long) v);
-                    else if (v instanceof String) {
-                        if (!v.equals("PAYMENT_FLAG"))
-                            prefEdit.putString(key, ((String) v));
-                    }
+                    else if (v instanceof String)
+                        prefEdit.putString(key, ((String) v));
                 }
                 prefEdit.apply();
 
@@ -612,6 +660,39 @@ public class  DBServer {
             Log.e(TAG, "Error reading shared preferences backup file", ex);
         }
 	}
+
+    private static final class LegacyPreferenceObjectInputStream extends ObjectInputStream {
+        LegacyPreferenceObjectInputStream(InputStream input) throws IOException {
+            super(input);
+        }
+
+        @Override
+        protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+            Class<?> resolvedClass = super.resolveClass(desc);
+            if (isAllowedLegacyPreferenceClass(resolvedClass)) {
+                return resolvedClass;
+            }
+            throw new InvalidClassException(desc.getName(), "Class is not allowed in legacy preference backup");
+        }
+
+        private static boolean isAllowedLegacyPreferenceClass(Class<?> clazz) {
+            if (clazz.isPrimitive()) return true;
+            if (clazz.isArray()) {
+                Class<?> componentType = clazz.getComponentType();
+                return componentType == Object.class || isAllowedLegacyPreferenceClass(componentType);
+            }
+            if (clazz == String.class) return true;
+            if (Number.class.isAssignableFrom(clazz) || clazz == Boolean.class || clazz == Character.class) return true;
+            if (isAllowedMapInternal(clazz.getName())) return true;
+            return clazz.getName().startsWith("java.util.") && Map.class.isAssignableFrom(clazz);
+        }
+
+        private static boolean isAllowedMapInternal(String className) {
+            return className.startsWith("java.util.HashMap$")
+                    || className.startsWith("java.util.LinkedHashMap$")
+                    || className.startsWith("java.util.Hashtable$");
+        }
+    }
 
 
 

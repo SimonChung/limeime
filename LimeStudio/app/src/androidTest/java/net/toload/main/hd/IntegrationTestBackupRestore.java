@@ -3,15 +3,18 @@ package net.toload.main.hd;
 import static org.junit.Assert.*;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.preference.PreferenceManager;
 
 import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.ui.controller.SetupImController;
 
+import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -20,6 +23,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Integration tests for Phase 5.5 & 5.6: Backup and Restore Path (User Records)
@@ -592,9 +600,284 @@ public class IntegrationTestBackupRestore {
         }
     }
 
+    /**
+     * Test 5.6.10: full backup/restore carries the cross-platform preference
+     * compatibility manifest while preserving the existing full database flow.
+     */
+    @Test
+    public void test_5_6_10_BackupRestoreDatabasePairRestoresPreferenceCompatibilityManifest() throws Exception {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        java.util.Map<String, Object> expected = fullAndroidPrefsTableFixture();
+        java.util.Map<String, Object> originalValues = snapshotPrefs(prefs, expected.keySet());
+
+        java.io.File backupFile = new java.io.File(context.getFilesDir(), "test_pref_backup_" + System.currentTimeMillis() + ".zip");
+        android.net.Uri backupUri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", backupFile);
+
+        try {
+            seedPrefs(prefs, expected);
+
+            setupController.performBackup(backupUri);
+            assertTrue("Backup file should exist", backupFile.exists());
+            assertZipContains(backupFile, "databases/lime.db");
+            assertZipContains(backupFile, "shared_prefs.bak");
+            assertZipContains(backupFile, "preferences/lime_prefs.json");
+
+            JSONObject manifest = readPreferenceManifest(backupFile);
+            assertEquals("Manifest schema should be v1", 1, manifest.getInt("schema"));
+            JSONObject values = manifest.getJSONObject("preferences");
+            assertEquals("Manifest must contain exactly the full Android PREFS_TABLE set seeded by this test",
+                    expected.size(), values.length());
+            assertManifestValues(values, expected);
+
+            seedPrefs(prefs, mutatedAndroidPrefsTableFixture());
+
+            setupController.performRestore(backupUri);
+
+            assertStoredValues(prefs, expected);
+        } finally {
+            restorePrefs(prefs, originalValues);
+            if (backupFile.exists()) backupFile.delete();
+        }
+    }
+
+    @Test
+    public void test_5_6_11_RestoreIosStylePreferenceFixtureThroughAndroidAdapter() throws Exception {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        java.util.Map<String, Object> expected = fullAndroidPrefsTableFixture();
+        java.util.Map<String, Object> originalValues = snapshotPrefs(prefs, expected.keySet());
+        java.io.File fixtureFile = new java.io.File(context.getFilesDir(), "test_ios_pref_fixture_" + System.currentTimeMillis() + ".zip");
+        android.net.Uri fixtureUri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", fixtureFile);
+
+        try {
+            writeCrossPlatformFixtureZip(fixtureFile, "ios", expected);
+            seedPrefs(prefs, mutatedAndroidPrefsTableFixture());
+
+            setupController.performRestore(fixtureUri);
+
+            assertStoredValues(prefs, expected);
+        } finally {
+            restorePrefs(prefs, originalValues);
+            if (fixtureFile.exists()) fixtureFile.delete();
+        }
+    }
+
     // ============================================================
     // Helper Methods
     // ============================================================
+
+    private java.util.Map<String, Object> fullAndroidPrefsTableFixture() {
+        java.util.Map<String, Object> values = new java.util.LinkedHashMap<>();
+        values.put("keyboard_theme", 4);
+        values.put("keyboard_size", "1");
+        values.put("font_size", "2");
+        values.put("number_row_in_english", false);
+        values.put("show_arrow_key", 2);
+        values.put("split_keyboard_mode", 1);
+        values.put("vibrate_on_keypress", false);
+        values.put("vibrate_level", 80);
+        values.put("sound_on_keypress", true);
+        values.put("smart_chinese_input", false);
+        values.put("auto_chinese_symbol", true);
+        values.put("candidate_switch", true);
+        values.put("persistent_language_mode", true);
+        values.put("enable_emoji_position", 3);
+        values.put("similiar_list", 30);
+        values.put("han_convert_option", 2);
+        values.put("similiar_enable", false);
+        values.put("candidate_suggestion", false);
+        values.put("learn_phrase", false);
+        values.put("learning_switch", false);
+        values.put("english_dictionary_enable", false);
+        values.put("auto_cap", false);
+        values.put("custom_im_reverselookup", "dayi");
+        values.put("cj_im_reverselookup", "phonetic");
+        values.put("scj_im_reverselookup", "cj");
+        values.put("cj5_im_reverselookup", "scj");
+        values.put("ecj_im_reverselookup", "cj5");
+        values.put("dayi_im_reverselookup", "bpmf");
+        values.put("bpmf_im_reverselookup", "dayi");
+        values.put("phonetic_im_reverselookup", "custom");
+        values.put("ez_im_reverselookup", "array");
+        values.put("array_im_reverselookup", "array10");
+        values.put("array10_im_reverselookup", "ez");
+        values.put("wb_im_reverselookup", "hs");
+        values.put("hs_im_reverselookup", "pinyin");
+        values.put("pinyin_im_reverselookup", "none");
+        values.put("phonetic_keyboard_type", "standard");
+        values.put("auto_commit", 3);
+        values.put("accept_number_index", true);
+        values.put("accept_symbol_index", true);
+        values.put("backup_on_delete_phonetic", false);
+        values.put("restore_on_import_phonetic", false);
+        values.put("hide_software_keyboard_typing_with_physical", false);
+        values.put("switch_english_mode", true);
+        values.put("switch_english_mode_shift", false);
+        values.put("disable_physical_selkey", true);
+        values.put("selkey_option", 2);
+        values.put("english_dictionary_physical_keyboard", true);
+        values.put("physical_keyboard_sort", true);
+        return values;
+    }
+
+    private java.util.Map<String, Object> mutatedAndroidPrefsTableFixture() {
+        java.util.Map<String, Object> values = fullAndroidPrefsTableFixture();
+        for (String key : new java.util.ArrayList<>(values.keySet())) {
+            Object value = values.get(key);
+            if (value instanceof Boolean) {
+                values.put(key, !((Boolean) value));
+            } else if (value instanceof Integer) {
+                values.put(key, 0);
+            } else if (value instanceof String) {
+                values.put(key, "none");
+            }
+        }
+        values.put("keyboard_size", "2");
+        values.put("font_size", "1");
+        return values;
+    }
+
+    private java.util.Map<String, Object> snapshotPrefs(SharedPreferences prefs, java.util.Set<String> keys) {
+        java.util.Map<String, ?> all = prefs.getAll();
+        java.util.Map<String, Object> snapshot = new java.util.HashMap<>();
+        for (String key : keys) {
+            if (all.containsKey(key)) {
+                snapshot.put(key, all.get(key));
+            }
+        }
+        return snapshot;
+    }
+
+    private void restorePrefs(SharedPreferences prefs, java.util.Map<String, Object> snapshot) {
+        SharedPreferences.Editor editor = prefs.edit();
+        for (String key : fullAndroidPrefsTableFixture().keySet()) {
+            if (!snapshot.containsKey(key)) {
+                editor.remove(key);
+                continue;
+            }
+            Object value = snapshot.get(key);
+            if (value instanceof Boolean) {
+                editor.putBoolean(key, (Boolean) value);
+            } else if (value instanceof String) {
+                editor.putString(key, (String) value);
+            }
+        }
+        editor.commit();
+    }
+
+    private void seedPrefs(SharedPreferences prefs, java.util.Map<String, Object> values) {
+        SharedPreferences.Editor editor = prefs.edit();
+        for (java.util.Map.Entry<String, Object> entry : values.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof Boolean) {
+                editor.putBoolean(entry.getKey(), (Boolean) value);
+            } else if (value instanceof Integer && isAndroidStringBackedInteger(entry.getKey())) {
+                editor.putString(entry.getKey(), String.valueOf(value));
+            } else if (value instanceof String) {
+                editor.putString(entry.getKey(), (String) value);
+            }
+        }
+        editor.commit();
+    }
+
+    private void assertManifestValues(JSONObject actual, java.util.Map<String, Object> expected) throws Exception {
+        for (java.util.Map.Entry<String, Object> entry : expected.entrySet()) {
+            String key = entry.getKey();
+            Object expectedValue = entry.getValue();
+            if (expectedValue instanceof Boolean) {
+                assertEquals(key + " should be backed up as a boolean", expectedValue, actual.getBoolean(key));
+            } else if (expectedValue instanceof Integer) {
+                assertEquals(key + " should be backed up as an integer", expectedValue, actual.getInt(key));
+            } else if (expectedValue instanceof String) {
+                assertEquals(key + " should be backed up as a string", expectedValue, actual.getString(key));
+            }
+        }
+    }
+
+    private void assertStoredValues(SharedPreferences prefs, java.util.Map<String, Object> expected) {
+        for (java.util.Map.Entry<String, Object> entry : expected.entrySet()) {
+            String key = entry.getKey();
+            Object expectedValue = entry.getValue();
+            if (expectedValue instanceof Boolean) {
+                assertEquals(key + " should restore as a boolean", expectedValue, prefs.getBoolean(key, !((Boolean) expectedValue)));
+            } else if (expectedValue instanceof Integer) {
+                assertEquals(key + " should restore as Android string-backed integer",
+                        String.valueOf(expectedValue), prefs.getString(key, null));
+            } else if (expectedValue instanceof String) {
+                assertEquals(key + " should restore as a string", expectedValue, prefs.getString(key, null));
+            }
+        }
+    }
+
+    private boolean isAndroidStringBackedInteger(String key) {
+        return java.util.Arrays.asList(
+                "keyboard_theme",
+                "show_arrow_key",
+                "split_keyboard_mode",
+                "vibrate_level",
+                "enable_emoji_position",
+                "similiar_list",
+                "han_convert_option",
+                "auto_commit",
+                "selkey_option").contains(key);
+    }
+
+    private void assertZipContains(File backupFile, String entryName) throws Exception {
+        try (ZipFile zipFile = new ZipFile(backupFile)) {
+            ZipEntry entry = zipFile.getEntry(entryName);
+            assertNotNull("Full backup should contain " + entryName, entry);
+        }
+    }
+
+    private void writeCrossPlatformFixtureZip(File fixtureFile, String sourcePlatform, java.util.Map<String, Object> preferences) throws Exception {
+        if (fixtureFile.exists() && !fixtureFile.delete()) {
+            throw new java.io.IOException("Failed to delete old fixture " + fixtureFile);
+        }
+        File databaseFile = context.getDatabasePath(LIME.DATABASE_NAME);
+        assertTrue("Cross-platform fixture requires an existing database", databaseFile.exists());
+
+        JSONObject manifest = new JSONObject()
+                .put("schema", 1)
+                .put("sourcePlatform", sourcePlatform)
+                .put("preferences", new JSONObject(preferences));
+
+        try (ZipOutputStream output = new ZipOutputStream(new java.io.FileOutputStream(fixtureFile))) {
+            output.putNextEntry(new ZipEntry("databases/lime.db"));
+            try (InputStream input = new java.io.FileInputStream(databaseFile)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                }
+            }
+            output.closeEntry();
+
+            output.putNextEntry(new ZipEntry("shared_prefs.bak"));
+            output.write("legacy-sidecar-not-needed-when-json-exists".getBytes(StandardCharsets.UTF_8));
+            output.closeEntry();
+
+            output.putNextEntry(new ZipEntry("preferences/lime_prefs.json"));
+            output.write(manifest.toString().getBytes(StandardCharsets.UTF_8));
+            output.closeEntry();
+        }
+    }
+
+    private JSONObject readPreferenceManifest(File backupFile) throws Exception {
+        try (ZipFile zipFile = new ZipFile(backupFile)) {
+            ZipEntry entry = zipFile.getEntry("preferences/lime_prefs.json");
+            assertNotNull("Full backup should contain preferences/lime_prefs.json", entry);
+            try (InputStream input = zipFile.getInputStream(entry)) {
+                byte[] data = new byte[(int) entry.getSize()];
+                int offset = 0;
+                while (offset < data.length) {
+                    int read = input.read(data, offset, data.length - offset);
+                    if (read < 0) break;
+                    offset += read;
+                }
+                assertEquals("Manifest should be read completely", data.length, offset);
+                return new JSONObject(new String(data, StandardCharsets.UTF_8));
+            }
+        }
+    }
 
     // Removed custom table creation; using built-in 'custom' table
 
