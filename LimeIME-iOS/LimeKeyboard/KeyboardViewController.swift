@@ -1129,7 +1129,15 @@ final class KeyboardViewController: UIInputViewController {
             if !isEnter, !mEnglishOnly, isPhonetic, !mComposing.isEmpty {
                 handleCharacter(LimeKeyCode.space.rawValue)  // space as tone mark
             } else {
-                textDocumentProxy.insertText(isEnter ? "\n" : " ")
+                if !isEnter,
+                   mEnglishOnly,
+                   LIMEPreferenceManager.shared.autoCap,
+                   shouldInsertPeriodForDoubleSpace(before: textDocumentProxy.documentContextBeforeInput ?? "") {
+                    textDocumentProxy.deleteBackward()
+                    textDocumentProxy.insertText(". ")
+                } else {
+                    textDocumentProxy.insertText(isEnter ? "\n" : " ")
+                }
                 // Space or enter in English mode: word boundary crossed — reset prediction.
                 if mEnglishOnly {
                     resetTempEnglishWord()
@@ -1406,11 +1414,31 @@ final class KeyboardViewController: UIInputViewController {
         guard let capType = textDocumentProxy.autocapitalizationType,
               capType == .sentences || capType == .allCharacters || capType == .words else { return }
         let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let atStart = before.isEmpty || before.hasSuffix(". ") || before.hasSuffix("! ") || before.hasSuffix("? ")
-        if atStart {
+        if shouldAutoCapitalize(before: before) {
             isShiftOn = true
             applyShiftState()
         }
+    }
+
+    /// LatinIME-style sentence-boundary detection (see docs/ENGLISH_KB.md §1).
+    /// Fires at start-of-document, after a newline/paragraph, or after
+    /// `. ` / `! ` / `? `, allowing trailing closing quotes/parens before the
+    /// space, and skipping `(\w\.){2,}` patterns ("U.S.", "e.g.") plus a small
+    /// allowlist of common single-word abbreviations ("Mr.", "Dr.", …).
+    internal func shouldAutoCapitalize(before: String) -> Bool {
+        EnglishKeyboardPolicy.shouldAutoCapitalize(before: before)
+    }
+
+    /// True if `beforeDot` looks like the tail of an abbreviation, i.e. the
+    /// trailing `.` is part of an abbreviation rather than a sentence end.
+    /// Matches LatinIME's `(\w\.){2,}` (covers "U.S.", "e.g.", "i.e.") plus a
+    /// small allowlist of common single-word abbreviations.
+    internal func isAbbreviationBeforeDot(_ beforeDot: Substring) -> Bool {
+        !EnglishKeyboardPolicy.shouldAutoCapitalize(before: "\(beforeDot). ")
+    }
+
+    internal func shouldInsertPeriodForDoubleSpace(before: String) -> Bool {
+        EnglishKeyboardPolicy.shouldInsertPeriodForDoubleSpace(before: before)
     }
 
     // MARK: - iOS Composing Simulation (spec §12)
