@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-23T10:14:19+08:00 (CST)
+Last updated: 2026-05-23T10:23:04+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -41,6 +41,7 @@ Last updated: 2026-05-23T10:14:19+08:00 (CST)
 
 - #77: Maintainer-created iOS second-stage candidate placeholder bug. Maintainer `jrywu` posted fix summary in comment `4517540556` and closed the issue on 2026-05-22 after local simulator verification; commit `c828a2d2` is referenced by GitHub. Analysis doc `docs/#77_ISSUE.md` now records the closed/fixed status. Treat as resolved/closed; no public acknowledgement, reporter retest request, or active watch is needed unless new iOS evidence appears.
 - #79: Community usability request from `SmithCCho`: in dark mode, the Android emoji panel search box remains too bright/white and should use a gray/black themed background to avoid glare. Classified as `enhancement` + `Usability`; Hermes acknowledged in comment `https://github.com/lime-ime/limeime/issues/79#issuecomment-4523853744` and did not create a bug analysis doc because this is a visual/theme enhancement request rather than a confirmed regression. Keep open for author-team UI/theme evaluation; likely implementation scope is making the emoji search field background plus text/hint colors follow the active dark keyboard/emoji-panel theme.
+- #80: Community question from `ejmoog` asking whether `.cin` `%version` has practical effect or can be omitted. Classified as `question` + `documentation`; Hermes verified `docs/CIN_LIME_SPEC.md`, `docs/IM_VERSION.md`, Android `LimeDB.java`, and iOS `LimeDB.swift`: `%version` is persisted as `im.title = "version"`, shown in IM detail, and preferred during export; if omitted, imports still work with `%cname`/filename fallback. Hermes replied in comment `https://github.com/lime-ime/limeime/issues/80#issuecomment-4523884786`. Keep open for reporter follow-up; no bug analysis doc or active fix watch needed.
 
 
 ## Operational Handoff / Next Actions
