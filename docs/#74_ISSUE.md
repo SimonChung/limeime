@@ -4,8 +4,8 @@
 
 - Reporter `SmithCCho` confirmed APK `6.1.11` makes URL/search fields follow the remembered Chinese/English mode, matching normal text-field behavior: https://github.com/lime-ime/limeime/issues/74#issuecomment-4527392181
 - After maintainer clarification, the reporter said the issue can be closed; turning off `記憶中英模式` remains an acceptable way to keep default Chinese input for URL/search fields.
-- GitHub issue #74 is closed as completed. Automation acknowledged the confirmation here: https://github.com/lime-ime/limeime/issues/74#issuecomment-4527405069
-- Verified scope: Android APK `6.1.11` behavior for numeric/decimal/phone restricted keyboards and URL/search remembered-mode behavior. This does not imply separate iOS behavior coverage.
+- GitHub issue #74 is closed as completed. Maintainer/collaborator acknowledged the confirmation here: https://github.com/lime-ime/limeime/issues/74#issuecomment-4527405069
+- Verified scope: Android APK `6.1.10` for numeric/decimal/phone restricted keyboards, and Android APK `6.1.11` for the tested URL-field remembered-mode behavior. Search-field coverage follows the build scope but was not separately reporter-tested. This does not imply separate iOS behavior coverage.
 
 
 ## Problem statement
@@ -18,7 +18,7 @@ The latest reporter clarification narrows one concrete request: since LIME alrea
 
 After testing APK `6.1.10`, the reporter confirmed that number, decimal, and phone fields now open only the LIME phone-number keyboard. APK `6.1.11` changed URL/search fields to behave like normal text and follow remembered Chinese/English mode. The reporter then confirmed that the URL field does follow remembered mode, but initially clarified that this still did not match their preferred workflow: after using English in another text field, a browser URL/search field also opens in English, while they would prefer URL/search to default to Chinese or otherwise not inherit the previous English state the way restricted number fields ignore remembered mode. Maintainer follow-up clarified the trade-off, and the reporter later accepted the shipped behavior as sufficient to close #74.
 
-Reporter later confirmed the shipped 6.1.11 behavior is acceptable and said the issue can be closed in comment `4527392181`: URL/search fields now follow remembered Chinese/English mode like normal text, and turning off `記憶中英模式` matches the reporter's preferred always-Chinese starting behavior. Treat #74 as reporter-confirmed completed for the Android APK-scoped behavior. Any future change such as a separate URL/search preference should be a new product decision, not an active #74 retest watch.
+Reporter later confirmed the shipped 6.1.11 behavior is acceptable and said the issue can be closed in comment `4527392181`: the tested URL field now follows remembered Chinese/English mode like normal text; search-field behavior is included by build scope but not separately reporter-tested, and turning off `記憶中英模式` matches the reporter's preferred always-Chinese starting behavior. Treat #74 as reporter-confirmed completed for the Android APK-scoped behavior. Any future change such as a separate URL/search preference should be a new product decision, not an active #74 retest watch.
 
 Issue URL: https://github.com/lime-ime/limeime/issues/74
 
