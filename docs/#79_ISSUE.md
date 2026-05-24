@@ -10,6 +10,7 @@ Relevant comments:
 
 - Reporter screenshot/request: https://github.com/lime-ime/limeime/issues/79
 - Initial acknowledgement: https://github.com/lime-ime/limeime/issues/79#issuecomment-4523853744
+- Android 6.1.12 retest request: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 
 ## Classification
 
@@ -63,20 +64,15 @@ No matching hard-coded white background or black active-text override was found 
 
 Preliminary assessment: the confirmed source-level issue is Android-specific so far. iOS is not obviously affected by the same hard-coded-color issue in the inspected search-field setup, but this remains pending manual dark-mode verification because the emoji panel is a custom keyboard extension view and can have theme/style overrides elsewhere.
 
-## Proposed solution / investigation plan
+## Implementation notes
 
-Android:
+Implemented on `master` in commit `a763ee80b199` / `a763ee80b199360140185066f94ef619f4f2f716`:
 
-1. Replace the hard-coded `0xF2FFFFFF` emoji search-field background with a theme-aware color.
-2. Replace hard-coded empty-state gray and active black search text with theme-aware text colors. The Android control is a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
-3. Apply a theme-aware tint or replacement drawable for the compound search icon currently attached with `android.R.drawable.ic_menu_search`.
-4. Ensure empty-state text, entered query text, and the search icon remain readable on both light and dark themes.
-5. Keep rounded search-field shape and existing padding/height.
-
-Possible implementation direction:
-
-- Add a small helper that selects emoji search background / hint / text colors from the active keyboard theme or dark-mode state.
-- Reapply those colors whenever the keyboard theme or emoji panel is rebuilt.
+1. Android no longer uses the fixed `0xF2FFFFFF` search-field background for every theme; it selects `EmojiPanelColors.searchBackground` through `currentEmojiPanelColors()`.
+2. Empty-state text and active query text use `EmojiPanelColors.searchHint` / `EmojiPanelColors.searchText` instead of fixed gray/black values. The Android control remains a `TextView` updated by LIME's custom emoji-search key handling, not a native editable `EditText`.
+3. The compound search icon from `android.R.drawable.ic_menu_search` is wrapped/mutated and tinted with `EmojiPanelColors.searchIcon`.
+4. The theme palette includes explicit light, dark, pink, tech-blue, fashion-purple, relax-green, and system-following branches.
+5. Rounded shape, padding, and search-field height are preserved.
 
 ## Fix / APK follow-up status
 
@@ -88,9 +84,8 @@ Status: keep issue open pending reporter confirmation that the Android dark-mode
 
 ## Follow-up questions
 
-- Which exact dark-theme search-field background should be used: near-black, gray, or the same surface color as other dark candidate/keyboard controls?
-- Should non-default keyboard themes (`pink`, `tech_blue`, `relax_green`, `fashion_purple`) also get explicit themed search-field colors instead of only light/dark branching?
-- After Android is fixed, should iOS receive an explicit theme styling pass for visual parity, or is the current system-adaptive `UISearchTextField` acceptable after manual verification?
+- Reporter confirmation is still needed on the original Android dark-mode/theme case using APK 6.1.12.
+- iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
 
 ## Verification plan
 
