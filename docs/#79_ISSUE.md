@@ -80,7 +80,7 @@ Possible implementation direction:
 
 ## Fix / APK follow-up status
 
-Commit `a763ee80b199` updated Android emoji search behavior and theme-aware assets, and Android APK `LIMEHD2026-6.1.12.apk` now contains the scoped emoji search-field theme fix.
+Android APK `LIMEHD2026-6.1.12.apk` now contains the scoped emoji search-field theme fix from the latest emoji search/theme polish push.
 
 Retest request posted: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 
