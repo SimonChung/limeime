@@ -22,6 +22,7 @@ Relevant comments:
 - Maintainer numeric-keyboard direction: https://github.com/lime-ime/limeime/issues/74#issuecomment-4509415304
 - Reporter confirmation of numeric/phone restricted-keyboard behavior and remaining URL request: https://github.com/lime-ime/limeime/issues/74#issuecomment-4523823506
 - Reporter 6.1.11 URL/search retest feedback: https://github.com/lime-ime/limeime/issues/74#issuecomment-4527330457
+- Maintainer clarification/question after that retest: https://github.com/lime-ime/limeime/issues/74#issuecomment-4527361251
 
 ## Current Android behavior
 
@@ -91,7 +92,7 @@ Keep field-specific restrictions separate from general Chinese/English IM switch
 
 5. URL/URI/search — shipped behavior and unresolved product question:
    - APK `6.1.11` treats URL/address-bar/search fields like normal text on Android: when `記憶中英模式` / persisted language mode is on, these fields restore the remembered Chinese/English mode instead of forcing English; when persisted language mode is off, they start in Chinese mode like normal text.
-   - Reporter retest comment `4527330457` confirms this shipped behavior, but says it can still be inconvenient: if they typed English in LINE and then focus the browser URL/search bar, remembered mode opens English rather than Chinese. They ask whether URL/search can behave more like restricted number fields by not being affected by remembered mode.
+   - Reporter retest comment `4527330457` confirms this shipped behavior, but says it can still be inconvenient: if they typed English in LINE and then focus the browser URL/search bar, remembered mode opens English rather than Chinese. They ask whether URL/search can behave more like restricted number fields by not being affected by remembered mode. Maintainer comment `4527361251` clarified that number fields are different because Android strictly disallows non-number keys, asked whether the reporter wants URL fields to always start Chinese regardless of remembered state, and noted that such a rule may be difficult to explain consistently.
    - This is a product decision still needing maintainer/Jeremy direction: possible outcomes include keeping 6.1.11 as-is, making URL/search always start Chinese, adding a separate URL/search preference, or reverting URL/search to a special rule while keeping email/password restricted.
    - Any URL/search decision does **not** imply that number/date-time fields allow Chinese or alphabet mode switching — those remain restricted (see items 2 and 3).
    - Cleanup: the never-loaded `lime_url.xml` / `lime_url*.json` assets are deleted, along with the `R.xml.lime_url` switch-case entry in `LIMEKeyboardSwitcher.getKeyboardXMLID` and the matching `LimeIME.xcodeproj/project.pbxproj` entries. `lime_email.xml` / `lime_email*.json` get the same cleanup since `MODE_EMAIL` routes to the same `lime_english_number*` family.
@@ -104,7 +105,8 @@ Keep field-specific restrictions separate from general Chinese/English IM switch
 
 ## Follow-up questions
 
-- Product decision needed after reporter retest comment `4527330457`: should URL/search fields keep following remembered Chinese/English mode, always default to Chinese, use a separate preference, or follow another special rule?
+- Await reporter clarification after maintainer comment `4527361251`: do they specifically want URL/search fields to always start Chinese regardless of remembered English state, and if so should that become a special URL/search rule?
+- Product decision needed after that clarification: should URL/search fields keep following remembered Chinese/English mode, always default to Chinese, use a separate preference, or follow another special rule?
 - Should number and decimal keep sharing the existing `phone_number.xml` route, or should a later pass create a dedicated numeric XML with a different key set?
 - Which number flags should affect the visible keys?
   - `TYPE_NUMBER_FLAG_DECIMAL`
