@@ -2959,18 +2959,24 @@ final class LimeDB {
                 var selkey = ""
                 var endkey = ""
                 var spacestyle = ""
+                var imkeys = ""
+                var imkeynames = ""
                 for c in configs {
                     if c.title == "version" { version = c.desc }
                     if c.title == "name" { name = c.desc }
                     if c.title == "selkey" { selkey = c.desc }
                     if c.title == "endkey" { endkey = c.desc }
                     if c.title == "spacestyle" { spacestyle = c.desc }
+                    if c.title == "imkeys" { imkeys = c.desc }
+                    if c.title == "imkeynames" { imkeynames = c.desc }
                 }
                 if needsEscaping(version, delimiter: "|")
                     || needsEscaping(name, delimiter: "|")
                     || needsEscaping(selkey, delimiter: "|")
                     || needsEscaping(endkey, delimiter: "|")
-                    || needsEscaping(spacestyle, delimiter: "|") {
+                    || needsEscaping(spacestyle, delimiter: "|")
+                    || needsEscaping(imkeys, delimiter: "|")
+                    || needsEscaping(imkeynames, delimiter: "|") {
                     useEscapedFormat = true
                 }
                 if useEscapedFormat { lines.append("@format@|lime-text-v2") }
@@ -2980,6 +2986,8 @@ final class LimeDB {
                 if !selkey.isEmpty { lines.append("@selkey@|\(useEscapedFormat ? escapeField(selkey, delimiter: "|") : selkey)") }
                 if !endkey.isEmpty { lines.append("@endkey@|\(useEscapedFormat ? escapeField(endkey, delimiter: "|") : endkey)") }
                 if !spacestyle.isEmpty { lines.append("@spacestyle@|\(useEscapedFormat ? escapeField(spacestyle, delimiter: "|") : spacestyle)") }
+                if !imkeys.isEmpty { lines.append("@imkeys@|\(useEscapedFormat ? escapeField(imkeys, delimiter: "|") : imkeys)") }
+                if !imkeynames.isEmpty { lines.append("@imkeynames@|\(useEscapedFormat ? escapeField(imkeynames, delimiter: "|") : imkeynames)") }
             } else if useEscapedFormat {
                 lines.append("@format@|lime-text-v2")
             }
@@ -3018,6 +3026,7 @@ final class LimeDB {
         var endkey = ""
         var spacestyle = ""
         var imkeys = ""
+        var imkeynamesHeader = ""
         var imkeynames: [String] = []
         var escapedFormat = false
 
@@ -3059,6 +3068,10 @@ final class LimeDB {
                         endkey = value
                     case "@spacestyle@":
                         spacestyle = value
+                    case "@imkeys@":
+                        imkeys = value
+                    case "@imkeynames@":
+                        imkeynamesHeader = value
                     default:
                         break
                     }
@@ -3165,7 +3178,8 @@ final class LimeDB {
             if !endkey.isEmpty { setImConfig(tableName, "endkey", endkey) }
             if !spacestyle.isEmpty { setImConfig(tableName, "spacestyle", spacestyle) }
             if !imkeys.isEmpty { setImConfig(tableName, "imkeys", imkeys) }
-            if !imkeynames.isEmpty { setImConfig(tableName, "imkeynames", imkeynames.joined(separator: "|")) }
+            if !imkeynamesHeader.isEmpty { setImConfig(tableName, "imkeynames", imkeynamesHeader) }
+            else if !imkeynames.isEmpty { setImConfig(tableName, "imkeynames", imkeynames.joined(separator: "|")) }
         }
     }
 

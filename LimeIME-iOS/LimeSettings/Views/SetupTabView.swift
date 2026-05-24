@@ -83,7 +83,7 @@ struct SetupTabView: View {
     // PrimaryLanguage from LimeKeyboard/Info.plist
     private let groupSuite   = "group.net.toload.limeime"
     private let githubURL        = URL(string: "https://github.com/lime-ime/limeime")!
-    private let licenseURL       = URL(string: "https://github.com/lime-ime/limeime/blob/master/LICENSE.md")!
+    private let licenseURL       = URL(string: "https://lime-ime.github.io/limeime/LICENSE/")!
 
     var body: some View {
         NavigationStack {

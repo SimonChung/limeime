@@ -3655,6 +3655,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 boolean escapedFormat = false;
                 StringBuilder imkeys = new StringBuilder();
                 StringBuilder imkeynames = new StringBuilder();
+                String imkeysHeader = "";
+                String imkeynamesHeader = "";
 
 
                 // Check if source file is .cin format
@@ -3842,6 +3844,12 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         continue;
                                     } else if ("@spacestyle@".equals(metaKey)) {
                                         spacestyle = metaValue;
+                                        continue;
+                                    } else if ("@imkeys@".equals(metaKey)) {
+                                        imkeysHeader = metaValue;
+                                        continue;
+                                    } else if ("@imkeynames@".equals(metaKey)) {
+                                        imkeynamesHeader = metaValue;
                                         continue;
                                     }
                                 }
@@ -4124,8 +4132,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                         if (!selkey.isEmpty()) setImConfig(table, "selkey", selkey);
                         if (!endkey.isEmpty()) setImConfig(table, "endkey", endkey);
                         if (!spacestyle.isEmpty()) setImConfig(table, "spacestyle", spacestyle);
-                        if (!imkeys.toString().isEmpty()) setImConfig(table, "imkeys", imkeys.toString());
-                        if (!imkeynames.toString().isEmpty()) setImConfig(table, "imkeynames", imkeynames.toString());
+                        if (!imkeysHeader.isEmpty()) setImConfig(table, "imkeys", imkeysHeader);
+                        else if (!imkeys.toString().isEmpty()) setImConfig(table, "imkeys", imkeys.toString());
+                        if (!imkeynamesHeader.isEmpty()) setImConfig(table, "imkeynames", imkeynamesHeader);
+                        else if (!imkeynames.toString().isEmpty()) setImConfig(table, "imkeynames", imkeynames.toString());
                     }
                     if (DEBUG)
                         Log.i(TAG, "importTxtTable():update IM info: imkeys:" + imkeys + " imkeynames:" + imkeynames);
@@ -5529,6 +5539,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 fout.write("@format@|lime-text-v2");
                                 fout.newLine();
                             }
+                            fout.write("%chardef begin");
+                            fout.newLine();
 
                             // Write records
                             for (Related w : relatedList) {
@@ -5552,6 +5564,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 progressStatus = mContext.getString(R.string.l3_database_exporting_records) + progressPercentageDone + "%";
 
                             }
+                            fout.write("%chardef end");
+                            fout.newLine();
                         } else {
                             // Export regular table format: code|word|score|basescore
                             List<Record> records = getRecordList(table, null, false, 0, 0);
@@ -5582,6 +5596,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 String selkey = "";
                                 String endkey = "";
                                 String spacestyle = "";
+                                String imkeys = "";
+                                String imkeynames = "";
                                 for (ImConfig i : imConfig) {
                                     if (threadAborted) break;
 
@@ -5590,12 +5606,16 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                     else if (LIME.IM_SELKEY.equals(i.getTitle())) selkey = i.getDesc();
                                     else if (LIME.IM_ENDKEY.equals(i.getTitle())) endkey = i.getDesc();
                                     else if (LIME.IM_SPACESTYLE.equals(i.getTitle())) spacestyle = i.getDesc();
+                                    else if ("imkeys".equals(i.getTitle())) imkeys = i.getDesc();
+                                    else if ("imkeynames".equals(i.getTitle())) imkeynames = i.getDesc();
                                 }
                                 if (needsEscapedField(version, "|", false)
                                         || needsEscapedField(name, "|", false)
                                         || needsEscapedField(selkey, "|", false)
                                         || needsEscapedField(endkey, "|", false)
-                                        || needsEscapedField(spacestyle, "|", false)) {
+                                        || needsEscapedField(spacestyle, "|", false)
+                                        || needsEscapedField(imkeys, "|", false)
+                                        || needsEscapedField(imkeynames, "|", false)) {
                                     useEscapedFormat = true;
                                 }
                                 if (useEscapedFormat) {
@@ -5623,10 +5643,20 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                     fout.write("@spacestyle@|" + (useEscapedFormat ? escapeField(spacestyle, "|") : spacestyle));
                                     fout.newLine();
                                 }
+                                if (!imkeys.isEmpty()) {
+                                    fout.write("@imkeys@|" + (useEscapedFormat ? escapeField(imkeys, "|") : imkeys));
+                                    fout.newLine();
+                                }
+                                if (!imkeynames.isEmpty()) {
+                                    fout.write("@imkeynames@|" + (useEscapedFormat ? escapeField(imkeynames, "|") : imkeynames));
+                                    fout.newLine();
+                                }
                             } else if (useEscapedFormat) {
                                 fout.write("@format@|lime-text-v2");
                                 fout.newLine();
                             }
+                            fout.write("%chardef begin");
+                            fout.newLine();
 
                             // Write records
                             for (Record w : records) {
@@ -5648,6 +5678,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 progressStatus = mContext.getString(R.string.l3_database_exporting_records) + processedRecords + "/" + totalRecords;
 
                             }
+                            fout.write("%chardef end");
+                            fout.newLine();
                         }
                         
                         if (!threadAborted) {
