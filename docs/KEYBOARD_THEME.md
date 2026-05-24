@@ -124,6 +124,32 @@ same SF Symbol glyph (`face.smiling`) for all themes and changes color through
 
 This is expected and should not be treated as a theme gap.
 
+### iOS Screenshot Requirement
+
+iOS screenshot verification must use the LIME keyboard extension, not Apple system
+Zhuyin. LIME's visual identification signal is the emoji icon on the left side of the
+candidate bar. Do not accept screenshots that only show generic 注音 keys without that
+candidate-bar emoji icon.
+
+For each iOS theme, capture:
+
+- The 注音 Chinese IM keyboard, with LIME's candidate-bar emoji icon visible.
+- The English keyboard, with the `中` mode key visible.
+- The emoji panel, opened from the LIME candidate-bar emoji icon.
+
+Required screenshot set:
+
+| Theme | 注音 Chinese IM Keyboard | English Keyboard | Emoji Panel |
+|---|---|---|---|
+| System, system light | <img src="pictures/ios_keyboard_zhuyin_system_light.png" alt="iOS system-light LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_system_light.png" alt="iOS system-light LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_system_light.png" alt="iOS system-light LIME emoji panel" width="220"> |
+| Explicit light | <img src="pictures/ios_keyboard_zhuyin_light.png" alt="iOS light LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_light.png" alt="iOS light LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_light.png" alt="iOS light LIME emoji panel" width="220"> |
+| System, system dark | <img src="pictures/ios_keyboard_zhuyin_system_dark.png" alt="iOS system-dark LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_system_dark.png" alt="iOS system-dark LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_system_dark.png" alt="iOS system-dark LIME emoji panel" width="220"> |
+| Explicit dark | <img src="pictures/ios_keyboard_zhuyin_dark.png" alt="iOS dark LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_dark.png" alt="iOS dark LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_dark.png" alt="iOS dark LIME emoji panel" width="220"> |
+| Pink | <img src="pictures/ios_keyboard_zhuyin_pink.png" alt="iOS pink LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_pink.png" alt="iOS pink LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_pink.png" alt="iOS pink LIME emoji panel" width="220"> |
+| Tech Blue | <img src="pictures/ios_keyboard_zhuyin_tech_blue.png" alt="iOS tech-blue LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_tech_blue.png" alt="iOS tech-blue LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_tech_blue.png" alt="iOS tech-blue LIME emoji panel" width="220"> |
+| Fashion Purple | <img src="pictures/ios_keyboard_zhuyin_fashion_purple.png" alt="iOS fashion-purple LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_fashion_purple.png" alt="iOS fashion-purple LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_fashion_purple.png" alt="iOS fashion-purple LIME emoji panel" width="220"> |
+| Relax Green | <img src="pictures/ios_keyboard_zhuyin_relax_green.png" alt="iOS relax-green LIME 注音 keyboard" width="220"> | <img src="pictures/ios_keyboard_english_relax_green.png" alt="iOS relax-green LIME English keyboard with 中 key" width="220"> | <img src="pictures/ios_emoji_panel_relax_green.png" alt="iOS relax-green LIME emoji panel" width="220"> |
+
 ## Android Theme-Aware Rule
 
 Android draws its keyboard and emoji panel with concrete views, drawables, and colors.
@@ -225,5 +251,8 @@ Former hard-coded values:
 1. Android system-following light mode was screenshot-verified.
 2. Android explicit light and the four custom themes were screenshot-verified.
 3. Android system-following dark emoji panel and dark emoji search were screenshot-verified.
-4. iOS was policy-reviewed against the transparent background rule: backdrop-drawn
+4. iOS was screenshot-verified for system light, explicit light, explicit dark, system
+   dark, and the four custom themes across 注音 keyboard, English keyboard, and emoji
+   panel.
+5. iOS was policy-reviewed against the transparent background rule: backdrop-drawn
    controls should remain system light/dark aware unless a concrete contrast bug appears.

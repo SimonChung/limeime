@@ -118,11 +118,14 @@ final class KeyboardViewController: UIInputViewController {
     /// (font-scale pref). Width is a static constant
     /// (`chevronButtonWidth`) so it doesn't need a live ref.
     private var expandedCollapseHeightConstraint: NSLayoutConstraint?
+    private var expandedMoreSepCenterYConstraint: NSLayoutConstraint?
     /// 1-pt vertical divider sitting just left of the expanded panel's collapse chevron,
     /// mirroring CandidateBarView.moreSep so the reserved zone matches the bar exactly.
     private var expandedMoreSep: UIView?
     /// Dismiss (✕) button at the panel's top-left — mirrors CandidateBarView.dismissButton.
     private var expandedDismissButton: UIButton?
+    private var expandedDismissCenterYConstraint: NSLayoutConstraint?
+    private var expandedDismissHeightConstraint: NSLayoutConstraint?
     /// Persistent custom vertical scrollbar thumb for the expanded candidates panel.
     private var expandedScrollThumb: UIView?
     private let expandedSepWidth: CGFloat = LayoutMetrics.CandidateBar.dividerWidth
@@ -181,10 +184,28 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Keyboard Geometry
     private var baseCandidateBarHeight: CGFloat { LayoutMetrics.ComposingPopup.barBaseHeight(isPad: isOnPad) }
     private var candidateBarHeight: CGFloat { baseCandidateBarHeight * candidateFontScale }
+    private var activeCandidateBarHeight: CGFloat {
+        candidateBarHeight
+    }
+    private var emojiSearchHeaderHeight: CGFloat {
+        guard isEmojiSearchMode, candidateBar != nil else { return 0 }
+        return EmojiPanelView.searchHeaderHeight
+    }
+    private var isEmojiPanelVisible: Bool {
+        emojiPanelView?.isHidden == false
+    }
+    private var candidateBarTopConstraint: NSLayoutConstraint?
     private var candidateBarHeightConstraint: NSLayoutConstraint?
     private var keyboardTopToCandidateConstraint: NSLayoutConstraint?
     private var keyboardTopToViewConstraint: NSLayoutConstraint?
     private var emojiPanelBottomConstraint: NSLayoutConstraint?
+    private var emojiSearchHeaderView: UIView?
+    private var emojiSearchField: UISearchTextField?
+    private var emojiSearchFieldHeightConstraint: NSLayoutConstraint?
+    private var isEmojiSearchMode = false
+    private var emojiSearchEnglishOnly = false
+    private var emojiSearchSourceLayout: LimeKeyLayout?
+    private var emojiSearchCandidates: [Mapping] = []
     // keyRowHeight removed — height is now driven by KeyboardView.preferredHeight,
     // which sums actual per-row heights (54 pt regular, 56 pt bottom row).
     private var keyboardHeightConstraint: NSLayoutConstraint?
@@ -703,28 +724,22 @@ final class KeyboardViewController: UIInputViewController {
         let prevFontScale = candidateBar?.fontScale
         candidateBar?.fontScale         = candidateFontScale
         candidateBar?.candidateSwitch   = candidateSwitch
-        candidateBarHeightConstraint?.constant = candidateBarHeight
+        candidateBarHeightConstraint?.constant = activeCandidateBarHeight
         // Keep the expanded panel's collapse chevron height in lockstep with
         // the bar height. The dismiss button height is derived automatically
         // via a relative constraint off collapseBtn, so no separate update needed.
-        expandedCollapseHeightConstraint?.constant = candidateBarHeight
+        expandedCollapseHeightConstraint?.constant = activeCandidateBarHeight
         let t = resolvedKeyboardTheme
         let pal = KeyboardPalette.palettes[max(0, min(t, KeyboardPalette.palettes.count - 1))]
         // Candidate bar backdrop is a transparent system blur — text must contrast the
         // system backdrop, not the keyboard theme. Capture system style before
         // overrideUserInterfaceStyle locks the bar's traitCollection to the theme.
         let systemStyle = traitCollection.userInterfaceStyle
-        let adaptedCandiText: UIColor
-        if systemStyle == .dark {
-            adaptedCandiText = KeyboardPalette.iosDark(.label)
-        } else if t == 1 {
-            adaptedCandiText = KeyboardPalette.iosLight(.label)
-        } else {
-            adaptedCandiText = pal.candiText
-        }
+        let adaptedCandiText = CandidateBarSystemChrome.labelColor(systemUserInterfaceStyle: systemStyle)
         keyboardView?.theme  = t
         candidateBar?.systemUserInterfaceStyle = systemStyle
         candidateBar?.theme  = t
+        emojiPanelView?.setTheme(t, systemUserInterfaceStyle: systemStyle)
         if prevScale != keyboardSize || prevFontScale != candidateFontScale { applyHeight() }
         // Lock dynamic UIColors (.label etc. baked into palette[0]/[1]) to the
         // keyboard's chosen theme so key chrome (tintColor etc.) doesn't re-resolve
@@ -736,7 +751,7 @@ final class KeyboardViewController: UIInputViewController {
         expandedCandidatesPanel?.backgroundColor = .clear
         expandedCollapseButton?.tintColor = adaptedCandiText
         expandedMoreSep?.backgroundColor = adaptedCandiText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
-        expandedDismissButton?.tintColor = pal.label
+        expandedDismissButton?.tintColor = adaptedCandiText
         expandedDismissButton?.backgroundColor = pal.normalKey.withAlphaComponent(0.15)
         expandedComposingLabel?.font = candidateBar.composingStripFont
         expandedComposingLabel?.textColor = adaptedCandiText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
@@ -768,14 +783,7 @@ final class KeyboardViewController: UIInputViewController {
         let t0 = resolvedKeyboardTheme
         let pal = KeyboardPalette.palettes[max(0, min(t0, 1))]
         let setupSystemStyle = traitCollection.userInterfaceStyle
-        let adaptedCandiText: UIColor
-        if setupSystemStyle == .dark {
-            adaptedCandiText = KeyboardPalette.iosDark(.label)
-        } else if t0 == 1 {
-            adaptedCandiText = KeyboardPalette.iosLight(.label)
-        } else {
-            adaptedCandiText = pal.candiText
-        }
+        let adaptedCandiText = CandidateBarSystemChrome.labelColor(systemUserInterfaceStyle: setupSystemStyle)
 
         // Candidate bar
         candidateBar = CandidateBarView()
@@ -792,7 +800,11 @@ final class KeyboardViewController: UIInputViewController {
         view.addSubview(keyboardView)
 
         NSLayoutConstraint.activate([
-            candidateBar.topAnchor.constraint(equalTo: view.topAnchor),
+            {
+                let c = candidateBar.topAnchor.constraint(equalTo: view.topAnchor)
+                candidateBarTopConstraint = c
+                return c
+            }(),
             candidateBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             candidateBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             {
@@ -910,6 +922,8 @@ final class KeyboardViewController: UIInputViewController {
         // full first-row height when the user changes font scale).
         let collapseH = collapseBtn.heightAnchor.constraint(equalToConstant: candidateBarHeight)
         expandedCollapseHeightConstraint = collapseH
+        let sepCenterY = sep.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor,
+                                                      constant: candidateBar.composingStripHeight / 2)
         NSLayoutConstraint.activate([
             collapseBtn.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
             collapseBtn.topAnchor.constraint(equalTo: panel.topAnchor),
@@ -919,10 +933,11 @@ final class KeyboardViewController: UIInputViewController {
             sep.trailingAnchor.constraint(equalTo: collapseBtn.leadingAnchor),
             // Bias separator down to match candidate glyphs (mirrors
             // CandidateBarView.moreSep so row 1 stays pixel-identical).
-            sep.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor, constant: candidateBar.composingStripHeight / 2),
+            sepCenterY,
             sep.widthAnchor.constraint(equalToConstant: expandedSepWidth),
             sep.heightAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.dividerHeight),
         ])
+        expandedMoreSepCenterYConstraint = sepCenterY
         expandedCollapseButton = collapseBtn
         expandedMoreSep = sep
 
@@ -931,7 +946,7 @@ final class KeyboardViewController: UIInputViewController {
         let xmarkConfig = UIImage.SymbolConfiguration(
             pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isOnPad), weight: .regular)
         dismissBtn.setImage(UIImage(systemName: "xmark", withConfiguration: xmarkConfig), for: .normal)
-        dismissBtn.tintColor = pal.label
+        dismissBtn.tintColor = adaptedCandiText
         dismissBtn.backgroundColor = pal.normalKey.withAlphaComponent(0.15)
         dismissBtn.layer.cornerRadius = 6
         dismissBtn.layer.masksToBounds = true
@@ -942,15 +957,19 @@ final class KeyboardViewController: UIInputViewController {
         // Dismiss button: half chevron width, height = barHeight − stripHeight (tracks
         // collapseBtn automatically), centered on glyph axis.  No contentEdgeInsets
         // bias — the frame is already positioned at the glyph center.
+        let dismissCenterY = dismissBtn.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor,
+                                                                 constant: candidateBar.composingStripHeight / 2)
+        let dismissHeight = dismissBtn.heightAnchor.constraint(equalTo: collapseBtn.heightAnchor,
+                                                               constant: -candidateBar.composingStripHeight)
         NSLayoutConstraint.activate([
             dismissBtn.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
-            dismissBtn.centerYAnchor.constraint(equalTo: collapseBtn.centerYAnchor,
-                                                 constant: candidateBar.composingStripHeight / 2),
-            dismissBtn.heightAnchor.constraint(equalTo: collapseBtn.heightAnchor,
-                                                constant: -candidateBar.composingStripHeight),
+            dismissCenterY,
+            dismissHeight,
             dismissBtn.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad) / 2),
         ])
         expandedDismissButton = dismissBtn
+        expandedDismissCenterYConstraint = dismissCenterY
+        expandedDismissHeightConstraint = dismissHeight
 
         // Mirror the candidate bar's keyname strip overlay so the user
         // perceives the expanded panel as the bar growing in place — first
@@ -987,7 +1006,7 @@ final class KeyboardViewController: UIInputViewController {
         // bottom row), rather than a flat per-row constant that would squish keys.
         let keysHeight = keyboardView?.preferredHeight
             ?? CGFloat(currentLayout.rows.count) * LayoutMetrics.KeyboardRow.fallbackRowHeight
-        let barH = candidateBarHeight
+        let barH = activeCandidateBarHeight
         // Keep bar height constraint in sync with the computed bar height.
         // This covers the iPad case where traitCollection.userInterfaceIdiom is
         // .unspecified at viewDidLoad and resolves to .pad only by the time
@@ -996,7 +1015,10 @@ final class KeyboardViewController: UIInputViewController {
         // with the Pad value (74×scale), leaving a layout gap.
         candidateBarHeightConstraint?.constant = barH
         expandedCollapseHeightConstraint?.constant = barH
-        let totalHeight = barH + keysHeight
+        let keyboardHeight = emojiSearchHeaderHeight + barH + keysHeight
+        let totalHeight = isEmojiPanelVisible && !isEmojiSearchMode
+            ? max(keyboardHeight, emojiPanelView?.preferredPanelHeight ?? keyboardHeight)
+            : keyboardHeight
         if let existing = keyboardHeightConstraint {
             existing.constant = totalHeight
         } else {
@@ -1020,9 +1042,24 @@ final class KeyboardViewController: UIInputViewController {
         case LimeKeyCode.done.rawValue:        handleClose()
         case LimeKeyCode.globe.rawValue:       advanceToNextInputMode()
         case LimeKeyCode.emojiPanel.rawValue:  showEmojiPanel()
-        case LimeKeyCode.emojiABC.rawValue:    hideEmojiPanel()
-        case LimeKeyCode.switchToEnglish.rawValue: switchChiEng(toEnglish: true)
-        case LimeKeyCode.switchToIM.rawValue:  switchChiEng(toEnglish: false)
+        case LimeKeyCode.emojiABC.rawValue:
+            if isEmojiSearchMode {
+                setEmojiSearchKeyboard(toEnglish: !emojiSearchEnglishOnly)
+            } else {
+                hideEmojiPanel()
+            }
+        case LimeKeyCode.switchToEnglish.rawValue:
+            if isEmojiSearchMode {
+                setEmojiSearchKeyboard(toEnglish: true)
+            } else {
+                switchChiEng(toEnglish: true)
+            }
+        case LimeKeyCode.switchToIM.rawValue:
+            if isEmojiSearchMode {
+                setEmojiSearchKeyboard(toEnglish: false)
+            } else {
+                switchChiEng(toEnglish: false)
+            }
         case LimeKeyCode.switchToSymbol.rawValue:     switchToSymbol()
         case LimeKeyCode.switchSymbolKeyboard.rawValue: cycleSymbolPage()
         case LimeKeyCode.nextIM.rawValue:      switchToNextActivatedIM(forward: true)
@@ -1718,6 +1755,7 @@ final class KeyboardViewController: UIInputViewController {
         expandedCandidates = candidates
         expandedSelectedIndex = (selectedIndex >= 0 && selectedIndex < candidates.count) ? selectedIndex : -1
         expandedScrollView?.setContentOffset(.zero, animated: false)
+        updateExpandedCandidateChromeMetrics()
         reloadExpandedCandidates()
         expandedCandidatesPanel?.isHidden = false
         // Hide both the key grid and the candidate bar while the expanded panel is shown.
@@ -1728,6 +1766,27 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.isHidden = true
         isExpandedCandidatesVisible = true
         updateExpandedScrollThumb()
+    }
+
+    private func updateExpandedCandidateChromeMetrics() {
+        let stripH = candidateBar.activeComposingStripHeight
+        let bias = stripH / 2
+        let chromeText = CandidateBarSystemChrome.labelColor(
+            systemUserInterfaceStyle: candidateBar.systemUserInterfaceStyle)
+        let pal = KeyboardPalette.palettes[max(0, min(resolvedKeyboardTheme, KeyboardPalette.palettes.count - 1))]
+        expandedCollapseHeightConstraint?.constant = activeCandidateBarHeight
+        expandedMoreSepCenterYConstraint?.constant = bias
+        expandedDismissCenterYConstraint?.constant = bias
+        expandedDismissHeightConstraint?.constant = -stripH
+        expandedCollapseButton?.tintColor = chromeText
+        expandedMoreSep?.backgroundColor = chromeText.withAlphaComponent(LayoutMetrics.CandidateBar.separatorAlpha)
+        expandedDismissButton?.tintColor = chromeText
+        expandedDismissButton?.backgroundColor = pal.normalKey.withAlphaComponent(0.15)
+        expandedComposingLabel?.textColor = chromeText.withAlphaComponent(LayoutMetrics.ComposingPopup.textAlpha)
+        expandedComposingLabel?.isHidden = isEmojiSearchMode
+
+        let chevronInsets = UIEdgeInsets(top: bias, left: 0, bottom: -bias, right: 0)
+        expandedCollapseButton?.setValue(NSValue(uiEdgeInsets: chevronInsets), forKey: "contentEdgeInsets")
     }
 
     private func hideExpandedCandidates() {
@@ -1748,15 +1807,8 @@ final class KeyboardViewController: UIInputViewController {
 
         let pal = KeyboardPalette.palettes[max(0, min(resolvedKeyboardTheme, KeyboardPalette.palettes.count - 1))]
         let t = resolvedKeyboardTheme
-        let systemStyle = traitCollection.userInterfaceStyle
-        let adaptedCandiText: UIColor
-        if systemStyle == .dark {
-            adaptedCandiText = KeyboardPalette.iosDark(.label)
-        } else if t == 1 {
-            adaptedCandiText = KeyboardPalette.iosLight(.label)
-        } else {
-            adaptedCandiText = pal.candiText
-        }
+        let systemStyle = candidateBar.systemUserInterfaceStyle
+        let adaptedCandiText = CandidateBarSystemChrome.labelColor(systemUserInterfaceStyle: systemStyle)
         // Themes 0 and 1 adapt pill + text to the system backdrop; other themes use their fixed palette colour.
         let highlightColor: UIColor
         if t == 0 || t == 1 {
@@ -1767,21 +1819,17 @@ final class KeyboardViewController: UIInputViewController {
             highlightColor = pal.candiHighlight
         }
         let panelWidth = view.bounds.width > 0 ? view.bounds.width : UIScreen.main.bounds.width
-        // Row 1 mirrors the collapsed bar exactly: full `candidateBarHeight`
-        // tall, glyph biased down by `composingStripHeight/2` so it clears
-        // the keyname strip overlay at the top.
-        // Rows 2+ have no keyname above them, so the reserved strip area
-        // would be pure whitespace. Shrink them to `candidateBarHeight -
-        // composingStripHeight` and drop the bias — the glyph then sits
-        // symmetrically centered in the shorter row (≈7pt iPhone / ≈10pt
-        // iPad padding above and below).
+        // Row 1 mirrors the collapsed bar exactly. Chinese composing keeps
+        // the top keyname strip; emoji search disables it, so the expanded
+        // row must read the active strip metrics from CandidateBarView instead
+        // of assuming the Chinese composing layout.
         let hPad:         CGFloat = 0
         let vPad:         CGFloat = 0
-        let stripH:       CGFloat = candidateBar.composingStripHeight
-        let firstRowH:    CGFloat = candidateBarHeight
-        let restRowH:     CGFloat = max(0, candidateBarHeight - stripH)
+        let activeStripH = candidateBar.activeComposingStripHeight
+        let firstRowH:    CGFloat = activeCandidateBarHeight
+        let restRowH:     CGFloat = max(0, candidateBarHeight - candidateBar.composingStripHeight)
         var rowH:         CGFloat = firstRowH
-        var rowBias:      CGFloat = stripH / 2
+        var rowBias:      CGFloat = activeStripH / 2
         // Match CandidateBarView font sizing exactly: iPad = 26/22, iPhone = 22/16.
         // Use isOnPad (traitCollection-based) so compatibility-mode iPhone apps on iPad
         // use phone metrics consistently with CandidateBarView and KeyboardView.
@@ -1795,9 +1843,17 @@ final class KeyboardViewController: UIInputViewController {
         let composingFont = UIFont(name: "PingFangTC-Regular", size: baseCompSize * candidateFontScale)
             ?? UIFont.systemFont(ofSize: baseCompSize * candidateFontScale, weight: .regular)
 
-        // Reserve the same leading zone as the collapsed bar's dismiss button on every row.
         let dismissZone = LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad) / 2
-        var x: CGFloat = dismissZone + hPad
+        let chevronZone = LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad)
+        func expandedRowStartX(row: Int) -> CGFloat {
+            return row == 0 ? dismissZone + hPad : hPad
+        }
+        func expandedRowMaxX(row: Int) -> CGFloat {
+            return row == 0 ? panelWidth - chevronZone - expandedSepWidth : panelWidth
+        }
+
+        var row = 0
+        var x: CGFloat = expandedRowStartX(row: row)
         var y: CGFloat = vPad
         var isFirstInRow = true
 
@@ -1824,18 +1880,14 @@ final class KeyboardViewController: UIInputViewController {
                          forKey: "contentEdgeInsets")
             let btnW = btn.intrinsicContentSize.width
 
-            // Every row reserves the same right-edge zone as the collapsed
-            // bar: chevron button width + moreSep divider.
-            let chevronZone = LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isOnPad)
-            let rowMaxX = panelWidth - chevronZone - expandedSepWidth
-
             if !isFirstInRow {
-                if x + btnW > rowMaxX {
+                if x + btnW > expandedRowMaxX(row: row) {
                     // Wrap to next row. Advance by the OLD row's height,
                     // then switch to the shorter rows-2+ height with no
                     // strip-bias.
-                    x = dismissZone + hPad
                     y += rowH
+                    row += 1
+                    x = expandedRowStartX(row: row)
                     rowH = restRowH
                     rowBias = 0
                     isFirstInRow = true
@@ -1942,6 +1994,10 @@ final class KeyboardViewController: UIInputViewController {
         guard !mapping.isHasMoreMarkRecord else { return }
         fireHapticIfEnabled()
         hideExpandedCandidates()
+        if isEmojiSearchMode && mapping.isEmojiRecord {
+            commitEmoji(mapping)
+            return
+        }
         pickCandidateManually(mapping)
     }
 
@@ -1953,6 +2009,10 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func dismissExpandedAndComposing() {
         fireHapticIfEnabled()
         hideExpandedCandidates()
+        if isEmojiSearchMode {
+            hideEmojiPanel()
+            return
+        }
         cancelActiveComposingFromCandidateDismiss()
     }
 
@@ -1989,6 +2049,21 @@ final class KeyboardViewController: UIInputViewController {
 
     private func clearSuggestions() {
         hideExpandedCandidates()
+        if isEmojiSearchMode {
+            hasChineseSymbolCandidatesShown = false
+            isShowingRelatedPhrases = false
+            mCandidateList     = []
+            hasCandidatesShown = false
+            selectedCandidate  = nil
+            candidateBar.setIdleToolsSuppressed(!mComposing.isEmpty)
+            if mComposing.isEmpty {
+                hideComposingPopup()
+                searchEmojiPanel(query: emojiSearchField?.text ?? "")
+            } else {
+                showEmojiSearchCandidates([])
+            }
+            return
+        }
         // Auto Chinese Symbol: when candidates disappear in Chinese mode, show punctuation (spec §11)
         if autoChineseSymbol && !mEnglishOnly && hasCandidatesShown && !hasChineseSymbolCandidatesShown {
             let punctuation = KeyboardViewController.chinesePunctuationMappings()
@@ -2069,6 +2144,14 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func pickCandidateManually(_ candidate: Mapping) {
+        if isEmojiSearchMode {
+            if candidate.isEmojiRecord {
+                commitEmoji(candidate)
+            } else if appendPickedCandidateToEmojiSearch(candidate) {
+                return
+            }
+            return
+        }
         let wasComposingCodeCommit = candidate.isComposingCodeRecord
         selectedCandidate = candidate
         commitTyped()
@@ -2079,6 +2162,16 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             updateRelatedPhrase()
         }
+    }
+
+    private func appendPickedCandidateToEmojiSearch(_ candidate: Mapping) -> Bool {
+        guard !candidate.word.isEmpty,
+              !candidate.isEmojiRecord,
+              !candidate.isComposingCodeRecord else { return false }
+        clearComposing(force: true)
+        selectedCandidate = nil
+        appendEmojiSearchText(candidate.word)
+        return true
     }
 
     // MARK: - Commit Flow (spec §8 commitTyped)
@@ -2484,7 +2577,8 @@ extension KeyboardViewController: KeyboardViewDelegate {
 
     func keyboardView(_ view: KeyboardView, didPress keyDef: KeyDef) {
         hideLimeToast()
-        if emojiPanelView?.handleSearchKey(code: keyDef.code) == true {
+        if shouldRouteKeyToEmojiSearchField(keyDef.code),
+           handleEmojiSearchKey(code: keyDef.code) {
             return
         }
         if keyDef.code == LimeKeyCode.shift.rawValue {
@@ -2506,6 +2600,18 @@ extension KeyboardViewController: KeyboardViewDelegate {
             resetMultiTap()
             onKey(primaryCode: keyDef.code)
         }
+    }
+
+    private func shouldRouteKeyToEmojiSearchField(_ code: Int) -> Bool {
+        guard isEmojiSearchMode else { return false }
+        if emojiSearchEnglishOnly { return true }
+        if code == LimeKeyCode.enter.rawValue || code == LimeKeyCode.done.rawValue {
+            return true
+        }
+        if code == LimeKeyCode.delete.rawValue && mComposing.isEmpty {
+            return true
+        }
+        return false
     }
 
     func keyboardView(_ view: KeyboardView, didRelease keyDef: KeyDef) {
@@ -3200,6 +3306,12 @@ extension KeyboardViewController: KeyboardViewDelegate {
         if isExpandedCandidatesVisible { hideExpandedCandidates() }
         dismissPopupKeyboard()
         hideComposingPopup()
+        isEmojiSearchMode = false
+        emojiSearchHeaderView?.isHidden = true
+        emojiSearchEnglishOnly = false
+        emojiSearchSourceLayout = nil
+        emojiSearchCandidates = []
+        candidateBarTopConstraint?.constant = 0
         view.isOpaque = false
         view.backgroundColor = .clear
         inputView?.isOpaque = false
@@ -3228,55 +3340,196 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let bottom = panel.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         bottom.isActive = true
         emojiPanelBottomConstraint = bottom
+        candidateBar.setComposingStripReserved(true)
+        candidateBar.setEmptyDismissChromeEnabled(false)
         keyboardTopToViewConstraint?.isActive = false
         keyboardTopToCandidateConstraint?.isActive = true
-        candidateBarHeightConstraint?.constant = candidateBarHeight
+        candidateBarHeightConstraint?.constant = activeCandidateBarHeight
         keyboardView.isHidden = true
         candidateBar.isHidden = true
+        panel.setTheme(resolvedKeyboardTheme, systemUserInterfaceStyle: traitCollection.userInterfaceStyle)
+        panel.setKeyboardSizeScale(keyboardSize)
         panel.prepareForPresentation()
         panel.setReturnKeyTitle(emojiPanelSource.returnKeyTitle)
         panel.isHidden = false
         panel.setEmojiPages(loadEmojiCategoryPages())
+        applyHeight()
     }
 
     private func hideEmojiPanel() {
         emojiPanelView?.resignSearch()
+        emojiPanelView?.clearSearchText()
         emojiPanelView?.isHidden = true
         emojiPanelView?.setSearchMode(false)
+        emojiSearchField?.resignFirstResponder()
+        emojiSearchField?.text = ""
+        emojiSearchHeaderView?.isHidden = true
+        isEmojiSearchMode = false
+        if let sourceLayout = emojiSearchSourceLayout {
+            currentLayout = sourceLayout
+        }
+        mEnglishOnly = emojiPanelSource == .english
+        emojiSearchSourceLayout = nil
+        emojiSearchCandidates = []
         emojiPanelBottomConstraint?.isActive = false
         if let panel = emojiPanelView {
             let bottom = panel.bottomAnchor.constraint(equalTo: view.bottomAnchor)
             bottom.isActive = true
             emojiPanelBottomConstraint = bottom
         }
+        candidateBarTopConstraint?.constant = 0
+        candidateBar.setComposingStripReserved(true)
+        candidateBar.setEmptyDismissChromeEnabled(false)
         keyboardTopToViewConstraint?.isActive = false
         keyboardTopToCandidateConstraint?.isActive = true
-        candidateBarHeightConstraint?.constant = candidateBarHeight
+        candidateBarHeightConstraint?.constant = activeCandidateBarHeight
         candidateBar.isHidden = false
         keyboardView.isHidden = false
+        candidateBar.setCandidates([])
         keyboardView.setLayout(currentLayout)
+        applyHeight()
     }
 
     private func showEmojiSearchKeyboard() {
         guard let panel = emojiPanelView else { return }
+        if !isEmojiSearchMode {
+            emojiSearchSourceLayout = currentLayout
+            emojiSearchEnglishOnly = emojiPanelSource == .english
+        }
+        isEmojiSearchMode = true
+        let searchField = ensureEmojiSearchHeader()
+        searchField.text = panel.searchText
         emojiPanelBottomConstraint?.isActive = false
-        let bottom = panel.bottomAnchor.constraint(equalTo: keyboardView.topAnchor)
+        let bottom = panel.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         bottom.isActive = true
         emojiPanelBottomConstraint = bottom
-        candidateBar.isHidden = true
-        candidateBarHeightConstraint?.constant = 0
-        keyboardTopToCandidateConstraint?.isActive = false
-        keyboardTopToViewConstraint?.constant = 118
-        keyboardTopToViewConstraint?.isActive = true
+        panel.isHidden = true
+        candidateBar.setEmptyDismissChromeEnabled(true)
+        updateEmojiSearchHeaderMetrics()
+        candidateBar.isHidden = false
+        candidateBarHeightConstraint?.constant = activeCandidateBarHeight
+        keyboardTopToViewConstraint?.isActive = false
+        keyboardTopToCandidateConstraint?.isActive = true
         keyboardView.isHidden = false
-        // English runtime layout is preference-driven; legacy KeyboardConfig engkb fields are DB compatibility data only.
-        let englishLayout = numberRowInEnglish ? "lime_english_number" : "lime_english"
-        if currentLayout.id != englishLayout,
-           let layout = LayoutLoader.load(englishLayout) {
-            keyboardView.setLayout(layout)
+        setEmojiSearchKeyboard(toEnglish: emojiSearchEnglishOnly)
+        emojiSearchHeaderView?.isHidden = false
+        showEmojiSearchCandidates(loadEmojiSearchFallbackItems())
+        searchField.becomeFirstResponder()
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.isEmojiSearchMode,
+                  self.hasEmptyEmojiSearchText else { return }
+            self.showEmojiSearchCandidates(self.loadEmojiSearchFallbackItems())
         }
-        panel.setSearchMode(true)
+        applyHeight()
         view.setNeedsLayout()
+    }
+
+    private func setEmojiSearchKeyboard(toEnglish: Bool) {
+        guard isEmojiSearchMode else { return }
+        emojiSearchEnglishOnly = toEnglish
+        if toEnglish {
+            cancelActiveComposingFromCandidateDismiss()
+        } else {
+            clearComposing(force: false)
+        }
+        candidateBar.setComposingStripReserved(true)
+        mEnglishOnly = toEnglish
+        clearShiftState()
+        let layoutName = toEnglish
+            ? (numberRowInEnglish ? "lime_english_number" : "lime_english")
+            : resolvedLayoutId(for: activeIM)
+        guard let layout = LayoutLoader.load(layoutName) else { return }
+        currentLayout = layout
+        keyboardView.setLayout(layout)
+        updateEmojiSearchHeaderMetrics()
+        candidateBarHeightConstraint?.constant = activeCandidateBarHeight
+        expandedCollapseHeightConstraint?.constant = activeCandidateBarHeight
+        applyHeight()
+    }
+
+    private func updateEmojiSearchHeaderMetrics() {
+        guard isEmojiSearchMode else { return }
+        let headerHeight = emojiSearchHeaderHeight
+        candidateBarTopConstraint?.constant = headerHeight
+    }
+
+    @discardableResult
+    private func ensureEmojiSearchHeader() -> UISearchTextField {
+        if let field = emojiSearchField { return field }
+
+        let header = UIView()
+        header.isOpaque = false
+        header.backgroundColor = .clear
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.isHidden = true
+        view.addSubview(header)
+
+        let field = UISearchTextField()
+        field.placeholder = "搜尋表情符號"
+        field.accessibilityIdentifier = "lime_emoji_search_field"
+        field.delegate = self
+        field.autocorrectionType = .no
+        field.autocapitalizationType = .none
+        field.returnKeyType = .done
+        field.translatesAutoresizingMaskIntoConstraints = false
+        field.addTarget(self, action: #selector(emojiSearchTextChanged), for: .editingChanged)
+        header.addSubview(field)
+
+        let fieldHeight = field.heightAnchor.constraint(equalToConstant: EmojiPanelView.searchFieldHeight)
+        NSLayoutConstraint.activate([
+            header.topAnchor.constraint(equalTo: view.topAnchor),
+            header.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            header.heightAnchor.constraint(equalToConstant: EmojiPanelView.searchHeaderHeight),
+
+            field.topAnchor.constraint(equalTo: header.topAnchor, constant: EmojiPanelView.searchFieldTopInset),
+            field.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
+            field.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
+            fieldHeight,
+        ])
+
+        emojiSearchHeaderView = header
+        emojiSearchField = field
+        emojiSearchFieldHeightConstraint = fieldHeight
+        return field
+    }
+
+    private var hasEmptyEmojiSearchText: Bool {
+        (emojiSearchField?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func appendEmojiSearchText(_ text: String) {
+        guard !text.isEmpty else { return }
+        let field = ensureEmojiSearchHeader()
+        field.text = (field.text ?? "") + text
+        searchEmojiPanel(query: field.text ?? "")
+    }
+
+    private func handleEmojiSearchKey(code: Int) -> Bool {
+        guard isEmojiSearchMode else { return false }
+        let field = ensureEmojiSearchHeader()
+        switch code {
+        case LimeKeyCode.delete.rawValue:
+            guard !(field.text ?? "").isEmpty else { return true }
+            field.text = String((field.text ?? "").dropLast())
+        case LimeKeyCode.enter.rawValue, LimeKeyCode.done.rawValue:
+            hideEmojiPanel()
+            return true
+        case 32:
+            field.text = (field.text ?? "") + " "
+        case 1...Int(UInt32.max):
+            guard let scalar = Unicode.Scalar(code) else { return false }
+            field.text = (field.text ?? "") + String(scalar)
+        default:
+            return false
+        }
+        searchEmojiPanel(query: field.text ?? "")
+        return true
+    }
+
+    @objc private func emojiSearchTextChanged() {
+        searchEmojiPanel(query: emojiSearchField?.text ?? "")
     }
 
     private func loadEmojiCategoryPages() -> [[Mapping]] {
@@ -3317,17 +3570,31 @@ extension KeyboardViewController: KeyboardViewDelegate {
                 recordType: Mapping.RecordType.emoji)
     }
 
+    private func commitEmoji(_ mapping: Mapping) {
+        if composingLength > 0 { clearComposing(force: true) }
+        isSelfUpdate = true
+        textDocumentProxy.insertText(mapping.word)
+        isSelfUpdate = false
+        searchServer?.recordEmojiUsage(mapping.word)
+    }
+
+    private func showEmojiSearchCandidates(_ candidates: [Mapping]) {
+        emojiSearchCandidates = candidates
+        candidateBar.setCandidates(candidates, selectedIndex: -1)
+        candidateBar.setChevronExpanded(false)
+    }
+
     private func searchEmojiPanel(query: String) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            emojiPanelView?.setEmojis(loadEmojiSearchFallbackItems())
+            showEmojiSearchCandidates(loadEmojiSearchFallbackItems())
             return
         }
         let english = searchServer?.searchEmoji(trimmed, locale: .en, limit: 80) ?? []
         let traditional = searchServer?.searchEmoji(trimmed, locale: .tw, limit: 80) ?? []
         var seen = Set<String>()
         let results = (english + traditional).filter { seen.insert($0.word).inserted }
-        emojiPanelView?.setEmojis(results)
+        showEmojiSearchCandidates(results)
     }
 }
 
@@ -3368,7 +3635,9 @@ extension KeyboardViewController: UIScrollViewDelegate {
 extension KeyboardViewController: CandidateBarViewDelegate {
 
     func candidateBarView(_ view: CandidateBarView, didSelect mapping: Mapping) {
-        if mapping.isEnglishSuggestionRecord {
+        if isEmojiSearchMode {
+            pickCandidateManually(mapping)
+        } else if mapping.isEnglishSuggestionRecord {
             commitEnglishSuggestion(mapping.word)
         } else {
             pickCandidateManually(mapping)
@@ -3384,6 +3653,10 @@ extension KeyboardViewController: CandidateBarViewDelegate {
     }
 
     func candidateBarViewDidRequestDismiss(_ view: CandidateBarView) {
+        if isEmojiSearchMode {
+            hideEmojiPanel()
+            return
+        }
         if isExpandedCandidatesVisible { hideExpandedCandidates() }
         cancelActiveComposingFromCandidateDismiss()
     }
@@ -3398,6 +3671,11 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         // Tap again to collapse
         if isExpandedCandidatesVisible {
             hideExpandedCandidates()
+            return
+        }
+
+        if isEmojiSearchMode {
+            showExpandedCandidates(emojiSearchCandidates, selectedIndex: -1)
             return
         }
 
@@ -3483,11 +3761,7 @@ extension KeyboardViewController: PopupKeyboardViewDelegate {
 extension KeyboardViewController: EmojiPanelViewDelegate {
 
     func emojiPanelView(_ view: EmojiPanelView, didSelect mapping: Mapping) {
-        if composingLength > 0 { clearComposing(force: true) }
-        isSelfUpdate = true
-        textDocumentProxy.insertText(mapping.word)
-        isSelfUpdate = false
-        searchServer?.recordEmojiUsage(mapping.word)
+        commitEmoji(mapping)
     }
 
     func emojiPanelViewDidRequestABC(_ view: EmojiPanelView) {
@@ -3496,6 +3770,10 @@ extension KeyboardViewController: EmojiPanelViewDelegate {
 
     func emojiPanelViewDidRequestBackspace(_ view: EmojiPanelView) {
         textDocumentProxy.deleteBackward()
+    }
+
+    func emojiPanelViewDidRequestDismiss(_ view: EmojiPanelView) {
+        hideEmojiPanel()
     }
 
     func emojiPanelViewDidBeginSearch(_ view: EmojiPanelView) {
@@ -3507,40 +3785,52 @@ extension KeyboardViewController: EmojiPanelViewDelegate {
     }
 }
 
+extension KeyboardViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard textField === emojiSearchField else { return true }
+        hideEmojiPanel()
+        return true
+    }
+}
+
 protocol EmojiPanelViewDelegate: AnyObject {
     func emojiPanelView(_ view: EmojiPanelView, didSelect mapping: Mapping)
     func emojiPanelViewDidRequestABC(_ view: EmojiPanelView)
     func emojiPanelViewDidRequestBackspace(_ view: EmojiPanelView)
+    func emojiPanelViewDidRequestDismiss(_ view: EmojiPanelView)
     func emojiPanelViewDidBeginSearch(_ view: EmojiPanelView)
     func emojiPanelView(_ view: EmojiPanelView, didChangeSearchQuery query: String)
 }
 
 final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
+    static let searchFieldTopInset: CGFloat = 10
+    static let searchFieldHeight: CGFloat = 44
+    static let searchHeaderHeight: CGFloat = searchFieldTopInset + searchFieldHeight
+
     weak var delegate: EmojiPanelViewDelegate?
 
     private let searchField = UISearchTextField()
     private let emojiViewport = UIScrollView()
     private let emojiContentView = UIView()
-    private let categoryScrollView = UIScrollView()
+    private let categoryScrollView = CandidateScrollView()
     private let categoryBar = UIStackView()
-    private let categoryIconSpacer = UIView()
+    private let categoryModeButton = UIButton(type: .system)
     private let categoryBackspaceButton = UIButton(type: .system)
+    private let searchDismissButton = UIButton(type: .system)
     private var emojiPages: [[Mapping]] = []
     private var buttonMappings: [Mapping] = []
-    private let emojiFallbackButtonSize: CGFloat = 54
-    private let phoneEmojiMinButtonSize: CGFloat = 46
-    private let phoneEmojiMaxButtonSize: CGFloat = 54
-    private let phoneEmojiMinFontSize: CGFloat = 30
-    private let phoneEmojiMaxFontSize: CGFloat = 36
-    private let padEmojiMinButtonSize: CGFloat = 48
-    private let padEmojiMaxButtonSize: CGFloat = 72
-    private let padEmojiMinFontSize: CGFloat = 40
-    private let padEmojiMaxFontSize: CGFloat = 56
-    private let categoryIconSize: CGFloat = 32
-    private let categoryTextWidth: CGFloat = 48
-    private let categorySymbolSize: CGFloat = 22
-    private let categorySpacing: CGFloat = 4
-    private var categoryIconSpacerWidth: NSLayoutConstraint?
+    private var keyboardSizeScale: CGFloat = 1.0
+    private var categoryBarWidthConstraint: NSLayoutConstraint?
+    private var categoryScrollHeightConstraint: NSLayoutConstraint?
+    private var categoryModeWidthConstraint: NSLayoutConstraint?
+    private var categoryModeHeightConstraint: NSLayoutConstraint?
+    private var categoryBackspaceWidthConstraint: NSLayoutConstraint?
+    private var categoryBackspaceHeightConstraint: NSLayoutConstraint?
+    private var searchFieldHeightConstraint: NSLayoutConstraint?
+    private var searchDismissWidthConstraint: NSLayoutConstraint?
+    private var searchDismissHeightConstraint: NSLayoutConstraint?
+    private var emojiViewportNormalLeadingConstraint: NSLayoutConstraint?
+    private var emojiViewportSearchLeadingConstraint: NSLayoutConstraint?
     private var visibleRows = 4
     private var emojiBottomToCategoryConstraint: NSLayoutConstraint?
     private var emojiBottomToPanelConstraint: NSLayoutConstraint?
@@ -3565,6 +3855,22 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private var cachedPaginationRowsPerPage: Int = 0
     private var cachedPaginationCategoryButtonCount: Int = 0
     private var reusableEmojiLabels: [UILabel] = []
+    private var theme: Int = 0
+    private var systemUserInterfaceStyle: UIUserInterfaceStyle = .light
+    private var palette: KeyboardPalette {
+        KeyboardPalette.palettes[max(0, min(theme, KeyboardPalette.palettes.count - 1))]
+    }
+    private var effectiveCandiText: UIColor {
+        CandidateBarSystemChrome.labelColor(systemUserInterfaceStyle: systemUserInterfaceStyle)
+    }
+    var preferredPanelHeight: CGFloat {
+        Self.searchHeaderHeight
+            + 10
+            + CGFloat(EmojiPanelSizing.visibleRows(isSearchMode: false)) * EmojiPanelSizing.buttonSize(keyboardSizeScale: keyboardSizeScale)
+            + 8
+            + categoryRowHeight()
+            + 10
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -3597,6 +3903,22 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         returnKeyboardButton?.setTitle(title, for: .normal)
     }
 
+    func setKeyboardSizeScale(_ scale: CGFloat) {
+        let normalized = EmojiPanelSizing.normalizedKeyboardSizeScale(scale)
+        guard abs(normalized - keyboardSizeScale) > 0.001 else { return }
+        keyboardSizeScale = normalized
+        invalidatePaginationCache()
+        applyCategorySizing()
+        buildCategoryBar()
+        rebuildEmojiButtons()
+    }
+
+    func setTheme(_ theme: Int, systemUserInterfaceStyle: UIUserInterfaceStyle) {
+        self.theme = theme
+        self.systemUserInterfaceStyle = systemUserInterfaceStyle
+        applySearchDismissStyle()
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let width = bounds.width
@@ -3604,7 +3926,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         if abs(width - lastRenderedWidth) > 0.5 || abs(viewportHeight - lastRenderedViewportHeight) > 0.5 {
             rebuildEmojiButtons()
         }
-        updateCategoryIconSpacer()
+        updateCategoryBarContentWidth()
     }
 
     private func invalidatePaginationCache() {
@@ -3618,6 +3940,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         backgroundColor = .clear
 
         searchField.placeholder = "搜尋表情符號"
+        searchField.accessibilityIdentifier = "lime_emoji_search_field"
         searchField.delegate = self
         searchField.autocorrectionType = .no
         searchField.autocapitalizationType = .none
@@ -3642,50 +3965,97 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
 
         categoryScrollView.alwaysBounceHorizontal = true
         categoryScrollView.alwaysBounceVertical = false
+        categoryScrollView.isScrollEnabled = true
+        categoryScrollView.delaysContentTouches = false
+        categoryScrollView.canCancelContentTouches = true
         categoryScrollView.showsHorizontalScrollIndicator = false
-        categoryScrollView.backgroundColor = .clear
+        categoryScrollView.backgroundColor = LayoutMetrics.TouchTrap.fill
+        categoryScrollView.clipsToBounds = true
         categoryScrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(categoryScrollView)
 
-        let deleteConfig = UIImage.SymbolConfiguration(pointSize: categorySymbolSize, weight: .regular)
+        configureTextButton(categoryModeButton, title: returnKeyTitle, action: #selector(tapABC))
+        categoryModeButton.tag = 0
+        returnKeyboardButton = categoryModeButton
+        categoryModeButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(categoryModeButton)
+
+        let deleteConfig = UIImage.SymbolConfiguration(pointSize: backspaceGlyphSize(), weight: .regular)
         categoryBackspaceButton.setImage(UIImage(systemName: "delete.backward", withConfiguration: deleteConfig), for: .normal)
         categoryBackspaceButton.tintColor = .label
         categoryBackspaceButton.imageView?.contentMode = .scaleAspectFit
-        categoryBackspaceButton.layer.cornerRadius = categoryIconSize / 2
+        categoryBackspaceButton.layer.cornerRadius = categoryButtonSize() / 2
         categoryBackspaceButton.addTarget(self, action: #selector(tapBackspace), for: .touchUpInside)
         categoryBackspaceButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(categoryBackspaceButton)
 
+        let dismissConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: LayoutLoader.hostIsPad),
+            weight: .regular)
+        searchDismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
+        searchDismissButton.accessibilityIdentifier = "lime_emoji_search_dismiss_button"
+        searchDismissButton.accessibilityLabel = "Dismiss emoji search"
+        searchDismissButton.tintColor = effectiveCandiText
+        searchDismissButton.backgroundColor = palette.normalKey.withAlphaComponent(0.15)
+        searchDismissButton.imageView?.contentMode = .scaleAspectFit
+        searchDismissButton.layer.cornerRadius = 6
+        searchDismissButton.layer.masksToBounds = true
+        searchDismissButton.addTarget(self, action: #selector(tapDismiss), for: .touchUpInside)
+        searchDismissButton.translatesAutoresizingMaskIntoConstraints = false
+        searchDismissButton.isHidden = true
+        addSubview(searchDismissButton)
+
         categoryBar.axis = .horizontal
         categoryBar.alignment = .center
+        categoryBar.backgroundColor = LayoutMetrics.TouchTrap.fill
         categoryBar.distribution = .fill
-        categoryBar.spacing = categorySpacing
+        categoryBar.spacing = categorySpacing()
         categoryBar.translatesAutoresizingMaskIntoConstraints = false
         categoryScrollView.addSubview(categoryBar)
-        categoryIconSpacer.translatesAutoresizingMaskIntoConstraints = false
-        categoryIconSpacerWidth = categoryIconSpacer.widthAnchor.constraint(equalToConstant: 0)
-        categoryIconSpacerWidth?.isActive = true
+        categoryBarWidthConstraint = categoryBar.widthAnchor.constraint(equalToConstant: 1)
+        categoryBarWidthConstraint?.isActive = true
 
         let emojiBottomToCategory = emojiViewport.bottomAnchor.constraint(equalTo: categoryScrollView.topAnchor, constant: -8)
         let emojiBottomToPanel = emojiViewport.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
         emojiBottomToCategoryConstraint = emojiBottomToCategory
         emojiBottomToPanelConstraint = emojiBottomToPanel
+        categoryScrollHeightConstraint = categoryScrollView.heightAnchor.constraint(equalToConstant: categoryRowHeight())
+        categoryModeWidthConstraint = categoryModeButton.widthAnchor.constraint(equalToConstant: categoryModeKeyWidth())
+        categoryModeHeightConstraint = categoryModeButton.heightAnchor.constraint(equalToConstant: categoryButtonSize())
+        categoryBackspaceWidthConstraint = categoryBackspaceButton.widthAnchor.constraint(equalToConstant: categoryButtonSize())
+        categoryBackspaceHeightConstraint = categoryBackspaceButton.heightAnchor.constraint(equalToConstant: categoryButtonSize())
+        searchFieldHeightConstraint = searchField.heightAnchor.constraint(equalToConstant: Self.searchFieldHeight)
+        searchDismissWidthConstraint = searchDismissButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: LayoutLoader.hostIsPad) / 2)
+        searchDismissHeightConstraint = searchDismissButton.heightAnchor.constraint(equalToConstant: emojiButtonSize())
+        emojiViewportNormalLeadingConstraint = emojiViewport.leadingAnchor.constraint(equalTo: leadingAnchor)
+        emojiViewportSearchLeadingConstraint = emojiViewport.leadingAnchor.constraint(equalTo: searchDismissButton.trailingAnchor)
+        emojiViewportSearchLeadingConstraint?.isActive = false
 
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+            searchField.topAnchor.constraint(equalTo: topAnchor, constant: Self.searchFieldTopInset),
             searchField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             searchField.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            searchField.heightAnchor.constraint(equalToConstant: 44),
+            searchFieldHeightConstraint!,
 
-            categoryScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            categoryModeButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            categoryModeButton.centerYAnchor.constraint(equalTo: categoryScrollView.centerYAnchor),
+            categoryModeWidthConstraint!,
+            categoryModeHeightConstraint!,
+
+            categoryScrollView.leadingAnchor.constraint(equalTo: categoryModeButton.trailingAnchor, constant: 4),
             categoryScrollView.trailingAnchor.constraint(equalTo: categoryBackspaceButton.leadingAnchor, constant: -4),
             categoryScrollView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            categoryScrollView.heightAnchor.constraint(equalToConstant: 48),
+            categoryScrollHeightConstraint!,
 
             categoryBackspaceButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             categoryBackspaceButton.centerYAnchor.constraint(equalTo: categoryScrollView.centerYAnchor),
-            categoryBackspaceButton.widthAnchor.constraint(equalToConstant: categoryIconSize),
-            categoryBackspaceButton.heightAnchor.constraint(equalToConstant: categoryIconSize),
+            categoryBackspaceWidthConstraint!,
+            categoryBackspaceHeightConstraint!,
+
+            searchDismissButton.leadingAnchor.constraint(equalTo: leadingAnchor),
+            searchDismissButton.topAnchor.constraint(equalTo: emojiViewport.topAnchor),
+            searchDismissWidthConstraint!,
+            searchDismissHeightConstraint!,
 
             categoryBar.leadingAnchor.constraint(equalTo: categoryScrollView.contentLayoutGuide.leadingAnchor),
             categoryBar.trailingAnchor.constraint(equalTo: categoryScrollView.contentLayoutGuide.trailingAnchor),
@@ -3694,7 +4064,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             categoryBar.heightAnchor.constraint(equalTo: categoryScrollView.frameLayoutGuide.heightAnchor),
 
             emojiViewport.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 10),
-            emojiViewport.leadingAnchor.constraint(equalTo: leadingAnchor),
+            emojiViewportNormalLeadingConstraint!,
             emojiViewport.trailingAnchor.constraint(equalTo: trailingAnchor),
             emojiBottomToCategory,
         ])
@@ -3705,12 +4075,8 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private func buildCategoryBar() {
         categoryBar.arrangedSubviews.forEach { $0.removeFromSuperview() }
         categoryButtons = []
-        let abc = textButton(returnKeyTitle, action: #selector(tapABC))
-        abc.tag = 0
-        returnKeyboardButton = abc
-        categoryButtons.append(abc)
-        categoryBar.addArrangedSubview(abc)
-        categoryBar.addArrangedSubview(categoryIconSpacer)
+        categoryBar.spacing = categorySpacing()
+        configureTextButton(categoryModeButton, title: returnKeyTitle, action: #selector(tapABC))
         ["clock", "face.smiling", "person.crop.circle", "pawprint", "apple.logo", "car",
          "soccerball", "lightbulb", "heart", "flag"].enumerated().forEach { index, symbol in
             let button = iconButton(symbol, action: #selector(tapCategory))
@@ -3719,28 +4085,86 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             categoryBar.addArrangedSubview(button)
         }
         updateCategoryHighlight()
+        updateCategoryBarContentWidth()
+        resetCategoryScrollPosition()
+    }
+
+    private func applyCategorySizing() {
+        let deleteConfig = UIImage.SymbolConfiguration(pointSize: backspaceGlyphSize(), weight: .regular)
+        categoryBackspaceButton.setImage(UIImage(systemName: "delete.backward", withConfiguration: deleteConfig), for: .normal)
+        categoryBackspaceButton.layer.cornerRadius = categoryButtonSize() / 2
+        let dismissConfig = UIImage.SymbolConfiguration(
+            pointSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: LayoutLoader.hostIsPad),
+            weight: .regular)
+        searchDismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
+        configureTextButton(categoryModeButton, title: returnKeyTitle, action: #selector(tapABC))
+        categoryScrollHeightConstraint?.constant = categoryRowHeight()
+        categoryModeWidthConstraint?.constant = categoryModeKeyWidth()
+        categoryModeHeightConstraint?.constant = categoryButtonSize()
+        categoryBackspaceWidthConstraint?.constant = categoryButtonSize()
+        categoryBackspaceHeightConstraint?.constant = categoryButtonSize()
+        searchDismissWidthConstraint?.constant = LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: LayoutLoader.hostIsPad) / 2
+        searchDismissHeightConstraint?.constant = emojiButtonSize()
+        categoryBar.spacing = categorySpacing()
+        updateCategoryBarContentWidth()
     }
 
     func setSearchMode(_ enabled: Bool) {
         isSearchMode = enabled
+        resetSearchFieldHeight()
         visibleRows = currentVisibleRows()
+        categoryModeButton.isHidden = enabled
         categoryScrollView.isHidden = enabled
         categoryBackspaceButton.isHidden = enabled
+        searchDismissButton.isHidden = true
+        emojiViewport.isHidden = enabled
+        emojiViewportNormalLeadingConstraint?.isActive = !enabled
+        emojiViewportSearchLeadingConstraint?.isActive = enabled
         emojiBottomToCategoryConstraint?.isActive = !enabled
         emojiBottomToPanelConstraint?.isActive = enabled
         rebuildEmojiButtons()
     }
 
+    private func applySearchDismissStyle() {
+        searchDismissButton.tintColor = effectiveCandiText
+        searchDismissButton.backgroundColor = palette.normalKey.withAlphaComponent(0.15)
+    }
+
     func prepareForPresentation() {
         endEditing(true)
+        resetSearchFieldHeight()
         setSearchMode(false)
-        setEmojiContentOffset(0, animated: false)
+        resetEmojiScrollPosition()
+        resetCategoryScrollPosition()
         activeCategoryIndex = 1
         updateCategoryHighlight()
     }
 
     func resignSearch() {
         searchField.resignFirstResponder()
+    }
+
+    func clearSearchText() {
+        searchField.text = ""
+    }
+
+    private func resetSearchFieldHeight() {
+        searchFieldHeightConstraint?.constant = Self.searchFieldHeight
+        searchFieldHeightConstraint?.isActive = true
+    }
+
+    func appendSearchText(_ text: String) {
+        guard !text.isEmpty else { return }
+        searchField.text = (searchField.text ?? "") + text
+        searchChanged()
+    }
+
+    var hasEmptySearchText: Bool {
+        (searchField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var searchText: String {
+        searchField.text ?? ""
     }
 
     func handleSearchKey(code: Int) -> Bool {
@@ -3750,11 +4174,11 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             guard !(searchField.text ?? "").isEmpty else { return true }
             searchField.text = String((searchField.text ?? "").dropLast())
         case LimeKeyCode.enter.rawValue, LimeKeyCode.done.rawValue:
-            searchField.resignFirstResponder()
+            delegate?.emojiPanelViewDidRequestDismiss(self)
             return true
         case 32:
             searchField.text = (searchField.text ?? "") + " "
-        case 33...126:
+        case 1...Int(UInt32.max):
             guard let scalar = Unicode.Scalar(code) else { return false }
             searchField.text = (searchField.text ?? "") + String(scalar)
         default:
@@ -3776,8 +4200,14 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         let pageHeight = emojiPageHeight()
         let buttonSize = emojiButtonSize()
         let columnsPerPage = isSearchMode ? 0 : normalModeColumnsPerPage(pageWidth: pageWidth)
-        let horizontalInset = emojiHorizontalInset()
-        let cellWidth = isSearchMode ? buttonSize : (pageWidth - horizontalInset * 2) / CGFloat(columnsPerPage)
+        let cellWidth = isSearchMode
+            ? buttonSize
+            : normalModeCellWidth(pageWidth: pageWidth, columnsPerPage: columnsPerPage)
+        let horizontalInset = isSearchMode
+            ? 12
+            : normalModeHorizontalInset(pageWidth: pageWidth,
+                                        columnsPerPage: columnsPerPage,
+                                        cellWidth: cellWidth)
         let cellsPerPage = max(1, columnsPerPage * rows)
         let pages: [[Mapping]]
         let pageSourceIndexes: [Int]
@@ -3919,7 +4349,10 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             let start = index < displayPageOffsets.count ? displayPageOffsets[index] : CGFloat(index) * pageWidth
             let columnCount = index < displayPageColumnCounts.count ? max(displayPageColumnCounts[index], 1) : 1
             let cellWidth = normalModeCellWidth(pageWidth: pageWidth)
-            let end = start + CGFloat(columnCount) * cellWidth + emojiHorizontalInset() * 2
+            let horizontalInset = normalModeHorizontalInset(pageWidth: pageWidth,
+                                                            columnsPerPage: normalModeColumnsPerPage(pageWidth: pageWidth),
+                                                            cellWidth: cellWidth)
+            let end = start + CGFloat(columnCount) * cellWidth + horizontalInset * 2
             return end >= visibleStart && start <= visibleEnd
         }
     }
@@ -3930,7 +4363,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     }
 
     private func emojiPageWidth() -> CGFloat {
-        max(emojiViewport.bounds.width, bounds.width, 1)
+        max(emojiViewport.bounds.width, 1)
     }
 
     private func emojiPageHeight() -> CGFloat {
@@ -3942,12 +4375,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     }
 
     private func currentVisibleRows() -> Int {
-        guard !isSearchMode else { return 1 }
-        let availableHeight = emojiViewport.bounds.height
-        let preferredRows = usesPadEmojiLayout() ? 5 : 4
-        guard availableHeight > 1 else { return preferredRows }
-        let minimumButtonSize = usesPadEmojiLayout() ? padEmojiMinButtonSize : phoneEmojiMinButtonSize
-        return availableHeight >= minimumButtonSize * CGFloat(preferredRows) ? preferredRows : max(preferredRows - 1, 3)
+        EmojiPanelSizing.visibleRows(isSearchMode: isSearchMode)
     }
 
     private func emojiButtonSize() -> CGFloat {
@@ -3955,15 +4383,12 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     }
 
     private func emojiButtonSize(forRows rows: Int) -> CGFloat {
-        guard !isSearchMode else { return emojiFallbackButtonSize }
+        let scaledButtonSize = EmojiPanelSizing.buttonSize(keyboardSizeScale: keyboardSizeScale)
+        guard !isSearchMode else { return scaledButtonSize }
         let availableHeight = emojiViewport.bounds.height
-        guard availableHeight > 1 else { return emojiFallbackButtonSize }
+        guard availableHeight > 1 else { return scaledButtonSize }
         let rows = CGFloat(max(rows, 1))
-        let minButtonSize = usesPadEmojiLayout() ? padEmojiMinButtonSize : phoneEmojiMinButtonSize
-        let maxButtonSize = usesPadEmojiLayout() ? padEmojiMaxButtonSize : phoneEmojiMaxButtonSize
-        return clamped(floor(availableHeight / rows),
-                       lower: minButtonSize,
-                       upper: maxButtonSize)
+        return max(floor(availableHeight / rows), 1)
     }
 
     private func emojiFontSize() -> CGFloat {
@@ -3971,47 +4396,100 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     }
 
     private func emojiFontSize(for buttonSize: CGFloat) -> CGFloat {
-        if usesPadEmojiLayout() && !isSearchMode {
-            let fontSize = buttonSize * 0.78
-            return clamped(fontSize, lower: padEmojiMinFontSize, upper: padEmojiMaxFontSize)
-        }
-        let fontSize = buttonSize * 0.9
-        return clamped(fontSize, lower: phoneEmojiMinFontSize, upper: phoneEmojiMaxFontSize)
+        EmojiPanelSizing.emojiGlyphSize(keyboardSizeScale: keyboardSizeScale)
     }
 
-    private func emojiHorizontalInset() -> CGFloat {
-        guard usesPadEmojiLayout() && !isSearchMode else { return 12 }
-        return clamped(emojiPageWidth() * 0.025, lower: 24, upper: 48)
+    private func normalModeOuterInset(pageWidth: CGFloat) -> CGFloat {
+        guard usesPadEmojiLayout() else { return 12 }
+        return clamped(pageWidth * 0.025, lower: 24, upper: 48)
+    }
+
+    private func normalModeTargetCellWidth() -> CGFloat {
+        max(emojiButtonSize(), emojiFontSize() + 32)
     }
 
     private func normalModeColumnsPerPage(pageWidth: CGFloat) -> Int {
-        let targetCellWidth = usesPadEmojiLayout() ? max(emojiButtonSize() * 1.95, 116) : emojiButtonSize()
-        let fitted = Int((pageWidth - emojiHorizontalInset() * 2) / targetCellWidth)
+        let targetCellWidth = usesPadEmojiLayout() ? normalModeTargetCellWidth() : emojiButtonSize()
+        let fitted = Int((pageWidth - normalModeOuterInset(pageWidth: pageWidth) * 2) / targetCellWidth)
         return usesPadEmojiLayout() ? min(10, max(8, fitted)) : min(10, max(7, fitted))
     }
 
+    private func normalModeCellWidth(pageWidth: CGFloat, columnsPerPage: Int) -> CGFloat {
+        guard usesPadEmojiLayout() else {
+            let horizontalInset = normalModeOuterInset(pageWidth: pageWidth)
+            return (pageWidth - horizontalInset * 2) / CGFloat(columnsPerPage)
+        }
+        return normalModeTargetCellWidth()
+    }
+
+    private func normalModeHorizontalInset(pageWidth: CGFloat,
+                                           columnsPerPage: Int,
+                                           cellWidth: CGFloat) -> CGFloat {
+        let outerInset = normalModeOuterInset(pageWidth: pageWidth)
+        guard usesPadEmojiLayout() else { return outerInset }
+        return outerInset
+    }
+
     private func normalModeCellWidth(pageWidth: CGFloat) -> CGFloat {
-        let horizontalInset = emojiHorizontalInset()
         let columnsPerPage = normalModeColumnsPerPage(pageWidth: pageWidth)
-        return (pageWidth - horizontalInset * 2) / CGFloat(columnsPerPage)
+        return normalModeCellWidth(pageWidth: pageWidth, columnsPerPage: columnsPerPage)
     }
 
     private func clamped(_ value: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
         min(max(value, lower), upper)
     }
 
-    private func updateCategoryIconSpacer() {
-        guard let widthConstraint = categoryIconSpacerWidth else { return }
-        let iconCount = max(categoryButtons.count - 1, 0)
-        let iconsWidth = CGFloat(iconCount) * categoryIconSize
-            + CGFloat(max(iconCount - 1, 0)) * categorySpacing
-        let centeredIconStart = max(0, (categoryScrollView.bounds.width - iconsWidth) / 2)
-        let abcAndSpacingWidth = categoryTextWidth + categorySpacing * 2
-        let targetSpacer = max(0, centeredIconStart - abcAndSpacingWidth)
-        if abs(widthConstraint.constant - targetSpacer) > 0.5 {
-            widthConstraint.constant = targetSpacer
-            categoryBar.setNeedsLayout()
+    private func updateCategoryBarContentWidth() {
+        guard let widthConstraint = categoryBarWidthConstraint else { return }
+        let iconCount = categoryButtons.count
+        let arrangedCount = categoryButtons.count
+        let spacingWidth = CGFloat(max(arrangedCount - 1, 0)) * categorySpacing()
+        let contentWidth = CGFloat(iconCount) * categoryButtonSize()
+            + spacingWidth
+        let targetWidth = contentWidth
+        if abs(widthConstraint.constant - targetWidth) > 0.5 {
+            widthConstraint.constant = targetWidth
+            categoryScrollView.contentSize = CGSize(width: targetWidth,
+                                                    height: categoryRowHeight())
         }
+        let centerInset = max(0, (categoryScrollView.bounds.width - contentWidth) / 2)
+        if abs(categoryScrollView.contentInset.left - centerInset) > 0.5 {
+            let wasAtStart = abs(categoryScrollView.contentOffset.x + categoryScrollView.contentInset.left) < 0.5
+            categoryScrollView.contentInset.left = centerInset
+            categoryScrollView.contentInset.right = centerInset
+            if wasAtStart {
+                categoryScrollView.setContentOffset(CGPoint(x: -centerInset, y: 0), animated: false)
+            }
+        }
+        clampCategoryScrollPosition()
+    }
+
+    private func categoryButtonSize() -> CGFloat {
+        EmojiPanelSizing.categoryButtonSize(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func categoryModeKeyWidth() -> CGFloat {
+        EmojiPanelSizing.modeKeyWidth(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func categoryRowHeight() -> CGFloat {
+        EmojiPanelSizing.categoryRowHeight(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func categoryGlyphSize() -> CGFloat {
+        EmojiPanelSizing.categoryGlyphSize(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func backspaceGlyphSize() -> CGFloat {
+        EmojiPanelSizing.backspaceGlyphSize(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func modeKeyGlyphSize() -> CGFloat {
+        EmojiPanelSizing.modeKeyGlyphSize(keyboardSizeScale: keyboardSizeScale)
+    }
+
+    private func categorySpacing() -> CGFloat {
+        EmojiPanelSizing.categorySpacing(keyboardSizeScale: keyboardSizeScale)
     }
 
     private func maxEmojiContentOffsetX() -> CGFloat {
@@ -4042,28 +4520,49 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         updateCategoryHighlightForScroll()
     }
 
-    private func textButton(_ title: String, action: Selector) -> UIButton {
-        let button = UIButton(type: .system)
+    private func resetEmojiScrollPosition() {
+        emojiContentOffsetX = 0
+        emojiViewport.setContentOffset(.zero, animated: false)
+    }
+
+    private func resetCategoryScrollPosition() {
+        categoryScrollView.setContentOffset(CGPoint(x: -categoryScrollView.contentInset.left, y: 0),
+                                            animated: false)
+    }
+
+    private func clampCategoryScrollPosition() {
+        let minOffsetX = -categoryScrollView.contentInset.left
+        let maxOffsetX = max(minOffsetX,
+                             categoryScrollView.contentSize.width
+                             - categoryScrollView.bounds.width
+                             + categoryScrollView.contentInset.right)
+        let clampedX = min(max(categoryScrollView.contentOffset.x, minOffsetX), maxOffsetX)
+        if abs(categoryScrollView.contentOffset.x - clampedX) > 0.5 {
+            categoryScrollView.setContentOffset(CGPoint(x: clampedX, y: 0), animated: false)
+        }
+    }
+
+    private func configureTextButton(_ button: UIButton, title: String, action: Selector) {
         button.setTitle(title, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 22, weight: .regular)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: modeKeyGlyphSize(), weight: .regular)
         button.tintColor = .label
+        button.backgroundColor = LayoutMetrics.TouchTrap.fill
+        button.removeTarget(nil, action: nil, for: .touchUpInside)
         button.addTarget(self, action: action, for: .touchUpInside)
-        button.layer.cornerRadius = categoryIconSize / 2
-        button.widthAnchor.constraint(equalToConstant: categoryTextWidth).isActive = true
-        button.heightAnchor.constraint(equalToConstant: categoryIconSize).isActive = true
-        return button
+        button.layer.cornerRadius = categoryButtonSize() / 2
     }
 
     private func iconButton(_ symbol: String, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: categorySymbolSize, weight: .regular)
+        let config = UIImage.SymbolConfiguration(pointSize: categoryGlyphSize(), weight: .regular)
         button.setImage(UIImage(systemName: symbol, withConfiguration: config), for: .normal)
         button.tintColor = .label
+        button.backgroundColor = LayoutMetrics.TouchTrap.fill
         button.imageView?.contentMode = .scaleAspectFit
         button.addTarget(self, action: action, for: .touchUpInside)
-        button.layer.cornerRadius = categoryIconSize / 2
-        button.widthAnchor.constraint(equalToConstant: categoryIconSize).isActive = true
-        button.heightAnchor.constraint(equalToConstant: categoryIconSize).isActive = true
+        button.layer.cornerRadius = categoryButtonSize() / 2
+        button.widthAnchor.constraint(equalToConstant: categoryButtonSize()).isActive = true
+        button.heightAnchor.constraint(equalToConstant: categoryButtonSize()).isActive = true
         return button
     }
 
@@ -4086,6 +4585,10 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         delegate?.emojiPanelViewDidRequestBackspace(self)
     }
 
+    @objc private func tapDismiss() {
+        delegate?.emojiPanelViewDidRequestDismiss(self)
+    }
+
     @objc private func tapCategory(_ sender: UIButton) {
         activeCategoryIndex = sender.tag
         updateCategoryHighlight()
@@ -4102,7 +4605,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
             where index > 0 && startOffset <= emojiContentOffsetX + 0.5 {
             active = index
         }
-        let nextActive = min(max(active, 1), max(categoryButtons.count - 1, 1))
+        let nextActive = min(max(active, 1), max(categoryButtons.count, 1))
         guard nextActive != activeCategoryIndex else { return }
         activeCategoryIndex = nextActive
         updateCategoryHighlight()
@@ -4111,7 +4614,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     private func updateCategoryHighlight() {
         for button in categoryButtons {
             let active = button.tag == activeCategoryIndex
-            button.backgroundColor = active ? UIColor.label.withAlphaComponent(0.14) : .clear
+            button.backgroundColor = active ? UIColor.label.withAlphaComponent(0.14) : LayoutMetrics.TouchTrap.fill
             button.tintColor = .label
         }
     }
@@ -4131,7 +4634,7 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
     }
 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
+        delegate?.emojiPanelViewDidRequestDismiss(self)
         return true
     }
 }

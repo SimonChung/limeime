@@ -257,11 +257,11 @@ public class CandidateInInputViewContainer extends LinearLayout  implements View
         return candidateBackground;
     }
 
-    static int actionButtonBackgroundColor() {
+    public static int actionButtonBackgroundColor() {
         return Color.TRANSPARENT;
     }
 
-    static int dismissButtonBackgroundColor() {
+    public static int dismissButtonBackgroundColor() {
         return Color.TRANSPARENT;
     }
 

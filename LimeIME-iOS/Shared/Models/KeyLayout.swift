@@ -67,6 +67,62 @@ enum CandidateBarSystemChrome {
     }
 }
 
+enum EmojiPanelSizing {
+    static let baseGlyphSize: CGFloat = 32
+    static let baseButtonSize: CGFloat = 54
+    static let baseModeKeyWidth: CGFloat = 64
+    static let baseCategorySpacing: CGFloat = 4
+
+    static func normalizedKeyboardSizeScale(_ scale: CGFloat) -> CGFloat {
+        min(max(scale, 0.8), 1.2)
+    }
+
+    static func glyphScale(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        let normalized = normalizedKeyboardSizeScale(scale)
+        return 1 + (normalized - 1) * 0.5
+    }
+
+    static func emojiGlyphSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        baseGlyphSize * glyphScale(keyboardSizeScale: scale)
+    }
+
+    static func categoryGlyphSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        emojiGlyphSize(keyboardSizeScale: scale) * 0.65
+    }
+
+    static func backspaceGlyphSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        emojiGlyphSize(keyboardSizeScale: scale) * 0.65
+    }
+
+    static func modeKeyGlyphSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        emojiGlyphSize(keyboardSizeScale: scale) * 0.8
+    }
+
+    static func buttonSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        baseButtonSize * normalizedKeyboardSizeScale(scale)
+    }
+
+    static func categoryButtonSize(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        buttonSize(keyboardSizeScale: scale) * 0.8
+    }
+
+    static func modeKeyWidth(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        max(baseModeKeyWidth, categoryButtonSize(keyboardSizeScale: scale) * 1.35)
+    }
+
+    static func categoryRowHeight(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        categoryButtonSize(keyboardSizeScale: scale) + 12
+    }
+
+    static func categorySpacing(keyboardSizeScale scale: CGFloat) -> CGFloat {
+        baseCategorySpacing * normalizedKeyboardSizeScale(scale)
+    }
+
+    static func visibleRows(isSearchMode: Bool) -> Int {
+        isSearchMode ? 1 : 4
+    }
+}
+
 struct EmojiPanelPaginationResult {
     let pages: [[Mapping]]
     let categoryStartDisplayPageIndexes: [Int]

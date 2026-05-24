@@ -112,11 +112,11 @@ enum LayoutMetrics {
             /// Reserved height of the keyname strip overlay.
             static let stripHeight: CGFloat = 18
             /// Strip-label font size (× candidateFontScale at use-site).
-            static let stripFontSize: CGFloat = 14
+            static let stripFontSize: CGFloat = 16
             /// Candidate-cell font size (× candidateFontScale at use-site).
-            static let candidateFontSize: CGFloat = 22
+            static let candidateFontSize: CGFloat = 26
             /// Composing-code (raw English letters) cell font size.
-            static let composingCodeFontSize: CGFloat = 16
+            static let composingCodeFontSize: CGFloat = 22
             /// Candidate-bar resting height before fontScale is applied.
             static let barBaseHeight: CGFloat = 58
         }

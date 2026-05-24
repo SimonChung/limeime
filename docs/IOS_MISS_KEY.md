@@ -245,11 +245,60 @@ Will attempt to recover by breaking constraint <UIView.height == 54>
 
 None of this session's edits touch keyboard sizing — this is pre-existing. Likely fix candidates: change `KeyboardView.bottom == UIInputView.bottom` to `lessThanOrEqual`, or set `view.heightAnchor` constraint at a high priority so UIInputView shrinks to fit. **Out of scope for the missed-key investigation** — separate ticket.
 
+### 2026-05-24 — New hypothesis (4): UIView default rejects the second simultaneous touch; multi-touch enabled at every container
+
+**New hypothesis (4) — container-level multi-touch rejection.** All previous hypotheses (1)–(3) frame the missed-key cause as main-thread starvation during the candidate reload. A complementary mechanism is also consistent with the symptom — and interlocks with (2):
+
+`UIView.isMultipleTouchEnabled` defaults to **`false`** in UIKit. Apple's documented behaviour for that default: *"the view receives only the first touch event in a multi-touch sequence."* A `grep` across [KeyboardView.swift](../LimeIME-iOS/LimeKeyboard/KeyboardView.swift), [KeyboardViewController.swift](../LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift), and [CandidateBarView.swift](../LimeIME-iOS/LimeKeyboard/CandidateBarView.swift) confirms `isMultipleTouchEnabled` (and `isExclusiveTouch`) are never set anywhere — every container in the hit-test chain sits at the UIKit default.
+
+**Interaction with the main-thread-block model.** When `rebuildButtons()` (or `showComposingPopup()`) blocks the main thread, finger A's `touchUp` queues but is not yet processed. From UIKit's bookkeeping POV finger A is *still tracking* when finger B's `touchBegan` arrives. With multi-touch disabled at the container level, finger B is treated as the **second touch in a sequence** and dropped at the dispatch layer — never reaches button B, no `keyDown`, no `fireHaptic`, no character. This is consistent with:
+
+- The "silent miss" symptom (touch dropped pre-dispatch, no half-finished press).
+- The "only compose keys miss" differentiator: symbol keys' `touchUp` drains immediately, so the next touch is always "first touch again" and goes through. Compose keys' `touchUp` is held behind heavy main-thread work, so the next touch is position-1 in the multi-touch sequence and is silently dropped.
+- Why P2 alone didn't fix it: P2 trimmed the *reload* tail, but `showComposingPopup()` still runs synchronously before the DB hop, and any main-thread block (however short) is enough to keep `touchUp` from draining before the next `touchBegan`.
+
+**Change applied — `isMultipleTouchEnabled = true` at five spots in [LimeIME-iOS/LimeKeyboard/KeyboardView.swift](../LimeIME-iOS/LimeKeyboard/KeyboardView.swift):**
+
+- `KeyboardView.init(layout:)` — root view (~line 418).
+- `makeSplitRow` rowView (~line 578) — iPad split mode.
+- `makeSplitRow` contentView per half (~line 605).
+- `makeRow` rowView (~line 647) — standard rows.
+- `makeRow` contentView (~line 657).
+
+Multi-touch enable is **per-view, not inherited** — setting only the root is insufficient. Every view in the hit-test chain from window down to the leaf `KeyButton` must accept multi-touch, otherwise the dispatcher can drop at any level. No other code touched (no candidate-bar changes, no gesture-recognizer changes, no touch-handler changes, no candidate-reload changes). Compiles clean — BUILD SUCCEEDED on iPhone 17 Pro iOS 26.5 simulator.
+
+**Why this is worth trying before P1 / probes.**
+
+- Cheapest possible change (five one-line additions).
+- Fully reversible.
+- Orthogonal to P1 / P2 / P3 / P5 — does not preclude or interfere with any of them.
+- If it works, the entire missed-key thread closes without needing to rewrite the reload path.
+- If it does not work, the next-session probe + P1 plan still stands unchanged.
+
+**What this hypothesis does *not* claim:**
+
+- It does **not** replace P1. The reload is still heavy; the diffable rebuild is still the right structural fix for perceived latency and battery, independent of the missed-key symptom.
+- It does **not** invalidate P2. P2 still helps drain queued touches faster between strokes.
+- It assumes the underlying mechanism in hypothesis (2) is real — multi-touch rejection only matters when `touchUp` for the previous key is delayed. If the main thread were never blocked, multi-touch enable would be a no-op for normal one-finger typing.
+
+### Verification protocol (test on WJIP17)
+
+1. Deploy via the **LimeIME scheme** (per gotcha above — never LimeKeyboard scheme on iOS 26.x).
+2. **Force-refresh the extension binary:** remove LimeIME from the home screen → reinstall via LimeIME scheme → disable + re-enable the keyboard in Settings → General → Keyboards. Required because iOS aggressively caches the extension binary.
+3. Type the fast burst `wo3jiao4li2ming2wo3jiao4li2ming2…` and confirm whether silent drops disappear or substantially reduce.
+4. Side-by-side: type the same burst on the iOS system keyboard for a control.
+5. If drops disappear → root cause confirmed; close this thread, defer P1 until [docs/IOS_PROFILING.md](IOS_PROFILING.md) trace shows `CandidateReload` p95 > 10 ms.
+6. If drops persist → revert the five lines, fall back to the existing "next-session entry point" below (re-add probes, capture trace, then P1).
+
 ## Next-session entry point
 
-1. **Confirm reinstall protocol works.** Remove LimeIME from home screen, reinstall via LimeIME scheme, verify keyboard re-enabled in Settings. Without this, no diagnostic build will actually run on the device.
-2. **Re-add the three `os_log` probes** (or fall back to `NSLog`). Grep markers: `DIAG: missed-key`.
-3. **Reproduce the drop with Console streaming.** Count `keyDown` / `handleChar` / `touchCancel` lines vs visible characters → bucket the failure as per the table in the session-end summary.
-4. If hypothesis (2) lights up — `keyDown` count = taps but `handleChar` < taps, or both = taps but characters < taps — apply the next targeted fix: **defer `showComposingPopup` one runloop tick** (mirror of P2 but on the eager half of the compose path) and re-test.
-5. If hypothesis (1) lights up — `keyDown` count < taps — investigate gesture recognizers on candidate-bar pan / dual-row iPad / popup long-press; check `cancelsTouchesInView` settings.
-6. If `touchCancel` lines appear during drops, that's hypothesis (3) — UIKit pre-empted; trace gesture-recognizer arbitration.
+1. **Test hypothesis (4) first** — multi-touch enable is already applied. Build the LimeIME scheme to WJIP17, force-refresh the extension binary, run the fast-burst test. Outcome decides next branch:
+   - **Drops gone or substantially reduced** → root cause was container-level multi-touch rejection. Update the doc with the verified result; defer probes and P1 unless profiling later shows reload p95 is still a problem.
+   - **Drops persist** → revert the five `isMultipleTouchEnabled = true` lines in [KeyboardView.swift](../LimeIME-iOS/LimeKeyboard/KeyboardView.swift) (single-file, no other dependencies) and proceed with steps 2–7 below.
+2. **Confirm reinstall protocol works.** Remove LimeIME from home screen, reinstall via LimeIME scheme, verify keyboard re-enabled in Settings. Without this, no diagnostic build will actually run on the device.
+3. **Re-add the three `os_log` probes** (or fall back to `NSLog`). Grep markers: `DIAG: missed-key`.
+4. **Reproduce the drop with Console streaming.** Count `keyDown` / `handleChar` / `touchCancel` lines vs visible characters → bucket the failure as per the table in the session-end summary.
+5. If hypothesis (2) lights up — `keyDown` count = taps but `handleChar` < taps, or both = taps but characters < taps — apply the next targeted fix: **defer `showComposingPopup` one runloop tick** (mirror of P2 but on the eager half of the compose path) and re-test.
+6. If hypothesis (1) lights up — `keyDown` count < taps — investigate gesture recognizers on candidate-bar pan / dual-row iPad / popup long-press; check `cancelsTouchesInView` settings.
+7. If `touchCancel` lines appear during drops, that's hypothesis (3) — UIKit pre-empted; trace gesture-recognizer arbitration.
+8. **Hypothesis (4) diagnostic signature** (if re-investigating after revert): `keyDown` count **< taps**, and **no `touchCancel`** lines. That distinguishes container-level multi-touch rejection from (1)/(2)/(3) at the probe layer.

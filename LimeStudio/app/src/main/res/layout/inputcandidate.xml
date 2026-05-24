@@ -33,7 +33,14 @@
     android:background="@color/keyboard_background_semi_transparent"
     android:fitsSystemWindows="true">
 
+    <FrameLayout
+        android:id="@+id/emoji_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
     <LinearLayout
+        android:id="@+id/input_candidate_strip"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal" 
@@ -98,12 +105,6 @@
             
         </LinearLayout>
     </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/emoji_keyboard"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
 
     <net.toload.main.hd.keyboard.LIMEKeyboardView
         xmlns:android="http://schemas.android.com/apk/res/android"

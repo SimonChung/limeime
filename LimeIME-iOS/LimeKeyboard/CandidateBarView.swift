@@ -217,6 +217,16 @@ final class CandidateBarView: UIView {
     }
     private let candidateHPad: CGFloat = LayoutMetrics.CandidateBar.candidateHPad
     private let dividerWidth:  CGFloat = LayoutMetrics.CandidateBar.dividerWidth
+    private var composingStripReserved = true
+    private var emptyDismissChromeEnabled = false
+    var activeComposingStripHeight: CGFloat { composingStripReserved ? composingStripHeight : 0 }
+    private var glyphBias: CGFloat { composingStripReserved ? composingStripHeight / 2 : 0 }
+    private var glyphHeightConstant: CGFloat { composingStripReserved ? -composingStripHeight : 0 }
+    private var dismissCenterYConstraint: NSLayoutConstraint?
+    private var dismissHeightConstraint: NSLayoutConstraint?
+    private var emojiCenterYConstraint: NSLayoutConstraint?
+    private var emojiHeightConstraint: NSLayoutConstraint?
+    private var moreSepCenterYConstraint: NSLayoutConstraint?
 
     // MARK: - Init
     override init(frame: CGRect) {
@@ -268,9 +278,8 @@ final class CandidateBarView: UIView {
         // chevron icon sits at the same vertical center as the glyphs.
         // Symmetric horizontal insets are unnecessary because the icon is
         // centered in the (now narrower) frame; only the vertical bias matters.
-        let chevronBias = composingStripHeight / 2
-        moreButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: chevronBias, left: 0,
-                                                               bottom: -chevronBias, right: 0)),
+        moreButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: glyphBias, left: 0,
+                                                               bottom: -glyphBias, right: 0)),
                             forKey: "contentEdgeInsets")
         moreButton.isHidden = true
         moreButton.addTarget(self, action: #selector(moreTapped), for: .touchUpInside)
@@ -310,6 +319,8 @@ final class CandidateBarView: UIView {
                 ofSize: LayoutMetrics.CandidateBar.Chevron.iconSize(isPad: isPad) * 1.35, weight: .regular)
         }
         emojiButton.tintColor = effectiveCandiText
+        emojiButton.accessibilityIdentifier = "lime_candidate_bar_emoji_button"
+        emojiButton.accessibilityLabel = "LIME candidate bar emoji"
         emojiButton.imageView?.contentMode = .scaleAspectFit
         emojiButton.isHidden = true
         emojiButton.addTarget(self, action: #selector(emojiTapped), for: .touchUpInside)
@@ -334,8 +345,8 @@ final class CandidateBarView: UIView {
         optionsButton.imageView?.contentMode = .scaleAspectFit
         optionsButton.contentHorizontalAlignment = .center
         optionsButton.contentVerticalAlignment = .center
-        optionsButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: chevronBias, left: 0,
-                                                                  bottom: -chevronBias, right: 0)),
+        optionsButton.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: glyphBias, left: 0,
+                                                                  bottom: -glyphBias, right: 0)),
                                forKey: "contentEdgeInsets")
         optionsButton.isHidden = true
         optionsButton.addTarget(self, action: #selector(optionsTapped), for: .touchUpInside)
@@ -386,20 +397,31 @@ final class CandidateBarView: UIView {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stackView)
 
+        let dismissCenterY = dismissButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: glyphBias)
+        let dismissHeight = dismissButton.heightAnchor.constraint(equalTo: heightAnchor, constant: glyphHeightConstant)
+        let emojiCenterY = emojiButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: glyphBias)
+        let emojiHeight = emojiButton.heightAnchor.constraint(equalTo: heightAnchor, constant: glyphHeightConstant)
+        let moreSepCenterY = moreSep.centerYAnchor.constraint(equalTo: centerYAnchor, constant: glyphBias)
+        dismissCenterYConstraint = dismissCenterY
+        dismissHeightConstraint = dismissHeight
+        emojiCenterYConstraint = emojiCenterY
+        emojiHeightConstraint = emojiHeight
+        moreSepCenterYConstraint = moreSepCenterY
+
         NSLayoutConstraint.activate([
             // dismiss button: half chevron width, height = barHeight − stripHeight,
             // centered on the glyph axis (biased down by stripHeight/2 from bar center).
             // No contentEdgeInsets bias needed — the frame itself sits at glyph center.
             dismissButton.leadingAnchor.constraint(equalTo: leadingAnchor),
-            dismissButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
-            dismissButton.heightAnchor.constraint(equalTo: heightAnchor, constant: -composingStripHeight),
+            dismissCenterY,
+            dismissHeight,
             dismissButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.Chevron.buttonWidth(isPad: isPad) / 2),
 
             firstColumnGuide.leadingAnchor.constraint(equalTo: leadingAnchor),
             firstColumnGuide.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.10),
             emojiButton.centerXAnchor.constraint(equalTo: firstColumnGuide.centerXAnchor),
-            emojiButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
-            emojiButton.heightAnchor.constraint(equalTo: heightAnchor, constant: -composingStripHeight),
+            emojiCenterY,
+            emojiHeight,
             emojiButton.widthAnchor.constraint(equalTo: firstColumnGuide.widthAnchor, multiplier: 0.80),
 
             // Options column. On iPhone this mirrors the trailing column.
@@ -425,7 +447,7 @@ final class CandidateBarView: UIView {
             // same amount as the candidate glyphs so it stays centered with
             // the visible row content under the keyname overlay.
             moreSep.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor),
-            moreSep.centerYAnchor.constraint(equalTo: centerYAnchor, constant: composingStripHeight / 2),
+            moreSepCenterY,
             moreSep.widthAnchor.constraint(equalToConstant: dividerWidth),
             moreSep.heightAnchor.constraint(equalToConstant: LayoutMetrics.CandidateBar.dividerHeight),
 
@@ -494,6 +516,19 @@ final class CandidateBarView: UIView {
         idleToolsSuppressed = suppressed
     }
 
+    func setComposingStripReserved(_ reserved: Bool) {
+        guard composingStripReserved != reserved else { return }
+        composingStripReserved = reserved
+        applyComposingStripReservation()
+        rebuildButtons()
+    }
+
+    func setEmptyDismissChromeEnabled(_ enabled: Bool) {
+        guard emptyDismissChromeEnabled != enabled else { return }
+        emptyDismissChromeEnabled = enabled
+        rebuildButtons()
+    }
+
     // MARK: - Composing region (RC3 Option A)
 
     /// Recompute the composing label's text. Width/height are static;
@@ -504,8 +539,21 @@ final class CandidateBarView: UIView {
         composingLabel.font = composingStripFont
         composingLabel.attributedText = nil
         composingLabel.text = raw.isEmpty ? nil : raw
+        composingLabel.isHidden = !composingStripReserved || raw.isEmpty
         // Ensure the strip floats above the candidate scroll view.
         bringSubviewToFront(composingLabel)
+    }
+
+    private func applyComposingStripReservation() {
+        let insets = UIEdgeInsets(top: glyphBias, left: 0, bottom: -glyphBias, right: 0)
+        moreButton.setValue(NSValue(uiEdgeInsets: insets), forKey: "contentEdgeInsets")
+        optionsButton.setValue(NSValue(uiEdgeInsets: insets), forKey: "contentEdgeInsets")
+        dismissCenterYConstraint?.constant = glyphBias
+        dismissHeightConstraint?.constant = glyphHeightConstant
+        emojiCenterYConstraint?.constant = glyphBias
+        emojiHeightConstraint?.constant = glyphHeightConstant
+        moreSepCenterYConstraint?.constant = glyphBias
+        applyComposingText()
     }
 
     /// Build a plain attributed string for the keyname strip.
@@ -671,20 +719,22 @@ final class CandidateBarView: UIView {
         // Left zone: emoji ↔ dismiss swap (per CANDI_LAYOUT.md §9). Right zone:
         // options ↔ chevron swap.
         let hasCandidates = !candidates.isEmpty
+        let showEmptyDismissChrome = emptyDismissChromeEnabled && !hasCandidates
         let allowEmoji    = !isPad
         let allowOptions  = true
         let showIdleTools = CandidateBarView.shouldShowIdleTools(
             hasCandidates: hasCandidates,
             idleRevealReady: idleToolsRevealReady,
             idleToolsSuppressed: idleToolsSuppressed,
-            allowTool: true)
+            allowTool: !showEmptyDismissChrome)
         let showActiveChrome = CandidateBarView.shouldShowActiveChrome(
             hasCandidates: hasCandidates,
             showIdleTools: showIdleTools,
             idleRevealReady: idleToolsRevealReady)
-        moreButton.isHidden    = !showActiveChrome
-        moreSep.isHidden       = !showActiveChrome
-        dismissButton.isHidden = !showActiveChrome
+        let showMoreChrome = showActiveChrome && hasCandidates
+        moreButton.isHidden    = !showMoreChrome
+        moreSep.isHidden       = !showMoreChrome
+        dismissButton.isHidden = !(showActiveChrome || showEmptyDismissChrome)
         emojiButton.isHidden   = !showIdleTools || !allowEmoji
         // Legacy iPhone globe mode: optionsButton owns dismiss + LIME menu and
         // must remain reachable regardless of bar state (spec: docs/IPHONE_LEGACY_KB.md).
@@ -755,10 +805,9 @@ final class CandidateBarView: UIView {
         // height (top +, bottom −) so it visually clears the keyname overlay
         // without changing the button's overall height. Bar height stays
         // identical whether composing is active or not.
-        let bias = composingStripHeight / 2
-        btn.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: bias,
+        btn.setValue(NSValue(uiEdgeInsets: UIEdgeInsets(top: glyphBias,
                                                         left: candidateHPad,
-                                                        bottom: -bias,
+                                                        bottom: -glyphBias,
                                                         right: candidateHPad)),
                      forKey: "contentEdgeInsets")
         btn.addTarget(self, action: #selector(candidateTapped(_:)), for: .touchUpInside)

@@ -161,6 +161,7 @@
 		D85527A1D89F1ACD5D86FE5A /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5AC9140B64BE293B4125AC /* GRDB */; };
 		DA9A42F3158C4D3799B3A533 /* symbols3_ipad.json in Resources */ = {isa = PBXBuildFile; fileRef = 696190C5251543339F4B6C19 /* symbols3_ipad.json */; };
 		DAB0143D532C5A092FAE707C /* Record.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91652FC0787DE834F53E57B3 /* Record.swift */; };
+		DB7A5B6C8D9E4011A2B3C4D5 /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = DB7A5B6C8D9E4011A2B3C4D4 /* Settings.bundle */; };
 		DD11223344556677889900EE /* phone_shift.json in Resources */ = {isa = PBXBuildFile; fileRef = CC11223344556677889900DD /* phone_shift.json */; };
 		DD329C69B687BA18D2865041 /* lime_wb.json in Resources */ = {isa = PBXBuildFile; fileRef = 63D7BA593E5AEB581D0E15C5 /* lime_wb.json */; };
 		DD3E5C49341843C98E8EF274 /* lime_dayi_sym_ipad.json in Resources */ = {isa = PBXBuildFile; fileRef = 85BF89DCF7DE486C8ADBF74C /* lime_dayi_sym_ipad.json */; };
@@ -317,6 +318,7 @@
 		8A142D8C48B8080CACC06BF5 /* lime_english_shift.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_english_shift.json; sourceTree = "<group>"; };
 		8B72D83300CAD566BFCF3FE3 /* KeyboardViewControllerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewControllerTest.swift; sourceTree = "<group>"; };
 		8C4D2C17B8A1495297103E43 /* LimeToastState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimeToastState.swift; sourceTree = "<group>"; };
+		DB7A5B6C8D9E4011A2B3C4D4 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = Settings.bundle; sourceTree = "<group>"; };
 		8D98DEBE9E75F237BEC73B5B /* IMStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMStoreView.swift; sourceTree = "<group>"; };
 		8EA6C96C5A966914D1AFBD9F /* ManageImController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageImController.swift; sourceTree = "<group>"; };
 		9144DD8AA02C0B8B5188F542 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
@@ -541,6 +543,7 @@
 				5E9EE5BA80907FE7407DC189 /* LimeSettingsView.swift */,
 				F7E6D814B179560C36A6F65E /* MainViewController.swift */,
 				A5F0B1D9966D08427E55DED7 /* SceneDelegate.swift */,
+				DB7A5B6C8D9E4011A2B3C4D4 /* Settings.bundle */,
 				48F53721929606973F5A4805 /* Controllers */,
 				F483912EA3D360958DC81427 /* Views */,
 			);
@@ -851,6 +854,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6F12A9A974F2C5E8AA0B5EE /* Assets.xcassets in Resources */,
+				DB7A5B6C8D9E4011A2B3C4D5 /* Settings.bundle in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

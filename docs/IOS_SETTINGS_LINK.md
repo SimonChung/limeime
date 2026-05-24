@@ -45,12 +45,17 @@ private-scheme review reality) produced these load-bearing findings:
    (iOS 18.2+) opens Default Apps. There is no `openKeyboardSettingsURLString` or
    equivalent constant in iOS 17, 18, or 26. SwiftUI `SettingsLink` is macOS-only.
    App Intents cannot navigate Settings sub-panes.
-2. **iOS 18 `Settings.bundle` regression (FB15267454).** Bundles containing
-   `PSTitleValueSpecifier`, `PSMultiValueSpecifier`, or `PSRadioGroupSpecifier`
-   are silently suppressed by Settings.app — the app's Settings page does not
-   appear at all, and `openSettingsURLString` falls back to the root page. The
-   prior `Root.plist` contained exactly one `PSTitleValueSpecifier` row, which is
-   the most likely cause of the observed top-page landing on iOS 26.5.
+2. **iOS 18 `Settings.bundle` regression (FB15267454) — broader than first thought.**
+   Re-reading Apple Developer Forums thread #764519 carefully: the regression
+   suppresses any bundle whose `PreferenceSpecifiers` array does not contain at
+   least one specifier with a **`Key`** (a real persistable preference such as
+   `PSToggleSwitchSpecifier`, `PSTextFieldSpecifier`, or `PSSliderSpecifier`).
+   A bundle containing only `PSGroupSpecifier`, only `PSTitleValueSpecifier`,
+   only `PSMultiValueSpecifier`, or only `PSRadioGroupSpecifier` is treated as
+   empty and silently dropped. The app does not appear in `Settings > Apps` at
+   all, and `openSettingsURLString` falls back to the root page.
+   Both the original `Root.plist` (group + `PSTitleValueSpecifier`) and the
+   first-fix `Root.plist` (group only) hit this suppression.
 3. **Settings-database registration prerequisite.** Even with a valid bundle, an
    app may not appear in Settings until it has triggered at least one runtime
    permission prompt. Until then, `openSettingsURLString` opens the root page.
@@ -129,27 +134,38 @@ Result (before fix):
 - Simulator reboot after install did not change the behavior.
 - The public API still landed at Settings top page.
 
-Root cause hypothesis (identified 2026-05):
+Root cause hypothesis (revised 2026-05):
 
-- The `PSTitleValueSpecifier` row triggered the iOS 18 `Settings.bundle`
-  suppression regression (FB15267454, Apple Developer Forums #764519).
+- The iOS 18+ `Settings.bundle` suppression regression (FB15267454,
+  Apple Developer Forums #764519) drops any bundle whose `PreferenceSpecifiers`
+  array does not contain at least one specifier with a **`Key`** (i.e., a real
+  persistable preference such as `PSToggleSwitchSpecifier`).
+- Both the original `Root.plist` (group + `PSTitleValueSpecifier`) and the
+  first-attempt fix (group only) hit this suppression. The first fix only
+  removed one trigger; it did not add the required real-preference row.
 - When Settings.app suppresses the bundle, the app does not appear in
   `Settings > Apps`, and `openSettingsURLString` falls back to the root page.
-- This matches the observed symptom exactly.
 
-Fix applied (2026-05):
+Fix attempt 1 (2026-05, did NOT work):
 
-- Removed the `PSTitleValueSpecifier` row from `Root.plist`.
-- The bundle now contains only a `PSGroupSpecifier` with `FooterText`, which is
-  an iOS 18-safe configuration.
-- `plutil -lint` still passes.
+- Removed the `PSTitleValueSpecifier` row from `Root.plist`, leaving only the
+  `PSGroupSpecifier` with `FooterText`.
+- `plutil -lint` passed.
+- Runtime re-test: `前往設定` still landed on the Settings top page.
+- Conclusion: group-only is also suppressed by the same regression.
 
-Result (after fix, verified 2026-05):
+Fix attempt 2 (2026-05, pending verification):
 
-- Tapping `前往設定` now lands on `Settings > Apps > 萊姆輸入法` as expected.
-- From there, the user is one tap (`Keyboards`) away from enabling the LimeIME
-  keyboard and `Allow Full Access`.
-- The accepted-destination goal is met.
+- Added a `PSToggleSwitchSpecifier` with `Key=lime_show_setup_hint`,
+  `Title=顯示安裝指引`, `DefaultValue=true` after the `PSGroupSpecifier`.
+- This satisfies the "must contain at least one specifier with a Key"
+  requirement reported in FB15267454.
+- `plutil -lint` passes.
+- Runtime verification pending: rebuild → uninstall on simulator → reinstall →
+  reboot simulator → tap `前往設定` → check destination.
+- The toggle itself is harmless if the app does not read
+  `lime_show_setup_hint` — the in-app setup hint can remain unconditional.
+  Reading and honoring the preference is a separate optional follow-up.
 
 ### Private URL Schemes
 
@@ -236,8 +252,10 @@ Runtime checks:
 - Simulator reboot after install.
 - Confirmed installed app container includes `Settings.bundle/Root.plist`.
 - Confirmed the setup screen shows `前往設定` and the visible fallback path.
-- Confirmed (after the `PSTitleValueSpecifier` removal) that tapping `前往設定`
-  lands on `Settings > Apps > 萊姆輸入法` — accepted destination reached.
+- After `PSTitleValueSpecifier` removal: re-tested on the iPhone 17 Pro Max
+  simulator. `前往設定` still lands on the Settings top page, not on
+  `Settings > Apps > 萊姆輸入法`. The single-specifier-removal hypothesis is
+  insufficient on its own. See `## Next Hypotheses` below.
 
 Known caveat:
 
@@ -245,20 +263,53 @@ Known caveat:
   different Simulator window. After that, checks were restricted back to the exact
   iPhone 17 Pro Max UDID with `simctl`.
 
+## Next Hypotheses
+
+Ordered by likelihood, based on the deep-dive research (2026-05). Apply in
+order; stop when `前往設定` lands on `Settings > Apps > 萊姆輸入法`.
+
+1. **Add a real persistable preference to `Root.plist`.** *(applied — fix
+   attempt 2 above)* Required by iOS 18+ to register the bundle. At least one
+   `PSToggleSwitchSpecifier` / `PSTextFieldSpecifier` / `PSSliderSpecifier`
+   with a `Key` must be present.
+2. **Clear the Simulator Settings cache.** Plain uninstall/reinstall sometimes
+   does not force Settings.app to re-scan; the Settings.bundle registration is
+   cached. Two options, least to most destructive:
+   - Kill the Settings.app process (`xcrun simctl spawn <udid> killall -9 Preferences`)
+     and reopen.
+   - Boot-erase the LimeIME app data only — uninstall the app, then run
+     `xcrun simctl shutdown <udid>`, `xcrun simctl boot <udid>`, then reinstall.
+   - Full erase (`xcrun simctl erase <udid>`) — wipes the entire simulator
+     including other apps; only use if the above two fail.
+3. **Add `en.lproj/Root.strings`** (can be empty). Belt-and-suspenders. The
+   bundle currently references `StringsTable=Root` but no strings file exists.
+   Apple docs say this falls back gracefully, but matching the Xcode template
+   removes one variable.
+4. **Try on a real device.** Simulator routing for Settings deep links is
+   documented as unreliable independently of the bundle contents. If steps 1–3
+   work on a real iPhone/iPad but not the iPhone 17 Pro Max simulator on
+   iOS 26.5, the residual failure is a simulator bug — log it and move on.
+5. **Request one runtime permission** (e.g. notifications) on first launch
+   as a separate registration path. Independent of `Settings.bundle`. Only do
+   this if steps 1–4 are insufficient, since it adds a user-visible prompt the
+   app does not otherwise need.
+6. **File a Feedback Assistant report** referencing FB15267454 if the iOS 26
+   behavior diverges from the iOS 18 thread's confirmed fix.
+
 ## Forward Plan
 
 Move forward with the supported UX targeted at `Settings > Apps > 萊姆輸入法`
-(verified working 2026-05):
+(verification pending after fix attempt 2 — see `## Next Hypotheses` above):
 
 1. Keep the current App Store-safe implementation.
-2. Keep `Settings.bundle` in the app, with iOS 18-safe specifiers only
-   (`PSGroupSpecifier` + `FooterText`; no `PSTitleValueSpecifier`,
-   `PSMultiValueSpecifier`, or `PSRadioGroupSpecifier`).
+2. Keep `Settings.bundle` in the app, with the iOS 18-safe shape:
+   `PSGroupSpecifier` + `FooterText` **plus at least one specifier with a
+   `Key`** (currently a `PSToggleSwitchSpecifier`). Avoid the suppression
+   triggers: `PSTitleValueSpecifier`, `PSMultiValueSpecifier`,
+   `PSRadioGroupSpecifier`.
 3. Keep the visible manual path under the setup button.
 4. Do not add private Settings URL schemes to production code.
-5. No runtime permission prompt needed — the bundle alone is sufficient to
-   register the app in the Settings database now that the suppression regression
-   is avoided.
+5. Walk through `## Next Hypotheses` until the runtime destination matches.
 
 ## Later Investigation
 

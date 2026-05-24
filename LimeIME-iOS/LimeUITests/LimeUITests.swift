@@ -52,6 +52,107 @@ final class LimeUITests: XCTestCase {
         wait(for: [globeCapture], timeout: 2.0)
     }
 
+    @MainActor
+    func testIOSKeyboardThemeScreenshotSystemLight() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "system_light", theme: 6)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotLight() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "light", theme: 0)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotDark() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "dark", theme: 1)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotSystemDark() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "system_dark", theme: 6)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotPink() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "pink", theme: 2)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotTechBlue() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "tech_blue", theme: 3)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotFashionPurple() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "fashion_purple", theme: 4)
+    }
+
+    @MainActor
+    func testIOSKeyboardThemeScreenshotRelaxGreen() throws {
+        try captureIOSKeyboardThemeScreenshotScenario(label: "relax_green", theme: 5)
+    }
+
+    @MainActor
+    func testIOSEmojiSearchDismissReturnsToKeyboard() throws {
+        configureKeyboardThemeCaptureDefaults(theme: 6)
+        let app = XCUIApplication()
+        app.launch()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        safari.activate()
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10),
+                      "Safari did not become foreground")
+        dismissSafariFirstLaunch(in: safari)
+        try focusKeyboardTestPage(in: safari)
+        try cycleToLimeKeyboard(in: safari, scenario: "emoji_search_dismiss")
+        try ensureLimeChineseKeyboardVisible(in: safari, scenario: "emoji_search_dismiss")
+
+        safari.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.64)).tap()
+        let searchField = safari.descendants(matching: .any)["lime_emoji_search_field"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 3),
+                      "LIME emoji search field did not appear.")
+
+        searchField.tap()
+        let dismissButton = safari.descendants(matching: .any)["lime_emoji_search_dismiss_button"]
+        XCTAssertTrue(dismissButton.waitForExistence(timeout: 3),
+                      "Emoji search dismiss button did not appear in search mode.")
+
+        dismissButton.tap()
+        Thread.sleep(forTimeInterval: 1.0)
+        XCTAssertTrue(hasLimeCandidateBarEmoji(in: safari),
+                      "Tapping emoji search dismiss did not return to the LIME keyboard.")
+    }
+
+    @MainActor
+    private func captureIOSKeyboardThemeScreenshotScenario(label: String, theme: Int) throws {
+        configureKeyboardThemeCaptureDefaults(theme: theme)
+        let app = XCUIApplication()
+        app.launch()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        safari.activate()
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10),
+                      "Safari did not become foreground")
+        dismissSafariFirstLaunch(in: safari)
+        try focusKeyboardTestPage(in: safari)
+        try cycleToLimeKeyboard(in: safari, scenario: label)
+        try ensureLimeChineseKeyboardVisible(in: safari, scenario: label)
+        Thread.sleep(forTimeInterval: 1.5)
+
+        try saveScreenshot(named: "ios_keyboard_zhuyin_\(label)")
+
+        safari.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.88)).tap()
+        Thread.sleep(forTimeInterval: 1.0)
+        try ensureLimeEnglishKeyboardVisible(in: safari, scenario: label)
+        try saveScreenshot(named: "ios_keyboard_english_\(label)")
+
+        safari.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.64)).tap()
+        Thread.sleep(forTimeInterval: 1.0)
+        try saveScreenshot(named: "ios_emoji_panel_\(label)")
+    }
+
     private func captureScreenshotDuringHold(named name: String) -> XCTestExpectation {
         let exp = expectation(description: name)
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.8) { [weak self] in
@@ -111,6 +212,270 @@ final class LimeUITests: XCTestCase {
         }
 
         XCTFail("Safari address field not found. Tree:\n\(String(app.debugDescription.prefix(4000)))")
+    }
+
+    private func openKeyboardTestPage(_ url: String, in app: XCUIApplication) throws {
+        try focusSafariAddressField(in: app)
+        app.typeText(url)
+        app.typeText("\n")
+        Thread.sleep(forTimeInterval: 2.0)
+    }
+
+    private func focusKeyboardTestPage(in app: XCUIApplication) throws {
+        let textView = app.textViews.firstMatch
+        if textView.waitForExistence(timeout: 3) {
+            for _ in 0..<3 {
+                textView.tap()
+                Thread.sleep(forTimeInterval: 0.8)
+                if hasKeyboardSurface(in: app) {
+                    return
+                }
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.30)).tap()
+            }
+        }
+
+        let textField = app.textFields.firstMatch
+        if textField.waitForExistence(timeout: 3) {
+            for _ in 0..<3 {
+                textField.tap()
+                Thread.sleep(forTimeInterval: 0.8)
+                if hasKeyboardSurface(in: app) {
+                    return
+                }
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.30)).tap()
+            }
+        }
+
+        for _ in 0..<3 {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.28)).tap()
+            Thread.sleep(forTimeInterval: 0.8)
+            if hasKeyboardSurface(in: app) {
+                return
+            }
+        }
+
+        XCTFail("Keyboard did not appear after focusing the screenshot test page.")
+    }
+
+    private func switchToLimeIME(in app: XCUIApplication, scenario: String) throws {
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5),
+                      "Keyboard did not appear for \(scenario)")
+
+        if isLimeKeyboardActive(in: app) { return }
+
+        let labelCandidates = [
+            "Next keyboard", "Next Keyboard",
+            "Emoji", "🌐",
+            "Choose Input Method",
+        ]
+        var globe: XCUIElement?
+        for label in labelCandidates {
+            let button = keyboard.buttons[label]
+            if button.exists {
+                globe = button
+                break
+            }
+        }
+        if globe == nil {
+            let predicate = NSPredicate(format:
+                "label CONTAINS[c] 'globe' OR label CONTAINS[c] 'next' OR label == '🌐'")
+            let button = keyboard.buttons.matching(predicate).firstMatch
+            if button.exists { globe = button }
+        }
+        guard let globeButton = globe else {
+            XCTFail("""
+                Could not find globe / next-keyboard button for \(scenario).
+                Keyboard tree:
+                \(String(keyboard.debugDescription.prefix(4000)))
+                """)
+            return
+        }
+
+        globeButton.press(forDuration: 0.8)
+
+        let limePredicate = NSPredicate(format:
+            "label CONTAINS '萊姆' OR label CONTAINS[c] 'lime'")
+        let springBoard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        var limeButton: XCUIElement?
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline {
+            for candidate in limeKeyboardPickerCandidates(app: app, springBoard: springBoard, predicate: limePredicate) {
+                let label = candidate.label
+                if label.contains("萊姆") || label.localizedCaseInsensitiveContains("lime") {
+                    limeButton = candidate
+                    break
+                }
+            }
+            if limeButton != nil { break }
+            usleep(100_000)
+        }
+        guard let lime = limeButton else {
+            XCTFail("""
+                LimeIME (萊姆輸入法) was not found in the keyboard picker for \(scenario).
+                Enable it first in Settings > General > Keyboard > Keyboards.
+                Safari tree:
+                \(String(app.debugDescription.prefix(4000)))
+                SpringBoard tree:
+                \(String(springBoard.debugDescription.prefix(4000)))
+                """)
+            return
+        }
+
+        lime.tap()
+        try focusKeyboardTestPage(in: app)
+
+        let switchDeadline = Date().addingTimeInterval(2)
+        while Date() < switchDeadline {
+            if isLimeKeyboardActive(in: app) { return }
+            usleep(100_000)
+        }
+
+        XCTFail("""
+            LimeIME did not become active after keyboard picker selection for \(scenario).
+            Keyboard tree:
+            \(String(app.keyboards.firstMatch.debugDescription.prefix(5000)))
+        """)
+    }
+
+    private func limeKeyboardPickerCandidates(
+        app: XCUIApplication,
+        springBoard: XCUIApplication,
+        predicate: NSPredicate
+    ) -> [XCUIElement] {
+        let queries = [
+            app.buttons.matching(predicate),
+            app.cells.matching(predicate),
+            app.menuItems.matching(predicate),
+            app.staticTexts.matching(predicate),
+            springBoard.buttons.matching(predicate),
+            springBoard.cells.matching(predicate),
+            springBoard.menuItems.matching(predicate),
+            springBoard.staticTexts.matching(predicate),
+            app.descendants(matching: .any).matching(predicate),
+            springBoard.descendants(matching: .any).matching(predicate),
+        ]
+        return queries.flatMap { $0.allElementsBoundByIndex }
+    }
+
+    private func ensureLimeChineseKeyboardVisible(in app: XCUIApplication, scenario: String) throws {
+        let abcModeKey = app.descendants(matching: .any)["ABC"]
+        if abcModeKey.exists {
+            abcModeKey.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+
+        if hasLimeCandidateBarEmoji(in: app), hasLimePhoneticLayout(in: app) {
+            return
+        }
+
+        let chineseModeKey = app.descendants(matching: .any)["中"]
+        if chineseModeKey.exists {
+            chineseModeKey.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+
+        XCTAssertTrue(
+            hasLimeCandidateBarEmoji(in: app) && hasLimePhoneticLayout(in: app),
+            """
+            LIME keyboard was active but not on the 注音 Chinese keyboard for \(scenario).
+            App tree:
+            \(String(app.debugDescription.prefix(5000)))
+            """
+        )
+    }
+
+    private func ensureLimeEnglishKeyboardVisible(in app: XCUIApplication, scenario: String) throws {
+        XCTAssertTrue(
+            hasLimeCandidateBarEmoji(in: app) && hasLimeEnglishLayout(in: app),
+            """
+            LIME keyboard was active but did not switch to English for \(scenario).
+            App tree:
+            \(String(app.debugDescription.prefix(5000)))
+            """
+        )
+    }
+
+    private func isLimeKeyboardActive(in app: XCUIApplication) -> Bool {
+        hasLimeCandidateBarEmoji(in: app)
+    }
+
+    private func cycleToLimeKeyboard(in app: XCUIApplication, scenario: String) throws {
+        for _ in 0..<8 {
+            if hasLimeCandidateBarEmoji(in: app) { return }
+            tapGlobeKey(in: app)
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+
+        XCTFail("""
+            LIME keyboard was not found by repeated globe taps for \(scenario).
+            The stop condition is the LIME candidate-bar emoji icon, not generic 注音 keys.
+            App tree:
+            \(String(app.debugDescription.prefix(6000)))
+            """)
+    }
+
+    private func tapGlobeKey(in app: XCUIApplication) {
+        let keyboard = app.keyboards.firstMatch
+        let labels = ["Next keyboard", "Next Keyboard", "Globe", "🌐"]
+        for label in labels {
+            let button = keyboard.buttons[label]
+            if button.exists {
+                button.tap()
+                return
+            }
+        }
+
+        let predicate = NSPredicate(format:
+            "label CONTAINS[c] 'globe' OR label CONTAINS[c] 'next' OR label == '🌐'")
+        let button = keyboard.buttons.matching(predicate).firstMatch
+        if button.exists {
+            button.tap()
+            return
+        }
+
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.955)).tap()
+    }
+
+    private func hasLimeCandidateBarEmoji(in app: XCUIApplication) -> Bool {
+        if app.descendants(matching: .any)["lime_candidate_bar_emoji_button"].exists {
+            return true
+        }
+        let predicate = NSPredicate(format:
+            "identifier == 'lime_candidate_bar_emoji_button' OR label == 'LIME candidate bar emoji'")
+        return app.descendants(matching: .any).matching(predicate).firstMatch.exists
+    }
+
+    private func hasLimePhoneticLayout(in app: XCUIApplication) -> Bool {
+        let predicate = NSPredicate(format:
+            "label == '1 ㄅ' OR label == 'q ㄆ' OR label == 'w ㄊ'")
+        return app.descendants(matching: .any).matching(predicate).firstMatch.exists
+    }
+
+    private func hasLimeEnglishLayout(in app: XCUIApplication) -> Bool {
+        guard app.descendants(matching: .any)["中"].exists else { return false }
+        let predicate = NSPredicate(format:
+            "label == 'q' OR label == 'w' OR label == 'e'")
+        return app.descendants(matching: .any).matching(predicate).firstMatch.exists
+    }
+
+    private func hasKeyboardSurface(in app: XCUIApplication) -> Bool {
+        if app.keyboards.firstMatch.exists { return true }
+        if hasLimeCandidateBarEmoji(in: app) { return true }
+        let predicate = NSPredicate(format:
+            "label CONTAINS[c] 'globe' OR label == '123' OR label == 'return'")
+        return app.descendants(matching: .any).matching(predicate).firstMatch.exists
+    }
+
+    private func configureKeyboardThemeCaptureDefaults(theme: Int) {
+        guard let defaults = UserDefaults(suiteName: "group.net.toload.limeime") else { return }
+        defaults.set(theme, forKey: "keyboard_theme")
+        defaults.set("phonetic", forKey: "keyboard_list")
+        defaults.set("standard", forKey: "phonetic_keyboard_type")
+        defaults.set(true, forKey: "enable_emoji")
+        defaults.set(5, forKey: "enable_emoji_position")
+        defaults.set("", forKey: "keyboard_state")
+        defaults.synchronize()
     }
 
     private func dismissSafariFirstLaunch(in app: XCUIApplication) {

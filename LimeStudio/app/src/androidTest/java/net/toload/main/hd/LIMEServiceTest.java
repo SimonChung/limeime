@@ -147,6 +147,67 @@ public class LIMEServiceTest {
     }
 
     @Test
+    public void emojiPanelDarkThemeColorsAvoidLightSearchSurfaceAndBlackGlyphs() {
+        LIMEService.EmojiPanelColors colors = LIMEService.emojiPanelColorsForTheme(1, false);
+
+        assertNotEquals(0xF2FFFFFF, colors.searchBackground);
+        assertNotEquals(0xFF000000, colors.searchText);
+        assertNotEquals(0xFF000000, colors.searchIcon);
+        assertNotEquals(0xFF000000, colors.iconText);
+        assertNotEquals(0x22000000, colors.categoryHighlight);
+    }
+
+    @Test
+    public void emojiPanelCustomThemeSearchIconsUseNormalKeyBackgroundColors() {
+        assertEquals(0xFFF49AC1, LIMEService.emojiPanelColorsForTheme(2, false).searchIcon);
+        assertEquals(0xFF9BC5E4, LIMEService.emojiPanelColorsForTheme(3, false).searchIcon);
+        assertEquals(0xFFB28ABF, LIMEService.emojiPanelColorsForTheme(4, false).searchIcon);
+        assertEquals(0xFF39B54A, LIMEService.emojiPanelColorsForTheme(5, false).searchIcon);
+    }
+
+    @Test
+    public void emojiCategoryTabsScaleWithKeyboardSizeAndRemainScrollable() {
+        assertEquals(56, LIMEService.emojiCategoryTabWidthDp(1.0f));
+        assertEquals(67, LIMEService.emojiCategoryTabWidthDp(1.2f));
+        assertEquals(45, LIMEService.emojiCategoryTabWidthDp(0.8f));
+    }
+
+    @Test
+    public void emojiPanelGlyphsScaleLightlyWithKeyboardSize() {
+        assertEquals(28, LIMEService.emojiPanelGlyphSize(1.0f));
+        assertEquals(31, LIMEService.emojiPanelGlyphSize(1.2f));
+        assertEquals(25, LIMEService.emojiPanelGlyphSize(0.8f));
+    }
+
+    @Test
+    public void emojiCategoryGlyphMatchesEmojiPanelGlyphSize() {
+        assertEquals(LIMEService.emojiPanelGlyphSize(1.0f), LIMEService.emojiCategoryGlyphSizeDp(1.0f));
+        assertEquals(LIMEService.emojiPanelGlyphSize(1.2f), LIMEService.emojiCategoryGlyphSizeDp(1.2f));
+        assertEquals(LIMEService.emojiPanelGlyphSize(0.8f), LIMEService.emojiCategoryGlyphSizeDp(0.8f));
+    }
+
+    @Test
+    public void emojiModeAndBackspaceControlsMatchCategoryTabSizing() {
+        assertEquals(LIMEService.emojiCategoryTabWidthDp(1.0f), LIMEService.emojiSideControlWidthDp(1.0f));
+        assertEquals(LIMEService.emojiCategoryTabWidthDp(1.2f), LIMEService.emojiSideControlWidthDp(1.2f));
+        assertEquals(Math.round(LIMEService.emojiCategoryGlyphSizeDp(1.0f) * 0.8f),
+                LIMEService.emojiModeControlGlyphSize(1.0f));
+        assertEquals(Math.round(LIMEService.emojiCategoryGlyphSizeDp(1.2f) * 0.8f),
+                LIMEService.emojiModeControlGlyphSize(1.2f));
+        assertEquals(LIMEService.emojiCategoryGlyphSizeDp(1.0f), LIMEService.emojiBackspaceGlyphSize(1.0f));
+        assertEquals(LIMEService.emojiCategoryGlyphSizeDp(1.2f), LIMEService.emojiBackspaceGlyphSize(1.2f));
+    }
+
+    @Test
+    public void emojiPanelSystemThemeFollowsNightModeForColors() {
+        LIMEService.EmojiPanelColors systemDark = LIMEService.emojiPanelColorsForTheme(6, true);
+        LIMEService.EmojiPanelColors systemLight = LIMEService.emojiPanelColorsForTheme(6, false);
+
+        assertEquals(LIMEService.emojiPanelColorsForTheme(1, false).searchBackground, systemDark.searchBackground);
+        assertEquals(LIMEService.emojiPanelColorsForTheme(0, false).searchBackground, systemLight.searchBackground);
+    }
+
+    @Test
     public void emojiCategoryPaginationKeepsCategoryCompact() {
         MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
         List<List<String>> categories = new ArrayList<>();
@@ -836,6 +897,104 @@ public class LIMEServiceTest {
         // Test that common key values are reasonable
         assertTrue("Space keycode should be ASCII space", LIMEService.MY_KEYCODE_SPACE == 32);
         assertTrue("Enter keycode should be newline", LIMEService.MY_KEYCODE_ENTER == 10);
+    }
+
+    @Test
+    public void emojiSearchDoneAndEnterKeysDismissSearchMode() {
+        assertTrue("Done key should dismiss emoji search",
+                LIMEService.isEmojiSearchDoneKey(LIMEBaseKeyboard.KEYCODE_DONE));
+        assertTrue("Enter key should dismiss emoji search",
+                LIMEService.isEmojiSearchDoneKey(LIMEService.MY_KEYCODE_ENTER));
+        assertFalse("Printable characters should stay in emoji search input",
+                LIMEService.isEmojiSearchDoneKey('a'));
+    }
+
+    @Test
+    public void emojiSearchDismissAndEnterKeysReturnToSourceKeyboard() {
+        assertTrue("Done key should leave emoji search and restore the source keyboard",
+                LIMEService.shouldExitEmojiSearchToKeyboard(LIMEBaseKeyboard.KEYCODE_DONE));
+        assertTrue("Enter key should leave emoji search and restore the source keyboard",
+                LIMEService.shouldExitEmojiSearchToKeyboard(LIMEService.MY_KEYCODE_ENTER));
+        assertTrue("Emoji/search dismiss key should leave emoji search and restore the source keyboard",
+                LIMEService.shouldExitEmojiSearchToKeyboard(LIME.KEYCODE_EMOJI_PANEL));
+        assertFalse("Printable characters should stay in emoji search input",
+                LIMEService.shouldExitEmojiSearchToKeyboard('a'));
+    }
+
+    @Test
+    public void emojiSearchUsesNormalCandidateStripOnlyWhileSearching() {
+        assertEquals(View.VISIBLE,
+                LIMEService.emojiSearchInputCandidateStripVisibility(true, true));
+        assertEquals(View.GONE,
+                LIMEService.emojiSearchInputCandidateStripVisibility(true, false));
+        assertEquals(View.GONE,
+                LIMEService.emojiSearchInputCandidateStripVisibility(false, true));
+    }
+
+    @Test
+    public void emojiSearchKeyboardShowsDoneActionInsteadOfSearchAction() {
+        int options = EditorInfo.IME_ACTION_SEARCH | EditorInfo.IME_FLAG_NO_EXTRACT_UI;
+
+        int emojiSearchOptions = LIMEService.emojiSearchImeOptions(options);
+
+        assertEquals(EditorInfo.IME_ACTION_DONE,
+                emojiSearchOptions & EditorInfo.IME_MASK_ACTION);
+        assertEquals(EditorInfo.IME_FLAG_NO_EXTRACT_UI,
+                emojiSearchOptions & EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+    }
+
+    @Test
+    public void emojiSearchStartsWithSourceKeyboardMode() {
+        assertTrue("English source should start emoji search with English keyboard",
+                LIMEService.emojiSearchInitialEnglishOnly(true));
+        assertFalse("Chinese source should start emoji search with Chinese keyboard",
+                LIMEService.emojiSearchInitialEnglishOnly(false));
+    }
+
+    @Test
+    public void emojiSearchModeKeysToggleKeyboardWithoutExitingSearch() {
+        assertTrue(LIMEService.isEmojiSearchKeyboardModeKey(LIMEService.KEYCODE_SWITCH_TO_ENGLISH_MODE));
+        assertTrue(LIMEService.isEmojiSearchKeyboardModeKey(LIMEService.KEYCODE_SWITCH_TO_IM_MODE));
+        assertTrue(LIMEService.isEmojiSearchKeyboardModeKey(LIME.KEYCODE_EMOJI_ABC));
+        assertFalse(LIMEService.isEmojiSearchKeyboardModeKey('a'));
+
+        assertFalse("Mode keys should stay inside emoji search",
+                LIMEService.shouldExitEmojiSearchToKeyboard(LIMEService.KEYCODE_SWITCH_TO_IM_MODE));
+        assertFalse("Mode keys should stay inside emoji search",
+                LIMEService.shouldExitEmojiSearchToKeyboard(LIMEService.KEYCODE_SWITCH_TO_ENGLISH_MODE));
+
+        assertTrue("abc key should switch search keyboard to English",
+                LIMEService.resolveEmojiSearchEnglishOnlyForModeKey(
+                        LIMEService.KEYCODE_SWITCH_TO_ENGLISH_MODE, false));
+        assertFalse("中 key should switch search keyboard to Chinese",
+                LIMEService.resolveEmojiSearchEnglishOnlyForModeKey(
+                        LIMEService.KEYCODE_SWITCH_TO_IM_MODE, true));
+        assertFalse("Emoji ABC mode key should switch search keyboard to Chinese",
+                LIMEService.resolveEmojiSearchEnglishOnlyForModeKey(LIME.KEYCODE_EMOJI_ABC, true));
+        assertTrue("Non-mode keys keep the current search keyboard language",
+                LIMEService.resolveEmojiSearchEnglishOnlyForModeKey('a', true));
+    }
+
+    @Test
+    public void emojiSearchPrintableKeysOnlyBypassComposerInEnglishMode() {
+        assertTrue("English emoji search should write printable keys directly to search text",
+                LIMEService.shouldEmojiSearchConsumePrintableKey('a', true));
+        assertFalse("Chinese emoji search should let printable keys go through IM composing",
+                LIMEService.shouldEmojiSearchConsumePrintableKey('a', false));
+        assertFalse("Non-printable keys are handled by dedicated emoji search branches",
+                LIMEService.shouldEmojiSearchConsumePrintableKey(LIMEBaseKeyboard.KEYCODE_DELETE, true));
+    }
+
+    @Test
+    public void emojiSearchCandidatePickPolicySeparatesEmojiFromComposedText() {
+        assertFalse("Emoji search candidates should commit emoji, not become search text",
+                LIMEService.shouldAppendPickedCandidateToEmojiSearch(true, true, true, false));
+        assertTrue("Chinese composed candidates should become emoji search text",
+                LIMEService.shouldAppendPickedCandidateToEmojiSearch(true, true, false, false));
+        assertFalse("Raw composing code should not be accepted as search text",
+                LIMEService.shouldAppendPickedCandidateToEmojiSearch(true, true, false, true));
+        assertFalse("Normal candidate pick outside emoji search is unchanged",
+                LIMEService.shouldAppendPickedCandidateToEmojiSearch(false, true, false, false));
     }
 
     /**

@@ -54,6 +54,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -108,6 +109,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.os.ConfigurationCompat;
 import androidx.core.content.ContextCompat;
 import java.util.Objects;
@@ -185,12 +187,16 @@ public class LIMEService extends InputMethodService
     private List<Integer> mEmojiPageCategoryIndexes = new ArrayList<>();
     private int[] mEmojiCategoryPageStarts = new int[0];
     private int[] mEmojiCategoryStartOffsets = new int[0];
-    private static final int EMOJI_SEARCH_PANEL_HEIGHT_DP = 120;
-    private static final int EMOJI_SEARCH_SCROLL_HEIGHT_DP = 44;
-    private static final int EMOJI_SEARCH_KEY_HEIGHT_DP = 40;
+    private static final int EMOJI_SEARCH_FIELD_HEIGHT_DP = 52;
+    private static final int EMOJI_PANEL_HORIZONTAL_PADDING_DP = 12;
+    private static final int EMOJI_PANEL_VERTICAL_PADDING_DP = 8;
     private static final int EMOJI_PAGE_CAPACITY = 32;
     private static final int EMOJI_GRID_COLUMNS = 8;
     private static final int EMOJI_GRID_ROWS = 4;
+    private static final int EMOJI_CATEGORY_TAB_WIDTH_DP = 56;
+    private static final int EMOJI_CATEGORY_TAB_HEIGHT_DP = 46;
+    private static final int EMOJI_CATEGORY_BOTTOM_BAR_HEIGHT_DP = 54;
+    private static final int EMOJI_PANEL_GLYPH_SIZE = 28;
     private boolean mPersistentLanguageMode;  //Jeremy '12,5,1
     private int mShowArrowKeys; //Jeremy '12,5,22 force recreate keyboard if show arrow keys mode changes.
     private int mSplitKeyboard; //Jeremy '12,5,26 force recreate keyboard if split keyboard settings changes; 6/19 changed to int
@@ -961,12 +967,12 @@ public class LIMEService extends InputMethodService
         }
 
 
-        if (mEnglishOnly && !mPredictionOn) // Keep toolbar visible for mic/emoji in no-prediction English fields.
-            showEmptyCandidateToolbar();
-        else {
+        if (!(mEnglishOnly && !mPredictionOn)) {
             clearComposing(false);//Jeremy '12,5,24 clear the suggesions and also restore the height of fixed candaiteview if it's hide before
             //clearSuggestions();  // do this in clearcomposing already.
         }
+        // Keep toolbar visible for mic/emoji even when no candidates are active.
+        showEmptyCandidateToolbar();
 
         mPredicting = false;
         updateShiftKeyState(getCurrentInputEditorInfo());
@@ -2009,7 +2015,7 @@ public class LIMEService extends InputMethodService
 
         }
 
-        if (mEmojiKeyboardShown && mEmojiSearchFocused && handleEmojiSearchKey(primaryCode)) {
+        if (mEmojiKeyboardShown && (mEmojiSearchFocused || mEmojiSearchMode) && handleEmojiSearchKey(primaryCode)) {
             return;
         }
 
@@ -2122,8 +2128,8 @@ public class LIMEService extends InputMethodService
         }
         updateEmojiAbcButtonLabel();
         clearComposing(true);
-        hideCandidateView();
         mInputCandidateStripVisibilityBeforeEmoji = getInputCandidateStripVisibility();
+        hideCandidateView();
         setInputCandidateStripVisibility(View.GONE);
         if (mEmojiKeyboardView != null) {
             mEmojiKeyboardView.setVisibility(View.VISIBLE);
@@ -2135,6 +2141,8 @@ public class LIMEService extends InputMethodService
     private void hideEmojiKeyboard() {
         mEmojiKeyboardShown = false;
         mEmojiSearchFocused = false;
+        mEmojiSearchMode = false;
+        clearEmojiSearchCandidates();
         if (mEmojiKeyboardView != null) {
             mEmojiKeyboardView.setVisibility(View.GONE);
         }
@@ -2153,6 +2161,7 @@ public class LIMEService extends InputMethodService
         mEmojiSearchFocused = false;
         mEmojiSearchMode = false;
         mEmojiSearchQuery.setLength(0);
+        clearEmojiSearchCandidates();
         if (mEmojiKeyboardView != null) {
             mEmojiKeyboardView.setVisibility(View.GONE);
         }
@@ -2174,7 +2183,11 @@ public class LIMEService extends InputMethodService
 
         mEmojiRoot = new LinearLayout(mThemeContext);
         mEmojiRoot.setOrientation(LinearLayout.VERTICAL);
-        mEmojiRoot.setPadding(dp(12), dp(8), dp(12), dp(8));
+        mEmojiRoot.setPadding(
+                dp(EMOJI_PANEL_HORIZONTAL_PADDING_DP),
+                dp(EMOJI_PANEL_VERTICAL_PADDING_DP),
+                dp(EMOJI_PANEL_HORIZONTAL_PADDING_DP),
+                dp(EMOJI_PANEL_VERTICAL_PADDING_DP));
         mEmojiRoot.setMinimumHeight(dp(280));
         container.addView(mEmojiRoot, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -2182,12 +2195,11 @@ public class LIMEService extends InputMethodService
 
         mEmojiSearchField = new TextView(mThemeContext);
         mEmojiSearchField.setTextSize(17);
+        applyEmojiSearchFieldStyle();
         updateEmojiSearchText();
-        mEmojiSearchField.setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_menu_search, 0, 0, 0);
         mEmojiSearchField.setCompoundDrawablePadding(dp(8));
         mEmojiSearchField.setPadding(dp(14), 0, dp(14), 0);
         mEmojiSearchField.setGravity(Gravity.CENTER_VERTICAL);
-        mEmojiSearchField.setBackground(makeRoundRect(0xF2FFFFFF, dp(26)));
         mEmojiSearchField.setOnClickListener(v -> enterEmojiSearchMode());
         mEmojiSearchField.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
@@ -2196,7 +2208,7 @@ public class LIMEService extends InputMethodService
             return true;
         });
         mEmojiRoot.addView(mEmojiSearchField, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(52)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(EMOJI_SEARCH_FIELD_HEIGHT_DP)));
 
         mEmojiScroll = new HorizontalScrollView(mThemeContext);
         mEmojiScroll.setFillViewport(false);
@@ -2220,26 +2232,45 @@ public class LIMEService extends InputMethodService
         gridParams.topMargin = dp(8);
         mEmojiRoot.addView(mEmojiScroll, gridParams);
 
+        float emojiKeyboardSizeScale = getEmojiKeyboardSizeScale();
+        int emojiCategoryBottomBarHeight = dp(scaleDp(EMOJI_CATEGORY_BOTTOM_BAR_HEIGHT_DP, emojiKeyboardSizeScale));
+        int emojiCategoryTabHeight = dp(scaleDp(EMOJI_CATEGORY_TAB_HEIGHT_DP, emojiKeyboardSizeScale));
+
         mEmojiBottomBar = new LinearLayout(mThemeContext);
         mEmojiBottomBar.setGravity(Gravity.CENTER_VERTICAL);
         mEmojiBottomBar.setOrientation(LinearLayout.HORIZONTAL);
         mEmojiRoot.addView(mEmojiBottomBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(54)));
+                LinearLayout.LayoutParams.MATCH_PARENT, emojiCategoryBottomBarHeight));
 
-        TextView abc = createEmojiControl("ABC", 17);
+        int emojiSideControlWidth = dp(emojiSideControlWidthDp(emojiKeyboardSizeScale));
+        int emojiModeControlGlyphSize = emojiModeControlGlyphSize(emojiKeyboardSizeScale);
+        int emojiBackspaceGlyphSize = emojiBackspaceGlyphSize(emojiKeyboardSizeScale);
+
+        TextView abc = createEmojiControl("ABC", emojiModeControlGlyphSize);
         mEmojiAbcButton = abc;
         abc.setOnClickListener(v -> hideEmojiKeyboard());
-        mEmojiBottomBar.addView(abc, new LinearLayout.LayoutParams(dp(48), dp(46)));
+        mEmojiBottomBar.addView(abc, new LinearLayout.LayoutParams(
+                emojiSideControlWidth, emojiCategoryTabHeight));
+
+        HorizontalScrollView emojiCategoryScroll = new HorizontalScrollView(mThemeContext);
+        emojiCategoryScroll.setFillViewport(false);
+        emojiCategoryScroll.setHorizontalScrollBarEnabled(false);
+        emojiCategoryScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         mEmojiCategoryBar = new LinearLayout(mThemeContext);
         mEmojiCategoryBar.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams categoryParams = new LinearLayout.LayoutParams(0, dp(54));
+        mEmojiCategoryBar.setOrientation(LinearLayout.HORIZONTAL);
+        emojiCategoryScroll.addView(mEmojiCategoryBar, new HorizontalScrollView.LayoutParams(
+                HorizontalScrollView.LayoutParams.WRAP_CONTENT,
+                emojiCategoryBottomBarHeight));
+        LinearLayout.LayoutParams categoryParams = new LinearLayout.LayoutParams(0, emojiCategoryBottomBarHeight);
         categoryParams.weight = 1;
-        mEmojiBottomBar.addView(mEmojiCategoryBar, categoryParams);
+        mEmojiBottomBar.addView(emojiCategoryScroll, categoryParams);
 
-        TextView backspace = createEmojiControl("⌫", 24);
+        TextView backspace = createEmojiControl("⌫", emojiBackspaceGlyphSize);
         backspace.setOnClickListener(v -> handleEmojiBackspace());
-        mEmojiBottomBar.addView(backspace, new LinearLayout.LayoutParams(dp(48), dp(46)));
+        mEmojiBottomBar.addView(backspace, new LinearLayout.LayoutParams(
+                emojiSideControlWidth, emojiCategoryTabHeight));
 
         renderEmojiContent("");
         mEmojiKeyboardView.setVisibility(mEmojiKeyboardShown ? View.VISIBLE : View.GONE);
@@ -2266,25 +2297,46 @@ public class LIMEService extends InputMethodService
 
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         mEmojiSearchMode = mEmojiSearchFocused || normalizedQuery.length() > 0;
+        setInputCandidateStripVisibility(
+                emojiSearchInputCandidateStripVisibility(mEmojiKeyboardShown, mEmojiSearchMode));
         mEmojiPages.removeAllViews();
+        int searchPanelHeight = emojiSearchPanelHeight();
 
         if (mEmojiKeyboardView != null) {
             ViewGroup.LayoutParams emojiParams = mEmojiKeyboardView.getLayoutParams();
             if (emojiParams != null) {
-                emojiParams.height = mEmojiSearchMode ? dp(EMOJI_SEARCH_PANEL_HEIGHT_DP) : ViewGroup.LayoutParams.WRAP_CONTENT;
+                emojiParams.height = mEmojiSearchMode ? searchPanelHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
                 mEmojiKeyboardView.setLayoutParams(emojiParams);
             }
         }
         if (mEmojiRoot != null) {
-            mEmojiRoot.setMinimumHeight(mEmojiSearchFocused ? dp(EMOJI_SEARCH_PANEL_HEIGHT_DP) : dp(280));
+            int horizontalPadding = mEmojiSearchMode ? 0 : dp(EMOJI_PANEL_HORIZONTAL_PADDING_DP);
+            int verticalPaddingBottom = mEmojiSearchMode ? 0 : dp(EMOJI_PANEL_VERTICAL_PADDING_DP);
+            mEmojiRoot.setPadding(
+                    horizontalPadding,
+                    dp(EMOJI_PANEL_VERTICAL_PADDING_DP),
+                    horizontalPadding,
+                    verticalPaddingBottom);
+            mEmojiRoot.setMinimumHeight(mEmojiSearchMode ? searchPanelHeight : dp(280));
+        }
+        if (mEmojiSearchField != null) {
+            LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(EMOJI_SEARCH_FIELD_HEIGHT_DP));
+            if (mEmojiSearchMode) {
+                int horizontalMargin = dp(EMOJI_PANEL_HORIZONTAL_PADDING_DP);
+                searchParams.setMargins(horizontalMargin, 0, horizontalMargin, 0);
+            }
+            mEmojiSearchField.setLayoutParams(searchParams);
         }
         if (mEmojiScroll != null) {
             LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    mEmojiSearchMode ? dp(EMOJI_SEARCH_SCROLL_HEIGHT_DP) : 0);
+                    0);
             scrollParams.weight = mEmojiSearchMode ? 0 : 1;
-            scrollParams.topMargin = dp(8);
+            scrollParams.topMargin = mEmojiSearchMode ? 0 : dp(8);
             mEmojiScroll.setLayoutParams(scrollParams);
+            mEmojiScroll.setVisibility(mEmojiSearchMode ? View.GONE : View.VISIBLE);
         }
         if (mEmojiBottomBar != null) {
             mEmojiBottomBar.setVisibility(mEmojiSearchFocused ? View.GONE : View.VISIBLE);
@@ -2293,12 +2345,11 @@ public class LIMEService extends InputMethodService
 
         if (mEmojiSearchMode) {
             List<String> matches = findEmojiSearchResults(normalizedQuery);
-            addEmojiSearchPage(matches.toArray(new String[0]), getEmojiPageWidth());
+            List<Mapping> emojiCandidates = emojiSearchCandidateMappings(matches);
+            showEmojiSearchCandidatesInInputStrip(emojiCandidates);
             updateEmojiCategoryHighlight(-1);
-            if (mEmojiScroll != null) {
-                mEmojiScroll.post(() -> mEmojiScroll.scrollTo(0, 0));
-            }
         } else {
+            clearEmojiSearchCandidates();
             int pageWidth = getEmojiPageWidth();
             List<List<String>> pages = getEmojiPanelPages();
             mEmojiCategoryStartOffsets = new int[getEmojiCategoryCount()];
@@ -2320,30 +2371,81 @@ public class LIMEService extends InputMethodService
     private void enterEmojiSearchMode() {
         mEmojiSearchFocused = true;
         mEmojiSearchQuery.setLength(0);
+        setEmojiSearchKeyboard(emojiSearchInitialEnglishOnly(mEmojiSourceWasEnglish));
         updateEmojiSearchText();
-        forceEnglishKeyboardForEmojiSearch();
         enforceEmojiKeyboardVisibility();
         refreshCandidateInputContainer();
-        renderEmojiContent("");
     }
 
-    private void exitEmojiSearchToPanel() {
+    private void exitEmojiSearchToKeyboard() {
         mEmojiSearchFocused = false;
+        mEmojiSearchMode = false;
         mEmojiSearchQuery.setLength(0);
-        updateEmojiSearchText();
-        if (mInputView != null) {
-            mInputView.setVisibility(View.GONE);
-            mInputView.invalidateAllKeys();
+        if (mEmojiSearchField != null) {
+            mEmojiSearchField.setText("");
         }
-        renderEmojiContent("");
-        refreshCandidateInputContainer();
+        hideEmojiKeyboard();
     }
 
-    private void forceEnglishKeyboardForEmojiSearch() {
-        mEnglishOnly = true;
+    private void showEmojiSearchCandidatesInInputStrip(List<Mapping> emojiCandidates) {
+        LinkedList<Mapping> candidates = new LinkedList<>();
+        if (emojiCandidates != null) {
+            candidates.addAll(emojiCandidates);
+        }
+        mCandidateList = candidates;
+        selectedCandidate = null;
+        hasCandidatesShown = !candidates.isEmpty();
+        hasMappingList = !candidates.isEmpty();
+        setInputCandidateStripVisibility(View.VISIBLE);
+        if (mCandidateInInputView != null) {
+            mCandidateInInputView.setVisibility(View.VISIBLE);
+        }
+        if (mCandidateViewInInputView != null) {
+            mCandidateViewInInputView.setVisibility(View.VISIBLE);
+        }
+        if (mCandidateView != null) {
+            mCandidateView.setSuggestions(candidates, false);
+        }
+        showCandidateView();
+        if (mCandidateInInputView != null) {
+            mCandidateInInputView.requestLayout();
+            mCandidateInInputView.updateCandidateViewWidthConstraint();
+            mCandidateInInputView.post(() -> {
+                if (!mEmojiKeyboardShown || !mEmojiSearchMode) return;
+                setInputCandidateStripVisibility(View.VISIBLE);
+                mCandidateInInputView.setVisibility(View.VISIBLE);
+                if (mCandidateViewInInputView != null) {
+                    mCandidateViewInInputView.setVisibility(View.VISIBLE);
+                }
+                mCandidateInInputView.requestLayout();
+                mCandidateInInputView.updateCandidateViewWidthConstraint();
+            });
+        }
+    }
+
+    private void clearEmojiSearchCandidates() {
+        if (mCandidateView != null) {
+            mCandidateView.hideCandidatePopup();
+            mCandidateView.setSuggestions(null, false);
+        }
+        if (mCandidateList != null) {
+            mCandidateList.clear();
+        }
+        selectedCandidate = null;
+        hasCandidatesShown = false;
+        hasMappingList = false;
+        if (mCandidateInInputView != null) {
+            mCandidateInInputView.requestLayout();
+            mCandidateInInputView.updateCandidateViewWidthConstraint();
+        }
+    }
+
+    private void setEmojiSearchKeyboard(boolean englishOnly) {
+        mEnglishOnly = englishOnly;
         if (mKeyboardSwitcher != null) {
-            mKeyboardSwitcher.setKeyboardMode(activeIM, LIMEKeyboardSwitcher.MODE_TEXT,
-                    mImeOptions, false, false, false);
+            mKeyboardSwitcher.setKeyboardMode(activeIM,
+                    englishOnly ? LIMEKeyboardSwitcher.MODE_TEXT : LIMEKeyboardSwitcher.MODE_IM,
+                    emojiSearchImeOptions(mImeOptions), !englishOnly, false, false);
         }
         if (mInputView != null) {
             mInputView.invalidateAllKeys();
@@ -2355,27 +2457,34 @@ public class LIMEService extends InputMethodService
             handleEmojiBackspace();
             return true;
         }
-        if (primaryCode == LIME.KEYCODE_EMOJI_PANEL) {
-            exitEmojiSearchToPanel();
+        if (shouldExitEmojiSearchToKeyboard(primaryCode)) {
+            exitEmojiSearchToKeyboard();
             return true;
         }
-        if (primaryCode == LIME.KEYCODE_EMOJI_ABC || primaryCode == KEYCODE_SWITCH_TO_IM_MODE) {
-            hideEmojiKeyboard();
+        if (isEmojiSearchKeyboardModeKey(primaryCode)) {
+            setEmojiSearchKeyboard(resolveEmojiSearchEnglishOnlyForModeKey(primaryCode, mEnglishOnly));
             return true;
         }
-        if (primaryCode == LIMEBaseKeyboard.KEYCODE_DONE || primaryCode == MY_KEYCODE_ENTER) {
-            mEmojiSearchFocused = false;
-            if (mInputView != null) {
-                mInputView.setVisibility(View.GONE);
-            }
-            renderEmojiContent(mEmojiSearchQuery.toString());
-            return true;
-        }
-        if (primaryCode >= 32 && primaryCode < 127) {
+        if (shouldEmojiSearchConsumePrintableKey(primaryCode, mEnglishOnly)) {
             mEmojiSearchQuery.append((char) Character.toLowerCase(primaryCode));
             updateEmojiSearchText();
             return true;
         }
+        return mEnglishOnly;
+    }
+
+    private boolean appendPickedCandidateToEmojiSearch(Mapping candidate) {
+        if (candidate == null || candidate.getWord() == null || candidate.getWord().isEmpty()) {
+            return false;
+        }
+        if (!shouldAppendPickedCandidateToEmojiSearch(mEmojiKeyboardShown, mEmojiSearchMode,
+                candidate.isEmojiRecord(), candidate.isComposingCodeRecord())) {
+            return false;
+        }
+        mEmojiSearchQuery.append(candidate.getWord());
+        selectedCandidate = null;
+        clearComposing(false);
+        updateEmojiSearchText();
         return true;
     }
 
@@ -2390,38 +2499,36 @@ public class LIMEService extends InputMethodService
 
     private void updateEmojiSearchText() {
         if (mEmojiSearchField != null) {
+            EmojiPanelColors colors = currentEmojiPanelColors();
             if (mEmojiSearchQuery.length() == 0 && !mEmojiSearchFocused) {
                 mEmojiSearchField.setText("搜尋表情符號");
-                mEmojiSearchField.setTextColor(0xFF8A8A8A);
+                mEmojiSearchField.setTextColor(colors.searchHint);
             } else {
                 mEmojiSearchField.setText(mEmojiSearchQuery.toString());
-                mEmojiSearchField.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                mEmojiSearchField.setTextColor(colors.searchText);
             }
         }
         renderEmojiContent(mEmojiSearchQuery.toString());
     }
 
-    private void addEmojiSearchPage(String[] emojis, int pageWidth) {
-        GridLayout page = new GridLayout(mThemeContext);
-        page.setColumnCount(Math.max(1, emojis.length));
-        page.setPadding(0, 0, 0, 0);
-        int keySize = Math.max(dp(42), pageWidth / EMOJI_GRID_COLUMNS);
-        for (String emoji : emojis) {
-            TextView key = createEmojiControl(emoji, 28);
-            key.setOnClickListener(v -> commitEmoji(((TextView) v).getText().toString()));
-            GridLayout.LayoutParams keyParams = new GridLayout.LayoutParams();
-            keyParams.width = keySize;
-            keyParams.height = dp(EMOJI_SEARCH_KEY_HEIGHT_DP);
-            keyParams.setMargins(0, dp(1), 0, dp(1));
-            page.addView(key, keyParams);
+    private void applyEmojiSearchFieldStyle() {
+        if (mEmojiSearchField == null) return;
+        EmojiPanelColors colors = currentEmojiPanelColors();
+        Drawable searchIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search);
+        if (searchIcon != null) {
+            searchIcon = DrawableCompat.wrap(searchIcon.mutate());
+            DrawableCompat.setTint(searchIcon, colors.searchIcon);
         }
-        int contentWidth = Math.max(pageWidth, keySize * emojis.length);
-        mEmojiPages.addView(page, new LinearLayout.LayoutParams(contentWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+        mEmojiSearchField.setCompoundDrawablesWithIntrinsicBounds(searchIcon, null, null, null);
+        mEmojiSearchField.setBackground(makeRoundRect(colors.searchBackground, dp(26)));
     }
 
     private int addEmojiSection(String[] emojis, int pageWidth, int categoryIndex) {
         GridLayout page = new GridLayout(mThemeContext);
-        int keySize = Math.max(dp(42), pageWidth / EMOJI_GRID_COLUMNS);
+        float emojiKeyboardSizeScale = getEmojiKeyboardSizeScale();
+        int keySize = Math.max(dp(scaleDp(42, emojiKeyboardSizeScale)), pageWidth / EMOJI_GRID_COLUMNS);
+        int emojiGlyphSize = emojiPanelGlyphSize(emojiKeyboardSizeScale);
+        int emojiCellHeight = dp(scaleDp(50, emojiKeyboardSizeScale));
         int realCount = emojis == null ? 0 : emojis.length;
         int columns = Math.max(1, (int) Math.ceil((double) realCount / (double) EMOJI_GRID_ROWS));
         if (categoryIndex == 0) {
@@ -2433,7 +2540,7 @@ public class LIMEService extends InputMethodService
         page.setPadding(0, 0, 0, 0);
         for (int i = 0; i < visibleCellCount; i++) {
             boolean isRealEmoji = i < realCount;
-            TextView key = createEmojiControl(isRealEmoji ? emojis[i] : "•", 28);
+            TextView key = createEmojiControl(isRealEmoji ? emojis[i] : "•", emojiGlyphSize);
             if (isRealEmoji) {
                 key.setOnClickListener(v -> commitEmoji(((TextView) v).getText().toString()));
             } else {
@@ -2447,7 +2554,7 @@ public class LIMEService extends InputMethodService
                     GridLayout.spec(row),
                     GridLayout.spec(column));
             keyParams.width = keySize;
-            keyParams.height = dp(50);
+            keyParams.height = emojiCellHeight;
             keyParams.setMargins(0, dp(1), 0, dp(1));
             page.addView(key, keyParams);
         }
@@ -2464,6 +2571,9 @@ public class LIMEService extends InputMethodService
 
         if (mEmojiCategoryBar.getChildCount() != getEmojiCategoryCount()) {
             mEmojiCategoryBar.removeAllViews();
+            float emojiKeyboardSizeScale = getEmojiKeyboardSizeScale();
+            int tabWidth = dp(emojiCategoryTabWidthDp(emojiKeyboardSizeScale));
+            int tabHeight = dp(scaleDp(EMOJI_CATEGORY_TAB_HEIGHT_DP, emojiKeyboardSizeScale));
             for (int i = 0; i < getEmojiCategoryCount(); i++) {
                 final int index = i;
                 View tab = createEmojiCategoryIcon(index);
@@ -2480,19 +2590,59 @@ public class LIMEService extends InputMethodService
                     }
                     updateEmojiCategoryHighlight(-1);
                 });
-                mEmojiCategoryBar.addView(tab, new LinearLayout.LayoutParams(0, dp(40), 1));
+                mEmojiCategoryBar.addView(tab, new LinearLayout.LayoutParams(tabWidth, tabHeight));
             }
         }
         for (int i = 0; i < mEmojiCategoryBar.getChildCount(); i++) {
             View tab = mEmojiCategoryBar.getChildAt(i);
             tab.setBackground(makeRoundRect(
-                    !mEmojiSearchMode && i == mEmojiCategoryIndex ? 0x22000000 : Color.TRANSPARENT, dp(18)));
+                    !mEmojiSearchMode && i == mEmojiCategoryIndex
+                            ? currentEmojiPanelColors().categoryHighlight
+                            : Color.TRANSPARENT, dp(18)));
             tab.invalidate();
         }
     }
 
     private int getEmojiCategoryCount() {
         return FALLBACK_EMOJI_CATEGORIES.length;
+    }
+
+    static int emojiCategoryTabWidthDp(float keyboardSizeScale) {
+        return scaleDp(EMOJI_CATEGORY_TAB_WIDTH_DP, keyboardSizeScale);
+    }
+
+    static int emojiPanelGlyphSize(float keyboardSizeScale) {
+        float clampedScale = Math.max(0.8f, Math.min(1.2f, keyboardSizeScale));
+        float glyphScale = 1.0f + ((clampedScale - 1.0f) * 0.5f);
+        return Math.round(EMOJI_PANEL_GLYPH_SIZE * glyphScale);
+    }
+
+    static int emojiCategoryGlyphSizeDp(float keyboardSizeScale) {
+        return emojiPanelGlyphSize(keyboardSizeScale);
+    }
+
+    static int emojiSideControlWidthDp(float keyboardSizeScale) {
+        return emojiCategoryTabWidthDp(keyboardSizeScale);
+    }
+
+    static int emojiModeControlGlyphSize(float keyboardSizeScale) {
+        return Math.round(emojiCategoryGlyphSizeDp(keyboardSizeScale) * 0.8f);
+    }
+
+    static int emojiBackspaceGlyphSize(float keyboardSizeScale) {
+        return emojiCategoryGlyphSizeDp(keyboardSizeScale);
+    }
+
+    private float getEmojiKeyboardSizeScale() {
+        float scale = 1.0f;
+        if (mLIMEPref != null) {
+            scale = mLIMEPref.getKeyboardSize();
+        }
+        return Math.max(0.8f, Math.min(1.2f, scale));
+    }
+
+    private static int scaleDp(int dpValue, float keyboardSizeScale) {
+        return Math.round(dpValue * Math.max(0.8f, Math.min(1.2f, keyboardSizeScale)));
     }
 
     private int getEmojiCategoryStartPage(int categoryIndex) {
@@ -2528,7 +2678,8 @@ public class LIMEService extends InputMethodService
     }
 
     private View createEmojiCategoryIcon(int categoryIndex) {
-        EmojiCategoryIconButton view = new EmojiCategoryIconButton(mThemeContext, categoryIndex);
+        EmojiCategoryIconButton view = new EmojiCategoryIconButton(
+                mThemeContext, categoryIndex, dp(emojiCategoryGlyphSizeDp(getEmojiKeyboardSizeScale())));
         view.setClickable(true);
         return view;
     }
@@ -2574,6 +2725,25 @@ public class LIMEService extends InputMethodService
             }
         }
         return matches;
+    }
+
+    private List<Mapping> emojiSearchCandidateMappings(List<String> emojis) {
+        List<Mapping> candidates = new LinkedList<>();
+        if (emojis == null) return candidates;
+        for (String emoji : emojis) {
+            if (emoji == null || emoji.isEmpty()) continue;
+            Mapping mapping = new Mapping();
+            mapping.setCode("");
+            mapping.setWord(emoji);
+            mapping.setEmojiRecord();
+            candidates.add(mapping);
+        }
+        return candidates;
+    }
+
+    private int emojiSearchPanelHeight() {
+        return dp(EMOJI_PANEL_VERTICAL_PADDING_DP)
+                + dp(EMOJI_SEARCH_FIELD_HEIGHT_DP);
     }
 
     private List<List<String>> getEmojiPanelPages() {
@@ -2714,7 +2884,7 @@ public class LIMEService extends InputMethodService
         TextView view = new TextView(mThemeContext);
         view.setText(text);
         view.setTextSize(textSize);
-        view.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        view.setTextColor(currentEmojiPanelColors().iconText);
         view.setGravity(Gravity.CENTER);
         view.setIncludeFontPadding(false);
         view.setClickable(true);
@@ -2723,12 +2893,14 @@ public class LIMEService extends InputMethodService
 
     private class EmojiCategoryIconButton extends View {
         private final int categoryIndex;
+        private final int iconSizePx;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        EmojiCategoryIconButton(Context context, int categoryIndex) {
+        EmojiCategoryIconButton(Context context, int categoryIndex, int iconSizePx) {
             super(context);
             this.categoryIndex = categoryIndex;
-            paint.setColor(ContextCompat.getColor(LIMEService.this, android.R.color.black));
+            this.iconSizePx = iconSizePx;
+            paint.setColor(currentEmojiPanelColors().iconText);
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
             setWillNotDraw(false);
@@ -2738,7 +2910,7 @@ public class LIMEService extends InputMethodService
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            float size = Math.min(getWidth(), getHeight()) * 0.56f;
+            float size = Math.min(iconSizePx, Math.min(getWidth(), getHeight()));
             float cx = getWidth() / 2f;
             float cy = getHeight() / 2f;
             paint.setStrokeWidth(Math.max(2.2f, dp(2)));
@@ -2906,23 +3078,31 @@ public class LIMEService extends InputMethodService
     }
 
     private int getInputCandidateStripVisibility() {
-        if (mCandidateInInputView != null && mCandidateInInputView.getChildCount() > 0) {
-            return mCandidateInInputView.getChildAt(0).getVisibility();
+        View strip = inputCandidateStrip();
+        if (strip != null) {
+            return strip.getVisibility();
         }
         return View.VISIBLE;
     }
 
     private void setInputCandidateStripVisibility(int visibility) {
-        if (mCandidateInInputView != null && mCandidateInInputView.getChildCount() > 0) {
-            mCandidateInInputView.getChildAt(0).setVisibility(visibility);
+        View strip = inputCandidateStrip();
+        if (strip != null) {
+            strip.setVisibility(visibility);
         }
+    }
+
+    private View inputCandidateStrip() {
+        if (mCandidateInInputView == null) return null;
+        return mCandidateInInputView.findViewById(R.id.input_candidate_strip);
     }
 
     private void enforceEmojiKeyboardVisibility() {
         if (!mEmojiKeyboardShown || mInputView == null) return;
-        setInputCandidateStripVisibility(View.GONE);
+        setInputCandidateStripVisibility(
+                emojiSearchInputCandidateStripVisibility(mEmojiKeyboardShown, mEmojiSearchMode));
         if (mEmojiSearchFocused) {
-            forceEnglishKeyboardForEmojiSearch();
+            setEmojiSearchKeyboard(mEnglishOnly);
             mInputView.setVisibility(View.VISIBLE);
         } else {
             mInputView.setVisibility(View.GONE);
@@ -2931,7 +3111,8 @@ public class LIMEService extends InputMethodService
         if (mInputView.getHandler() != null) {
             mInputView.post(() -> {
                 if (!mEmojiKeyboardShown) return;
-                setInputCandidateStripVisibility(View.GONE);
+                setInputCandidateStripVisibility(
+                        emojiSearchInputCandidateStripVisibility(mEmojiKeyboardShown, mEmojiSearchMode));
                 mInputView.setVisibility(mEmojiSearchFocused ? View.VISIBLE : View.GONE);
                 mInputView.invalidateAllKeys();
             });
@@ -3465,7 +3646,8 @@ public class LIMEService extends InputMethodService
 
     public boolean isComposingOrSearchingCandidates() {
         return (mComposing != null && mComposing.length() > 0)
-                || (queryThread != null && queryThread.isAlive());
+                || (queryThread != null && queryThread.isAlive())
+                || mEmojiSearchMode;
     }
 
     static int adjustedEmojiInsertionPosition(List<Mapping> list, int requestedPosition) {
@@ -3482,6 +3664,53 @@ public class LIMEService extends InputMethodService
             }
         }
         return position;
+    }
+
+    static boolean isEmojiSearchDoneKey(int primaryCode) {
+        return primaryCode == LIMEBaseKeyboard.KEYCODE_DONE || primaryCode == MY_KEYCODE_ENTER;
+    }
+
+    static boolean shouldExitEmojiSearchToKeyboard(int primaryCode) {
+        return isEmojiSearchDoneKey(primaryCode) || primaryCode == LIME.KEYCODE_EMOJI_PANEL;
+    }
+
+    static boolean emojiSearchInitialEnglishOnly(boolean sourceWasEnglish) {
+        return sourceWasEnglish;
+    }
+
+    static boolean isEmojiSearchKeyboardModeKey(int primaryCode) {
+        return primaryCode == KEYCODE_SWITCH_TO_ENGLISH_MODE
+                || primaryCode == KEYCODE_SWITCH_TO_IM_MODE
+                || primaryCode == LIME.KEYCODE_EMOJI_ABC;
+    }
+
+    static boolean resolveEmojiSearchEnglishOnlyForModeKey(int primaryCode, boolean currentEnglishOnly) {
+        if (primaryCode == KEYCODE_SWITCH_TO_ENGLISH_MODE) {
+            return true;
+        }
+        if (primaryCode == KEYCODE_SWITCH_TO_IM_MODE || primaryCode == LIME.KEYCODE_EMOJI_ABC) {
+            return false;
+        }
+        return currentEnglishOnly;
+    }
+
+    static boolean shouldEmojiSearchConsumePrintableKey(int primaryCode, boolean englishOnly) {
+        return englishOnly && primaryCode >= 32 && primaryCode < 127;
+    }
+
+    static boolean shouldAppendPickedCandidateToEmojiSearch(boolean emojiKeyboardShown,
+                                                            boolean searchMode,
+                                                            boolean emojiRecord,
+                                                            boolean composingCodeRecord) {
+        return emojiKeyboardShown && searchMode && !emojiRecord && !composingCodeRecord;
+    }
+
+    static int emojiSearchImeOptions(int imeOptions) {
+        return (imeOptions & ~EditorInfo.IME_MASK_ACTION) | EditorInfo.IME_ACTION_DONE;
+    }
+
+    static int emojiSearchInputCandidateStripVisibility(boolean emojiKeyboardShown, boolean searchMode) {
+        return emojiKeyboardShown && searchMode ? View.VISIBLE : View.GONE;
     }
 
     private static boolean isChinesePeriodOrComma(Mapping candidate) {
@@ -4024,6 +4253,7 @@ public class LIMEService extends InputMethodService
         if (mCandidateViewInInputView == null)
             return;
 
+        setInputCandidateStripVisibility(View.VISIBLE);
         mCandidateViewInInputView.setSuggestions(null, false);
         mCandidateViewHandler.showCandidateView();
         mCandidateInInputView.requestLayout();
@@ -4093,6 +4323,7 @@ public class LIMEService extends InputMethodService
     public synchronized void setSuggestions(List<Mapping> suggestions, boolean showNumber, String diplaySelkey) {
 
         if (suggestions != null && !suggestions.isEmpty()) {
+            setInputCandidateStripVisibility(View.VISIBLE);
 
             if (DEBUG)
                 Log.i(TAG, "setSuggestion():suggestions.size=" + suggestions.size()
@@ -4149,6 +4380,10 @@ public class LIMEService extends InputMethodService
     }
 
     public void dismissCandidateComposing() {
+        if (mEmojiKeyboardShown && mEmojiSearchMode) {
+            exitEmojiSearchToKeyboard();
+            return;
+        }
         if (mCandidateView != null) {
             mCandidateView.hideCandidatePopup();
         }
@@ -4873,6 +5108,15 @@ public class LIMEService extends InputMethodService
         if (mCandidateList != null && !mCandidateList.isEmpty()) {
             selectedCandidate = mCandidateList.get(index);
             //selectedIndex = index;
+        }
+
+        if (mEmojiKeyboardShown && mEmojiSearchMode
+                && selectedCandidate != null && selectedCandidate.isEmojiRecord()) {
+            commitEmoji(selectedCandidate.getWord());
+            return;
+        }
+        if (appendPickedCandidateToEmojiSearch(selectedCandidate)) {
+            return;
         }
 
         InputConnection ic = getCurrentInputConnection();
@@ -5854,6 +6098,84 @@ public class LIMEService extends InputMethodService
             return uiMode == Configuration.UI_MODE_NIGHT_YES;
         }
         return false;
+    }
+
+    static final class EmojiPanelColors {
+        final int searchBackground;
+        final int searchHint;
+        final int searchText;
+        final int searchIcon;
+        final int iconText;
+        final int categoryHighlight;
+
+        EmojiPanelColors(int searchBackground, int searchHint, int searchText,
+                         int searchIcon, int iconText, int categoryHighlight) {
+            this.searchBackground = searchBackground;
+            this.searchHint = searchHint;
+            this.searchText = searchText;
+            this.searchIcon = searchIcon;
+            this.iconText = iconText;
+            this.categoryHighlight = categoryHighlight;
+        }
+    }
+
+    static EmojiPanelColors emojiPanelColorsForTheme(int themeIndex, boolean systemDark) {
+        int resolvedTheme = themeIndex == 6 ? (systemDark ? 1 : 0) : themeIndex;
+        switch (resolvedTheme) {
+            case 1:
+                return new EmojiPanelColors(
+                        0xFF212121,
+                        0xFF8E9AA0,
+                        0xFFCFD8DC,
+                        0xFFCFD8DC,
+                        0xFFCFD8DC,
+                        0x33FFFFFF);
+            case 2:
+                return new EmojiPanelColors(
+                        0xFFFEF3F7,
+                        0xFFC74A72,
+                        0xFF000000,
+                        0xFFF49AC1,
+                        0xFF000000,
+                        0x33C74A72);
+            case 3:
+                return new EmojiPanelColors(
+                        0xFFD8E7F3,
+                        0xFF4E6677,
+                        0xFF314453,
+                        0xFF9BC5E4,
+                        0xFF314453,
+                        0x334167B0);
+            case 4:
+                return new EmojiPanelColors(
+                        0xFFEFEDFF,
+                        0xFF45196F,
+                        0xFF45196F,
+                        0xFFB28ABF,
+                        0xFF45196F,
+                        0x3345196F);
+            case 5:
+                return new EmojiPanelColors(
+                        0xFFF2F5D5,
+                        0xFF009444,
+                        0xFF003A17,
+                        0xFF39B54A,
+                        0xFF003A17,
+                        0x33006838);
+            case 0:
+            default:
+                return new EmojiPanelColors(
+                        0xF2FFFFFF,
+                        0xFF8A8A8A,
+                        0xFF000000,
+                        0xFF000000,
+                        0xFF000000,
+                        0x22000000);
+        }
+    }
+
+    private EmojiPanelColors currentEmojiPanelColors() {
+        return emojiPanelColorsForTheme(mKeyboardThemeIndex, isEffectiveDarkTheme());
     }
 
     private int getKeyboardTheme() {

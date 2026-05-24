@@ -12,6 +12,16 @@
 			<key>FooterText</key>
 			<string>鍵盤啟用與完整取用由 iOS 管理。請進入 Keyboards 開啟萊姆輸入法與允許完整取用。</string>
 		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>顯示安裝指引</string>
+			<key>Key</key>
+			<string>lime_show_setup_hint</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
 	</array>
 	<key>StringsTable</key>
 	<string>Root</string>

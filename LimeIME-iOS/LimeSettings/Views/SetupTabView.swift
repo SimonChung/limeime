@@ -139,6 +139,12 @@ struct SetupTabView: View {
                     .controlSize(.large)
                     .padding(.horizontal, 24)
 
+                    Text("若設定未直接顯示萊姆輸入法，請到「設定」>「Apps」>「萊姆輸入法」>「Keyboards」，開啟萊姆輸入法與允許完整取用。")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+
                     // Invisible 1 × 1 probe — preserves heartbeat polling
                     // without showing a text field in the new layout.
                     TextField("", text: $probeText)
@@ -342,20 +348,9 @@ struct SetupTabView: View {
         }
     }
 
-    // MARK: - Navigation
-
-    /// Opens the 萊姆輸入法 app settings page in the system Settings app.
-    /// `openSettingsURLString` is the only Apple-guaranteed deep link; it always
-    /// opens the settings page for the calling app (i.e. LimeIME Settings).
-    /// From there the user taps "鍵盤" to reach the keyboard settings page where
-    /// the enable toggle and Allow Full Access toggle live.
-    /// `App-Prefs:` paths are intentionally avoided because `canOpenURL` returns
-    /// true for any whitelisted scheme regardless of path, causing silent
-    /// navigation to the wrong page.
     private func openLimeKeyboardSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Version

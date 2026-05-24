@@ -413,6 +413,10 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         self.layout = layout
         super.init(frame: .zero)
         backgroundColor = .clear
+        // Allow two simultaneous touches on the keyboard so a second key-down isn't
+        // silently dropped when a prior key-up is still queued behind heavy main-thread
+        // work (e.g. CandidateBarView.rebuildButtons during compose). See docs/IOS_MISS_KEY.md.
+        isMultipleTouchEnabled = true
         buildKeys()
     }
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -573,6 +577,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private func makeSplitRow(row: KeyRow, rowHeight: CGFloat) -> UIView {
         let rowView = UIView()
         rowView.backgroundColor = .clear
+        rowView.isMultipleTouchEnabled = true
 
         let keys = row.keys
         guard !keys.isEmpty else { return rowView }
@@ -600,6 +605,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
             let contentView = UIView()
             contentView.backgroundColor = .clear
+            contentView.isMultipleTouchEnabled = true
             contentView.translatesAutoresizingMaskIntoConstraints = false
             rowView.addSubview(contentView)
             NSLayoutConstraint.activate([
@@ -642,6 +648,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     private func makeRow(row: KeyRow, rowIndex: Int, rowHeight: CGFloat) -> UIView {
         let rowView = UIView()
         rowView.backgroundColor = .clear
+        rowView.isMultipleTouchEnabled = true
 
         // Total width percent for this row. When < 100, the keys are narrower than the
         // full row — center them with equal left/right whitespace via a content container.
@@ -650,6 +657,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
 
         let contentView = UIView()
         contentView.backgroundColor = .clear
+        contentView.isMultipleTouchEnabled = true
         contentView.translatesAutoresizingMaskIntoConstraints = false
         rowView.addSubview(contentView)
         NSLayoutConstraint.activate([
@@ -892,6 +900,9 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
             keyDef: keyDef, legacyGlobeMode: legacyGlobeMode)
         let renderIcon  = policyIcon ?? override?.icon  ?? keyDef.icon
         let renderLabel = policyIcon == nil ? (override?.label ?? keyDef.label) : ""
+        btn.accessibilityLabel = keyDef.sublabel.isEmpty
+            ? (!renderLabel.isEmpty ? renderLabel : renderIcon)
+            : "\(keyDef.label) \(keyDef.sublabel)"
         if !renderIcon.isEmpty {
             // SF Symbol icon key — dismiss key uses a larger point size for legibility
             let iconSize: CGFloat = renderIcon == "keyboard.chevron.compact.down"

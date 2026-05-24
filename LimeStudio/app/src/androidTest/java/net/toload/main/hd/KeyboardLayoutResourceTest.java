@@ -41,10 +41,22 @@ public class KeyboardLayoutResourceTest {
     public void customThemeCandidateEmojiIconsUseThemeTintInNormalState() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_pink, R.color.pink_hl);
-        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_tech_blue, R.color.tech_blue_hl);
-        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_fashion_purple, R.color.fashion_purple_hl);
-        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_relax_green, R.color.relax_green_hl);
+        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_pink, R.color.second_background_pink);
+        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_tech_blue, R.color.second_background_tech_blue);
+        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_fashion_purple, R.color.second_background_fashion_purple);
+        assertVectorPaintUsesOnlyColor(context, R.drawable.sym_candidate_emoji_relax_green, R.color.second_background_relax_green);
+    }
+
+    @Test
+    public void candidateEmojiButtonsDoNotUseStickyFocusedTint() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_light);
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_dark);
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_pink);
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_tech_blue);
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_fashion_purple);
+        assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_relax_green);
     }
 
     private void assertLetterKeyCodes(Context context, int layoutId, boolean shouldBeUppercase) {
@@ -130,6 +142,24 @@ public class KeyboardLayoutResourceTest {
         assertEquals("Drawable " + drawableId + " " + attrName + " should use theme color",
                 expectedColorId, colorId);
         return 1;
+    }
+
+    private void assertSelectorDoesNotContainFocusedState(Context context, int drawableId) {
+        try {
+            XmlPullParser parser = context.getResources().getXml(drawableId);
+            int eventType;
+            while ((eventType = parser.next()) != XmlPullParser.END_DOCUMENT) {
+                if (eventType != XmlPullParser.START_TAG || !"item".equals(parser.getName())) {
+                    continue;
+                }
+                AttributeSet attrs = Xml.asAttributeSet(parser);
+                boolean focused = attrs.getAttributeBooleanValue(ANDROID_ATTR_NS, "state_focused", false);
+                assertFalse("Emoji button selector should not keep highlight tint on focus: " + drawableId,
+                        focused);
+            }
+        } catch (Exception e) {
+            fail("Unable to read selector drawable " + drawableId + ": " + e.getMessage());
+        }
     }
 
     private static class KeyDefinition {
