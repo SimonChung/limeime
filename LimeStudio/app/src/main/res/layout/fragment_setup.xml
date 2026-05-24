@@ -232,7 +232,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="end"
-                        android:text="版權說明"
+                        android:text="版權聲明"
                         android:textColor="@color/material_blue"
                         android:clickable="true"
                         android:focusable="true" />

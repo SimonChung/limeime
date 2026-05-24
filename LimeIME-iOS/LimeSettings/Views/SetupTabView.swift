@@ -157,7 +157,7 @@ struct SetupTabView: View {
                         HStack {
                             Text("授權")
                             Spacer()
-                            Link("版權說明", destination: licenseURL)
+                            Link("版權聲明", destination: licenseURL)
                         }
                         .padding(.vertical, 11)
                         Divider()
