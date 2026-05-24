@@ -1,220 +1,171 @@
 # Android Manifest Permission Review
 
-**Generated**: 2025-01-XX  
+**Updated**: 2026-05-24  
 **Project**: LimeIME  
 **Target SDK**: 36 (Android 16)  
 **Min SDK**: 21 (Android 5.0)
 
 ## Summary
 
-This report reviews all permissions declared in `AndroidManifest.xml` and verifies their usage in the codebase. Permissions that are not used should be removed to minimize the app's permission footprint and improve user trust.
+This report reviews the permissions currently declared in
+`LimeStudio/app/src/main/AndroidManifest.xml` and explains why each permission
+is still needed after adding LIME-owned inline dictation.
+
+The current manifest declares 5 permissions. Four support existing keyboard,
+download, backup/restore, and notification behavior. The new permission,
+`RECORD_AUDIO`, is required only when the user chooses LIME's built-in inline
+voice input. Users can decline it and continue using the Google/vendor voice
+input fallback paths.
 
 ---
 
-## ✅ Required Permissions (In Use)
+## Required Permissions
 
-### 1. **`POST_NOTIFICATIONS`** ✅ REQUIRED
+### 1. `POST_NOTIFICATIONS` - Required
 
-**Location**: `AndroidManifest.xml:43`
+**Location**: `LimeStudio/app/src/main/AndroidManifest.xml:49`
 
 **Usage**:
-- `LIMEUtilities.java:352` - `showNotification()` method
-- `DBServer.java:702` - `showNotificationMessage()` method
-- `SearchServer.java:198` - Shows notifications
 
-**Purpose**: Required for displaying notifications (API 33+). Used for backup/restore status, download progress, and search notifications.
+- `LIMEUtilities.showNotification(...)`
+- `DBServer.showNotificationMessage(...)`
+- `SearchServer` download/import notifications
 
-**Status**: ✅ **REQUIRED** - Actively used
+**Purpose**: Required on Android 13+ for app-posted notifications. LIME uses
+notifications for database download, backup, restore, and import status.
+
+**Status**: Keep.
 
 ---
 
-### 2. **`VIBRATE`** ✅ REQUIRED
+### 2. `VIBRATE` - Required
 
-**Location**: `AndroidManifest.xml:44`
+**Location**: `LimeStudio/app/src/main/AndroidManifest.xml:50`
 
 **Usage**:
-- `LIMEService.java:3624` - `getVibrator()` method
-- `LIMEService.java:3645` - `vibrate()` method
-- `LIMEService.java:3671` - Called on keypress
-- `CandidateView.java:1473` - Vibration on candidate selection
 
-**Purpose**: Provides haptic feedback when typing and selecting candidates.
+- `LIMEService.getVibrator()`
+- `LIMEService.vibrate()`
+- Keyboard keypress haptic feedback
+- Candidate selection feedback
 
-**Status**: ✅ **REQUIRED** - Actively used
+**Purpose**: Provides optional haptic feedback while typing and selecting
+candidates.
+
+**Status**: Keep.
 
 ---
 
-### 3. **`INTERNET`** ✅ REQUIRED
+### 3. `INTERNET` - Required
 
-**Location**: `AndroidManifest.xml:45`
+**Location**: `LimeStudio/app/src/main/AndroidManifest.xml:51`
 
 **Usage**:
-- `SetupImLoadRunnable.java:423` - `downloadRemoteFile()` method
-- `DBServer.java:483` - `downloadRemoteFile()` method
-- Multiple download operations for input method databases
 
-**Purpose**: Required for downloading input method databases and updates from remote servers.
+- `LIMEUtilities.downloadRemoteFile(...)`
+- Input method table downloads
+- Database/import download flows
 
-**Status**: ✅ **REQUIRED** - Actively used
+**Purpose**: Allows LIME to download input method databases and related data
+only when the user starts a download/import action.
+
+**Status**: Keep.
 
 ---
 
-### 4. **`ACCESS_NETWORK_STATE`** ✅ REQUIRED
+### 4. `ACCESS_NETWORK_STATE` - Required
 
-**Location**: `AndroidManifest.xml:50`
+**Location**: `LimeStudio/app/src/main/AndroidManifest.xml:52`
 
 **Usage**:
-- `SetupImLoadDialog.java:381` - `isNetworkAvailable()` method
-- Uses `ConnectivityManager.getActiveNetwork()` and `getNetworkCapabilities()` (API 23+)
-- Uses deprecated `getActiveNetworkInfo()` for API < 23
 
-**Purpose**: Checks network availability before attempting downloads.
+- `SetupImController.isNetworkAvailable(...)`
+- `ConnectivityManager` network checks before downloads
 
-**Status**: ✅ **REQUIRED** - Actively used
+**Purpose**: Checks whether a usable network is available before starting
+download operations.
 
----
-
-## ❌ Unused Permissions (Should Be Removed)
-
-### 5. **`READ_USER_DICTIONARY`** ❌ NOT USED
-
-**Location**: `AndroidManifest.xml:46`
-
-**Usage Search**: No usage found in codebase
-
-**Analysis**:
-- No calls to `UserDictionary.getUserDictionaryWords()` or similar APIs
-- The app uses its own internal database (`LimeDB`) for record storage
-- `addWord()` methods found are for internal database, not Android UserDictionary
-
-**Recommendation**: ❌ **REMOVE** - Not used anywhere in the codebase
+**Status**: Keep.
 
 ---
 
-### 6. **`WAKE_LOCK`** ❌ NOT USED
+### 5. `RECORD_AUDIO` - Required For Optional Inline Dictation
 
-**Location**: `AndroidManifest.xml:47`
+**Location**: `LimeStudio/app/src/main/AndroidManifest.xml:53`
 
-**Usage Search**: No usage found in codebase
+**Usage**:
 
-**Analysis**:
-- No `PowerManager` usage found
-- No `newWakeLock()` calls
-- Only reference found is a comment about file locking in `LimeSQLiteOpenHelper.java:146` (SQLite file lock, not PowerManager wake lock)
+- `VoicePermissionHelper.hasRecordAudioPermission(...)`
+- `SetupFragment` runtime permission request
+- `AndroidSpeechRecognizerAdapter` / `SpeechRecognizer`
+- `LIMEDictationController`
+- `LIMEService` inline dictation route
 
-**Recommendation**: ❌ **REMOVE** - Not used anywhere in the codebase
+**Purpose**: Android requires microphone permission before LIME can run its own
+inline dictation through `SpeechRecognizer`. This lets the keyboard keep its
+own surface visible while showing partial and final speech results.
 
----
+**Runtime behavior**:
 
-### 7. **`WRITE_USER_DICTIONARY`** ❌ NOT USED
+1. LIME requests the permission from the Settings Setup tab, not silently from
+   the keyboard.
+2. If granted, the microphone key can use LIME-owned inline dictation.
+3. If denied or not yet granted, the microphone key falls back to Google/vendor
+   VoiceIME switching, then `RecognizerIntent`.
+4. If permanently denied, Setup opens Android app settings and the fallback
+   voice paths remain available.
 
-**Location**: `AndroidManifest.xml:48`
-
-**Usage Search**: No usage found in codebase
-
-**Analysis**:
-- No calls to `UserDictionary.addWord()` or `UserDictionary.updateUserDictionary()`
-- The app uses its own internal database for record management
-- All record operations are on internal `LimeDB` tables
-
-**Recommendation**: ❌ **REMOVE** - Not used anywhere in the codebase
-
----
-
-### 8. **`WRITE_SETTINGS`** ❌ NOT USED
-
-**Location**: `AndroidManifest.xml:49`
-
-**Usage Search**: No usage found in codebase
-
-**Analysis**:
-- Only **reading** `Settings.Secure.getString()` for `DEFAULT_INPUT_METHOD`
-- No **writing** to `Settings.System`, `Settings.Secure`, or `Settings.Global`
-- Reading `Settings.Secure` does not require `WRITE_SETTINGS` permission
-- `WRITE_SETTINGS` is only needed for `Settings.System.put*()` operations
-
-**Recommendation**: ❌ **REMOVE** - Only reading settings, not writing
+**Status**: Keep. This is a runtime permission and should be presented as
+optional in user-facing text.
 
 ---
 
-### 9. **`ACCESS_WIFI_STATE`** ❌ NOT USED
+## Removed Permissions
 
-**Location**: `AndroidManifest.xml:51`
+These permissions were previously reviewed as unused and are no longer declared
+in the main manifest:
 
-**Usage Search**: No usage found in codebase
-
-**Analysis**:
-- No `WifiManager` usage found
-- No calls to `getWifiState()`, `isWifiEnabled()`, or similar
-- Network availability is checked via `ConnectivityManager` (which only requires `ACCESS_NETWORK_STATE`)
-
-**Recommendation**: ❌ **REMOVE** - Not used anywhere in the codebase
-
----
-
-## 📋 Permission Summary
-
-| Permission | Status | Usage | Recommendation |
-|------------|--------|-------|----------------|
-| `POST_NOTIFICATIONS` | ✅ Required | Notifications for backup/restore/download | **KEEP** |
-| `VIBRATE` | ✅ Required | Haptic feedback on keypress | **KEEP** |
-| `INTERNET` | ✅ Required | Downloading input method databases | **KEEP** |
-| `ACCESS_NETWORK_STATE` | ✅ Required | Check network before downloads | **KEEP** |
-| `READ_USER_DICTIONARY` | ❌ Unused | No usage found | **REMOVE** |
-| `WAKE_LOCK` | ❌ Unused | No usage found | **REMOVE** |
-| `WRITE_USER_DICTIONARY` | ❌ Unused | No usage found | **REMOVE** |
-| `WRITE_SETTINGS` | ❌ Unused | Only reading, not writing | **REMOVE** |
-| `ACCESS_WIFI_STATE` | ❌ Unused | No usage found | **REMOVE** |
+| Permission | Reason |
+|------------|--------|
+| `READ_USER_DICTIONARY` | LIME uses its own database instead of Android's `UserDictionary` API. |
+| `WRITE_USER_DICTIONARY` | LIME does not write Android's system user dictionary. |
+| `WAKE_LOCK` | No `PowerManager.WakeLock` usage remains. |
+| `WRITE_SETTINGS` | LIME reads input method state but does not write system settings. |
+| `ACCESS_WIFI_STATE` | Network checks use `ConnectivityManager` and only need `ACCESS_NETWORK_STATE`. |
 
 ---
 
-## 🔧 Recommended Actions
+## Permission Summary
 
-### Immediate Actions
-
-1. **Remove unused permissions** from `AndroidManifest.xml`:
-   - `READ_USER_DICTIONARY`
-   - `WAKE_LOCK`
-   - `WRITE_USER_DICTIONARY`
-   - `WRITE_SETTINGS`
-   - `ACCESS_WIFI_STATE`
-
-### Benefits of Removal
-
-- ✅ **Reduced permission footprint** - Users see fewer permissions at install
-- ✅ **Improved user trust** - Fewer permissions = more trust
-- ✅ **Better Play Store compliance** - Google Play requires justification for all permissions
-- ✅ **Security** - Principle of least privilege
+| Permission | Status | User-facing purpose |
+|------------|--------|---------------------|
+| `POST_NOTIFICATIONS` | Keep | Shows download, backup, restore, and import status notifications. |
+| `VIBRATE` | Keep | Provides keyboard haptic feedback. |
+| `INTERNET` | Keep | Downloads selected input method databases and import data. |
+| `ACCESS_NETWORK_STATE` | Keep | Checks network availability before downloads. |
+| `RECORD_AUDIO` | Keep | Enables optional LIME-owned inline voice input. |
 
 ---
 
-## 📝 Notes
+## User Communication Notes
 
-### Settings.Secure Usage
+- Public documentation should say LIME declares 5 permissions.
+- `RECORD_AUDIO` should be described as optional and only for built-in LIME
+  voice input.
+- Users who do not grant microphone permission can still use Google/vendor
+  voice input fallback.
+- Do not describe microphone permission as required for typing, database
+  downloads, backup, restore, or basic keyboard use.
 
-The app reads `Settings.Secure.DEFAULT_INPUT_METHOD` in:
-- `LIMEUtilities.java:432`
-- `LIMEService.java:3825, 3954, 3980, 4003`
+## Verification Checklist
 
-**Note**: Reading `Settings.Secure` does **not** require `WRITE_SETTINGS` permission. Only writing to `Settings.System` requires this permission.
+- [x] Main manifest permission list reviewed.
+- [x] New `RECORD_AUDIO` permission documented.
+- [x] Optional runtime behavior documented.
+- [x] Previously removed permissions kept out of the current permission list.
+- [x] README privacy text updated to match the current manifest.
 
-### User Dictionary
-
-The app maintains its own internal dictionary database (`LimeDB`) and does not use Android's `UserDictionary` API. All record management operations are performed on internal tables.
-
-### Network State
-
-The app uses `ACCESS_NETWORK_STATE` (required) but not `ACCESS_WIFI_STATE` (unused). The `ConnectivityManager` API used in `SetupImLoadDialog.isNetworkAvailable()` only requires `ACCESS_NETWORK_STATE`.
-
----
-
-## ✅ Verification Checklist
-
-- [x] All permissions in manifest reviewed
-- [x] Codebase searched for permission usage
-- [x] Unused permissions identified
-- [x] Required permissions verified
-- [x] Recommendations provided
-
-**Conclusion**: 4 out of 9 permissions are required and actively used. 5 unused permissions have been removed to reduce the app's permission footprint.
-
+**Conclusion**: The current Android app declares 5 permissions. All are
+justified. `RECORD_AUDIO` is the only new user-sensitive permission, and it is
+limited to optional LIME-owned inline dictation with delegated voice fallback
+available when the permission is not granted.
