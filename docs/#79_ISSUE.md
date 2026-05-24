@@ -78,6 +78,14 @@ Possible implementation direction:
 - Add a small helper that selects emoji search background / hint / text colors from the active keyboard theme or dark-mode state.
 - Reapply those colors whenever the keyboard theme or emoji panel is rebuilt.
 
+## Fix / APK follow-up status
+
+Commit `a763ee80b199` updated Android emoji search behavior and theme-aware assets, and Android APK `LIMEHD2026-6.1.12.apk` now contains the scoped emoji search-field theme fix.
+
+Retest request posted: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
+
+Status: keep issue open pending reporter confirmation that the Android dark-mode/theme search-field background, text, and icon are no longer too bright. The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
+
 ## Follow-up questions
 
 - Which exact dark-theme search-field background should be used: near-black, gray, or the same surface color as other dark candidate/keyboard controls?
