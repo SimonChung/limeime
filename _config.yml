@@ -1,3 +1,16 @@
 theme: jekyll-theme-primer
 title: 萊姆輸入法
 description: Lightweight Input Method Editor
+
+plugins:
+  - jekyll-optional-front-matter
+
+include:
+  - LICENSE.md
+
+defaults:
+  - scope:
+      path: "LICENSE.md"
+    values:
+      title: 版權聲明
+      permalink: /LICENSE/

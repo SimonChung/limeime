@@ -1,17 +1,12 @@
 ﻿# CIN and LIME Text Import Format Specification
 
-This document describes the `.cin` and `.lime` text formats accepted by the current LimeIME importers, based on:
-
-- Android: `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java`
-- iOS: `LimeIME-iOS/Shared/Database/LimeDB.swift`
+This document describes the `.cin` and `.lime` text formats accepted by the current LimeIME importers.
 
 This file is the format contract only. Implementation tasks and test coverage are tracked in [CIN_LIME_IMPROVE_PLAN.md](CIN_LIME_IMPROVE_PLAN.md).
 
-Android is the compatibility reference for historical behavior. Its `.lime` / `.cin` importer and `.lime` exporter have been used for decades, so iOS should align to Android behavior unless a deliberate difference is documented in this spec.
-
 ## 1. `.cin` Format
 
-`.cin` is the traditional CIN input method format. Android treats files ending in `.cin` as CIN format and imports mapping records from `%chardef begin` through `%chardef end`.
+`.cin` is the traditional CIN input method format. Files ending in `.cin` are imported as CIN format, with mapping records read from `%chardef begin` through `%chardef end`.
 
 ### 1.1 Recommended Structure
 
@@ -33,7 +28,7 @@ b 試
 
 ### 1.2 Encoding
 
-Use UTF-8 text. Android removes a UTF-8 BOM from the first line if present. Source files edited in this repo should follow repo policy and be saved as UTF-8 with BOM when modified.
+Use UTF-8 text. Importers accept a UTF-8 BOM on the first line. Source files edited in this repo should follow repo policy and be saved as UTF-8 with BOM when modified.
 
 ### 1.3 Metadata Lines
 
@@ -52,8 +47,7 @@ Behavior:
 - `%version` stores the IM version metadata.
 - `%cname` stores the display name and is also used as version fallback when `%version` is absent.
 - `%selkey`, `%endkey`, and `%spacestyle` store IM selection/end/space behavior metadata.
-- Android parses the metadata value from the rest of the original line after the key, so spaces in metadata values are preserved.
-- iOS parses `%version`, `%cname`, `%selkey`, `%endkey`, and `%spacestyle`.
+- Metadata values may contain spaces after the metadata key.
 
 ### 1.4 `%keyname` Block
 
@@ -64,12 +58,10 @@ b ㄆ
 %keyname end
 ```
 
-Android preserves key names from CIN files:
+CIN key names are preserved as IM metadata:
 
 - `imkeys`: concatenated lowercased key codes
 - `imkeynames`: display names joined by `|`
-
-iOS currently does not import `%keyname` metadata.
 
 ### 1.5 `%chardef` Block
 
@@ -82,7 +74,7 @@ code word
 Rules:
 
 - Mapping records are imported only inside `%chardef begin/end`.
-- Android stops reading CIN mappings at `%chardef end`.
+- Import stops reading CIN mappings at `%chardef end`.
 - Lines beginning with `#` inside the block are skipped as comments.
 - Records shorter than 3 characters are ignored.
 
@@ -94,7 +86,7 @@ Common CIN record:
 code word
 ```
 
-Android also accepts tab-delimited CIN records and optional score fields:
+CIN records may also be tab-delimited and may include optional score fields:
 
 ```text
 code<TAB>word<TAB>score<TAB>basescore
@@ -106,11 +98,9 @@ Field behavior:
 - `code`: required; trimmed; lowercased before insert unless it is metadata.
 - `word`: required; trimmed.
 - `score`: optional integer; defaults to `0`.
-- `basescore`: optional integer; Android calculates a base score from the Han converter when missing or `0`.
+- `basescore`: optional integer; a base score is calculated from the Han converter when missing or `0`.
 
-For the phonetic table, Android also writes `code3r`, derived by removing tone characters `[3467 ]` from `code`.
-
-iOS currently imports only `code` and `word`.
+For the phonetic table, `code3r` is derived by removing tone characters `[3467 ]` from `code`.
 
 ## 2. `.lime` Format
 
@@ -131,31 +121,22 @@ ab|試|0|456
 %chardef end
 ```
 
-Android can import `.lime` mapping lines even without `%chardef begin/end`. iOS currently imports mapping lines only while inside a `%chardef begin/end` block, so new portable files should include the block.
+Importers accept `.lime` mapping lines with or without `%chardef begin/end`. Exporters include the block for readability and compatibility.
 
 ### 2.2 Encoding
 
-Android export writes UTF-8. Use UTF-8 text for imports. Android removes a UTF-8 BOM from the first line if present.
+Exporters write UTF-8. Use UTF-8 text for imports. Importers accept a UTF-8 BOM on the first line.
 
 ### 2.3 Delimiter Detection
 
-For non-`.cin` files, Android samples the first 100 lines and counts:
+For portable files, prefer pipe-delimited records. Importers recognize these delimiters:
 
 - comma: `,`
 - tab: `\t`
 - pipe: `|`
 - space: ` `
 
-It chooses the delimiter with the highest count. Ties resolve in this order: comma, tab, pipe, then space.
-
-iOS detects from the first mapping data line inside `%chardef`, in this priority:
-
-- pipe: `|`
-- tab: `\t`
-- comma: `,`
-- space: ` `
-
-Because Android and iOS differ, `|` is the safest delimiter only when code and word fields do not contain literal `|`.
+The safest delimiter is `|` when code and word fields do not contain literal `|`.
 
 ### 2.4 Metadata Lines
 
@@ -170,13 +151,15 @@ LIME-style metadata uses the active delimiter. With pipe delimiter:
 @spacestyle@|...
 ```
 
-Android recognizes a metadata line when the parsed `code` field starts with `@`. It supports:
+An import line is metadata when the parsed `code` field starts with `@`. Supported metadata keys:
 
 - `@version@`
 - `@cname@`
 - `@selkey@`
 - `@endkey@`
 - `@spacestyle@`
+- `@imkeys@`
+- `@imkeynames@`
 - `@format@`
 
 These lines are not inserted as mappings.
@@ -187,8 +170,11 @@ Metadata meaning:
 - `@version@` stores the IM version metadata.
 - `@cname@` stores the IM display name, equivalent to CIN `%cname`.
 - `@selkey@`, `@endkey@`, and `@spacestyle@` store IM selection/end/space behavior metadata.
+- `@imkeys@` and `@imkeynames@` store the same key mapping metadata as the `imkeys` and `imkeynames` rows in the `im` table.
 
 When both `@version@` and `@cname@` are present, `@version@` remains the version value and `@cname@` is the display name value.
+
+`@imkeynames@` often contains literal `|` separators inside the value. When exporting such values, use `@format@|lime-text-v2` and escape those literal pipes as `\|`.
 
 ### 2.4.1 Escaped v2 Fields
 
@@ -223,21 +209,15 @@ code|word
 
 Field behavior:
 
-- `code`: required; trimmed; Android lowercases non-metadata mapping codes before insert.
+- `code`: required; trimmed; lowercased before insert.
 - `word`: required; trimmed.
-- `score`: optional integer; defaults to `0` on Android; currently ignored by iOS text import.
-- `basescore`: optional integer; Android calculates a base score from the Han converter when missing or `0`; currently ignored by iOS text import.
+- `score`: optional integer; defaults to `0`.
+- `basescore`: optional integer; a base score is calculated from the Han converter when missing or `0`.
 
-Android inserts regular mappings into:
+Regular mappings are inserted into:
 
 ```text
 code, word, score, basescore
-```
-
-iOS currently inserts only:
-
-```text
-code, word
 ```
 
 ### 2.6 Space-Delimited `.lime`
@@ -248,11 +228,11 @@ Space-delimited records are supported, but fragile:
 code word score basescore
 ```
 
-Android collapses runs of two to five spaces before parsing. Space-delimited records cannot safely contain spaces inside the code or word field.
+Runs of two to five spaces may be collapsed before parsing. Space-delimited records cannot safely contain spaces inside the code or word field.
 
 ## 3. Related Phrase Text Format
 
-For the `related` table, Android pipe-delimited import uses:
+For the `related` table, pipe-delimited import uses:
 
 ```text
 pword|cword|basescore|userscore
@@ -268,42 +248,42 @@ The legacy importer splits the first field heuristically into parent and child w
 
 ## 4. Export Format
 
-### 4.1 Android `.lime` Export
+### 4.1 Regular Table Export
 
 Regular table export writes:
 
 ```text
+@format@|lime-text-v2
 @version@|...
 @cname@|...
 @selkey@|...
 @endkey@|...
 @spacestyle@|...
-code|word|score|basescore
-```
-
-Related table export writes:
-
-```text
-pword|cword|basescore|userscore
-```
-
-### 4.2 iOS `.lime` Export
-
-iOS regular table export currently wraps records in `%chardef begin/end`:
-
-```text
-@version@|...
-@cname@|...
+@imkeys@|...
+@imkeynames@|...
 %chardef begin
 code|word|score|basescore
 %chardef end
 ```
 
-iOS related export also wraps the related rows in `%chardef begin/end`.
+`@format@|lime-text-v2` is written only when at least one exported field needs escaping.
 
-## 5. Current Limitations
+### 4.2 Related Table Export
 
-The current text formats have no escaping or quoting layer.
+Related table export writes:
+
+```text
+@format@|lime-text-v2
+%chardef begin
+pword|cword|basescore|userscore
+%chardef end
+```
+
+`@format@|lime-text-v2` is written only when at least one exported field needs escaping.
+
+## 5. Legacy Format Limitations
+
+Legacy text files without `@format@|lime-text-v2` have no escaping or quoting layer.
 
 Important consequences:
 
@@ -313,7 +293,6 @@ Important consequences:
 - In space-delimited `.cin` or `.lime`, literal spaces cannot safely appear inside mapping fields.
 - A `.lime` mapping whose `code` begins with `@` is treated as LIME metadata and skipped.
 - A CIN mapping whose `code` begins with `%version`, `%cname`, `%selkey`, `%endkey`, or `%spacestyle` is treated as metadata and skipped.
-- Android metadata parsing recognizes metadata by `contains(...)`, not exact key equality, after delimiter parsing.
 
 Literal `@` is safe in a `.lime` `word` field today, but not as the first character of the parsed `code` field.
 
@@ -331,7 +310,7 @@ For `.lime` files:
 
 1. Use UTF-8 text.
 2. Prefer `|` as delimiter unless code or word values need literal `|`.
-3. Always include `%chardef begin` and `%chardef end` for Android/iOS portability.
+3. Include `%chardef begin` and `%chardef end`.
 4. Put metadata before `%chardef begin`.
 5. Use `@version@|...` for version metadata.
 6. Use `@cname@|...` for display-name metadata.
