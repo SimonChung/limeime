@@ -67,6 +67,12 @@ public class LIMEKeyboardSwitcher {
     private static final int SYMBOLS_KEYBOARD_2 = 2;
     private static final int SYMBOLS_KEYBOARD_3 = 3;
 
+    static String resolveEnglishLayoutId(Keyboard keyboard, boolean showNumberRow, boolean isShift) {
+        // There is no user-facing English layout picker, so ignore legacy engkb fields in lime.db.
+        if (showNumberRow) return isShift ? "lime_english_number_shift" : "lime_english_number";
+        return isShift ? "lime_english_shift" : "lime_english";
+    }
+
     LIMEKeyboardView mInputView;
     LIMEService mService;
 	Context mThemedContext;
@@ -481,46 +487,16 @@ public class LIMEKeyboardSwitcher {
 	                kid = new KeyboardId(getKeyboardXMLID("phone_number"));
 	                break;
 	            case MODE_URL:
-	            	//Log.i("ART","KBMODE ->: url");
-	            	if(!localImCode.equals("wb")){
-		            	if(mLIMEPref.getShowNumberRowInEnglish()){
-		            		if(isShift)
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_number_shift"), KEYBOARD_MODE_URL, true);
-		            		else
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_number"), KEYBOARD_MODE_URL, true);
-		            	}else{
-		            		if(isShift)
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_shift"), KEYBOARD_MODE_URL, true);
-		            		else
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english"), KEYBOARD_MODE_URL, true);
-		            	}	
-	            	}else{
-	            		if(isShift)
-	            			kid = new KeyboardId(getKeyboardXMLID("lime_abc_shift"), KEYBOARD_MODE_URL, true);
-	            		else
-	            			kid = new KeyboardId(getKeyboardXMLID("lime_abc"), KEYBOARD_MODE_URL, true);
-	            	}
+	                //Log.i("ART","KBMODE ->: url");
+	                kid = new KeyboardId(
+	                        getKeyboardXMLID(resolveEnglishLayoutId(kConfig, mLIMEPref.getShowNumberRowInEnglish(), isShift)),
+                            KEYBOARD_MODE_URL, true);
 	                break;
 	            case MODE_EMAIL:
-	            	//Log.i("ART","KBMODE ->: email");
-	            	if(!localImCode.equals("wb")){
-		            	if(mLIMEPref.getShowNumberRowInEnglish()){
-		            		if(isShift)
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_number_shift"), KEYBOARD_MODE_EMAIL, true);
-		            		else
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_number"), KEYBOARD_MODE_EMAIL, true);
-		            	}else{
-		            		if(isShift)
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english_shift"), KEYBOARD_MODE_EMAIL, true);
-		            		else
-		            			kid = new KeyboardId(getKeyboardXMLID("lime_english"), KEYBOARD_MODE_EMAIL, true);
-		            	}
-	            	}else{
-	            		if(isShift)
-	            			kid = new KeyboardId(getKeyboardXMLID("lime_abc_shift"), KEYBOARD_MODE_URL, true);
-	            		else
-	            			kid = new KeyboardId(getKeyboardXMLID("lime_abc"), KEYBOARD_MODE_URL, true);
-	            	}
+	                //Log.i("ART","KBMODE ->: email");
+	                kid = new KeyboardId(
+	                        getKeyboardXMLID(resolveEnglishLayoutId(kConfig, mLIMEPref.getShowNumberRowInEnglish(), isShift)),
+                            KEYBOARD_MODE_EMAIL, true);
 	                break;
 	            default:
 	            	if(isIm){  // Chinese IM keyboards
@@ -533,32 +509,9 @@ public class LIMEKeyboardSwitcher {
 	            		}
 		                mIsChinese = true;
 	            	}else {//if(!isIm){  //English normal keyboard
-
-		            	if(!localImCode.equals("wb")){
-		            		if(isShift){
-		    	            	//Log.i("ART","KBMODE ->: " + kConfig.getEngshiftkb());
-		                    	kid = new KeyboardId(
-		                    			getKeyboardXMLID(kConfig.getEngshiftkb(mLIMEPref.getShowNumberRowInEnglish())),
-                                        KEYBOARD_MODE_NORMAL, true );
-		            		}else{
-		    	            	//Log.i("ART","KBMODE ->: " + kConfig.getEngkb());
-		                    	kid = new KeyboardId(
-		                    			getKeyboardXMLID(kConfig.getEngkb(mLIMEPref.getShowNumberRowInEnglish())),
-                                        KEYBOARD_MODE_NORMAL, true );
-		            		}
-		            	}else{
-		            		if(isShift){
-		    	            	//Log.i("ART","KBMODE ->: " + kConfig.getEngshiftkb());
-		                    	kid = new KeyboardId(
-		                    			getKeyboardXMLID(kConfig.getEngshiftkb()),
-                                        KEYBOARD_MODE_NORMAL, true );
-		            		}else{
-		    	            	//Log.i("ART","KBMODE ->: " + kConfig.getEngkb());
-		                    	kid = new KeyboardId(
-		                    			getKeyboardXMLID(kConfig.getEngkb()),
-                                        KEYBOARD_MODE_NORMAL, true );
-		            		}
-		            	}
+	                    kid = new KeyboardId(
+	                            getKeyboardXMLID(resolveEnglishLayoutId(kConfig, mLIMEPref.getShowNumberRowInEnglish(), isShift)),
+                                KEYBOARD_MODE_NORMAL, true );
 	            	}
 	            	
             	}

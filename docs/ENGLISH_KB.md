@@ -199,7 +199,55 @@ fields. Until then, no action.
 
 ---
 
-## 6. Prioritized Backlog
+## 6. English Layout Source Of Truth
+
+### Finding
+
+`lime.db` keeps legacy `keyboard.engkb` and `keyboard.engshiftkb` columns, but
+LimeIME does not expose a user-facing setting for choosing a separate English
+keyboard layout. Runtime English-mode layout selection should therefore stay
+preference-driven, not DB-row-driven:
+
+- `number_row_in_english = true` → `lime_english_number` /
+  `lime_english_number_shift`.
+- `number_row_in_english = false` → `lime_english` /
+  `lime_english_shift`.
+
+iOS already follows this rule in practice. `KeyboardConfig` reads `engkb` /
+`engshiftkb`, but `KeyboardViewController` chooses the English layout from
+`numberRowInEnglish` when entering English mode. Android follows the same rule
+through `LIMEKeyboardSwitcher.resolveEnglishLayoutId(...)`, with no IM-specific
+English layout exceptions.
+
+### Decision
+
+Do **not** add iOS runtime support for resolving English mode through
+`keyboard.engkb` / `keyboard.engshiftkb`. Without a settings UI, honoring those
+columns would create hidden behavior that users cannot inspect or change.
+
+Use the `keyboard` table this way:
+
+- `imkb` / `imshiftkb`: authoritative for Chinese IM layout selection.
+- `symbolkb` / `symbolshiftkb`: optional source for IM-specific symbol pages.
+- `engkb` / `engshiftkb`: legacy compatibility fields only; do not treat as
+  the English layout source of truth.
+
+### Plan TODO
+
+- [x] Add code comments on iOS English layout selection explaining why it
+      intentionally ignores `KeyboardConfig.engkb` / `engshiftkb`.
+- [x] Add equivalent Android comments around `Keyboard.getEngkb(showNumberRow)`
+      and the English switcher path.
+- [x] Remove the Android `wb` English-layout special case so `wb` uses the same
+      `number_row_in_english`-controlled English layout family as every other IM.
+- [ ] During DB 104 `cj4` keyboard-row work, keep legacy `engkb` /
+      `engshiftkb` values populated because those columns already exist, but
+      do not add schema changes for English layout behavior and do not rely on
+      those fields at runtime.
+
+---
+
+## 7. Prioritized Backlog
 
 Ordered by user-visible impact ÷ engineering cost:
 
@@ -219,7 +267,7 @@ preference — no new UI required. Recommend bundling 1–3 in one PR for iOS,
 
 ---
 
-## 7. Source References
+## 8. Source References
 
 AOSP LatinIME (mirrors: `aosp-mirror/platform_packages_inputmethods_LatinIME`):
 

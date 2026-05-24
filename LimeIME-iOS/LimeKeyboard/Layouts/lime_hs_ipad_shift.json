@@ -206,7 +206,7 @@
           "longPressCode": 0
         },
         {
-          "code": 113,
+          "code": 81,
           "label": "Q",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -219,7 +219,7 @@
           "longPressCode": 0
         },
         {
-          "code": 119,
+          "code": 87,
           "label": "W",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -232,7 +232,7 @@
           "longPressCode": 0
         },
         {
-          "code": 101,
+          "code": 69,
           "label": "E",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -245,7 +245,7 @@
           "longPressCode": 0
         },
         {
-          "code": 114,
+          "code": 82,
           "label": "R",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -258,7 +258,7 @@
           "longPressCode": 0
         },
         {
-          "code": 116,
+          "code": 84,
           "label": "T",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -271,7 +271,7 @@
           "longPressCode": 0
         },
         {
-          "code": 121,
+          "code": 89,
           "label": "Y",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -284,7 +284,7 @@
           "longPressCode": 0
         },
         {
-          "code": 117,
+          "code": 85,
           "label": "U",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -297,7 +297,7 @@
           "longPressCode": 0
         },
         {
-          "code": 105,
+          "code": 73,
           "label": "I",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -310,7 +310,7 @@
           "longPressCode": 0
         },
         {
-          "code": 111,
+          "code": 79,
           "label": "O",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -323,7 +323,7 @@
           "longPressCode": 0
         },
         {
-          "code": 112,
+          "code": 80,
           "label": "P",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -393,7 +393,7 @@
           "longPressCode": 0
         },
         {
-          "code": 97,
+          "code": 65,
           "label": "A",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -406,7 +406,7 @@
           "longPressCode": 0
         },
         {
-          "code": 115,
+          "code": 83,
           "label": "S",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -419,7 +419,7 @@
           "longPressCode": 0
         },
         {
-          "code": 100,
+          "code": 68,
           "label": "D",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -432,7 +432,7 @@
           "longPressCode": 0
         },
         {
-          "code": 102,
+          "code": 70,
           "label": "F",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -445,7 +445,7 @@
           "longPressCode": 0
         },
         {
-          "code": 103,
+          "code": 71,
           "label": "G",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -458,7 +458,7 @@
           "longPressCode": 0
         },
         {
-          "code": 104,
+          "code": 72,
           "label": "H",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -471,7 +471,7 @@
           "longPressCode": 0
         },
         {
-          "code": 106,
+          "code": 74,
           "label": "J",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -484,7 +484,7 @@
           "longPressCode": 0
         },
         {
-          "code": 107,
+          "code": 75,
           "label": "K",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -497,7 +497,7 @@
           "longPressCode": 0
         },
         {
-          "code": 108,
+          "code": 76,
           "label": "L",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -567,7 +567,7 @@
           "longPressCode": 0
         },
         {
-          "code": 122,
+          "code": 90,
           "label": "Z",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -580,7 +580,7 @@
           "longPressCode": 0
         },
         {
-          "code": 120,
+          "code": 88,
           "label": "X",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -593,7 +593,7 @@
           "longPressCode": 0
         },
         {
-          "code": 99,
+          "code": 67,
           "label": "C",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -606,7 +606,7 @@
           "longPressCode": 0
         },
         {
-          "code": 118,
+          "code": 86,
           "label": "V",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -619,7 +619,7 @@
           "longPressCode": 0
         },
         {
-          "code": 98,
+          "code": 66,
           "label": "B",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -632,7 +632,7 @@
           "longPressCode": 0
         },
         {
-          "code": 110,
+          "code": 78,
           "label": "N",
           "sublabel": "",
           "widthPercent": 7.0,
@@ -645,7 +645,7 @@
           "longPressCode": 0
         },
         {
-          "code": 109,
+          "code": 77,
           "label": "M",
           "sublabel": "",
           "widthPercent": 7.0,

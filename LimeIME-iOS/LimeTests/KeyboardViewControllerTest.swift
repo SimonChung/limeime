@@ -171,6 +171,13 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertEqual(lessThan.label, "<")
     }
 
+    func testHSLayoutsUseLowercaseUnshiftedAndUppercaseShiftedLetterCodesAndLabels() throws {
+        try assertLetterKeyCodes(in: "lime_hs", shouldBeUppercase: false)
+        try assertLetterKeyCodes(in: "lime_hs_ipad", shouldBeUppercase: false)
+        try assertLetterKeyCodes(in: "lime_hs_shift", shouldBeUppercase: true)
+        try assertLetterKeyCodes(in: "lime_hs_ipad_shift", shouldBeUppercase: true)
+    }
+
     func testIPadOptionsMenuKeysAreNotTreatedAsDualRowSecondaryGlyphKeys() {
         let keyboardKey = KeyDef(code: LimeKeyCode.done.rawValue,
                                  widthPercent: 8,
@@ -622,6 +629,28 @@ final class KeyboardViewControllerTest: XCTestCase {
         let url = projectFileURL("LimeKeyboard/Layouts/\(layoutID).json")
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(KeyboardLayoutFixture.self, from: data)
+    }
+
+    private func assertLetterKeyCodes(in layoutID: String, shouldBeUppercase: Bool) throws {
+        let layout = try loadKeyboardLayoutFixture(layoutID)
+        let letterKeys = layout.rows.flatMap(\.keys).filter {
+            (65...90).contains($0.code) || (97...122).contains($0.code)
+        }
+
+        XCTAssertFalse(letterKeys.isEmpty, "\(layoutID): should contain Latin letter keys")
+        for key in letterKeys {
+            if shouldBeUppercase {
+                XCTAssertTrue((65...90).contains(key.code),
+                              "\(layoutID): \(key.label) should emit uppercase code")
+                XCTAssertEqual(key.label.uppercased(), key.label,
+                               "\(layoutID): \(key.label) should show uppercase label")
+            } else {
+                XCTAssertTrue((97...122).contains(key.code),
+                              "\(layoutID): \(key.label) should emit lowercase code")
+                XCTAssertEqual(key.label.lowercased(), key.label,
+                               "\(layoutID): \(key.label) should show lowercase label")
+            }
+        }
     }
 
     private func projectFileURL(_ relativePath: String) -> URL {

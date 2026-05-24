@@ -131,7 +131,7 @@
       "isBottomRow": false,
       "keys": [
         {
-          "code": 113,
+          "code": 81,
           "label": "Q",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -143,7 +143,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 119,
+          "code": 87,
           "label": "W",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -155,7 +155,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 101,
+          "code": 69,
           "label": "E",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -167,7 +167,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 114,
+          "code": 82,
           "label": "R",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -179,7 +179,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 116,
+          "code": 84,
           "label": "T",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -191,7 +191,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 121,
+          "code": 89,
           "label": "Y",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -203,7 +203,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 117,
+          "code": 85,
           "label": "U",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -215,7 +215,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 105,
+          "code": 73,
           "label": "I",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -227,7 +227,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 111,
+          "code": 79,
           "label": "O",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -239,7 +239,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 112,
+          "code": 80,
           "label": "P",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -256,7 +256,7 @@
       "isBottomRow": false,
       "keys": [
         {
-          "code": 97,
+          "code": 65,
           "label": "A",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -268,7 +268,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 115,
+          "code": 83,
           "label": "S",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -280,7 +280,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 100,
+          "code": 68,
           "label": "D",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -292,7 +292,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 102,
+          "code": 70,
           "label": "F",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -304,7 +304,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 103,
+          "code": 71,
           "label": "G",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -316,7 +316,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 104,
+          "code": 72,
           "label": "H",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -328,7 +328,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 106,
+          "code": 74,
           "label": "J",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -340,7 +340,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 107,
+          "code": 75,
           "label": "K",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -352,7 +352,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 108,
+          "code": 76,
           "label": "L",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -381,7 +381,7 @@
       "isBottomRow": false,
       "keys": [
         {
-          "code": 122,
+          "code": 90,
           "label": "Z",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -393,7 +393,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 120,
+          "code": 88,
           "label": "X",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -405,7 +405,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 99,
+          "code": 67,
           "label": "C",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -417,7 +417,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 118,
+          "code": 86,
           "label": "V",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -429,7 +429,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 98,
+          "code": 66,
           "label": "B",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -441,7 +441,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 110,
+          "code": 78,
           "label": "N",
           "sublabel": "",
           "widthPercent": 10.0,
@@ -453,7 +453,7 @@
           "popupCharacters": ""
         },
         {
-          "code": 109,
+          "code": 77,
           "label": "M",
           "sublabel": "",
           "widthPercent": 10.0,

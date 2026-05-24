@@ -205,6 +205,7 @@ final class KeyboardViewController: UIInputViewController {
         // and keyboardSize are correct when setupKeyboardUI() creates its height
         // constraints. searchServer is nil here so applyPrefsToSearchEngine() is a no-op.
         loadSettings()
+        // English runtime layout is preference-driven; legacy KeyboardConfig engkb fields are DB compatibility data only.
         let _initLayout = numberRowInEnglish ? "lime_english_number" : "lime_english"
         if let loaded = LayoutLoader.load(_initLayout) { currentLayout = loaded }
         LayoutLoader.prefetchCommonLayouts()
@@ -439,6 +440,7 @@ final class KeyboardViewController: UIInputViewController {
         let isNumericPad  = kbType == .numberPad
                          || kbType == .decimalPad
                          || kbType == .asciiCapableNumberPad
+        // English runtime layout is preference-driven; legacy KeyboardConfig engkb fields are DB compatibility data only.
         let englishLayout = numberRowInEnglish ? "lime_english_number" : "lime_english"
         let layoutName: String
         if isPhonePad {
@@ -2287,6 +2289,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         clearSuggestions()
         resetTempEnglishWord()
+        // English runtime layout is preference-driven; legacy KeyboardConfig engkb fields are DB compatibility data only.
         let layoutName = toEnglish ? (numberRowInEnglish ? "lime_english_number" : "lime_english") : resolvedLayoutId(for: activeIM)
         if let loaded = LayoutLoader.load(layoutName) { currentLayout = loaded }
         keyboardView.setLayout(currentLayout)
@@ -3266,6 +3269,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         keyboardTopToViewConstraint?.constant = 118
         keyboardTopToViewConstraint?.isActive = true
         keyboardView.isHidden = false
+        // English runtime layout is preference-driven; legacy KeyboardConfig engkb fields are DB compatibility data only.
         let englishLayout = numberRowInEnglish ? "lime_english_number" : "lime_english"
         if currentLayout.id != englishLayout,
            let layout = LayoutLoader.load(englishLayout) {

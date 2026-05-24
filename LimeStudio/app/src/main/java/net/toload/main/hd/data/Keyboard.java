@@ -73,6 +73,7 @@ public class Keyboard {
 	public void setDescription(String description) { this.desc = description; }
 
 	// UI convenience overloads preserved from KeyboardConfig
+	// English runtime layout is preference-driven; legacy engkb fields remain schema data only.
 	public String getEngkb(boolean showNumberRow) {
 		if (showNumberRow) return "lime_english_number";
 		else return "lime_english";

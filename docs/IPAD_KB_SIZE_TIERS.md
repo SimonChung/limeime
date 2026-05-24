@@ -940,14 +940,14 @@ square — necessary cost of preserving every EZ root.
 
 ### A.9 `lime_hs`
 
-Source (`lime_hs_ipad.json`) — uppercase letter labels; same root set
-as EZ but with case-fold (predicate rule 2 uses `chr(code).lower()`):
+Source (`lime_hs_ipad.json`) — lowercase unshifted letter labels; same root
+set as EZ:
 
 ```
 digit  (14): ~|` !|1 @|2 #|3 $|4 %|5 ^|6 &|7 *|8 (|9 )|0 _|- +|= [⌫]
-qwerty (14): [Tab] Q W E R T Y U I O P {|[ }|] |\|\
-asdf   (13): [abc] A S D F G H J K L ；|： 。|， [↩]
-zxcv   (12): [⇧] Z X C V B N M >|. <|, ?|/ [⇧]
+qwerty (14): [Tab] q w e r t y u i o p {|[ }|] |\|\
+asdf   (13): [abc] a s d f g h j k l ；|： 。|， [↩]
+zxcv   (12): [⇧] z x c v b n m >|. <|, ?|/ [⇧]
 ```
 
 HS asdf scaffolding `；|：` `。|，` are full-shape codes (65306, 65292)
