@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-25T13:15:17+08:00 (CST)
+Last updated: 2026-05-25T13:44:05+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -45,7 +45,7 @@ Last updated: 2026-05-25T13:15:17+08:00 (CST)
 
 
 
-- #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Likely fix area: restore URI/result propagation in Android `DbManagerFragment`/`SetupImController`/`DBServer` and iOS `DBManagerView`/`SetupImController.restoreDB(from:)`/`DBServer.restoreDatabase(uri:/srcFilePath:)` so cloud on-demand/unreadable backup streams cannot silently fail while UI reports success. Next action: implement explicit restore success/failure, backup ZIP validation, and cloud-backed URI/File Provider verification on both platforms. No public acknowledgement or community retest request is needed because this is maintainer-created.
+- #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Android restore failure propagation/invalid ZIP handling was merged through PR #87 as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25, but no newer Android APK containing that merge has been observed yet. Keep #85 open because the iOS restore failure propagation/validation path remains separate/open (see #86 for related iOS state-sync work) and Android delivery still needs a subsequent APK/build. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
 - #86: Maintainer-created iOS database restore state-sync bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#86_ISSUE.md` records that LIME Settings shows restored IM tables after a successful restore, but the keyboard extension can still show zero IMs until the user removes/re-adds the LIME system keyboard. Likely fix area: iOS restore-to-keyboard handoff in `SetupImController.restoreDB(from:)`, app-group restore signal `lime_db_restored_at`, `KeyboardViewController.setupDatabase()`, and `DBServer.prepareKeyboardRuntimeDatabase()` validation/regeneration of `keyboard_state` / `keyboard_list` against the restored IM table. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
