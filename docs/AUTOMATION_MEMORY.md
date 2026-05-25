@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-25T19:04:00+08:00 (CST)
+Last updated: 2026-05-25T20:55:05+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -48,6 +48,8 @@ Last updated: 2026-05-25T19:04:00+08:00 (CST)
 - #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Android restore failure propagation/invalid ZIP handling was merged through PR #87 as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25, follow-up commit `f80ce0cb8884` restored compatibility with legacy Android backup archives that contain leading-slash entries, and the same-version Android APK `LIMEHD2026-6.1.12.apk` was rebuilt in commit `e5b06c79d22c` during push `8d6a33e93b226` -> `c97ee41f6ee2`; that APK is now also attached to official GitHub Release `v6.1.12`. Keep #85 open unless/until the maintainer decides Android is complete and the remaining iOS restore failure propagation/validation work is split/covered by #86 or another issue. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
 - #86: Maintainer-created iOS database restore state-sync bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#86_ISSUE.md` records that LIME Settings shows restored IM tables after a successful restore, but the keyboard extension can still show zero IMs until the user removes/re-adds the LIME system keyboard. Likely fix area: iOS restore-to-keyboard handoff in `SetupImController.restoreDB(from:)`, app-group restore signal `lime_db_restored_at`, `KeyboardViewController.setupDatabase()`, and `DBServer.prepareKeyboardRuntimeDatabase()` validation/regeneration of `keyboard_state` / `keyboard_list` against the restored IM table. No public acknowledgement or community retest request is needed because this is maintainer-created.
+
+- #88: Community-reported Android startup crash on Samsung A71 4G / Android 13 after installing/opening LIME v6.1.12; older v5.2.4 and v6.0.0 reportedly worked and reporter is using v6.0.2 as fallback. Classified as plausible `bug`, assigned to `jrywu`; analysis doc `docs/#88_ISSUE.md` created. Public acknowledgement/comment `4534430781` (`https://github.com/lime-ime/limeime/issues/88#issuecomment-4534430781`) asks for crash scope and logcat/stack trace. Follow-up condition: do not ask for retest until a newer APK/build includes a clearly relevant startup-crash fix; next implementation identity should inspect Android settings/launcher startup, upgrade-vs-clean-install paths, database/bootstrap/migration, emoji/database, permission/notification, and target-SDK compatibility once crash details or reproduction are available.
 
 ## Operational Handoff / Next Actions
 - Time: 2026-05-23T02:55:00+08:00
