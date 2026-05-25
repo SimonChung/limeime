@@ -8,11 +8,29 @@
 
 這是 LIME 2026 第一個 6.1 正式版本。最大更新是全新的 **LIMESettings** 設定 app：重新設計整體 UI 與操作流程，讓輸入法、喜好設定、碼表資料與備份還原更簡單、直覺，也更容易在 Android 與 iOS 間維持一致體驗。
 
+輸入端也有多項重大更新：emoji 資料庫升級到最新 Emoji 17.0，新增 LIME 內建 emoji 鍵盤；候選列新增可取消組字的關閉按鈕；並加入 LIME 內建聽寫功能，讓語音輸入更接近鍵盤內建流程。
+
 本版同時整理 6.1.x 測試 APK 已累積的 Android 修正與跨平台資料／設定更新，包含候選列與鍵盤互動、輸入欄位模式、表格／備份還原、深色模式與 emoji 搜尋、下載表格，以及多項 iOS 來源同步更新。
 
 ---
 
 ## 更新內容
+
+### 輸入端與鍵盤體驗重大更新
+
+- **全新 emoji 鍵盤與 Emoji 17.0 資料庫**
+  - emoji 資料庫升級到最新 Emoji 17.0，補齊新版 emoji、分類與搜尋資料。
+  - 新增 LIME 內建 emoji 鍵盤，不需離開 LIME 鍵盤即可瀏覽、搜尋與輸入 emoji。
+  - 相關文件：<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_KEYBOARD.md>、<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_DB_V2.md>
+
+- **候選列關閉按鈕與組字取消**
+  - 候選列新增關閉／取消按鈕，可直接取消目前組字或收合候選狀態，減少需要反覆按退格鍵的情境。
+  - 相關文件：<https://github.com/lime-ime/limeime/blob/master/docs/CANDI_FUNCTION_KEYS.md>
+
+- **LIME 內建聽寫功能**
+  - 新增 LIME 自有的鍵盤內聽寫流程，讓語音辨識可在 LIME 鍵盤內顯示與送出。
+  - 保留系統／Google 語音輸入作為 fallback，並改善語音輸入與繁體中文處理流程。
+  - 相關文件：<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_LIME_DITACTION.md>、<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_VOICE_INPUT.md>
 
 ### Android 修正與改善
 
@@ -76,7 +94,7 @@
 
 - **#79 — 深色模式 emoji 搜尋欄與中文 emoji 搜尋**
   - 修正 Android 深色模式下 emoji 面板搜尋欄背景與圖示過亮的問題。
-  - 6.1.12 支援中文 emoji 搜尋；6.1.11 與更早版本不支援此路徑。
+  - 6.1.12 改善中文 emoji 搜尋輸入路徑；6.1.11 與更早版本不支援此路徑。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/79>
   - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2379_ISSUE.md>
 
@@ -153,11 +171,3 @@
 
 - Android APK：<https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.12.apk>
 - GitHub compare：<https://github.com/lime-ime/limeime/compare/v6.0.2...master>
-
----
-
-## 已知提醒
-
-- 這個 Release 的附件是 Android APK；iOS 來源更新不代表 iOS/TestFlight 已同步可安裝。
-- #85 的 Android 還原失敗回報與舊備份相容性已進入 6.1.12 APK；iOS restore 狀態同步仍由 #86 追蹤。
-- #79 的 Android 深色模式 emoji 搜尋欄已由回報者確認改善；若仍遇到中文 emoji 搜尋輸入差異，請確認已安裝 6.1.12 或更新版本。
