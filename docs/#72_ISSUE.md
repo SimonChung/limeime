@@ -1,4 +1,4 @@
-﻿# Issue #72: Add user-provided Haha Cangjie as a downloadable IM
+# Issue #72: Add user-provided Haha Cangjie as a downloadable IM
 
 ## Problem statement
 
@@ -210,7 +210,7 @@ Migration requirements:
 - Verified: iOS visual check shows the catalog category `四碼倉頡`, variant `哈哈倉頡`, `33,021 字`, and correct Chinese text. The displayed size is now `598 KB` after metadata patching.
 - Fixed during iOS visual verification: `IMCatalog.swift` had been accidentally mojibake-encoded in this worktree; it is repaired so the only catalog diff is the new `cj4` family plus the required UTF-8 BOM.
 - Remaining release-only check: after commit/push/merge, verify the final GitHub raw URL used by Android and iOS catalogs.
-- Remaining public follow-up: ask the reporter to confirm candidate ordering and phrase/punctuation behavior with the generated `.limedb`.
+- Public Android follow-up completed: reporter confirmed APK 6.1.12 includes 哈哈倉頡. Treat candidate ordering, phrase behavior, or punctuation mismatches as future reopened/new-evidence scope rather than an active reporter watch.
 - Skipped by maintainer direction for this pass: repeat iOS verification after the `isLimeDB` cleanup, and resolve/rerun the Android API 37 target-SDK compatibility assertion.
 
 ### Task 1: Prepare the local LIME source artifact
@@ -490,7 +490,7 @@ downloadURL: GitHub raw Database/cj4.limedb
 
 - [x] Export/import round-trip on Android and compare metadata with the source `.lime`.
 
-- [ ] Ask the reporter to verify candidate ordering and phrase behavior with the generated `.limedb`.
+- [x] Ask the reporter to verify Android downloadable-table availability; reporter confirmed APK 6.1.12 includes 哈哈倉頡. Candidate ordering/phrase/punctuation details remain future reopened/new-evidence scope if the reporter later provides mismatches.
 
 ## Superpowers workflow
 
@@ -520,7 +520,7 @@ If the implementation is split across independent Android/iOS/catalog packaging 
 
 - Should LIME publish only `Database/cj4.limedb`, or also keep the renamed `.lime` source somewhere for traceability?
 - Where should CC BY 4.0 attribution appear in the app/catalog/docs?
-- Should the reporter be asked to confirm that the converted `.limedb` preserves their intended candidate ordering and phrase behavior?
+- Reporter follow-up completed for Android APK 6.1.12 inclusion; if the issue is reopened, ask only for concrete candidate ordering, phrase behavior, or punctuation mismatch examples.
 
 ## Verification plan
 
@@ -570,7 +570,7 @@ Existing-user migration verification:
 
 Public follow-up:
 
-After producing a test `.limedb`, ask the reporter to import it and verify:
+Public follow-up for Android APK 6.1.12 was completed. The reporter confirmed the APK includes 哈哈倉頡. If the issue is reopened or new evidence appears, ask for concrete examples for:
 
 - candidate ordering
 - phrase input behavior
@@ -579,8 +579,8 @@ After producing a test `.limedb`, ask the reporter to import it and verify:
 
 ## Current status
 
-Public 6.1.12 Android APK follow-up posted: https://github.com/lime-ime/limeime/issues/72#issuecomment-4529659007. The issue remains open pending reporter confirmation of the Android downloadable list entry, installability, candidate ordering, phrase behavior, and punctuation behavior.
+Resolved / closed for the Android downloadable table/catalog scope. Public 6.1.12 Android APK follow-up was posted at https://github.com/lime-ime/limeime/issues/72#issuecomment-4529659007. Reporter `ejmoog` confirmed in comment `4532335292` (https://github.com/lime-ime/limeime/issues/72#issuecomment-4532335292) that Android APK `LIMEHD2026-6.1.12.apk` includes 哈哈倉頡. Automation added a `+1` reaction, posted closing acknowledgement https://github.com/lime-ime/limeime/issues/72#issuecomment-4532375300, and closed the issue as completed on 2026-05-25.
 
 Implementation merged and published for Android APK 6.1.12. The user-provided LIME v2 table has been converted into `Database/cj4.limedb`, DB 104 schema support is implemented on Android and iOS, bundled seeds are upgraded to version 104 with an empty `cj4` schema, and `cj4` reuses the existing `cj` keyboard rather than creating a duplicate keyboard layout. Android visual verification confirms the installed `哈哈倉頡` table resolves to `倉頡輸入法鍵盤`; the keyboard picker no longer shows the stale `四碼倉頡輸入法鍵盤` duplicate and now displays the selected-state radio indicator. iOS visual verification confirms the install/catalog screen renders `四碼倉頡` and `哈哈倉頡` correctly.
 
-Release follow-up: Android APK 6.1.12 is published and the reporter has been asked to confirm the `四碼倉頡／哈哈倉頡` downloadable entry, candidate ordering, phrase behavior, and punctuation behavior. iOS catalog/source changes are on `master`, but user-facing iOS delivery still depends on the normal iOS/TestFlight path. The 哈哈倉頡 CC BY 4.0 acknowledgement has been added to `LICENSE.md`.
+Scope note: the reporter confirmation verifies the Android APK includes the downloadable `四碼倉頡／哈哈倉頡` entry. Candidate ordering, phrase behavior, and punctuation behavior were requested for follow-up but not itemized in the confirmation; treat any later mismatch examples as reopened/new-evidence scope. iOS catalog/source changes are on `master`, but iOS/TestFlight delivery remains separate and was not verified by this Android APK confirmation. The 哈哈倉頡 CC BY 4.0 acknowledgement has been added to `LICENSE.md`.
