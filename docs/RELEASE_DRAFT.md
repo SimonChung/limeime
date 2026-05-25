@@ -6,7 +6,9 @@
 **目標 SDK：** 36 | **最低 SDK：** 21
 **前一正式版本：** [v6.0.2](https://github.com/lime-ime/limeime/releases/tag/v6.0.2)
 
-v6.0.2 之後的維護更新：本版整理 6.1.x 測試 APK 已累積的 Android 修正與跨平台資料／設定更新，包含候選列與鍵盤互動、輸入欄位模式、表格／備份還原、深色模式與 emoji 搜尋、下載表格，以及多項 iOS 來源同步更新。
+這是 LIME 2026 第一個 6.1 正式版本。最大更新是全新的 **LIMESettings** 設定 app：重新設計整體 UI 與操作流程，讓輸入法、喜好設定、碼表資料與備份還原更簡單、直覺，也更容易在 Android 與 iOS 間維持一致體驗。
+
+本版同時整理 6.1.x 測試 APK 已累積的 Android 修正與跨平台資料／設定更新，包含候選列與鍵盤互動、輸入欄位模式、表格／備份還原、深色模式與 emoji 搜尋、下載表格，以及多項 iOS 來源同步更新。
 
 ---
 
@@ -103,8 +105,8 @@ v6.0.2 之後的維護更新：本版整理 6.1.x 測試 APK 已累積的 Androi
   - 相關提交：<https://github.com/lime-ime/limeime/commit/fccf1fb64b6c91db25b744de2a09814e4d6d9940>
   - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2372_ISSUE.md>
 
-- **跨平台偏好設定備份／還原**
-  - 新增跨平台 preference backup / restore 支援，並讓 Android 與 iOS 的資料庫備份格式更一致。
+- **跨平台喜好設定備份／還原**
+  - 新增跨平台喜好設定備份／還原支援，並讓 Android 與 iOS 的資料庫備份格式更一致。
   - 相關提交：<https://github.com/lime-ime/limeime/commit/e57b62e>、<https://github.com/lime-ime/limeime/commit/1351048>
 
 - **CIN/LIME 匯入與授權頁連結整理**
