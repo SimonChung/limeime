@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-25T15:24:35+08:00 (CST)
+Last updated: 2026-05-25T19:08:00+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -8,8 +8,8 @@ Last updated: 2026-05-25T15:24:35+08:00 (CST)
 - This repo file is for mutable issue-tracking context, operational handoffs, and shared task-board items only, so scheduled runs and different agent identities can read/update current state through GitHub API.
 
 ## Current Observed Repo State
-- Latest GitHub Release observed: `v6.0.2` (published 2026-04-23).
-- Android pre-release/build artifacts are not necessarily public GitHub Releases.
+- Latest GitHub Release observed: `v6.1.12` (published 2026-05-25) at https://github.com/lime-ime/limeime/releases/tag/v6.1.12, with release asset `LIMEHD2026-6.1.12.apk` and the same Android APK/version already tracked below. Previous formal release was `v6.0.2` (published 2026-04-23).
+- Android pre-release/build artifacts are not necessarily public GitHub Releases; as of v6.1.12, the tracked Android APK is also attached to the official GitHub Release.
 - Scheduled/API-only APK source of truth: `LimeStudio/app/release/output-metadata.json`.
 - Last observed pre-release APK: `LIMEHD2026-6.1.12.apk` (versionName 6.1.12), metadata observed 2026-05-25T02:51+08:00 from push `6000e885c36a` -> `a763ee80b199`; same filename/version APK binary was later rebuilt in push `8d6a33e93b226` -> `c97ee41f6ee2` (APK commit `e5b06c79d22c`) after Android restore fix `f80ce0cb8884`, observed 2026-05-25T17:24:47+08:00. Direct raw APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.12.apk`. This current APK includes the Android-deliverable #72 downloadable `四碼倉頡／哈哈倉頡` catalog/table availability, the Android #79 emoji search-field theme/polish fix, and Android #85 restore-failure/legacy-backup archive fixes. The earlier push also contains iOS emoji/search/theme source work on `master`, but Android APK availability does not make iOS-only behavior tester-available via APK.
 - Raw APK URL pattern: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
@@ -45,7 +45,7 @@ Last updated: 2026-05-25T15:24:35+08:00 (CST)
 
 
 
-- #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Android restore failure propagation/invalid ZIP handling was merged through PR #87 as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25, follow-up commit `f80ce0cb8884` restored compatibility with legacy Android backup archives that contain leading-slash entries, and the same-version Android APK `LIMEHD2026-6.1.12.apk` was rebuilt in commit `e5b06c79d22c` during push `8d6a33e93b226` -> `c97ee41f6ee2`. Keep #85 open unless/until the maintainer decides Android is complete and the remaining iOS restore failure propagation/validation work is split/covered by #86 or another issue. No public acknowledgement or community retest request is needed because this is maintainer-created.
+- #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Android restore failure propagation/invalid ZIP handling was merged through PR #87 as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25, follow-up commit `f80ce0cb8884` restored compatibility with legacy Android backup archives that contain leading-slash entries, and the same-version Android APK `LIMEHD2026-6.1.12.apk` was rebuilt in commit `e5b06c79d22c` during push `8d6a33e93b226` -> `c97ee41f6ee2`; that APK is now also attached to official GitHub Release `v6.1.12`. Keep #85 open unless/until the maintainer decides Android is complete and the remaining iOS restore failure propagation/validation work is split/covered by #86 or another issue. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
 - #86: Maintainer-created iOS database restore state-sync bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#86_ISSUE.md` records that LIME Settings shows restored IM tables after a successful restore, but the keyboard extension can still show zero IMs until the user removes/re-adds the LIME system keyboard. Likely fix area: iOS restore-to-keyboard handoff in `SetupImController.restoreDB(from:)`, app-group restore signal `lime_db_restored_at`, `KeyboardViewController.setupDatabase()`, and `DBServer.prepareKeyboardRuntimeDatabase()` validation/regeneration of `keyboard_state` / `keyboard_list` against the restored IM table. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
