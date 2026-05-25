@@ -42,6 +42,7 @@ import net.toload.main.hd.global.LIMEProgressListener;
 import net.toload.main.hd.global.LIMEUtilities;
 import net.toload.main.hd.limedb.LimeDB;
 import net.toload.main.hd.ui.LIMESettings;
+import net.lingala.zip4j.model.FileHeader;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -555,23 +556,23 @@ public class  DBServer {
 		File sharedPref = new File(dataDir, LIME.SHARED_PREFS_BACKUP_NAME);
 		File preferenceManifest = new File(dataDir, PreferenceBackupAdapter.MANIFEST_PATH);
 
-		boolean unzipSucceeded = false;
-		IOException unzipError = null;
+		boolean restoreSucceeded = false;
+		IOException restoreError = null;
 		try {
-			LIMEUtilities.unzip(srcFilePath, dataDir, true);
-			unzipSucceeded = true;
+			restoreFullBackupEntries(check, sharedPref, preferenceManifest);
+			restoreSucceeded = true;
 		} catch (Exception e) {
-			Log.e(TAG, "Error unzipping restore file", e);
+			Log.e(TAG, "Error extracting restore file", e);
 			showNotificationMessage(appContext.getText(R.string.l3_initial_restore_error) + "");
-			unzipError = new IOException("Restore failed: unable to unzip backup archive", e);
+			restoreError = new IOException("Restore failed: unable to extract backup archive", e);
 		}
 
 		datasource.unHoldDBConnection(); //Jeremy '15,5,23
 		datasource.openDBConnection(true);
 		datasource.ensureCurrentDatabase();
 
-		if (!unzipSucceeded) {
-			throw unzipError;
+		if (!restoreSucceeded) {
+			throw restoreError;
 		}
 
 		showNotificationMessage(appContext.getText(R.string.l3_initial_restore_end) + "");
@@ -590,12 +591,81 @@ public class  DBServer {
 		datasource.ensureCurrentDatabase();
 	}
 
+	private void restoreFullBackupEntries(File zipFile, File sharedPref, File preferenceManifest) throws IOException {
+		File databaseFile = ctx.getDatabasePath(LIME.DATABASE_NAME);
+		File journalFile = ctx.getDatabasePath(LIME.DATABASE_JOURNAL);
+		boolean restoredDatabase = false;
+
+		try (net.lingala.zip4j.ZipFile zip4jFile = new net.lingala.zip4j.ZipFile(zipFile)) {
+			for (FileHeader fileHeader : zip4jFile.getFileHeaders()) {
+				if (fileHeader.isDirectory()) {
+					continue;
+				}
+
+				String normalizedName = normalizeBackupEntryName(fileHeader.getFileName());
+				String lastPathComponent = lastPathComponent(normalizedName);
+				File target = null;
+
+				if (LIME.DATABASE_NAME.equals(lastPathComponent)) {
+					target = databaseFile;
+					restoredDatabase = true;
+				} else if (LIME.DATABASE_JOURNAL.equals(lastPathComponent)) {
+					target = journalFile;
+				} else if (LIME.SHARED_PREFS_BACKUP_NAME.equals(lastPathComponent)) {
+					target = sharedPref;
+				} else if (PreferenceBackupAdapter.MANIFEST_PATH.equals(normalizedName)) {
+					target = preferenceManifest;
+				}
+
+				if (target == null) {
+					continue;
+				}
+				try (InputStream input = zip4jFile.getInputStream(fileHeader)) {
+					copyZipEntryToFile(input, target);
+				}
+			}
+		}
+
+		if (!restoredDatabase) {
+			throw new IOException("Restore failed: backup archive does not contain a restorable lime.db entry");
+		}
+	}
+
+	private String normalizeBackupEntryName(String name) {
+		if (name == null) return "";
+		String normalized = name.replace('\\', '/');
+		while (normalized.startsWith("/")) {
+			normalized = normalized.substring(1);
+		}
+		return normalized;
+	}
+
+	private String lastPathComponent(String path) {
+		if (path == null || path.isEmpty()) return "";
+		int slash = path.lastIndexOf('/');
+		return slash >= 0 ? path.substring(slash + 1) : path;
+	}
+
+	private void copyZipEntryToFile(InputStream input, File target) throws IOException {
+		File parent = target.getParentFile();
+		if (parent != null && !parent.exists() && !parent.mkdirs()) {
+			throw new IOException("Failed to create restore target directory: " + parent.getAbsolutePath());
+		}
+
+		try (OutputStream output = new BufferedOutputStream(new FileOutputStream(target))) {
+			byte[] buffer = new byte[LIME.BUFFER_SIZE_4KB];
+			int read;
+			while ((read = input.read(buffer)) != -1) {
+				output.write(buffer, 0, read);
+			}
+		}
+	}
+
 	private boolean zipContainsLimeDbEntry(File zipFile) throws IOException {
-		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile)))) {
-			ZipEntry entry;
-			while ((entry = zis.getNextEntry()) != null) {
-				String name = entry.getName();
-				if (name != null && !entry.isDirectory() && name.endsWith("lime.db")) {
+		try (net.lingala.zip4j.ZipFile zip4jFile = new net.lingala.zip4j.ZipFile(zipFile)) {
+			for (FileHeader fileHeader : zip4jFile.getFileHeaders()) {
+				String name = fileHeader.getFileName();
+				if (name != null && !fileHeader.isDirectory() && normalizeBackupEntryName(name).endsWith("lime.db")) {
 					return true;
 				}
 			}

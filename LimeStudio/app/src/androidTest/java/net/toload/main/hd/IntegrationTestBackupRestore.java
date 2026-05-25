@@ -661,6 +661,31 @@ public class IntegrationTestBackupRestore {
         }
     }
 
+    @Test
+    public void test_5_6_12_RestoreLegacyAndroidBackupWithLeadingSlashEntries() throws Exception {
+        int originalCount = manageController.countRecords(testTableName);
+        assertTrue("Legacy fixture needs a populated IM table", originalCount > 0);
+
+        java.io.File fixtureFile = new java.io.File(context.getFilesDir(), "test_legacy_slash_backup_" + System.currentTimeMillis() + ".zip");
+        android.net.Uri fixtureUri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", fixtureFile);
+
+        try {
+            writeLegacyLeadingSlashFullBackupZip(fixtureFile);
+
+            setupController.clearTable(testTableName, false);
+            int clearedCount = manageController.countRecords(testTableName);
+            assertEquals("Fixture table should be cleared before restore", 0, clearedCount);
+
+            setupController.performRestore(fixtureUri);
+
+            int restoredCount = manageController.countRecords(testTableName);
+            assertEquals("Old Android backups with /databases/lime.db must restore the database",
+                    originalCount, restoredCount);
+        } finally {
+            if (fixtureFile.exists()) fixtureFile.delete();
+        }
+    }
+
     // ============================================================
     // Helper Methods
     // ============================================================
@@ -858,6 +883,43 @@ public class IntegrationTestBackupRestore {
             output.putNextEntry(new ZipEntry("preferences/lime_prefs.json"));
             output.write(manifest.toString().getBytes(StandardCharsets.UTF_8));
             output.closeEntry();
+        }
+    }
+
+    private void writeLegacyLeadingSlashFullBackupZip(File fixtureFile) throws Exception {
+        if (fixtureFile.exists() && !fixtureFile.delete()) {
+            throw new java.io.IOException("Failed to delete old fixture " + fixtureFile);
+        }
+        File databaseFile = context.getDatabasePath(LIME.DATABASE_NAME);
+        assertTrue("Legacy fixture requires an existing database", databaseFile.exists());
+
+        File prefsBackup = new File(context.getCacheDir(), "legacy_shared_prefs_" + System.currentTimeMillis() + ".bak");
+        try {
+            staticDbServer.backupDefaultSharedPreference(prefsBackup);
+            try (ZipOutputStream output = new ZipOutputStream(new java.io.FileOutputStream(fixtureFile))) {
+                output.putNextEntry(new ZipEntry("/databases/lime.db"));
+                copyFileToZipEntry(databaseFile, output);
+                output.closeEntry();
+
+                output.putNextEntry(new ZipEntry("/databases/lime.db-journal"));
+                output.closeEntry();
+
+                output.putNextEntry(new ZipEntry("/shared_prefs.bak"));
+                copyFileToZipEntry(prefsBackup, output);
+                output.closeEntry();
+            }
+        } finally {
+            if (prefsBackup.exists()) prefsBackup.delete();
+        }
+    }
+
+    private void copyFileToZipEntry(File source, ZipOutputStream output) throws Exception {
+        try (InputStream input = new java.io.FileInputStream(source)) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
         }
     }
 
