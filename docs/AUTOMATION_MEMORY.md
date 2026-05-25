@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-25T21:10:00+08:00 (CST)
+Last updated: 2026-05-26T01:59:21+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -49,7 +49,7 @@ Last updated: 2026-05-25T21:10:00+08:00 (CST)
 
 - #86: Maintainer-created iOS database restore state-sync bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#86_ISSUE.md` records that LIME Settings shows restored IM tables after a successful restore, but the keyboard extension can still show zero IMs until the user removes/re-adds the LIME system keyboard. Likely fix area: iOS restore-to-keyboard handoff in `SetupImController.restoreDB(from:)`, app-group restore signal `lime_db_restored_at`, `KeyboardViewController.setupDatabase()`, and `DBServer.prepareKeyboardRuntimeDatabase()` validation/regeneration of `keyboard_state` / `keyboard_list` against the restored IM table. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
-- #88: Community-reported Android v6.1.12 startup crash on Samsung A71 4G / Android 13. Reporter `peter8777555` says v6.1.12 repeatedly stops after install/open, while v5.2.4 and v6.0.0 worked and v6.0.2 remains their workaround. Live issue is open, labeled `bug`, assigned to `jrywu`; `limeimetw` already asked whether the crash happens in settings app vs keyboard, clean install vs upgrade, and for screenshot/logcat with `net.toload.main.hd2026` / `萊姆輸入法`. Analysis doc `docs/#88_ISSUE.md` was created. Current next step: wait for reporter crash evidence or reproduce Android 13 startup paths before preparing a targeted fix; do not ask for APK retest until a relevant fix lands.
+- #88: Community-reported Android v6.1.12 startup crash on Samsung A71 4G / Android 13, now corroborated by `ejmoog`. Original reporter `peter8777555` says v6.1.12 repeatedly stops after install/open, while v5.2.4 and v6.0.0 worked and v6.0.2 remains their workaround. Follow-up confirms the crash happens when opening the 「萊姆輸入法」 settings app. `ejmoog` reports the same issue after uninstalling/reinstalling v6.1.12; installing v6.1.12 as an in-place upgrade over an existing LIME 6 install can still work. Live issue is open, labeled `bug`, assigned to `jrywu`; `limeimetw` already asked for crash-scope details and crash/logcat with `net.toload.main.hd2026` / `萊姆輸入法`, and the original reporter asked for clearer instructions to obtain that evidence. Analysis doc `docs/#88_ISSUE.md` was updated with the reinstall / first-run settings-crash clue. Current next step: reproduce settings startup on Android 13/Samsung across uninstall/reinstall and upgrade scenarios if possible, or obtain `adb logcat` / Android bug report evidence; suspect areas include first-run settings startup database/resource initialization and upgrade-vs-reinstall preference/database state (`LIMESettings`, `SearchServer`, `DBServer`, `LimeDB`, initial IM config/navigation loading). Do not ask for APK retest until a relevant fix lands.
 
 ## Operational Handoff / Next Actions
 - Time: 2026-05-23T02:55:00+08:00
