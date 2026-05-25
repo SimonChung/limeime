@@ -125,7 +125,7 @@ v6.0.2 之後的維護更新：本版整理 6.1.x 測試 APK 已累積的 Androi
   - 新增 legacy iPhone globe key 支援，改善實體 Home 鍵機型的鍵盤切換體驗。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/82>
   - 相關提交：<https://github.com/lime-ime/limeime/commit/a1e6fca>
-  - 設計文件：<https://github.com/lime-ime/limeime/blob/master/docs/IOS_LEGACY_IPHONE_GLOBE_KEY.md>
+  - 設計文件：<https://github.com/lime-ime/limeime/blob/master/docs/IPHONE_LEGACY_KB.md>
 
 - **iPad 版面、DB 與 gesture policy 整理**
   - 更新 iPad keyboard layout、測試、DB 與手勢策略，持續縮小 Android/iOS 版面與行為差距。
