@@ -152,9 +152,12 @@
 
 ### 文件與維護
 
-- 更新 release draft、issue analysis、automation memory 與多份 iOS/Android 設計文件。
-- 新增／更新的重點文件：
-  - <https://github.com/lime-ime/limeime/blob/master/docs/AUTOMATION_MEMORY.md>
-  - <https://github.com/lime-ime/limeime/blob/master/docs/LIME_SETTINGS.md>
-  - <https://github.com/lime-ime/limeime/blob/master/docs/IOS_KB_GAP.md>
-  - <https://github.com/lime-ime/limeime/blob/master/docs/IOS_FULL_PREMISSION.md>
+- 更新 release draft、issue analysis，以及多份設定、候選列、鍵盤、emoji、碼表與備份還原設計文件。
+- 新增／更新的重點設計文件（不列 automation state 與 GAP analysis 文件）：
+  - 設定與資料：<https://github.com/lime-ime/limeime/blob/master/docs/LIME_SETTINGS.md>、<https://github.com/lime-ime/limeime/blob/master/docs/PREFS_TABLE.md>、<https://github.com/lime-ime/limeime/blob/master/docs/CIN_LIME_SPEC.md>、<https://github.com/lime-ime/limeime/blob/master/docs/LIMEDB_SPEC.md>、<https://github.com/lime-ime/limeime/blob/master/docs/LIME_DB_104.md>
+  - 備份還原：<https://github.com/lime-ime/limeime/blob/master/docs/DB_BAK_RES.md>、<https://github.com/lime-ime/limeime/blob/master/docs/PREF_BAK_RES.md>
+  - 候選列與輸入行為：<https://github.com/lime-ime/limeime/blob/master/docs/CANDI_LAYOUT.md>、<https://github.com/lime-ime/limeime/blob/master/docs/CANDI_FUNCTION_KEYS.md>、<https://github.com/lime-ime/limeime/blob/master/docs/TWO_STAGE_CANDI.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_CANDI_TOUCH.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_FN_KEY_SPLIT.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_POPUP_COMPOSING.md>
+  - 鍵盤版面與主題：<https://github.com/lime-ime/limeime/blob/master/docs/KEYBOARD_TYPE.md>、<https://github.com/lime-ime/limeime/blob/master/docs/KEYBOARD_THEME.md>、<https://github.com/lime-ime/limeime/blob/master/docs/PHONETIC_KEYBOARD.md>、<https://github.com/lime-ime/limeime/blob/master/docs/ENGLISH_KB.md>、<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_THEME.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IPHONE_LEGACY_KB.md>
+  - iPad 鍵盤：<https://github.com/lime-ime/limeime/blob/master/docs/IPAD_KEYBOARD.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IPAD_ASSIST_BAR.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IPAD_DUAL_SLIDING_SYMBOLS.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IPAD_KB_SIZE_TIERS.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IPAD_KB_LAYOUT_COVERTER.md>
+  - emoji：<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_KEYBOARD.md>、<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_DB_V2.md>、<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_BAR.md>、<https://github.com/lime-ime/limeime/blob/master/docs/EMOJI_SEACH_PANEL.md>
+  - 語音與 iOS 行為：<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_LIME_DITACTION.md>、<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_VOICE_INPUT.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_VOICE_INPUT.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_CHN_ENG.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_LIGHT_DARK.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_HAPTIC.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IOS_FULL_PREMISSION.md>
