@@ -11,6 +11,7 @@ Maintainer-created Android and iOS bug tracking issue for database backup restor
 - Platform: Android and iOS
 - Area: database backup/restore, Android Storage Access Framework, iOS File Provider / security-scoped URL handling
 - Live state at creation: open, labeled `bug`, assigned to `jrywu`
+- Current state after PR #87 merge: issue remains open because PR #87 covers the Android restore-failure path only; iOS restore/state-sync work remains separate.
 - Reporter/source: maintainer account (`limeimetw`), so no routine public acknowledgement or community retest request is needed.
 
 ## Reproduction Notes
@@ -56,6 +57,12 @@ Both platform restore paths do not consistently model restore as an explicit suc
 
 The issue may be triggered by cloud on-demand behavior, but the UI false-success problem is broader: any unreadable, zero-byte, incomplete, or invalid backup URI can be reported as successful if the error is handled internally and not propagated.
 
+## Implementation Status
+
+- Android: PR #87 (`fix(android): surface database restore failures`) was merged to `master` as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25. It propagates restore failures from `DBServer` through `SetupImController` to `DbManagerFragment`, rejects zero-byte restore copies and invalid/wrong ZIP backups, and keeps the visible success path gated on a completed restore. The PR reports `./gradlew :app:compileDebugJavaWithJavac`, `./gradlew :app:compileDebugAndroidTestJavaWithJavac`, `git diff --check`, and a narrow Claude Code review as passing.
+- iOS: still open/separate. The Swift/iOS restore path still needs explicit failure propagation from `DBServer` / `SetupImController.restoreDB(from:)` to `DBManagerView`, plus validation/error reporting for File Provider/cloud-backed restore failures.
+- APK/build status: no newer Android APK containing PR #87 has been observed in this webhook event; do not request retest or close from the merge alone.
+
 ## Proposed Fix / Investigation Plan
 
 1. Change restore APIs to return a boolean/result object or throw checked/runtime errors upward on both platforms:
@@ -86,4 +93,4 @@ The issue may be triggered by cloud on-demand behavior, but the UI false-success
 
 ## Follow-up Condition
 
-Implement and verify Android and iOS restore result propagation plus validation for cloud-backed/unreadable URI streams. Close the maintainer-created tracking issue once the fix is present in a build or otherwise verified by maintainer testing. No public acknowledgement/retest request is needed because the issue is maintainer-created.
+Android restore failure propagation and invalid/zero-byte ZIP validation have landed on `master` via PR #87 (`d22afcfddc82c0fc1260a5a09789590778199ec1`) but still need inclusion in a newer Android APK/build before Android delivery is complete. Keep #85 open until the remaining iOS restore failure propagation/validation work is implemented or explicitly split to #86/#another issue, and until maintainer build/testing status is clear. No public acknowledgement/retest request is needed because the issue is maintainer-created.
