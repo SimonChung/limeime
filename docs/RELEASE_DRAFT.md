@@ -1,73 +1,161 @@
-# LIME 2026 — 版本 v6.0.2
+# LIME 2026 — 版本 v6.1.12
 
-**版本標籤：** `6.0.2-2026`
-**APK：** `LIMEHD2026-6.0.2.apk`
+**版本標籤：** `v6.1.12`
+**APK：** [`LIMEHD2026-6.1.12.apk`](https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.12.apk)
 **套件名稱：** `net.toload.main.hd2026`
 **目標 SDK：** 36 | **最低 SDK：** 21
-**前一版本：** v6.0.1
+**前一正式版本：** [v6.0.2](https://github.com/lime-ime/limeime/releases/tag/v6.0.2)
 
-v6.0.1 之後的維護更新：修復候選字學習順序、深色模式連動、#47 縮放遺留的標籤字體異常，以及電話鍵盤符號鍵多擊不穩定。
+v6.0.2 之後的維護更新：本版整理 6.1.x 測試 APK 已累積的 Android 修正與跨平台資料／設定更新，包含候選列與鍵盤互動、輸入欄位模式、表格／備份還原、深色模式與 emoji 搜尋、下載表格，以及多項 iOS 來源同步更新。
 
 ---
 
 ## 更新內容
 
-### 修正
+### Android 修正與改善
 
-- **#49 — 候選字學習順序無法即時更新**
-  - 問題：重複選同一候選字（含 partial match）排序與 DB 分數不會即時反映；需切換 IME 或重開 App 才生效。
-  - 修正：`SearchServer.updateScoreCache()` 改為 iOS 的 evict-and-re-warm 模式——逐出該 code 與所有前綴快取，同條背景 thread 呼叫 `getMappingByCode(..., prefetchCache=true)` 重查 DB；取消原本在 background thread 上就地改 `ArrayList` 的 race path。另外拆除原本隱藏 partial-match 分支的 `cachedList != null` gate，確保 partial match 選取也會逐出前綴快取，避免 addScore 持續寫回 stale score+1。
-  - 影響檔案：`SearchServer.java`
-  - 相關提交：`b04af8b0`、`3f478563`；詳細分析見 `docs/#49_CACHE_UPDATE_ISSUE.md`。
+- **#54 — Brave URL 欄候選字重疊／白色區塊問題**
+  - 修正 URL/瀏覽器輸入情境下候選列與鍵盤區域顯示異常，改善候選字不正常覆蓋與底部白色區塊。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/54>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2354_ISSUE.md>
 
-- **#50 (A) — 深色模式未連動系統與 App 各畫面**
-  - 問題：鍵盤深色主題外，MainActivity、設定頁、選單、狀態列／導覽列仍是淺色，系統切換時不跟。
-  - 修正：新增鍵盤主題 6 (跟隨系統)，以 `isEffectiveDarkTheme()` 供 dialog / icon 動態選色；Activity 主題改繼承 `Theme.AppCompat.DayNight` 並於 static init 呼叫 `setDefaultNightMode(MODE_NIGHT_FOLLOW_SYSTEM)`；狀態列／導覽列圖示依 `uiMode` 透過 `WindowInsetsControllerCompat` 切換；清掉寫死的淺色 tint / 底色。
-  - 影響檔案：`LIMEService.java`、`MainActivity.java`、`LIMEPreference.java`、`res/values/styles.xml`、`res/drawable/outline_{share,settings}_24.xml`、`res/layout/main.xml`；詳細主題架構見 `docs/ANDROID_THEME.md`。
+- **#55 — 按鍵預覽延遲**
+  - 改善新版 Android 上按鍵 popup preview 的顯示延遲，讓按鍵回饋更接近舊版行為。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/55>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2355_ISSUE.md>
 
-- **#50 (B) — 空白鍵未能 commit partial-match 候選字**
-  - 問題：輸入 partial code（如「38783」對應完整「387833」）時，第一字不高亮，按空白鍵送出原始組字碼而非候選字。
-  - 修正：`CandidateView.setSuggestions()` 與 `LIMEService` 空白鍵提交條件加上 `isPartialMatchToCodeRecord()`。
-  - 影響檔案：`CandidateView.java`、`LIMEService.java`
-  - 相關提交：`2a915289`（與 #50 (A) 一併）。
+- **#62 — Ext-B 字首相關詞／連打詞問題**
+  - 修正 CJK Ext-B 代理對字元在相關詞、連打詞與候選處理時的字首判斷問題。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/62>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2362_ISSUE.md>
 
-- **#51 — 按鍵標籤字體在升級後變小**
-  - 問題：6.0.0 → 6.0.1 後按鍵文字縮小約兩級，重裝行為不一致；大螢幕更明顯。
-  - 根因：6.0.1 為修 #47 在 `onMeasure()` 後呼叫 `scaleHorizontally()` 調整每顆鍵的 `x / width / gap`，但 `mDefaultWidth` 沒跟著更新 → `Key.getLabelSizeScale()` 對每顆鍵都走到 `mSplitedKeyWidthScale (<1.0)` 分支；`labelSizeScale` 被 static 欄位快取並擴散到整個 process。
-  - 修正：刪除 `scaleHorizontally()` 及其呼叫點；改以 `WindowManager.getCurrentWindowMetrics()` 扣除 `systemBars + displayCutout` insets（API 30+，舊版 fallback `dm.widthPixels`）在建構時直接算對可用寬度。同時修直式堆疊標籤 baseline（上下緣錨點、剩餘空間三等分）解決字體恢復 1.0 後兩行擠在一起的問題。
-  - 影響檔案：`LIMEBaseKeyboard.java`、`LIMEKeyboardBaseView.java`
-  - 相關提交：`ce40a617`、`984c5b4b`、`fd1ed10d`；詳細分析見 `docs/#51_#47_ISSUES.md`。
+- **#64 — 設定畫面文字、縮排與捲動顯示問題**
+  - 修正設定頁在新版 UI/系統環境下的文字截斷、縮排與捲動顯示不一致。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/64>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2364_ISSUE.md>
 
-- **#53 — 電話鍵盤 `= + - * /` 符號鍵多擊不穩定**
-  - 問題：`phone_simple` 鍵盤第二列最右符號鍵預期連點循環 `= + - * /`，實際連點會沒反應或跳字。
-  - 修正：改為單碼 `=` 鍵＋長按 popup 送出 `+ - * /`，繞過多擊狀態機與 `DELETE + 新碼` 雙 IPC 路徑。標籤保留 `+-*/\n=`。T9 版 `phone.xml` 不動。
-  - 影響檔案：`res/xml/phone_simple.xml`；詳細分析見 `docs/#53_ISSUE.md`。
+- **#65 — Android 表格／相關詞編輯器軟鍵盤覆蓋問題**
+  - 修正表格、相關詞與關聯資料編輯畫面中軟鍵盤彈出時的內容遮蔽與 bottom-sheet 行為。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/65>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2365_ISSUE.md>
 
-### 文件
+- **#67、#68、#69 — 候選列觸控、收合與工具圖示穩定性**
+  - 修正點擊最後一個可見候選字附近時誤開啟完整候選清單的問題。
+  - 修正候選列展開／收合後的狀態殘留，並改善工具圖示閃爍。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/67>、<https://github.com/lime-ime/limeime/issues/68>、<https://github.com/lime-ime/limeime/issues/69>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2367_ISSUE.md>、<https://github.com/lime-ime/limeime/blob/master/docs/%2368_ISSUE.md>、<https://github.com/lime-ime/limeime/blob/master/docs/%2369_ISSUE.md>
 
-- 新增：`docs/#49_ISSUE.md`、`docs/#49_CACHE_UPDATE_ISSUE.md`、`docs/ANDROID_THEME.md`、`docs/#53_ISSUE.md`。
-- `docs/#51_#47_ISSUES.md` 狀態由 *Investigation* 轉為 *Fixed*（新增 § 16 記錄最終 baseline 算法）。
+- **#71 — 中英切換時組字狀態取消／送出行為**
+  - 調整中英模式切換時 composing text 的取消與送出流程，避免切換後留下錯誤組字狀態。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/71>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2371_ISSUE.md>
+
+- **#74 — 數字、電話、URL 與搜尋欄位的鍵盤模式**
+  - 數字、日期、電話等欄位改用更合適的受限鍵盤配置。
+  - URL 與搜尋欄位改回較接近一般文字欄位的行為，可依「記憶中英模式」保留使用者期待的中／英文狀態。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/74>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2374_ISSUE.md>
+
+- **#75 — 鍵盤 redraw 與 popup 生命週期問題**
+  - 修正候選列、按鍵 popup 與鍵盤重繪之間的狀態同步問題，避免顯示殘影或 popup 狀態卡住。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/75>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2375_ISSUE.md>
+
+- **#76 —「建議字顯示數量 = 0」與自動學習詞控制**
+  - `建議字顯示數量` 設為 0 時，候選邏輯改為 exact-match-only，避免繼續顯示延伸編碼候選。
+  - 修正 `learn_phrase=false` 時仍可能產生 runtime phrase / 連打詞學習資料的路徑。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/76>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2376_ISSUE.md>
+
+- **#78 — 選用候選字不應攔截功能鍵**
+  - 修正選用候選字狀態下功能鍵被候選處理攔截的問題，改善 Android 與 iOS 共同的候選列功能鍵行為。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/78>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2378_ISSUE.md>
+
+- **#79 — 深色模式 emoji 搜尋欄與中文 emoji 搜尋**
+  - 修正 Android 深色模式下 emoji 面板搜尋欄背景與圖示過亮的問題。
+  - 6.1.12 支援中文 emoji 搜尋；6.1.11 與更早版本不支援此路徑。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/79>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2379_ISSUE.md>
+
+- **#81 — 英文鍵盤自動大寫行為**
+  - 改善英文鍵盤 auto-capitalization 行為，並將相關設定整理為「英文鍵盤」脈絡。
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/dd5312ea9205>
+
+- **#83 — 移除舊版 Android 設定頁**
+  - 移除 legacy Android settings UI，避免新舊設定入口混用造成維護與使用混淆。
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/491ca1c616bb>
+
+- **#85 / PR #87 — Android 資料庫備份還原失敗處理與舊備份相容性**
+  - 還原流程現在會更明確回報資料庫備份還原失敗，而不是靜默忽略錯誤。
+  - 修正舊版 Android 備份壓縮檔內含 leading-slash entry 時的還原相容性。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/85>
+  - 相關 PR：<https://github.com/lime-ime/limeime/pull/87>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2385_ISSUE.md>
+
+### 表格、資料與備份更新
+
+- **#72 / PR #84 — 新增可下載「哈哈倉頡／四碼倉頡」表格**
+  - 新增 `cj4.limedb` 下載表格與 Android/iOS catalog 條目，並補上來源與授權資訊。
+  - Android APK 6.1.12 已可下載使用；iOS catalog/source 更新已在 `master`，實際使用仍需 iOS/TestFlight 發布流程。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/72>
+  - 相關 PR：<https://github.com/lime-ime/limeime/pull/84>
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/fccf1fb64b6c91db25b744de2a09814e4d6d9940>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2372_ISSUE.md>
+
+- **跨平台偏好設定備份／還原**
+  - 新增跨平台 preference backup / restore 支援，並讓 Android 與 iOS 的資料庫備份格式更一致。
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/e57b62e>、<https://github.com/lime-ime/limeime/commit/1351048>
+
+- **CIN/LIME 匯入與授權頁連結整理**
+  - 對齊 CIN / LIME text import 行為，補強授權頁與 permission notice 連結。
+  - 相關文件：<https://github.com/lime-ime/limeime/blob/master/docs/CIN_LIME_SPEC.md>、<https://github.com/lime-ime/limeime/blob/master/docs/IM_VERSION.md>
+
+### iOS 來源同步更新
+
+> 本次 GitHub Release 附上的安裝檔是 Android APK。以下為同一期間已合併到 `master` 的 iOS 來源與測試更新；iOS 使用者仍需等待後續 TestFlight／App Store 發布。
+
+- **iOS 候選列與鍵盤互動修正**
+  - 修正候選列 `…` / `hasMoreMark` sentinel 不應保留在候選列或展開格線中的問題。
+  - 修正 optional suggestions 攔截功能鍵的跨平台問題。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/77>、<https://github.com/lime-ime/limeime/issues/78>
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/c828a2d2>、<https://github.com/lime-ime/limeime/commit/5819fc4>、<https://github.com/lime-ime/limeime/commit/2e278c46>
+
+- **iPhone SE / iPhone 8 類型機型的 globe 鍵支援**
+  - 新增 legacy iPhone globe key 支援，改善實體 Home 鍵機型的鍵盤切換體驗。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/82>
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/a1e6fca>
+  - 設計文件：<https://github.com/lime-ime/limeime/blob/master/docs/IOS_LEGACY_IPHONE_GLOBE_KEY.md>
+
+- **iPad 版面、DB 與 gesture policy 整理**
+  - 更新 iPad keyboard layout、測試、DB 與手勢策略，持續縮小 Android/iOS 版面與行為差距。
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/b92e32f>
+
+- **iOS restore 狀態同步追蹤**
+  - 新增 iOS restore 後鍵盤 extension 仍可能顯示零輸入法的追蹤分析，作為後續修正依據。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/86>
+  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2386_ISSUE.md>
+
+### 文件與維護
+
+- 更新 release draft、issue analysis、automation memory 與多份 iOS/Android 設計文件。
+- 新增／更新的重點文件：
+  - <https://github.com/lime-ime/limeime/blob/master/docs/AUTOMATION_MEMORY.md>
+  - <https://github.com/lime-ime/limeime/blob/master/docs/LIME_SETTINGS.md>
+  - <https://github.com/lime-ime/limeime/blob/master/docs/IOS_KB_GAP.md>
+  - <https://github.com/lime-ime/limeime/blob/master/docs/IOS_FULL_PREMISSION.md>
 
 ---
 
-## iOS 版本同步更新（LimeIME-iOS）
+## 下載
 
-### 新增功能 — 語音輸入
-
-- **iPad 鍵盤底列加入語音輸入鍵**：在所有 iPad 版面（英文、ABC、注音／行列／倉頡／大易／嘸蝦米／Hsu／EZ／HS、符號、URL、Email、Number、Shift；共 40 個 `*_ipad*.json`）的底列空白鍵兩側加入 emoji（左）與 mic（右）鍵：`[ globe | .?123 | emoji | space | mic | .?123 | dismiss ]`。所有 `code: -99` 暫存碼替換為新增的 `LimeKeyCode.voiceInput = -220`；所有 `@string/label_symbol_key` 標籤統一為字面值 `.?123`；中文輸入法 IM 版面由 `scripts/build_ipad_layouts.py` 重新產生，英文／符號／URL／Email 版面以 `.claude/scripts/update_hand_authored_ipad_bottom_rows.py` 一次性轉換。三家族（A 含中字鍵、B 符號版、C 通用版）皆未動到 `中` 鍵與 `.?123` 鍵；空白鍵寬度按家族略為微調以保持每列總和 100。
-- **iPhone 實體 Home 鍵機型加入候選列語音圖示**：iPhone SE 第 2／3 代等沒有系統 mic 列的機型，現在於候選列右側顯示語音麥克風圖示（候選字出現時改顯示展開鍵）。Face ID 機型不顯示（系統已內建 mic 列）；iPad 不顯示（鍵盤底列已有 mic 鍵）。
-- **離線語音辨識（VoiceInputController）**：新增 `LimeIME-iOS/LimeKeyboard/VoiceInputController.swift`。採用 `SFSpeechAudioBufferRecognitionRequest` 強制 `requiresOnDeviceRecognition = true`（符合 App Store 對鍵盤擴充功能的政策）；錄音與語音辨識皆在裝置內離線完成，不傳送至雲端。靜默 1.5 秒自動斷句並 commit；可長按再按或按 `✕` 取消。需「允許完整取用」並支援裝置內辨識（A12 仿生晶片以上）才會啟用；不符條件時鍵盤顯示提示，候選列圖示自動隱藏。
-- **權限與設定**：擴充功能 `Info.plist` 加入 `NSMicrophoneUsageDescription` 與 `NSSpeechRecognitionUsageDescription`。設定 App 的「喜好設定」加入「語音輸入」分區，可選擇辨識語言（預設 `zh-TW`，支援繁體中文（台灣／香港）、簡體中文、英文（US／UK）、日文）。
-- **裝置能力偵測**：新增 `LimeIME-iOS/Shared/DeviceCapabilities.swift`，以 `LAContext.biometryType` 判斷是否為 Face ID 機型、以 `SFSpeechRecognizer.supportsOnDeviceRecognition(for:)` 判斷裝置／語系是否支援離線辨識，作為候選列 mic 圖示顯示閘門。
-
-### 文件
-
-- 新增：`docs/IOS_VOICE_INPUT.md`（語音輸入設計總覽）、`docs/IOS_KB_GAP.md`（落差實作計畫與驗證閘門）。
-- 更新：`docs/LIME_SETTINGS.md` §4.1（設定 App「允許完整取用」說明用語修正）。
-- `docs/IOS_FULL_PREMISSION.md` 中關於「語音輸入需要完整取用」之描述持續有效，本次實作落實該前提。
-
-### 測試
-
-- `LimeTests` 共 733 個測試全數通過（5 個 skip 為既有），新增 3 個版面驗證測試：底列 emoji 左／voice 右於空白鍵兩側、底列寬度合計 100%、`LimeKeyCode.voiceInput` 為 `-220`。
+- Android APK：<https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.12.apk>
+- GitHub compare：<https://github.com/lime-ime/limeime/compare/v6.0.2...master>
 
 ---
+
+## 已知提醒
+
+- 這個 Release 的附件是 Android APK；iOS 來源更新不代表 iOS/TestFlight 已同步可安裝。
+- #85 的 Android 還原失敗回報與舊備份相容性已進入 6.1.12 APK；iOS restore 狀態同步仍由 #86 追蹤。
+- #79 的 Android 深色模式 emoji 搜尋欄已由回報者確認改善；若仍遇到中文 emoji 搜尋輸入差異，請確認已安裝 6.1.12 或更新版本。
