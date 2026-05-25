@@ -1,4 +1,4 @@
-# Issue #85: Android DB restore can silently fail for cloud on-demand backup files
+# Issue #85: DB restore can silently fail for cloud on-demand backup files
 
 ## Problem Statement
 
@@ -16,7 +16,7 @@ Maintainer-created Android and iOS bug tracking issue for database backup restor
 ## Reproduction Notes
 
 1. Store a valid `limeBackup.zip` in a cloud-backed provider such as Google Drive or OneDrive.
-2. Ensure the file is not cached locally on the Android device.
+2. Ensure the file is not cached locally on the test device.
 3. In LIME Android or LIME iOS, open database backup/restore and choose restore.
 4. Select the cloud-only backup file from the picker and confirm.
 5. Observe that restore may return without actually restoring data, and the UI may still indicate success.
