@@ -153,7 +153,7 @@
 ### 文件與維護
 
 - 更新 release draft、issue analysis，以及多份設定、候選列、鍵盤、emoji、碼表規格與備份還原設計文件。
-- 新增／更新的重點設計文件（不列 automation state 與 GAP analysis 文件）：
+- 新增／更新的重點設計文件：
   - 設定：[LIME_SETTINGS.md](https://github.com/lime-ime/limeime/blob/master/docs/LIME_SETTINGS.md)、[PREFS_TABLE.md](https://github.com/lime-ime/limeime/blob/master/docs/PREFS_TABLE.md)
   - 資料表規格：[CIN_LIME_SPEC.md](https://github.com/lime-ime/limeime/blob/master/docs/CIN_LIME_SPEC.md)、[LIMEDB_SPEC.md](https://github.com/lime-ime/limeime/blob/master/docs/LIMEDB_SPEC.md)、[LIME_DB_104.md](https://github.com/lime-ime/limeime/blob/master/docs/LIME_DB_104.md)
   - 備份還原：[DB_BAK_RES.md](https://github.com/lime-ime/limeime/blob/master/docs/DB_BAK_RES.md)、[PREF_BAK_RES.md](https://github.com/lime-ime/limeime/blob/master/docs/PREF_BAK_RES.md)
