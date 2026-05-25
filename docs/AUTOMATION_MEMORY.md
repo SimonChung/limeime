@@ -45,7 +45,7 @@ Last updated: 2026-05-25T08:38:57+08:00 (CST)
 
 
 
-- #85: Maintainer-created Android database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists. Likely fix area: restore URI handling/result propagation in `DbManagerFragment.performRestore`, `SetupImController.performRestore`, and `DBServer.restoreDatabase(Uri/String)` so cloud on-demand/unreadable backup streams cannot silently fail while UI reports success. Next action: implement explicit restore success/failure, temp ZIP validation, and cloud-backed URI verification. No public acknowledgement or community retest request is needed because this is maintainer-created.
+- #85: Maintainer-created Android+iOS database backup restore bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#85_ISSUE.md` exists and includes both platforms. Likely fix area: restore URI/result propagation in Android `DbManagerFragment`/`SetupImController`/`DBServer` and iOS `DBManagerView`/`SetupImController.restoreDB(from:)`/`DBServer.restoreDatabase(uri:/srcFilePath:)` so cloud on-demand/unreadable backup streams cannot silently fail while UI reports success. Next action: implement explicit restore success/failure, backup ZIP validation, and cloud-backed URI/File Provider verification on both platforms. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
 ## Operational Handoff / Next Actions
 - Time: 2026-05-23T02:55:00+08:00
