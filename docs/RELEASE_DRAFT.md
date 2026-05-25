@@ -28,6 +28,12 @@
   - 保留系統／Google 語音輸入作為 fallback，並改善語音輸入與繁體中文處理流程。
   - 相關文件：<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_LIME_DITACTION.md>、<https://github.com/lime-ime/limeime/blob/master/docs/ANDROID_VOICE_INPUT.md>
 
+- **新增可下載「四碼倉頡／哈哈倉頡」碼表**
+  - 新增 `cj4.limedb` 下載碼表與 Android/iOS catalog 條目，可在下載清單中安裝「四碼倉頡／哈哈倉頡」。
+  - 感謝 GitHub 使用者 [@ejmoog](https://github.com/ejmoog) 提供碼表資料與測試確認；授權與來源資訊已補入專案文件。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/72>
+  - 相關 PR：<https://github.com/lime-ime/limeime/pull/84>
+
 ### Android 修正與改善
 
 - **#54 — Brave URL 欄候選字重疊／白色區塊問題**
@@ -110,14 +116,6 @@
   - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2385_ISSUE.md>
 
 ### 表格、資料與備份更新
-
-- **#72 / PR #84 — 新增可下載「哈哈倉頡／四碼倉頡」表格**
-  - 新增 `cj4.limedb` 下載表格與 Android/iOS catalog 條目，並補上來源與授權資訊。
-  - Android APK 6.1.12 已可下載使用；iOS catalog/source 更新已在 `master`，實際使用仍需 iOS/TestFlight 發布流程。
-  - 相關 issue：<https://github.com/lime-ime/limeime/issues/72>
-  - 相關 PR：<https://github.com/lime-ime/limeime/pull/84>
-  - 相關提交：<https://github.com/lime-ime/limeime/commit/fccf1fb64b6c91db25b744de2a09814e4d6d9940>
-  - 分析文件：<https://github.com/lime-ime/limeime/blob/master/docs/%2372_ISSUE.md>
 
 - **跨平台喜好設定備份／還原**
   - 新增跨平台喜好設定備份／還原支援，並讓 Android 與 iOS 的資料庫備份格式更一致。
