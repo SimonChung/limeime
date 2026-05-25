@@ -12,6 +12,8 @@ Relevant comments:
 - Initial acknowledgement: https://github.com/lime-ime/limeime/issues/79#issuecomment-4523853744
 - Android 6.1.12 retest request: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 - Reporter confirmation and adjacent emoji-search input question: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505
+- Follow-up compatibility comparison from another tester (Pixel 9 / Android 16): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531768150
+- Reporter device context for the adjacent emoji-search input behavior (Samsung A16 / Android 16 / One UI 8.0): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531782542
 
 ## Classification
 
@@ -81,29 +83,22 @@ Android APK `LIMEHD2026-6.1.12.apk` contains the scoped emoji search-field theme
 
 Retest request posted: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 
-Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope.
+Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope. A later comment from `Limeroshenko` also reported normal APK 6.1.12 behavior on Pixel 9 / Android 16, but that comment should not be overread as resolving the separate Chinese-IM-code input question.
 
-The same comment raised a separate product/behavior question: during emoji search, typing table codes such as `100` with 行列/倉頡 did not enter the emoji search field; the code appeared in the host app's text field instead. Current Android code explains the direct-key path:
+The same comment raised a separate product/behavior question: during emoji search, typing table codes such as `100` with 行列/倉頡 did not enter the emoji search field; the code appeared in the host app's text field instead. `SmithCCho` later clarified the test environment as APK 6.1.12 on Samsung A16 / Android 16 / One UI 8.0. Current Android code explains why Chinese IM code-key behavior may differ from English/ASCII emoji search input:
 
 - Entering emoji search calls `setEmojiSearchKeyboard(emojiSearchInitialEnglishOnly(mEmojiSourceWasEnglish))`, so the search keyboard initially follows whether the user came from English mode.
 - `handleEmojiSearchKey()` appends printable keys directly to `mEmojiSearchQuery` only when `shouldEmojiSearchConsumePrintableKey(primaryCode, mEnglishOnly)` is true.
 - `shouldEmojiSearchConsumePrintableKey()` currently returns true only for English mode printable ASCII (`englishOnly && primaryCode >= 32 && primaryCode < 127`).
-- In non-English IM mode, key events can continue through the normal IM/composition path; a picked non-emoji, non-composing candidate can be appended to emoji search through `appendPickedCandidateToEmojiSearch()`.
+- In non-English IM mode, key events can continue through the normal IM/composition path; only a picked non-code candidate can be appended to emoji search through `appendPickedCandidateToEmojiSearch()`.
 
-Live discussion after the reporter's question:
-
-- `Limeroshenko` replied from APK 6.1.12 / Pixel 9 / Android 16 that emoji search behavior was normal for them: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531768150
-- Reporter `SmithCCho` clarified their failing case was APK 6.1.12 on Samsung A16 / Android 16 / One UI 8.0: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531782542
-- Maintainer `jrywu` replied that 6.1.12 emoji supports Chinese, while 6.1.11 and earlier did not: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839
-
-Treat this as an adjacent emoji-search input-method compatibility discussion, not evidence that the Android dark-mode color fix failed. Because the maintainer has already answered in public, do not post another automation reply unless new reporter evidence appears.
+So the reporter's observation is consistent with the current implementation: direct emoji keyword search is English/ASCII-key oriented, while Chinese IM code keys are not directly consumed into the emoji search query. This is adjacent behavior/product scope rather than evidence that the dark-mode color fix failed.
 
 The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
 
 ## Follow-up questions
 
-- If `SmithCCho` reports that Chinese emoji search still fails on APK 6.1.12 after the maintainer clarification, collect exact steps and whether they are entering raw table codes, selecting Chinese candidates into emoji search, or using a specific Samsung/One UI keyboard state.
-- Close #79 once the maintainer/reporter considers the adjacent emoji-search behavior answered, or split the input-method compatibility question if it needs separate product/debug tracking. The original Android visual/theme bug is already reporter-confirmed fixed for APK 6.1.12.
+- Decide whether #79 should be closed for the confirmed Android visual/theme bug and whether the Chinese-IM-code emoji search behavior should be answered as current design/limitation or split into a separate enhancement/usability issue. Keep Samsung A16 / One UI 8.0 as reporter environment context, but do not treat it as the cause without new evidence.
 - iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
 
 ## Verification plan
