@@ -1,86 +1,44 @@
-# Issue #88: Android 13 Samsung A71 crash on opening LIME v6.1.12
+# Issue #88: LIME v6.1.12 crashes / cannot be used on Android 13
 
-Live issue: https://github.com/lime-ime/limeime/issues/88
+## Problem statement
 
-## Status
+Community reporter `peter8777555` reports that LIME v6.1.12 cannot be used on a Samsung A71 4G running Android 13. After installing and opening the app, Android shows that 「萊姆輸入法」 repeatedly stops. The same reporter says older versions v5.2.4 and v6.0.0 worked, and they are currently using v6.0.2 as a workaround.
 
-- State at triage: open
-- Labels after triage: `bug`
-- Assignee after triage: `jrywu`
-- Reporter: `peter8777555` (community report)
-- Public acknowledgement: https://github.com/lime-ime/limeime/issues/88#issuecomment-4534430781
-- Platform: Android
-- Device/OS: Samsung A71 4G, Android 13
-- Reported affected version: LIME v6.1.12
-- Reported known-good versions: v5.2.4 and v6.0.0; reporter is currently using v6.0.2 as workaround
-- Follow-up status: waiting for crash details/logcat or maintainer reproduction; do not ask for APK retest until a newer build contains a clearly relevant startup-crash fix.
+Live issue state checked 2026-05-25: issue is open, labeled `bug`, assigned to `jrywu`, and has one `limeimetw` acknowledgement asking for crash-scope details and logcat/crash stack evidence. No reporter follow-up is available yet.
 
-## Problem Statement
+## Likely root cause
 
-A community reporter says LIME v6.1.12 installs successfully on Samsung A71 4G / Android 13, but when they open the app Android reports `萊姆輸入法 屢次停止運作` (the app repeatedly stops). Older releases v5.2.4 and v6.0.0 reportedly worked on the same device, and the reporter is temporarily using v6.0.2.
+Unknown pending crash evidence. The report is consistent with an Android startup/runtime crash introduced somewhere between the reporter's currently usable v6.0.2 workaround and failing v6.1.12. Repository inspection shows the v6.1.12 Android package is `applicationId` `net.toload.main.hd2026`, versionName `6.1.12`, with launcher settings activity `.ui.LIMESettings` and input method service `.LIMEService`. The current evidence does not yet identify whether the crash is in settings launch, IME service startup, restore/backup initialization, database migration, table loading, or another Android 13/Samsung-specific path.
 
-This is a plausible Android regression and likely blocks at least the settings/launcher app startup path for this device/version combination.
+Do not assume this is fixed by a newer APK until a relevant crash stack or reproducer is available and a targeted change lands.
 
-## Reproduction Notes From Report
+## Proposed solution / investigation plan
 
-1. Use Samsung A71 4G running Android 13.
-2. Install LIME v6.1.12.
-3. Open LIME after installation.
-4. Android shows repeated app-stop/crash message: `萊姆輸入法 屢次停止運作`.
-5. v5.2.4 and v6.0.0 were reportedly normal; v6.0.2 is being used as a fallback.
+1. Wait for or obtain a crash stack/logcat containing `net.toload.main.hd2026` / `萊姆輸入法` around the failure.
+2. Distinguish the failing entry point:
+   - launching the LIME settings app;
+   - enabling or switching to the keyboard;
+   - restoring/importing existing data;
+   - first-run initialization after clean install vs upgrade.
+3. Compare the startup paths between v6.0.2 and v6.1.12, focusing first on changes that run before or during `LIMESettings` and `LIMEService` initialization.
+4. If the stack points to database restore/migration or bundled/default table initialization, reproduce with both clean install and upgrade-from-6.0.x data.
+5. Prepare a focused Android fix and verify on an Android 13 device/emulator before asking the reporter to retest.
 
-No crash stack trace, logcat, screenshot, or exact installation path was included in the initial report.
+## Follow-up questions
 
-## Relevant Context Inspected
+Already asked publicly by `limeimetw`:
 
-- v6.1.12 is the current GitHub Release and Android APK release asset: `LIMEHD2026-6.1.12.apk`.
-- Android `LimeStudio/app/build.gradle` reports:
-  - `applicationId "net.toload.main.hd2026"`
-  - `compileSdkVersion 36`
-  - `targetSdkVersion 36`
-  - `minSdkVersion 21`
-  - `versionName '6.1.12'`
-- v6.1.12 release notes say this is the first 6.1 formal release with a redesigned settings app, new emoji keyboard/database, voice input changes, downloadable table/catalog changes, and backup/restore updates. Because the reporter crashes immediately after opening the app, the settings/launcher startup path is the first area to inspect, but the current report does not yet identify the crashing class or line.
-- `AndroidManifest.xml` launcher activity is `.ui.LIMESettings`; IME service is `.LIMEService`.
+1. Does the crash happen when opening the 「萊姆輸入法」 settings app, or also when switching to the keyboard?
+2. Was v6.1.12 a clean install or an upgrade from an older version?
+3. If possible, provide a screenshot or Android crash/logcat stack containing `net.toload.main.hd2026` / `萊姆輸入法`.
 
-## Likely Root Cause / Hypothesis
+## Verification plan
 
-The exact root cause is unknown until a stack trace is available. The version boundary makes a v6.1.x startup regression plausible, especially in one of the new Android settings app initialization, database/migration/bootstrap, resource/theme, emoji/database, permission/notification, or target-SDK-related startup paths.
+- Reproduce on Android 13 if possible, preferably with a Samsung/One UI environment or a comparable Android 13 emulator/device.
+- Test both clean install of v6.1.12 and upgrade from v6.0.2/v6.0.0 data when evidence suggests an upgrade-only path.
+- Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
+- After a targeted fix lands in a new Android APK, ask the reporter to retest with the direct APK link and confirm whether the crash path is resolved.
 
-Because Samsung A71 / Android 13 is above the minimum SDK and below target SDK 36, this should be treated as a compatibility crash rather than an unsupported-device case unless evidence shows an external/system limitation.
+## Current follow-up status
 
-## Proposed Investigation Plan
-
-1. Ask the reporter for the crash details needed to identify the failing path:
-   - whether the crash happens when opening the launcher/settings app, enabling/selecting the keyboard, or opening the keyboard inside another app;
-   - whether this is a clean install or upgrade from an older LIME version;
-   - if possible, a screenshot and Android crash/logcat stack trace around `FATAL EXCEPTION` for `net.toload.main.hd2026`.
-2. Try to reproduce locally or on a Samsung/Android 13 emulator/device if available:
-   - clean install v6.1.12;
-   - upgrade from v6.0.2 or v6.0.0 to v6.1.12;
-   - open `.ui.LIMESettings` and enable/select the IME.
-3. Inspect initialization paths for unguarded assumptions introduced after v6.0.2, especially settings UI startup, database initialization/migrations, emoji database loading, backup/restore preference migration, and notification/permission setup.
-4. Once a stack trace or reproduction is available, create a focused Android fix branch and run compile checks before opening a PR.
-
-## Follow-up Questions For Reporter
-
-Use a concise Traditional Chinese public reply asking for:
-
-- Whether the crash happens while opening the LIME settings app, switching to the LIME keyboard, or both.
-- Whether v6.1.12 was installed as a clean install or upgraded over an older version.
-- If convenient, a screenshot plus Android crash/logcat details for `net.toload.main.hd2026` / `萊姆輸入法`.
-
-## Verification Plan
-
-A future fix should be verified by:
-
-- Installing/opening the fixed build on Samsung A71 4G / Android 13 if available, or at least Android 13 emulator/device coverage.
-- Testing both clean install and upgrade from v6.0.2/v6.0.0 to the fixed build.
-- Opening the LIME settings app and activating/selecting the keyboard without repeated app-stop dialogs.
-- Running feasible Android compile checks:
-  - `cd LimeStudio && ./gradlew :app:compileDebugJavaWithJavac`
-  - `cd LimeStudio && ./gradlew :app:compileDebugAndroidTestJavaWithJavac`
-
-## Retest Condition
-
-Do not ask the reporter to retest the existing v6.1.12 APK again. Request retest only after a newer APK/build includes a fix that is clearly tied to the identified startup crash path.
+Open / pending reporter evidence. No retest request yet because no relevant fix APK exists for this issue.
