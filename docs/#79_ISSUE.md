@@ -14,6 +14,7 @@ Relevant comments:
 - Reporter confirmation and adjacent emoji-search input question: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505
 - Follow-up compatibility comparison from another tester (Pixel 9 / Android 16): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531768150
 - Reporter device context for the adjacent emoji-search input behavior (Samsung A16 / Android 16 / One UI 8.0): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531782542
+- Maintainer clarification that APK 6.1.12 supports Chinese emoji search while 6.1.11 and earlier did not: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839
 
 ## Classification
 
@@ -92,13 +93,13 @@ The same comment raised a separate product/behavior question: during emoji searc
 - `shouldEmojiSearchConsumePrintableKey()` currently returns true only for English mode printable ASCII (`englishOnly && primaryCode >= 32 && primaryCode < 127`).
 - In non-English IM mode, key events can continue through the normal IM/composition path; only a picked non-code candidate can be appended to emoji search through `appendPickedCandidateToEmojiSearch()`.
 
-So the reporter's observation is consistent with the current implementation: direct emoji keyword search is English/ASCII-key oriented, while Chinese IM code keys are not directly consumed into the emoji search query. This is adjacent behavior/product scope rather than evidence that the dark-mode color fix failed.
+Maintainer `jrywu` subsequently clarified in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839 that APK 6.1.12 supports Chinese emoji search, while 6.1.11 and earlier did not. The code path above still means direct printable key consumption differs between English/ASCII mode and Chinese IM composition/candidate selection, so the reporter's Samsung A16 observation should be treated as an adjacent emoji-search input follow-up, not as evidence that the dark-mode color fix failed. Do not overclaim this as a confirmed remaining 6.1.12 bug unless the reporter retests after the maintainer clarification or provides steps showing 6.1.12 Chinese emoji search still fails.
 
 The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
 
 ## Follow-up questions
 
-- Decide whether #79 should be closed for the confirmed Android visual/theme bug and whether the Chinese-IM-code emoji search behavior should be answered as current design/limitation or split into a separate enhancement/usability issue. Keep Samsung A16 / One UI 8.0 as reporter environment context, but do not treat it as the cause without new evidence.
+- Decide whether #79 should be closed for the confirmed Android visual/theme bug after the maintainer's Chinese-emoji-search clarification, or kept open briefly for SmithCCho to confirm whether APK 6.1.12 works as described. Keep Samsung A16 / One UI 8.0 as reporter environment context, but do not treat it as the cause without new evidence.
 - iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
 
 ## Verification plan
