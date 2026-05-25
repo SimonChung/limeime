@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-25T20:55:05+08:00 (CST)
+Last updated: 2026-05-25T21:06:27+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -49,7 +49,7 @@ Last updated: 2026-05-25T20:55:05+08:00 (CST)
 
 - #86: Maintainer-created iOS database restore state-sync bug. Live issue is open, labeled `bug`, assigned to `jrywu`; analysis doc `docs/#86_ISSUE.md` records that LIME Settings shows restored IM tables after a successful restore, but the keyboard extension can still show zero IMs until the user removes/re-adds the LIME system keyboard. Likely fix area: iOS restore-to-keyboard handoff in `SetupImController.restoreDB(from:)`, app-group restore signal `lime_db_restored_at`, `KeyboardViewController.setupDatabase()`, and `DBServer.prepareKeyboardRuntimeDatabase()` validation/regeneration of `keyboard_state` / `keyboard_list` against the restored IM table. No public acknowledgement or community retest request is needed because this is maintainer-created.
 
-- #88: Community-reported Android startup crash on Samsung A71 4G / Android 13 after installing/opening LIME v6.1.12; older v5.2.4 and v6.0.0 reportedly worked and reporter is using v6.0.2 as fallback. Classified as plausible `bug`, assigned to `jrywu`; analysis doc `docs/#88_ISSUE.md` created. Public acknowledgement/comment `4534430781` (`https://github.com/lime-ime/limeime/issues/88#issuecomment-4534430781`) asks for crash scope and logcat/stack trace. Follow-up condition: do not ask for retest until a newer APK/build includes a clearly relevant startup-crash fix; next implementation identity should inspect Android settings/launcher startup, upgrade-vs-clean-install paths, database/bootstrap/migration, emoji/database, permission/notification, and target-SDK compatibility once crash details or reproduction are available.
+- #88: Community-reported Android v6.1.12 startup crash on Samsung A71 4G / Android 13. Live issue is open, labeled `bug`, and assigned to `jrywu`; acknowledgement/follow-up request exists at https://github.com/lime-ime/limeime/issues/88#issuecomment-4534430781. Analysis doc `docs/#88_ISSUE.md` records the report as a plausible startup regression with unknown root cause; await reporter clarification/logcat about whether the settings app, keyboard switch path, or both crash, and whether v6.1.12 was a clean install or upgrade. Do not ask for retest until a newer Android APK contains a clearly relevant crash fix; do not close without reporter confirmation or maintainer instruction.
 
 ## Operational Handoff / Next Actions
 - Time: 2026-05-23T02:55:00+08:00
