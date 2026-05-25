@@ -26,7 +26,7 @@ Maintainer-created Android and iOS bug tracking issue for database backup restor
 ### Android
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/DbManagerFragment.java`
-  - `restoreLocalDrive()` and `launchRestoreFilePicker()` use `Intent.ACTION_GET_CONTENT`, `CATEGORY_OPENABLE`, and MIME type `application/zip`.
+  - `restoreLocalDrive()` checks for a restore-capable picker and shows a confirmation dialog; `launchRestoreFilePicker()` uses `Intent.ACTION_GET_CONTENT`, `CATEGORY_OPENABLE`, and MIME type `application/zip`.
   - `performRestore(Uri)` calls `setupImController.performRestore(uri)` and then unconditionally sets `db_status_restore_ok` if no exception is thrown to the fragment.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/SetupImController.java`
   - `performRestore(Uri)` calls `dbServer.restoreDatabase(uri)` inside a try/catch.
