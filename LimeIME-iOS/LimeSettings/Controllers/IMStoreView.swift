@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 // MARK: - Download state per variant
 
@@ -223,7 +223,7 @@ struct IMStoreView: View {
     private var installedBanner: some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.seal.fill")
-                .foregroundColor(.green)
+                .foregroundColor(SettingsTheme.success)
                 .font(.title2)
             VStack(alignment: .leading, spacing: 2) {
                 Text("已安裝 \(manager.installedTables.count) 個輸入法")
@@ -248,9 +248,9 @@ struct FamilyHeader: View {
         Button(action: toggle) {
             HStack(spacing: 10) {
                 Image(systemName: family.systemIcon)
-                    .frame(width: 28, height: 28)
+                    .frame(width: SettingsMetrics.familyIconSize, height: SettingsMetrics.familyIconSize)
                     .background(Color.accentColor.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.familyIconCornerRadius))
                     .foregroundColor(.accentColor)
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -317,7 +317,7 @@ struct VariantRow: View {
             if case .error(let msg) = state {
                 Text(msg)
                     .font(.caption2)
-                    .foregroundColor(.red)
+                    .foregroundColor(SettingsTheme.destructive)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .offset(y: 14)
             }
@@ -335,13 +335,13 @@ struct InstallButton: View {
         Button(action: action) {
             switch state {
             case .notInstalled:
-                Text("安裝").bold().frame(width: 64)
+                Text("安裝").bold().frame(width: SettingsMetrics.installButtonWidth)
 
             case .downloading(let p):
                 VStack(spacing: 2) {
                     ProgressView(value: p)
-                        .frame(width: 60)
-                        .tint(.blue)
+                        .frame(width: SettingsMetrics.installProgressWidth)
+                        .tint(SettingsTheme.progressAccent)
                     Text("取消").font(.caption2).foregroundColor(.secondary)
                 }
 
@@ -350,16 +350,18 @@ struct InstallButton: View {
                     ProgressView().scaleEffect(0.7)
                     Text("匯入中")
                 }
-                .frame(width: 80)
+                .frame(width: SettingsMetrics.importingButtonWidth)
 
             case .installed:
                 Label("已安裝", systemImage: "checkmark")
                     .font(.footnote)
-                    .foregroundColor(.green)
-                    .frame(width: 80)
+                    .foregroundColor(SettingsTheme.success)
+                    .frame(width: SettingsMetrics.installedButtonWidth)
 
             case .error:
-                Text("重試").bold().frame(width: 64).foregroundColor(.red)
+                Text("重試").bold()
+                    .frame(width: SettingsMetrics.installButtonWidth)
+                    .foregroundColor(SettingsTheme.destructive)
             }
         }
         .buttonStyle(.bordered)

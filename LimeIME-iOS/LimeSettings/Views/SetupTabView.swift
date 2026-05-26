@@ -17,9 +17,9 @@ struct FormSectionGroupBoxStyle: GroupBoxStyle {
             configuration.content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, SettingsMetrics.groupedSectionHorizontalPadding)
         .background(Color(UIColor.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.groupedSectionCornerRadius))
     }
 }
 
@@ -30,13 +30,18 @@ private struct ToggleSwitchIcon: View {
     var body: some View {
         ZStack(alignment: .trailing) {
             Capsule()
-                .fill(Color.green)
-                .frame(width: 30, height: 18)
+                .fill(SettingsTheme.switchTrack)
+                .frame(width: SettingsMetrics.switchTrackWidth,
+                       height: SettingsMetrics.switchTrackHeight)
             Circle()
-                .fill(Color.white)
-                .shadow(color: .black.opacity(0.18), radius: 1, x: 0, y: 1)
-                .frame(width: 14, height: 14)
-                .padding(.trailing, 2)
+                .fill(SettingsTheme.switchThumb)
+                .shadow(color: SettingsTheme.switchShadow,
+                        radius: SettingsMetrics.switchShadowRadius,
+                        x: 0,
+                        y: SettingsMetrics.switchShadowY)
+                .frame(width: SettingsMetrics.switchThumbSize,
+                       height: SettingsMetrics.switchThumbSize)
+                .padding(.trailing, SettingsMetrics.switchThumbTrailingPadding)
         }
     }
 }
@@ -48,9 +53,9 @@ private struct SetupStepRow<Icon: View>: View {
     @ViewBuilder let icon: Icon
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: SettingsMetrics.setupStepSpacing) {
             icon
-                .frame(width: 32, alignment: .center)
+                .frame(width: SettingsMetrics.setupStepIconWidth, alignment: .center)
             Text(text)
                 .font(.body)
             Spacer()
@@ -88,28 +93,28 @@ struct SetupTabView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: SettingsMetrics.pageHorizontalPadding) {
 
                     // ── Brand block (logo + wordmark) ─────────────────────
-                    VStack(spacing: 8) {
+                    VStack(spacing: SettingsMetrics.setupHeroSpacing) {
                         logoImage
                         Text("萊姆輸入法")
                             .font(.largeTitle).bold()
                     }
-                    .padding(.top, 32)
+                    .padding(.top, SettingsMetrics.setupHeroTopPadding)
 
                     // ── Status banner ─────────────────────────────────────
                     statusBanner
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     // ── Title ─────────────────────────────────────────────
                     Text("設定萊姆輸入法")
                         .font(.largeTitle).bold()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     // ── Step list ─────────────────────────────────────────
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: SettingsMetrics.setupListSpacing) {
                         SetupStepRow(text: "輕觸「鍵盤」") {
                             Image(systemName: "keyboard")
                                 .font(.title3)
@@ -122,14 +127,14 @@ struct SetupTabView: View {
                             ToggleSwitchIcon()
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     // ── Explanatory note ──────────────────────────────────
                     Text("萊姆輸入法僅需完整取用以啟用按鍵震動回饋。若不需要此功能，可不開啟。萊姆輸入法不會收集或傳送任何個人資料。")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     // ── CTA button ────────────────────────────────────────
                     Button("前往設定") {
@@ -137,20 +142,21 @@ struct SetupTabView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     Text("若設定未直接顯示萊姆輸入法，請到「設定」>「Apps」>「萊姆輸入法」>「Keyboards」，開啟萊姆輸入法與允許完整取用。")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     // Invisible 1 × 1 probe — preserves heartbeat polling
                     // without showing a text field in the new layout.
                     TextField("", text: $probeText)
                         .focused($probeFocused)
-                        .frame(width: 1, height: 1)
-                        .opacity(0.01)
+                        .frame(width: SettingsMetrics.invisibleProbeSize,
+                               height: SettingsMetrics.invisibleProbeSize)
+                        .opacity(SettingsMetrics.invisibleProbeOpacity)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                         .accessibilityHidden(true)
@@ -158,27 +164,27 @@ struct SetupTabView: View {
                     // ── About section ─────────────────────────────────────
                     GroupBox {
                         LabeledContent("版本", value: appVersion())
-                            .padding(.vertical, 11)
+                            .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                         Divider()
                         HStack {
                             Text("授權")
                             Spacer()
                             Link("版權聲明", destination: licenseURL)
                         }
-                        .padding(.vertical, 11)
+                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                         Divider()
                         Link("原始碼 (GitHub)", destination: githubURL)
-                            .padding(.vertical, 11)
+                            .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                     }
                     .groupBoxStyle(FormSectionGroupBoxStyle())
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
+                    .padding(.bottom, SettingsMetrics.setupBottomPadding)
                 }
                 // iPad / wide-screen reading-width cap: keeps the form column
                 // at a comfortable width instead of stretching edge-to-edge in
                 // iPad portrait and (especially) landscape. On iPhone this cap
                 // never engages because the screen is narrower than 560pt.
-                .frame(maxWidth: 560)
+                .frame(maxWidth: SettingsMetrics.contentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
             .navigationBarHidden(true)
@@ -217,17 +223,19 @@ struct SetupTabView: View {
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 80, height: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .frame(width: SettingsMetrics.setupLogoSize,
+                       height: SettingsMetrics.setupLogoSize)
+                .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.setupLogoCornerRadius))
         } else {
             Image(systemName: "keyboard.fill")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 60, height: 60)
-                .padding(10)
+                .frame(width: SettingsMetrics.setupFallbackLogoSize,
+                       height: SettingsMetrics.setupFallbackLogoSize)
+                .padding(SettingsMetrics.setupFallbackLogoPadding)
                 .foregroundColor(.accentColor)
                 .background(Color(.quaternarySystemFill))
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.setupLogoCornerRadius))
         }
     }
 
@@ -251,24 +259,24 @@ struct SetupTabView: View {
             switch detectionState {
             case .fullyEnabled:
                 Label("萊姆輸入法已啟用",
-                      systemImage: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+                    systemImage: "checkmark.circle.fill")
+                    .foregroundColor(SettingsTheme.success)
             case .enabledNoFullAccess:
                 Label("鍵盤已啟用，但尚未允許完整取用",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .foregroundColor(.orange)
+                    systemImage: "exclamationmark.triangle.fill")
+                    .foregroundColor(SettingsTheme.warning)
             case .notEnabled:
                 Label("尚未啟用萊姆輸入法鍵盤",
-                      systemImage: "xmark.circle.fill")
-                    .foregroundColor(.red)
+                    systemImage: "xmark.circle.fill")
+                    .foregroundColor(SettingsTheme.destructive)
             }
         }
         .font(.subheadline)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
+        .padding(.vertical, SettingsMetrics.statusVerticalPadding)
+        .padding(.horizontal, SettingsMetrics.statusHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.groupedSectionCornerRadius))
     }
 
     // MARK: - Detection

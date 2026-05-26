@@ -251,7 +251,8 @@ struct IMDetailView: View {
             } label: {
                 Image(systemName: "square.and.arrow.up")
                     .font(.title2.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .frame(width: SettingsMetrics.detailToolbarButtonSize,
+                           height: SettingsMetrics.detailToolbarButtonSize)
             }
             .disabled(isExporting)
         }
@@ -276,7 +277,7 @@ struct IMDetailView: View {
                     if let metadataError {
                         Section {
                             Text(metadataError)
-                                .foregroundColor(.red)
+                                .foregroundColor(SettingsTheme.destructive)
                         }
                     }
                 }
@@ -304,12 +305,12 @@ struct IMDetailView: View {
         .overlay {
             if isExporting {
                 ZStack {
-                    Color.black.opacity(0.3).ignoresSafeArea()
+                    SettingsTheme.overlayScrim.ignoresSafeArea()
                     ProgressView("匯出中…")
-                        .padding(24)
-                        .background(RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemBackground))
-                            .shadow(radius: 8))
+                        .padding(SettingsMetrics.modalPadding)
+                        .background(RoundedRectangle(cornerRadius: SettingsMetrics.modalCornerRadius)
+                            .fill(SettingsTheme.overlayCardBackground)
+                            .shadow(radius: SettingsMetrics.modalShadowRadius))
                 }
             }
         }

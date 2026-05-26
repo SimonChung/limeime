@@ -34,7 +34,7 @@ struct AddRecordView: View {
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
-                            .foregroundColor(.red)
+                            .foregroundColor(SettingsTheme.destructive)
                             .font(.footnote)
                     }
                 }
@@ -92,7 +92,7 @@ struct ScoreInputRow: View {
             TextField("", value: $score, format: .number)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
-                .frame(width: 64)
+                .frame(width: SettingsMetrics.scoreFieldWidth)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: score) { newValue in
                     score = min(max(newValue, range.lowerBound), range.upperBound)

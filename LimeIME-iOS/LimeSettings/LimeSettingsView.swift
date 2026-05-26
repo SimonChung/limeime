@@ -79,8 +79,8 @@ struct LimeSettingsView: View {
         .overlay {
             if progressManager.isVisible {
                 ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    VStack(spacing: 12) {
+                    SettingsTheme.globalOverlayScrim.ignoresSafeArea()
+                    VStack(spacing: SettingsMetrics.modalSpacing) {
                         ProgressView()
                             .progressViewStyle(.circular)
                         if !progressManager.status.isEmpty {
@@ -89,11 +89,11 @@ struct LimeSettingsView: View {
                                 .foregroundColor(.primary)
                         }
                     }
-                    .padding(24)
+                    .padding(SettingsMetrics.modalPadding)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color(.systemBackground))
-                            .shadow(radius: 8))
+                        RoundedRectangle(cornerRadius: SettingsMetrics.globalModalCornerRadius)
+                            .fill(SettingsTheme.overlayCardBackground)
+                            .shadow(radius: SettingsMetrics.modalShadowRadius))
                 }
             }
         }
@@ -140,7 +140,7 @@ private extension View {
 struct ConstrainedDetailLayout<Trailing: View>: ViewModifier {
     let title: String
     let trailing: () -> Trailing
-    private let titleSectionHeight: CGFloat = 60
+    private let titleSectionHeight: CGFloat = SettingsMetrics.titleSectionHeight
     @Environment(\.dismiss) private var dismiss
 
     func body(content: Content) -> some View {
@@ -170,7 +170,7 @@ struct ConstrainedDetailLayout<Trailing: View>: ViewModifier {
 
             content
         }
-        .frame(maxWidth: 560)
+        .frame(maxWidth: SettingsMetrics.contentMaxWidth)
         .frame(maxWidth: .infinity)
         .toolbar(.hidden, for: .navigationBar)
     }

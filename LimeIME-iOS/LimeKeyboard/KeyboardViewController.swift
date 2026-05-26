@@ -2742,7 +2742,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let shapeLayer = CAShapeLayer()
         shapeLayer.path = path.cgPath
         shapeLayer.fillColor = keyBg.cgColor
-        shapeLayer.shadowColor = UIColor.black.cgColor
+        shapeLayer.shadowColor = LayoutMetrics.Shadow.color
         shapeLayer.shadowOffset = CGSize(width: 0, height: LayoutMetrics.KeyPreview.shadowOffsetY)
         shapeLayer.shadowOpacity = LayoutMetrics.KeyPreview.shadowOpacity
         shapeLayer.shadowRadius  = LayoutMetrics.KeyPreview.shadowRadius
@@ -3063,7 +3063,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let pal = KeyboardPalette.palettes[max(0, min(t, KeyboardPalette.palettes.count - 1))]
         let sl = CAShapeLayer()
         sl.path = path.cgPath; sl.fillColor = pal.modifierKey.cgColor
-        sl.shadowColor = UIColor.black.cgColor
+        sl.shadowColor = LayoutMetrics.Shadow.color
         sl.shadowOffset = CGSize(width: 0, height: LayoutMetrics.GlobePreview.shadowOffsetY)
         sl.shadowOpacity = LayoutMetrics.GlobePreview.shadowOpacity
         sl.shadowRadius = LayoutMetrics.GlobePreview.shadowRadius
@@ -3114,7 +3114,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         let panel = UIView()
         panel.backgroundColor = UIColor.systemBackground.withAlphaComponent(LayoutMetrics.InlineMenu.backgroundAlpha)
         panel.layer.cornerRadius = LayoutMetrics.InlineMenu.cornerRadius
-        panel.layer.shadowColor = UIColor.black.cgColor
+        panel.layer.shadowColor = LayoutMetrics.Shadow.color
         panel.layer.shadowOpacity = LayoutMetrics.InlineMenu.shadowOpacity
         panel.layer.shadowRadius = LayoutMetrics.InlineMenu.shadowRadius
         panel.layer.shadowOffset = CGSize(width: 0, height: LayoutMetrics.InlineMenu.shadowOffsetY)

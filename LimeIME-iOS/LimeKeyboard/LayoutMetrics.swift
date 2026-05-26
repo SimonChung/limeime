@@ -1,4 +1,4 @@
-import UIKit
+﻿import UIKit
 
 // Single source of truth for keyboard-extension layout constants.
 //
@@ -29,6 +29,10 @@ enum LayoutMetrics {
         // A near-invisible neutral grey fill defeats this gate without
         // tinting the shared blur backdrop.
         static let fill = UIColor(white: 0.5, alpha: 0.01)
+    }
+
+    enum Shadow {
+        static let color = UIColor.black.cgColor
     }
 
     // MARK: - Candidate bar chrome

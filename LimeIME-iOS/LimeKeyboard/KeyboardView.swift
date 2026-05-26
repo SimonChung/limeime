@@ -851,7 +851,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         }
         btn.layer.cornerRadius = keyCornerRadius
         btn.layer.masksToBounds = false
-        btn.layer.shadowColor = UIColor.black.cgColor
+        btn.layer.shadowColor = LayoutMetrics.Shadow.color
         btn.layer.shadowOffset = CGSize(width: 0, height: LayoutMetrics.Key.shadowOffsetY)
         btn.layer.shadowOpacity = keyShadowOpacity
         btn.layer.shadowRadius = 0

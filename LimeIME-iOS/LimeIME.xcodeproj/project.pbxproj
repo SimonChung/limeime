@@ -52,6 +52,8 @@
 		392E253AEF3B73034F19766E /* IMStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D98DEBE9E75F237BEC73B5B /* IMStoreView.swift */; };
 		394FDBA2792355ADDE3ADDB2 /* ShareManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D9C2FB678210C7B4C64424 /* ShareManager.swift */; };
 		3A2F164CC78CD804C67805DE /* SetupTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41390FAC918F440A66942DF3 /* SetupTabView.swift */; };
+		3A51E5D2D3AA4C12B67E01A1 /* SettingsTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A51E5D0D3AA4C12B67E01A1 /* SettingsTheme.swift */; };
+		3A51E5D3D3AA4C12B67E01A1 /* SettingsMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A51E5D1D3AA4C12B67E01A1 /* SettingsMetrics.swift */; };
 		3E33AD4714204B45807AC470 /* lime_english_ipad.json in Resources */ = {isa = PBXBuildFile; fileRef = 7D40CF2999E24C0E8B7A0FCA /* lime_english_ipad.json */; };
 		3E81089E57F6CB90A2BFF152 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75E50434E278FAEF4A4654C /* KeyboardView.swift */; };
 		41CFFB478874C876C611CC47 /* ManageRelatedControllerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0595186AC824BB0CCF9D15EF /* ManageRelatedControllerTest.swift */; };
@@ -269,6 +271,8 @@
 		350ABF67B75EFC684F6A9FD5 /* symbols3.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = symbols3.json; sourceTree = "<group>"; };
 		38B13D232556DEB9E4DCA530 /* lime_dayi.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_dayi.json; sourceTree = "<group>"; };
 		3F0B16D9D4D0A632C53E2076 /* lime.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = lime.db; sourceTree = "<group>"; };
+		3A51E5D0D3AA4C12B67E01A1 /* SettingsTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTheme.swift; sourceTree = "<group>"; };
+		3A51E5D1D3AA4C12B67E01A1 /* SettingsMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsMetrics.swift; sourceTree = "<group>"; };
 		4100A6E7F721B8C08183DAF3 /* RelatedListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedListView.swift; sourceTree = "<group>"; };
 		411FF606F97E46F888D2ECC0 /* lime_hsu_ipad.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lime_hsu_ipad.json; sourceTree = "<group>"; };
 		41390FAC918F440A66942DF3 /* SetupTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupTabView.swift; sourceTree = "<group>"; };
@@ -543,6 +547,8 @@
 				5E9EE5BA80907FE7407DC189 /* LimeSettingsView.swift */,
 				F7E6D814B179560C36A6F65E /* MainViewController.swift */,
 				A5F0B1D9966D08427E55DED7 /* SceneDelegate.swift */,
+				3A51E5D1D3AA4C12B67E01A1 /* SettingsMetrics.swift */,
+				3A51E5D0D3AA4C12B67E01A1 /* SettingsTheme.swift */,
 				DB7A5B6C8D9E4011A2B3C4D4 /* Settings.bundle */,
 				48F53721929606973F5A4805 /* Controllers */,
 				F483912EA3D360958DC81427 /* Views */,
@@ -1126,6 +1132,8 @@
 				4F6D2960FB65F3973B7DC582 /* SceneDelegate.swift in Sources */,
 				8EBAC89F106963E2B9A020A1 /* SearchServer.swift in Sources */,
 				8525ADC346FD46AA6F2FF251 /* SetupImController.swift in Sources */,
+				3A51E5D3D3AA4C12B67E01A1 /* SettingsMetrics.swift in Sources */,
+				3A51E5D2D3AA4C12B67E01A1 /* SettingsTheme.swift in Sources */,
 				3A2F164CC78CD804C67805DE /* SetupTabView.swift in Sources */,
 				394FDBA2792355ADDE3ADDB2 /* ShareManager.swift in Sources */,
 				079D51B244090D1F399274BD /* ViewProtocols.swift in Sources */,

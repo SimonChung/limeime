@@ -55,8 +55,8 @@ struct DBManagerView: View {
                             Label("還原資料庫", systemImage: "arrow.down.circle")
                         }
                         .disabled(isWorking)
-                        .foregroundColor(.red)
-                        .padding(.vertical, 11)
+                        .foregroundColor(SettingsTheme.destructive)
+                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                     }
 
                     formSection(header: "初始資料庫") {
@@ -64,8 +64,8 @@ struct DBManagerView: View {
                             Label("還原預設資料庫", systemImage: "arrow.counterclockwise.circle")
                         }
                         .disabled(isWorking)
-                        .foregroundColor(.red)
-                        .padding(.vertical, 11)
+                        .foregroundColor(SettingsTheme.destructive)
+                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                     }
 
                     if !statusMessage.isEmpty {
@@ -73,13 +73,13 @@ struct DBManagerView: View {
                             Text(statusMessage)
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
-                                .padding(.vertical, 11)
+                                .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                         }
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 560)
+                .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
+                .padding(.bottom, SettingsMetrics.setupBottomPadding)
+                .frame(maxWidth: SettingsMetrics.contentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(UIColor.systemBackground).ignoresSafeArea())
@@ -121,22 +121,22 @@ struct DBManagerView: View {
             .overlay {
                 if shouldShowLocalWorkingOverlay {
                     ZStack {
-                        Color.black.opacity(0.3).ignoresSafeArea()
-                        VStack(spacing: 12) {
+                        SettingsTheme.overlayScrim.ignoresSafeArea()
+                        VStack(spacing: SettingsMetrics.modalSpacing) {
                             if preparingShare {
                                 ProgressView("準備備份中…")
                             } else if backupProgress > 0 {
                                 Text("備份中… \(Int(backupProgress * 100))%")
                                 ProgressView(value: backupProgress)
-                                    .frame(width: 180)
+                                    .frame(width: SettingsMetrics.progressBarWidth)
                             } else {
                                 ProgressView("處理中…")
                             }
                         }
-                        .padding(24)
-                        .background(RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemBackground))
-                            .shadow(radius: 8))
+                        .padding(SettingsMetrics.modalPadding)
+                        .background(RoundedRectangle(cornerRadius: SettingsMetrics.modalCornerRadius)
+                            .fill(SettingsTheme.overlayCardBackground)
+                            .shadow(radius: SettingsMetrics.modalShadowRadius))
                     }
                 }
             }
@@ -154,15 +154,15 @@ struct DBManagerView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
-                .padding(.leading, 4)
-                .padding(.top, 20)
+                    .padding(.leading, SettingsMetrics.formHeaderLeadingPadding)
+                    .padding(.top, SettingsMetrics.formHeaderTopPadding)
             GroupBox { content() }
                 .groupBoxStyle(FormSectionGroupBoxStyle())
             if let footer {
                 Text(footer)
                     .font(.footnote)
                     .foregroundColor(.secondary)
-                    .padding(.leading, 4)
+                    .padding(.leading, SettingsMetrics.formHeaderLeadingPadding)
             }
         }
     }

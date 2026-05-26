@@ -201,7 +201,7 @@ struct PreferencesTabView: View {
             // SetupTabView and DBManagerView use so the Preferences form
             // doesn't stretch edge-to-edge on iPad portrait/landscape. On
             // iPhone this never engages because the screen is < 560pt.
-            .frame(maxWidth: 560)
+            .frame(maxWidth: SettingsMetrics.contentMaxWidth)
             .frame(maxWidth: .infinity)
             // Hide the system navigation bar so the custom static title above
             // is the only one on screen. This view is a tab root (no back

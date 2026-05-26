@@ -38,7 +38,7 @@ final class PopupKeyboardView: UIView {
         backgroundColor = palette.background
         layer.cornerRadius  = LayoutMetrics.PopupKeyboard.panelCornerRadius
         layer.masksToBounds = false
-        layer.shadowColor   = UIColor.black.cgColor
+        layer.shadowColor   = LayoutMetrics.Shadow.color
         layer.shadowOpacity = LayoutMetrics.PopupKeyboard.panelShadowOpacity
         layer.shadowOffset  = CGSize(width: 0, height: LayoutMetrics.PopupKeyboard.panelShadowOffsetY)
         layer.shadowRadius  = LayoutMetrics.PopupKeyboard.panelShadowRadius
@@ -86,7 +86,7 @@ final class PopupKeyboardView: UIView {
         btn.backgroundColor = palette.normalKey
         btn.layer.cornerRadius  = LayoutMetrics.PopupKeyboard.keyCornerRadius
         btn.layer.masksToBounds = false
-        btn.layer.shadowColor   = UIColor.black.cgColor
+        btn.layer.shadowColor   = LayoutMetrics.Shadow.color
         btn.layer.shadowOpacity = LayoutMetrics.PopupKeyboard.keyShadowOpacity
         btn.layer.shadowOffset  = CGSize(width: 0, height: LayoutMetrics.PopupKeyboard.keyShadowOffsetY)
         btn.layer.shadowRadius  = LayoutMetrics.PopupKeyboard.keyShadowRadius

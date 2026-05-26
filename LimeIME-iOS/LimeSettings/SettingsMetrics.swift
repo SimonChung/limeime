@@ -1,0 +1,71 @@
+﻿// SettingsMetrics.swift
+// LimeIME-iOS
+//
+// Shared settings-app layout constants. Keep repeated UI metrics here so
+// Settings screens stay visually consistent across iPhone and iPad.
+
+import CoreGraphics
+
+enum SettingsMetrics {
+    static let contentMaxWidth: CGFloat = 560
+
+    static let pageHorizontalPadding: CGFloat = 24
+    static let titleHorizontalPadding: CGFloat = 20
+    static let titleTopPadding: CGFloat = 16
+    static let titleBottomPadding: CGFloat = 8
+
+    static let groupedSectionHorizontalPadding: CGFloat = 16
+    static let groupedSectionCornerRadius: CGFloat = 10
+
+    static let modalPadding: CGFloat = 24
+    static let modalCornerRadius: CGFloat = 12
+    static let globalModalCornerRadius: CGFloat = 14
+    static let modalSpacing: CGFloat = 12
+    static let modalShadowRadius: CGFloat = 8
+
+    static let rowVerticalPadding: CGFloat = 11
+    static let statusVerticalPadding: CGFloat = 10
+    static let statusHorizontalPadding: CGFloat = 16
+
+    static let floatingActionPadding: CGFloat = 16
+    static let floatingActionOuterPadding: CGFloat = 20
+    static let floatingActionShadowRadius: CGFloat = 4
+    static let floatingActionShadowY: CGFloat = 2
+
+    static let formHeaderLeadingPadding: CGFloat = 4
+    static let formHeaderTopPadding: CGFloat = 20
+    static let progressBarWidth: CGFloat = 180
+
+    static let scoreFieldWidth: CGFloat = 64
+    static let detailToolbarButtonSize: CGFloat = 44
+    static let listCountColumnWidth: CGFloat = 48
+
+    static let setupLogoSize: CGFloat = 80
+    static let setupFallbackLogoSize: CGFloat = 60
+    static let setupFallbackLogoPadding: CGFloat = 10
+    static let setupLogoCornerRadius: CGFloat = 18
+    static let setupStepIconWidth: CGFloat = 32
+    static let setupStepSpacing: CGFloat = 16
+    static let setupHeroTopPadding: CGFloat = 32
+    static let setupHeroSpacing: CGFloat = 8
+    static let setupListSpacing: CGFloat = 16
+    static let setupBottomPadding: CGFloat = 32
+
+    static let switchTrackWidth: CGFloat = 30
+    static let switchTrackHeight: CGFloat = 18
+    static let switchThumbSize: CGFloat = 14
+    static let switchThumbTrailingPadding: CGFloat = 2
+    static let switchShadowRadius: CGFloat = 1
+    static let switchShadowY: CGFloat = 1
+
+    static let invisibleProbeSize: CGFloat = 1
+    static let invisibleProbeOpacity: CGFloat = 0.01
+    static let titleSectionHeight: CGFloat = 60
+
+    static let familyIconSize: CGFloat = 28
+    static let familyIconCornerRadius: CGFloat = 6
+    static let installButtonWidth: CGFloat = 64
+    static let installProgressWidth: CGFloat = 60
+    static let importingButtonWidth: CGFloat = 80
+    static let installedButtonWidth: CGFloat = 80
+}

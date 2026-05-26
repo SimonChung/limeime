@@ -44,7 +44,7 @@ struct EditRecordView: View {
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
-                            .foregroundColor(.red)
+                            .foregroundColor(SettingsTheme.destructive)
                             .font(.footnote)
                     }
                 }

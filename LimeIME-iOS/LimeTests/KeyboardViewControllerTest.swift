@@ -694,6 +694,52 @@ final class KeyboardViewControllerTest: XCTestCase {
         }
     }
 
+    func testSettingsAndKeyboardThemeLiteralsUseCentralRoles() throws {
+        let settingsTheme = try String(
+            contentsOf: projectFileURL("LimeSettings/SettingsTheme.swift"),
+            encoding: .utf8
+        )
+        let settingsMetrics = try String(
+            contentsOf: projectFileURL("LimeSettings/SettingsMetrics.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(settingsTheme.contains("enum SettingsTheme"))
+        XCTAssertTrue(settingsTheme.contains("static let destructive"))
+        XCTAssertTrue(settingsTheme.contains("static let overlayScrim"))
+        XCTAssertTrue(settingsMetrics.contains("enum SettingsMetrics"))
+        XCTAssertTrue(settingsMetrics.contains("static let contentMaxWidth"))
+        XCTAssertTrue(settingsMetrics.contains("static let modalPadding"))
+
+        let settingsFiles = [
+            "LimeSettings/LimeSettingsView.swift",
+            "LimeSettings/Views/DBManagerView.swift",
+            "LimeSettings/Views/IMDetailView.swift",
+            "LimeSettings/Views/IMInstallView.swift",
+            "LimeSettings/Views/IMListView.swift",
+            "LimeSettings/Controllers/IMStoreView.swift",
+            "LimeSettings/Views/SetupTabView.swift"
+        ]
+        for relativePath in settingsFiles {
+            let source = try String(contentsOf: projectFileURL(relativePath), encoding: .utf8)
+            XCTAssertFalse(source.contains("Color.black.opacity("), relativePath)
+            XCTAssertFalse(source.contains(".foregroundColor(.red)"), relativePath)
+            XCTAssertFalse(source.contains(".foregroundColor(.green)"), relativePath)
+            XCTAssertFalse(source.contains(".foregroundColor(.orange)"), relativePath)
+            XCTAssertFalse(source.contains(".foregroundStyle(.white)"), relativePath)
+            XCTAssertFalse(source.contains(".background(Color.blue"), relativePath)
+        }
+
+        for relativePath in [
+            "LimeKeyboard/KeyboardViewController.swift",
+            "LimeKeyboard/KeyboardView.swift",
+            "LimeKeyboard/PopupKeyboardView.swift"
+        ] {
+            let source = try String(contentsOf: projectFileURL(relativePath), encoding: .utf8)
+            XCTAssertFalse(source.contains("UIColor.black.cgColor"), relativePath)
+            XCTAssertTrue(source.contains("LayoutMetrics.Shadow.color"), relativePath)
+        }
+    }
+
     private func emojiMapping(_ word: String) -> Mapping {
         Mapping(id: 0, code: "", word: word,
                 score: 0, baseScore: 0,

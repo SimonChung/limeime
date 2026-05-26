@@ -184,12 +184,12 @@ struct IMInstallView: View {
         .overlay {
             if showsLocalImportOverlay {
                 ZStack {
-                    Color.black.opacity(0.3).ignoresSafeArea()
+                    SettingsTheme.overlayScrim.ignoresSafeArea()
                     ProgressView("匯入中…")
-                        .padding(24)
-                        .background(RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemBackground))
-                            .shadow(radius: 8))
+                        .padding(SettingsMetrics.modalPadding)
+                        .background(RoundedRectangle(cornerRadius: SettingsMetrics.modalCornerRadius)
+                            .fill(SettingsTheme.overlayCardBackground)
+                            .shadow(radius: SettingsMetrics.modalShadowRadius))
                 }
             }
         }

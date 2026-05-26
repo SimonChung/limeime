@@ -68,7 +68,7 @@ struct IMListView: View {
                 sidebar
             }
             // Same 560pt reading-width cap as the other tab roots.
-            .frame(maxWidth: 560)
+            .frame(maxWidth: SettingsMetrics.contentMaxWidth)
             .frame(maxWidth: .infinity)
             // Tab root; no back navigation needed at this level. Pushed
             // destinations declare their own nav bar.
@@ -146,13 +146,16 @@ struct IMListView: View {
                     } label: {
                         Image(systemName: "plus")
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .padding(16)
-                            .background(Color.blue, in: Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                            .foregroundStyle(SettingsTheme.floatingActionForeground)
+                            .padding(SettingsMetrics.floatingActionPadding)
+                            .background(SettingsTheme.floatingActionBackground, in: Circle())
+                            .shadow(color: SettingsTheme.floatingActionShadow,
+                                    radius: SettingsMetrics.floatingActionShadowRadius,
+                                    x: 0,
+                                    y: SettingsMetrics.floatingActionShadowY)
                     }
                     .buttonStyle(.plain)
-                    .padding([.bottom, .trailing], 20)
+                    .padding([.bottom, .trailing], SettingsMetrics.floatingActionOuterPadding)
                 }
                 .listStyle(.insetGrouped)
                 .setupMatchedGroupedSurface()
