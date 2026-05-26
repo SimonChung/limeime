@@ -179,25 +179,13 @@ Superseded current state from the retest request: #88 was reopened/pending repor
 
 ## Reporter response after v6.1.14 retest request
 
-Reporter `peter8777555` responded in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540709915 after the v6.1.14 retest request: 「可以了」, but also said the settings page does not appear as expected and they cannot import LIME v5.2.4 settings. Their v6.1.14 screenshot shows the new setup/status page with version `v6.1.14 - 2026`, not a crash dialog. Their v5.2.4 screenshot shows the older single-page UI with `備份/還原資料庫`, `本地備份`, `本地還原`, `匯入自定字根表`, and `匯入關聯字庫` buttons.
-
-Automation replied in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540812173 with user guidance: in the newer v6.x UI, backup/restore is expected under the bottom `資料庫` tab and input-method/table import under the bottom `輸入法` tab; if the reporter's Samsung A71 does not show the bottom tabs (`設定／輸入法／喜好設定／資料庫`), they should provide a full screenshot including the bottom edge so the project can check whether the settings page is clipped or the bottom navigation is not rendering.
-
-Current interpretation: v6.1.14 appears to have improved the crash/settings-entry path enough for the reporter to enter the app, but the issue should remain open until the reporter confirms whether the bottom navigation/import path is visible and usable. This is now a usability/discoverability or possible layout-rendering follow-up, distinct from the original `ActivityNotFoundException` path.
-
-## Webhook update: v6.1.14 mixed reporter confirmation plus legacy restore/import concern
-
-Reporter `peter8777555` edited/responded in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540709915 after the v6.1.14 retest request. The response says `可以了`, but also says `設定頁 出不來` and `我 無法 匯入 LIME v5.2.4 設定`.
+Reporter `peter8777555` responded in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540709915 after the v6.1.14 retest request. The response says `可以了`, but also says `設定頁 出不來` and `我 無法 匯入 LIME v5.2.4 設定`.
 
 Screenshot evidence from the edited comment:
 
-- The v6.1.14 screenshot shows the current setup/about screen open, including `v6.1.14 - 2026`, enabled keyboard and voice-input status cards, and no visible Android crash dialog. This is positive evidence for the PR #89 settings-entry fix and/or direct app launch, but it does not by itself verify every requested path.
-- The v5.2.4 comparison screenshot shows the older setup page with visible `備份/還原資料庫` actions such as `本地備份`, `本地還原`, `GOOGLE 備份`, `GOOGLE 還原`, `DROPBOX 備份`, and `DROPBOX 還原`, plus input-method import buttons. The reporter appears to be blocked on finding or using the legacy restore/import path in v6.1.14.
+- The v6.1.14 screenshot shows the current setup/status screen open, including `v6.1.14 - 2026`, enabled keyboard and voice-input status cards, and no visible Android crash dialog. This is positive evidence that the reporter can now enter the v6.1.14 app/settings UI, but it does not by itself verify every requested path.
+- The v5.2.4 comparison screenshot shows the older single-page setup UI with visible `備份/還原資料庫`, `本地備份`, `本地還原`, `GOOGLE 備份`, `GOOGLE 還原`, `DROPBOX 備份`, `DROPBOX 還原`, plus input-method import buttons. The reporter appears blocked on finding or using the equivalent restore/import path in v6.1.14.
 
-Interpretation:
+Automation replied in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540812173 with scoped user guidance: in the newer v6.x UI, backup/restore is expected under the bottom `資料庫` tab and input-method/table import under the bottom `輸入法` tab; if the reporter's Samsung A71 does not show the bottom tabs (`設定／輸入法／喜好設定／資料庫`), they should provide a full screenshot including the bottom edge so the project can check whether the settings page is clipped or the bottom navigation is not rendering.
 
-- Do not close #88 yet. The original Samsung settings-entry crash appears improved, but the reporter raised an adjacent upgrade/import/settings-page gap in the same retest response.
-- Do not ask for another generic logcat unless the reporter reports a new crash or Android/Samsung settings error. The current edited comment is about missing/changed UI and v5.2.4 settings import, not a captured crash.
-- Before any public answer, inspect the current Android UI/source or get maintainer confirmation on where v6.1.14 exposes database backup/restore and v5.2.4 data migration/import. If the current v6 setup intentionally moved or removed the legacy restore buttons, this may need a separate bug/enhancement follow-up rather than continuing the crash fix thread.
-- Recommended next action for Jeremy/jrywu: decide whether to answer in-place with exact v6.1.14 backup/restore/import steps, or split/open a focused follow-up for legacy v5.2.4 settings/database restore/import discoverability/compatibility.
-
+Current interpretation: v6.1.14 appears to have improved the crash/settings-entry path enough for the reporter to enter the app, but #88 should remain open until the reporter confirms whether the bottom navigation/import path is visible and usable. This is now a usability/discoverability or possible layout-rendering follow-up, distinct from the original `ActivityNotFoundException` path and from the v6.1.13 scrollbar crash. Do not ask for another generic logcat unless the reporter reports a new crash or Android/Samsung settings error.
