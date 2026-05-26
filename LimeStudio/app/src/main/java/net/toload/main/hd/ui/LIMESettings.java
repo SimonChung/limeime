@@ -187,7 +187,7 @@ public class LIMESettings extends AppCompatActivity implements LIMESettingsView 
 
         LIME.PACKAGE_NAME = getApplicationContext().getPackageName();
 
-        setupImController.setMainActivityView(this);
+        setupImController.setSettingsView(this);
 
         // Initialize managers
         progressManager = new ProgressManager(this);
