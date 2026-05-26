@@ -20,7 +20,7 @@ Relevant comments:
 
 This should be tracked as a bug, not just an enhancement, because the dark keyboard/emoji panel theme is already active but one visible control does not follow it. The bug is visual/theme parity for the emoji search field in dark mode.
 
-Current public labels should be `bug` + `Usability`.
+Final public labels: `bug` + `Usability`. Issue closed after the reporter-confirmed Android visual/theme fix and maintainer clarification of the adjacent emoji-search input question.
 
 ## Reproduction steps
 
@@ -78,7 +78,7 @@ Implemented on `master` in commit `a763ee80b199` / `a763ee80b199360140185066f94e
 4. The theme palette includes explicit light, dark, pink, tech-blue, fashion-purple, relax-green, and system-following branches.
 5. Rounded shape, padding, and search-field height are preserved.
 
-## Fix / APK follow-up status
+## Fix / closure status
 
 Android APK `LIMEHD2026-6.1.12.apk` contains the scoped emoji search-field theme fix from the latest emoji search/theme polish push.
 
@@ -97,10 +97,13 @@ Maintainer `jrywu` subsequently clarified in https://github.com/lime-ime/limeime
 
 The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
 
-## Follow-up questions
+## Closure decision
 
-- Decide whether #79 should be closed for the confirmed Android visual/theme bug after the maintainer's Chinese-emoji-search clarification, or kept open briefly for SmithCCho to confirm whether APK 6.1.12 works as described. Keep Samsung A16 / One UI 8.0 as reporter environment context, but do not treat it as the cause without new evidence.
-- iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
+Jeremy confirmed #79 can be closed. The original Android dark-mode emoji search-field visual bug is reporter-confirmed fixed in APK 6.1.12. The adjacent Chinese emoji-search input question was publicly clarified by maintainer `jrywu`; no further reporter evidence was provided that the original visual/theme fix failed.
+
+Closure comment: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910. Live issue is closed by `limeimetw` on 2026-05-26 after Jeremy confirmed it can be closed.
+
+Remaining scope: iOS manual/device verification can still be useful for release QA because Android APK confirmation does not verify iOS/TestFlight behavior, but it is not a reason to keep this Android reporter issue open.
 
 ## Verification plan
 
