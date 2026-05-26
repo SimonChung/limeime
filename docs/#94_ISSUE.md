@@ -12,6 +12,7 @@ Community reporter `ejmoog` reports that LIME Android backup consistently produc
 - Reporter environment: Samsung A52, Android 15, LIME 6.1.15
 - Area: database backup/export, Android Storage Access Framework / Downloads output, backup error propagation
 - Live state after assignment: open, labeled `bug` + `Usability`, assigned to `jrywu`
+- Public acknowledgement: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544340087
 - Related context: #85 tracked restore failure propagation and invalid/zero-byte restore validation. #94 is the opposite direction: backup creation/output can fail while the UI still reports success, leaving a 0-byte file.
 
 ## Reproduction Notes From Report
@@ -46,9 +47,9 @@ Community reporter `ejmoog` reports that LIME Android backup consistently produc
 
 ## Likely Root Cause
 
-The backup flow can create the destination document before the actual ZIP copy succeeds. If `DBServer.backupDatabase(Uri)` fails while preparing the ZIP or copying it to the output URI, the exception is swallowed inside `DBServer`, so `DbManagerFragment.performBackup(Uri)` still shows backup success. Because Android document providers and MediaStore may already have created the destination entry, the user can be left with a visible `limeBackup.zip` of 0 bytes.
+One strong hypothesis is that the backup flow can create the destination document before the actual ZIP copy succeeds. If `DBServer.backupDatabase(Uri)` fails while preparing the ZIP or copying it to the output URI, the exception is swallowed inside `DBServer`, so `DbManagerFragment.performBackup(Uri)` can still show backup success. In the `ACTION_CREATE_DOCUMENT` / SAF path, the user-selected document may already exist; in the MediaStore fallback path, the inserted Downloads row may already exist. Either path can leave a visible `limeBackup.zip` of 0 bytes if the write fails before bytes are copied.
 
-A code-backed likely trigger is the backup file list including `lime.db-journal` even when SQLite has no journal file at that moment. `DBServer.backupDatabase(Uri)` closes the database before zipping; in the normal rollback-journal path, a clean close commonly leaves no `lime.db-journal` file. `LIMEUtilities.addFileToZip(...)` attempts to open every listed item and throws on missing files, and its old missing-file skip guard is currently commented out. This can prevent writing a valid ZIP while still leaving the UI success path reachable because the exception is not propagated.
+One plausible trigger is the backup file list including `lime.db-journal` even when SQLite has no journal file at that moment. `DBServer.backupDatabase(Uri)` closes the database before zipping; in the normal rollback-journal path, a clean close commonly leaves no `lime.db-journal` file. `LIMEUtilities.addFileToZip(...)` attempts to open every listed item and throws on missing files, and its old missing-file skip guard is currently commented out. Other temp-ZIP or URI-output failures would create the same user-visible pattern because the backup exception is not propagated to the UI.
 
 ## Proposed Fix / Investigation Plan
 
@@ -68,7 +69,7 @@ A code-backed likely trigger is the backup file list including `lime.db-journal`
    - For `ACTION_CREATE_DOCUMENT`, show a clear failure status so the user knows the created file is unusable.
 5. Add regression coverage for successful backup and failure paths.
 
-## Follow-up Questions
+## Internal investigation notes
 
 Current report already provides enough to classify this as a plausible Android backup bug. If implementation cannot reproduce immediately, useful follow-up evidence would be:
 
