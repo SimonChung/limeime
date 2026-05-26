@@ -38,7 +38,7 @@ The most likely immediate trigger is the root `NestedScrollView` in `LimeStudio/
 
 Do not assume the renewed Samsung Settings entry-point failure was fixed by the v6.1.13 scrollbar APK. That second path needed its own targeted metadata change; PR #89 has now merged that source fix, and Android pre-release APK `LIMEHD2026-6.1.14.apk` / version `6.1.14` is expected to contain the PR #89 metadata fix based on commit `60f078f5744e` and `output-metadata.json`. Reporter partially validated v6.1.14 by entering the app; UI/import-path follow-up remains open.
 
-## New root cause candidate: v5.2.4 restore/import emoji FTS crash
+## New failure mode: v5.2.4 restore/import emoji FTS crash
 
 The reporter's `lime-crash-log.zip` from https://github.com/lime-ime/limeime/issues/88#issuecomment-4541068761 changes the current engineering follow-up. This is a LIME process crash, not an unrelated device log and not the old Samsung `MainActivity` metadata failure. Representative stack:
 
@@ -49,9 +49,9 @@ android.database.sqlite.SQLiteException: table emoji_fts already exists ...
 while compiling: CREATE VIRTUAL TABLE emoji_fts USING fts4(name_en, name_tw, tags_en, tags_tw, tokenize=unicode61 "remove_diacritics=1", content=emoji_data)
 ```
 
-The same `emoji_fts already exists` error also appears when Android tries to create `net.toload.main.hd.LIMEService`. Log context shows `LimeDB OnUpgrade() db old version = 101, new version = 104`, an attempted FTS5 creation failing with `no such module: fts5`, and then the FTS4 fallback failing because `emoji_fts` already exists. Source inspection points to `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` `createEmojiFtsTable()`: it tries `CREATE VIRTUAL TABLE emoji_fts USING fts5(...)`, catches `SQLiteException`, and immediately tries `CREATE VIRTUAL TABLE emoji_fts USING fts4(...)` for the same name. On this Samsung/restore-upgrade path, the failed/partial FTS5 attempt or prior restored schema leaves the table name present, so the fallback is not idempotent.
+The same `emoji_fts already exists` error also appears when Android tries to create `net.toload.main.hd.LIMEService`. Log context shows `LimeDB OnUpgrade() db old version = 101, new version = 104`, an attempted FTS5 creation failing with `no such module: fts5`, and then the FTS4 fallback failing because `emoji_fts` already exists. Source inspection points to `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` `createEmojiFtsTable()`: it tries `CREATE VIRTUAL TABLE emoji_fts USING fts5(...)`, catches `SQLiteException`, and immediately tries `CREATE VIRTUAL TABLE emoji_fts USING fts4(...)` for the same name. On this Samsung/restore-upgrade path, the log proves the fallback is not idempotent when `emoji_fts` is already present. Because the FTS5 error is `no such module: fts5`, the FTS5 statement likely fails before creating an FTS5 table; the more plausible evidence-based path is that `emoji_fts` already existed from a previous FTS4 fallback, restored legacy schema, or earlier upgrade attempt, and the fallback tries to create it again.
 
-Current fix direction: make emoji FTS table creation robust/idempotent across FTS5-unavailable devices and restored legacy databases, e.g. re-check/drop the partial `emoji_fts` virtual table/shadow state before fallback or otherwise use a safe migration path, then retest v5.2.4 restore/import plus app/service startup.
+Current fix direction: make emoji FTS table creation robust/idempotent across FTS5-unavailable devices and restored legacy databases, e.g. detect an existing `emoji_fts` before the FTS4 fallback, use a safe `IF NOT EXISTS`/drop-and-recreate migration where appropriate, or otherwise avoid re-creating an already-present virtual table. Retest v5.2.4 restore/import plus app/service startup.
 
 ## Fix implemented
 
