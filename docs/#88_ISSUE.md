@@ -10,9 +10,9 @@ Local reproduction on 2026-05-26: clean install of `LimeStudio/app/release/LIMEH
 
 ## Root cause
 
-Initial locally reproduced v6.1.12 root cause: the LIME settings screen renders a `NestedScrollView` with platform scrollbars enabled on Samsung Android 13 / One UI. On this device family, Android's framework scrollbar draw path can hold a null `ScrollBarDrawable`; when the first settings page is drawn, framework code calls `ScrollBarDrawable.mutate()` and crashes before the UI can remain open. The same APK does not crash on a Google API 33 emulator, so this appears device/vendor-specific rather than Android 13/API 33 generic.
+Confirmed app-level root cause: the LIME settings screen renders a `NestedScrollView` with platform scrollbars enabled on Samsung Android 13 / One UI. On this device family, Android's framework scrollbar draw path can hold a null `ScrollBarDrawable`; when the first settings page is drawn, framework code calls `ScrollBarDrawable.mutate()` and crashes before the UI can remain open. The same APK does not crash on a Google API 33 emulator, so this appears device/vendor-specific rather than Android 13/API 33 generic.
 
-For the locally reproduced v6.1.12 `SM-A325N` crash, the failure was a rendering-time crash in the settings UI, not a first-run database creation, migration, bundled table, or emoji initialization crash. The fatal exception is:
+The crash is a rendering-time crash in the settings UI, not a first-run database creation, migration, bundled table, or emoji initialization crash. The fatal exception is:
 
 ```text
 java.lang.NullPointerException: Attempt to invoke virtual method
@@ -86,19 +86,18 @@ Already answered / added publicly:
 - `ejmoog` reported the same issue after uninstalling and reinstalling v6.1.12; their in-place upgrade over an existing LIME 6 install can still work.
 - A local v6.1.12 crash stack is available from Samsung `SM-A325N` API 33.
 - `peter8777555` reported that v6.1.13 still crashes/cannot be opened on Samsung A71 4G / Android 13 after the install/update flow shown in screenshots. The screenshots show the v6.1.13 install/update flow followed by 「萊姆輸入法2026」屢次停止運作 and Android Settings displaying 「無法開啟『萊姆輸入法2026』的設定」.
-- A first uploaded `lime88_crash.zip` did not contain a LIME crash: the only `FATAL EXCEPTION` was unrelated package `de.android.telnet`.
-- A second uploaded `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540030225 contains no `AndroidRuntime`/`FATAL EXCEPTION`, but it does show Samsung Settings failing twice to open the IME settings activity because it tries `net.toload.main.hd2026/net.toload.main.hd.ui.MainActivity`, which is not declared in the app manifest. Automation acknowledged this useful log in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540060560 and told the reporter no more same-log uploads are needed until a newer fixed APK is available.
-- `peter8777555` later added that LIME v5.2.4 still works on the same device but lacks microphone input; automation replied in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540082786 that PR #89 targets the newer IME settings-entry failure and that no more duplicate logs are needed until a new APK is available.
+- Reporter uploaded `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4539986307. It is a broad device log, not a filtered LIME-only crash dump: the only `FATAL EXCEPTION` is unrelated package `de.android.telnet`, not `net.toload.main.hd2026`, and there are no `ScrollBarDrawable` / `NestedScrollView` frames. The LIME-relevant evidence in the same log is Samsung Settings failing to open the IME settings activity because it tries `net.toload.main.hd2026/net.toload.main.hd.ui.MainActivity`, which is not declared in the app manifest.
 
 Still useful:
 
-1. Confirm whether the IME keyboard itself also crashes when enabled/switched to after a clean install, or whether the observed failure is limited to opening settings.
-2. Re-run #64 visual checks: on the four top-level phone tabs, overflowing content must still show a visible scrollbar and the last row must scroll fully above the bottom navigation.
-3. Smoke-test a Google API 33 emulator with the fixed build to ensure settings pages still scroll correctly and the custom scrollbar behavior does not regress non-Samsung Android 13.
+1. Fix/verify the IME settings activity metadata: the reporter's uploaded v6.1.13 log shows Samsung Settings repeatedly tries to launch `net.toload.main.hd2026/net.toload.main.hd.ui.MainActivity`, while current `AndroidManifest.xml` declares `.ui.LIMESettings` and `res/xml/method.xml` still advertises the stale `android:settingsActivity="net.toload.main.hd.ui.MainActivity"`.
+2. Confirm whether the IME keyboard itself also crashes when enabled/switched to after a clean install, or whether the observed failure is limited to Samsung Settings opening the IME settings activity.
+3. Re-run #64 visual checks: on the four top-level phone tabs, overflowing content must still show a visible scrollbar and the last row must scroll fully above the bottom navigation.
+4. Smoke-test a Google API 33 emulator with the fixed build to ensure settings pages still scroll correctly and the custom scrollbar behavior does not regress non-Samsung Android 13.
 
 ## New evidence: Samsung IME settings activity metadata
 
-The reporter's second `lime88_crash.zip` (comment https://github.com/lime-ime/limeime/issues/88#issuecomment-4540030225) changes the next likely fix area. It does **not** show a LIME process `FATAL EXCEPTION`; instead Samsung Settings logs:
+The reporter's `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4539986307 changes the next likely fix area. It does **not** show a LIME process `FATAL EXCEPTION`; instead Samsung Settings logs repeated IME settings launch failures:
 
 ```text
 D/SecInputMethodPreference: IME's Settings Activity Not Found
@@ -136,8 +135,6 @@ Because GitHub auto-closed this community issue from the `Fix #88` commit before
 
 This means the v6.1.13 scrollbar fix was not sufficient for the reporter's device/path, even though it passed local Samsung `SM-A325N` Android 13 verification. Keep the issue open and do not close from the fix commit or APK alone. Automation kept a single targeted logcat collection request at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539952465 after duplicate concurrent follow-up comments were removed, then added a mobile-logcat alternative at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539984855.
 
-Reporter `peter8777555` uploaded `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4539986307. Inspection of `lime88_crash.txt` found one `FATAL EXCEPTION`, but it belongs to unrelated package `de.android.telnet` (`PendingIntent` mutability error), not `net.toload.main.hd2026`; there are no `ScrollBarDrawable` or `NestedScrollView` entries in that uploaded log. Automation replied at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539991114 asking for a fresh filtered log that includes `Process: net.toload.main.hd2026`.
-
-Reporter then uploaded a second `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540030225. This log contains no `AndroidRuntime`/`FATAL EXCEPTION`; instead it shows Samsung Settings trying to start `net.toload.main.hd2026/net.toload.main.hd.ui.MainActivity` and receiving `ActivityNotFoundException` twice. Source inspection confirms `method.xml` points `android:settingsActivity` to `net.toload.main.hd.ui.MainActivity`, while the manifest declares `.ui.LIMESettings` and `.ui.LIMEPreference` but not `.ui.MainActivity`. Automation acknowledged the useful log in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540060560 and told the reporter no more same-log uploads are needed until a newer fixed APK is available. Current next debugging/fix area: correct the IME settings activity metadata and verify the Android/Samsung input-method settings launch path. Hermes opened PR #89 (https://github.com/lime-ime/limeime/pull/89) with the targeted metadata change; build/device verification and a newer APK are still pending. Do not ask for another APK retest until a newer targeted fix/build exists.
+Reporter `peter8777555` uploaded `lime88_crash.zip` in https://github.com/lime-ime/limeime/issues/88#issuecomment-4539986307. Inspection of `lime88_crash.txt` found one `FATAL EXCEPTION`, but it belongs to unrelated package `de.android.telnet` (`PendingIntent` mutability error), not `net.toload.main.hd2026`; there are no `ScrollBarDrawable` or `NestedScrollView` entries in that uploaded log. The same log shows Samsung Settings trying to start `net.toload.main.hd2026/net.toload.main.hd.ui.MainActivity` and receiving `ActivityNotFoundException` multiple times. Source inspection confirms `method.xml` points `android:settingsActivity` to `net.toload.main.hd.ui.MainActivity`, while the manifest declares `.ui.LIMESettings` and `.ui.LIMEPreference` but not `.ui.MainActivity`. Current next debugging/fix area: correct the IME settings activity metadata and verify the Android/Samsung input-method settings launch path. Do not ask for another APK retest until a newer targeted fix/build exists.
 
 Still useful before final closure: #64 visual regression checks for overflowing settings pages, but that regression check should not block the renewed crash investigation.
