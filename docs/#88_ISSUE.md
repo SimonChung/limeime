@@ -49,9 +49,19 @@ android.database.sqlite.SQLiteException: table emoji_fts already exists ...
 while compiling: CREATE VIRTUAL TABLE emoji_fts USING fts4(name_en, name_tw, tags_en, tags_tw, tokenize=unicode61 "remove_diacritics=1", content=emoji_data)
 ```
 
-The same `emoji_fts already exists` error also appears when Android tries to create `net.toload.main.hd.LIMEService`. Log context shows `LimeDB OnUpgrade() db old version = 101, new version = 104`, an attempted FTS5 creation failing with `no such module: fts5`, and then the FTS4 fallback failing because `emoji_fts` already exists. Source inspection points to `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` `createEmojiFtsTable()`: it tries `CREATE VIRTUAL TABLE emoji_fts USING fts5(...)`, catches `SQLiteException`, and immediately tries `CREATE VIRTUAL TABLE emoji_fts USING fts4(...)` for the same name. On this Samsung/restore-upgrade path, the log proves the fallback is not idempotent when `emoji_fts` is already present. Because the FTS5 error is `no such module: fts5`, the FTS5 statement likely fails before creating an FTS5 table; the more plausible evidence-based path is that `emoji_fts` already existed from a previous FTS4 fallback, restored legacy schema, or earlier upgrade attempt, and the fallback tries to create it again.
+The same `emoji_fts already exists` error also appears when Android tries to create `net.toload.main.hd.LIMEService`. Log context shows `LimeDB OnUpgrade() db old version = 101, new version = 104`, an attempted FTS5 creation failing with `no such module: fts5`, and then the FTS4 fallback failing because `emoji_fts` already exists. Source inspection points to `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` `createEmojiFtsTable()`: it tries `CREATE VIRTUAL TABLE emoji_fts USING fts5(...)`, catches `SQLiteException`, and immediately tries `CREATE VIRTUAL TABLE emoji_fts USING fts4(...)` for the same name. Local Pixel 6 API 33 instrumentation reproduced the same behavior: the failed FTS5 virtual-table creation leaves an unloadable `emoji_fts` schema artifact, and even a normal `DROP TABLE IF EXISTS emoji_fts` can fail with `no such module: fts5`.
 
-Current fix direction: make emoji FTS table creation robust/idempotent across FTS5-unavailable devices and restored legacy databases, e.g. detect an existing `emoji_fts` before the FTS4 fallback, use a safe `IF NOT EXISTS`/drop-and-recreate migration where appropriate, or otherwise avoid re-creating an already-present virtual table. Retest v5.2.4 restore/import plus app/service startup.
+Implemented local fix: when FTS5 creation fails, `createEmojiFtsTable()` now removes the partial FTS5 `emoji_fts` schema before creating the FTS4 fallback. It first attempts a normal `DROP TABLE IF EXISTS`; if Android SQLite rejects the drop because the saved virtual table references unavailable FTS5, it uses a narrow `PRAGMA writable_schema` cleanup for `emoji_fts` and its shadow-table names, then creates the FTS4 table. The restore failure status strings were also fixed from malformed `%1\` placeholders to `%1$s`, preventing the UI from throwing `UnknownFormatConversionException` while reporting restore errors.
+
+Verification on Pixel 6 API 33 after the fix:
+
+```text
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=net.toload.main.hd.LimeDB103IntegrationTest
+```
+
+Result: 10 tests passed, including a new `restoreVersion101BackupRunsFullUpgradeAndEmojiRefresh` regression case that exercises the reporter's `old version = 101, new version = 104` path.
+
+FTS5 compatibility note: there is no Android platform API level that should be treated as a guaranteed `android.database.sqlite` FTS5 boundary. FTS5 is controlled by SQLite compile-time options, not by the Android SDK level. Current AOSP SQLite platform build flags include FTS3/FTS4 support, but do not enable `SQLITE_ENABLE_FTS5`, and Pixel 6 API 33 testing confirms `CREATE VIRTUAL TABLE ... USING fts5` fails with `no such module: fts5`. Therefore LIME must keep runtime FTS5 detection and a robust FTS4 fallback for platform SQLite. Using FTS5 reliably would require a bundled SQLite implementation/dependency rather than an Android API-level check.
 
 ## Fix implemented
 
@@ -109,7 +119,7 @@ Already answered / added publicly:
 
 Still useful:
 
-1. Implement and verify a focused fix for the v5.2.4 restore/import DB-upgrade crash where `createEmojiFtsTable()` falls back from FTS5 to FTS4 and hits `table emoji_fts already exists`. Retest the reporter path: restore/import legacy data, then reopen settings and ensure `LIMEService` starts without `AndroidRuntime` crashes.
+1. Retest the reporter path on a release APK: restore/import legacy v5.2.4 data, then reopen settings and ensure `LIMEService` starts without `AndroidRuntime` crashes.
 2. Confirm whether the IME keyboard itself also crashes when enabled/switched to after a clean install, or whether the observed failure is limited to Samsung Settings opening the IME settings activity.
 3. Re-run #64 visual checks: on the four top-level phone tabs, overflowing content must still show a visible scrollbar and the last row must scroll fully above the bottom navigation.
 4. Smoke-test a Google API 33 emulator with the fixed build to ensure settings pages still scroll correctly and the custom scrollbar behavior does not regress non-Samsung Android 13.

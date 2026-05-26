@@ -176,6 +176,20 @@ public class LimeDB103IntegrationTest {
     }
 
     @Test
+    public void restoreVersion101BackupRunsFullUpgradeAndEmojiRefresh() throws Exception {
+        File oldDb = createSeedVariant("lime_restore_101_no_emoji.db", 101, true, false);
+        File restoreZip = new File(appContext.getCacheDir(), "lime_restore_101_no_emoji.zip");
+        createDatabaseRestoreZip(oldDb, restoreZip);
+
+        DBServer.getInstance(appContext).restoreDatabase(restoreZip.getPath());
+
+        assertEquals(104, queryUserVersion());
+        assertCj4SchemaExists();
+        assertEmojiSchemaExists();
+        assertEmojiDataLoaded();
+    }
+
+    @Test
     public void restoreBareLimeDbBackupMovesDatabaseIntoAndroidDatabaseFolder() throws Exception {
         File oldDb = createSeedVariant("lime_restore_bare_102_no_emoji.db", 102, true, false);
         File restoreZip = new File(appContext.getCacheDir(), "lime_restore_bare_102_no_emoji.zip");

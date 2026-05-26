@@ -5205,10 +5205,33 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     "tokenize='unicode61 remove_diacritics 1')");
         } catch (SQLiteException fts5Error) {
             Log.w(TAG, "FTS5 unavailable for emoji search; falling back to FTS4", fts5Error);
+            dropEmojiFtsTableAfterFailedCreate(targetDb);
             targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts4(" +
                     "name_en, name_tw, tags_en, tags_tw, " +
                     "tokenize=unicode61 \"remove_diacritics=1\", " +
                     "content=" + EMOJI_TABLE_DATA + ")");
+        }
+    }
+
+    private static void dropEmojiFtsTableAfterFailedCreate(SQLiteDatabase targetDb) {
+        try {
+            targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_FTS);
+            return;
+        } catch (SQLiteException dropError) {
+            String message = dropError.getMessage();
+            if (message == null || !message.contains("no such module: fts5")) {
+                throw dropError;
+            }
+            Log.w(TAG, "Removing partial FTS5 emoji table schema before FTS4 fallback", dropError);
+        }
+
+        targetDb.execSQL("PRAGMA writable_schema=ON");
+        try {
+            targetDb.delete("sqlite_master",
+                    "name = ? OR tbl_name = ? OR name LIKE ?",
+                    new String[]{EMOJI_TABLE_FTS, EMOJI_TABLE_FTS, EMOJI_TABLE_FTS + "_%"});
+        } finally {
+            targetDb.execSQL("PRAGMA writable_schema=OFF");
         }
     }
 

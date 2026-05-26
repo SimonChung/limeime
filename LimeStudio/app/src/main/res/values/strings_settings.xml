@@ -825,8 +825,8 @@
     <string name="db_status_backup_ok">✅ 備份完成</string>
     <string name="db_status_restore_ok">✅ 還原完成</string>
     <string name="db_status_default_ok">✅ 已還原預設資料庫</string>
-    <string name="db_status_backup_fail">❌ 備份失敗：%1\</string>
-    <string name="db_status_restore_fail">❌ 還原失敗：%1\</string>
+    <string name="db_status_backup_fail">❌ 備份失敗：%1$s</string>
+    <string name="db_status_restore_fail">❌ 還原失敗：%1$s</string>
     <string name="im_reverse_lookup_screen_title">字根反查設定</string>
     <string name="im_reverse_lookup_summary">輸入字根無候選字時，以其他輸入法字根標注說明。</string>
     <string name="pref_section_appearance">鍵盤外觀</string>
