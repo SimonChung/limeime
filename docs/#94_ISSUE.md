@@ -25,6 +25,7 @@ Live GitHub state checked during the 2026-05-26 comment follow-up:
 - Diagnostic request by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545079892
 - Reporter environment follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544306916
 - New reporter follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545397998
+- Latest developer/public follow-up by `limeimetw` after that reporter follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059
 
 The latest reporter follow-up answers part of the diagnostic request:
 
@@ -108,6 +109,8 @@ File: `LimeStudio/app/src/main/java/net/toload/main/hd/DBServer.java`
 - Second local destination: reporter says saving to `document/tmp` still does not work; screenshot evidence should be used only as file/path evidence, not as a fully parsed log or root cause.
 
 ### Still needed from reporter, if feasible
+
+Items 1, 3, and 4 below were already asked publicly in https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059; item 2 has not been asked yet. Do not post another duplicate diagnostic ping before a reporter response or a targeted fix/APK.
 
 1. Confirm whether old `limeBackup*.zip` files were deleted before the latest attempts.
 2. Check the newly-created backup file in a second file viewer, if available, to rule out Samsung My Files metadata/cache display mismatch.
