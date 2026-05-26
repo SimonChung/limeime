@@ -141,7 +141,7 @@ Recommended cleanup after the functional metadata fix:
 
 - Reproduce on Android 13 if possible, preferably with a Samsung/One UI environment or a comparable Android 13 emulator/device.
 - Historical context: `ejmoog` reported that clean reinstall of v6.1.12 reproduced the crash while in-place upgrade over an existing LIME 6 install could work; the original reporter later said both upgrade and reinstall paths still fail on v6.1.13.
-- Do not ask for more generic v6.1.13 logs; the current second log was actionable enough for PR #89. An APK expected to contain PR #89 now exists as `LIMEHD2026-6.1.14.apk`, and the current wait condition is reporter validation of that build.
+- Do not ask for more generic v6.1.13 logs; the current second log was actionable enough for PR #89. An APK expected to contain PR #89 now exists as `LIMEHD2026-6.1.14.apk`; the reporter has responded positively for entering the app, and the current wait condition is clarification of bottom-nav/import visibility.
 - Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
 - For the newly captured Samsung Settings path, verify APK `LIMEHD2026-6.1.14.apk` so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
 - Verify launching LIME from Samsung input-method settings after install/upgrade, because this path is different from launcher/`monkey -p net.toload.main.hd2026 1` launch.
@@ -173,7 +173,7 @@ Commit `60f078f5744e` (`Fix #88 Samsung settings entry and release APK`) built A
 
 No local Samsung `SM-A325N` install/launch verification of v6.1.14 has been recorded yet. Also, the reporter's v6.1.13 screenshot crash dialog was not matched to a captured LIME `AndroidRuntime` stack; the actionable log evidence specifically identified the Samsung Settings `ActivityNotFoundException` path. Therefore v6.1.14 should be treated as a targeted settings-entry retest, not proof that every screenshot-only crash symptom is resolved.
 
-GitHub auto-closed #88 from the commit that built the PR-#89-containing APK, but this is a community-reported issue and the reporter has not yet confirmed the new APK on the original Samsung A71 / Android 13 device. Automation reopened the issue and posted a scoped v6.1.14 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4540597661.
+At the time of this webhook update, GitHub had auto-closed #88 from the commit that built the PR-#89-containing APK, but this was a community-reported issue and the reporter had not yet confirmed the new APK on the original Samsung A71 / Android 13 device. Automation reopened the issue and posted a scoped v6.1.14 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4540597661.
 
 Superseded current state from the retest request: #88 was reopened/pending reporter confirmation for APK `LIMEHD2026-6.1.14.apk` (https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.14.apk). The reporter has since responded with 「可以了」 plus a new import/settings UI concern; see the reporter-response section below for the live state. #64 visual regression checks and non-Samsung emulator smoke tests remain internal QA, not part of the reporter ask. Do not ask for more generic v6.1.13 logs; if a future v6.1.14 failure is reported, request the exact operation path, screenshots, and preferably a filtered `net.toload.main.hd2026` logcat captured during the failing launch path rather than another broad device-wide dump.
 
