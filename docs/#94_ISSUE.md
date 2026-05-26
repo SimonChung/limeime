@@ -11,7 +11,7 @@ Community reporter `ejmoog` reports that LIME Android backup consistently produc
 - Platform: Android
 - Reporter environment: Samsung A52, Android 15, LIME 6.1.15
 - Area: database backup/export, Android Storage Access Framework / Downloads output, backup error propagation
-- Live state at triage: open, no labels, no assignee
+- Live state after assignment: open, labeled `bug` + `Usability`, assigned to `jrywu`
 - Related context: #85 tracked restore failure propagation and invalid/zero-byte restore validation. #94 is the opposite direction: backup creation/output can fail while the UI still reports success, leaving a 0-byte file.
 
 ## Reproduction Notes From Report
