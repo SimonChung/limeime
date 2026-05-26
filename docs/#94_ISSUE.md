@@ -1,4 +1,4 @@
-# Issue #94: Android backup file shown as 0 B — diagnostic follow-up
+# Issue #94: Android backup file shown as 0 B — log-confirmed missing journal failure
 
 ## Current confirmed facts
 
@@ -15,184 +15,126 @@ Original issue evidence:
 - Symptom: `limeBackup.zip` exists and is displayed as `0 B` in screenshots
 - Reporter says, in hedged wording, that the problem appears to have existed for a long time
 
-Live GitHub state checked during the 2026-05-26 comment follow-up:
+Live GitHub state checked during the 2026-05-27 comment follow-up:
 
 - Issue: https://github.com/lime-ime/limeime/issues/94
 - State: open
 - Labels: `bug`, `Usability`
 - Assignee: `jrywu`
-- First developer/public acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544340087
-- Diagnostic request by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545079892
-- Reporter environment follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544306916
-- New reporter follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545397998
-- Latest developer/public follow-up by `limeimetw` after that reporter follow-up: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059
+- Initial public acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544340087
+- Diagnostic clarification/request by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545079892
+- Scoped follow-up asking for stale-file confirmation and logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059
+- Reporter confirmed old backup files were deleted and attached logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4549686546
 
-The latest reporter follow-up answers part of the diagnostic request:
+Reporter diagnostics now answer the earlier questions:
 
 1. Phone storage is not close to full; screenshot says there is enough storage.
-2. Reporter says saving to another local destination (`document/tmp`) still did not work, with a screenshot attached. The exact file details still need to be recorded from that screenshot/comment path before treating the destination test as fully characterized.
+2. Saving to another local destination (`document/tmp`) still produced a 0 B backup file.
+3. Old `limeBackup*.zip` files were deleted before the latest attempt.
+4. Logcat captured during backup contains an actionable LIME stack trace.
+
+## Logcat result from 2026-05-27
+
+The attached `lime_backup.txt` contains the relevant failure at `05-27 06:39:32.561`:
+
+```text
+E/DBServer: Error backing up database
+E/DBServer: java.io.FileNotFoundException: /data/user/0/net.toload.main.hd2026/databases/lime.db-journal: open failed: ENOENT (No such file or directory)
+E/DBServer:     at net.toload.main.hd.global.LIMEUtilities.addFileToZip(LIMEUtilities.java:185)
+E/DBServer:     at net.toload.main.hd.global.LIMEUtilities.zip(LIMEUtilities.java:154)
+E/DBServer:     at net.toload.main.hd.DBServer.backupDatabase(DBServer.java:438)
+E/DBServer:     at net.toload.main.hd.ui.controller.SetupImController.performBackup(SetupImController.java:184)
+E/DBServer:     at net.toload.main.hd.ui.view.DbManagerFragment.performBackup(DbManagerFragment.java:214)
+```
+
+This confirms a concrete app-side failure path for the reporter's 0 B backup:
+
+- `DBServer.backupDatabase(Uri)` always adds `lime.db-journal` to the backup file list.
+- On the reporter's device, `lime.db-journal` does not exist at backup time.
+- `LIMEUtilities.addFileToZip(...)` throws `FileNotFoundException` instead of skipping the missing optional journal file.
+- `DBServer.backupDatabase(Uri)` catches the exception and logs/shows an error notification, but it does not rethrow to `SetupImController` / `DbManagerFragment`.
+- Because no exception reaches `DbManagerFragment.performBackup(...)`, the UI can still set the status to backup success even though ZIP creation failed, leaving the selected output file at 0 B.
+
+The log also contains many unrelated Samsung/system/other-app messages. Do not treat those as LIME root cause; the actionable LIME stack is the `DBServer` / `lime.db-journal` failure above.
 
 ## Current interpretation
 
-There is still **no fully confirmed root cause**. However, the latest reporter evidence makes these explanations less likely than before:
+Root cause for this reproduced path is now sufficiently identified:
 
-- phone storage full / no free space
-- a problem limited only to the original Downloads folder, assuming the `document/tmp` screenshot indeed shows a newly-created 0 B backup file
+1. The backup ZIP generation treats `lime.db-journal` as required even though SQLite journal files can be absent depending on database state.
+2. The backup failure is swallowed in `DBServer.backupDatabase(Uri)`, allowing UI success status after a failed backup.
 
-The report now more strongly points toward one of these remaining classes, while still requiring logs or instrumentation:
+This does **not** mean the entire backup implementation is generally broken. Existing tests and #88 still show backup/restore can work in other paths. #94 is specifically a missing-journal/error-propagation bug in the Android backup path.
 
-- app-side backup ZIP generation or copy-to-output failure
-- error propagation problem where backup failure is swallowed and UI still reports success
-- device/storage-provider behavior that affects multiple selected local destinations
-- stale/duplicate-file confusion if old `limeBackup*.zip` files were not deleted before the new attempt
-- file-manager metadata/cache mismatch if another viewer would report a non-zero file size
-
-Do not yet claim any single class as proven without logs or instrumentation.
-
-## Why existing tests do not settle #94
-
-Existing instrumentation tests are useful, but they do not answer the reporter’s exact device/destination path.
-
-Relevant tests:
-
-- `IntegrationTestBackupRestore.test_5_6_9_BackupRestoreDatabasePair`
-- `IntegrationTestBackupRestore.test_5_6_10_BackupRestoreDatabasePairRestoresPreferenceCompatibilityManifest`
-- `DBServerTest.testDBServerBackupDatabaseAndRestoreWithDataConsistency`
-
-What they show:
-
-- The backup/restore implementation can create a valid non-empty backup in tested paths.
-- Full backup/restore can preserve database content and preference manifest in tested paths.
-
-What they do **not** prove:
-
-- They do not prove Samsung A52 / Android 15 works through the reporter’s selected storage provider(s).
-- They do not prove `ACTION_CREATE_DOCUMENT` writes to the same file the reporter later inspected.
-- They do not prove MediaStore Downloads fallback works on the reporter’s device.
-- They do not rule out provider error, permission issue, stale 0 B file, duplicate-file confusion, or a low-level app exception hidden from UI.
-
-Correct conclusion for now:
-
-> The backup feature is known to work in existing test paths, and #88 also gives live counter-evidence that backup/restore can work on v6.1.15 for another reporter. #94 now has stronger reporter evidence that the symptom persists despite enough storage and an attempted second local destination. Next diagnostics should focus on logcat, file-size/path verification, a second file viewer if possible, and app-side byte-count/error propagation.
-
-## Code paths to keep in mind
-
-### UI backup flow
-
-File: `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/DbManagerFragment.java`
-
-- `backupLocalDrive()` starts backup flow.
-- Primary path uses `Intent.ACTION_CREATE_DOCUMENT` with title `limeBackup.zip` and MIME type `application/zip`.
-- If no document-create handler exists, fallback uses MediaStore Downloads.
-- `performBackup(Uri)` shows success only if no exception reaches the fragment.
-
-### Controller flow
-
-File: `LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/SetupImController.java`
-
-- `performBackup(Uri)` delegates to `dbServer.backupDatabase(uri)`.
-- If `DBServer` throws, controller rethrows to UI.
+## Code paths to fix
 
 ### Backup implementation
 
 File: `LimeStudio/app/src/main/java/net/toload/main/hd/DBServer.java`
 
-- `backupDatabase(Uri)` creates a temp ZIP, then copies bytes to the selected output `Uri`.
-- It catches broad exceptions, logs/shows notification, and may not rethrow from the catch block.
-- This means a low-level failure can potentially be hidden from the UI; with the new reporter evidence, this should be tested explicitly, but it is not yet proven as the natural cause.
+Relevant current code:
 
-## Diagnostic status and next tests
+- `backupDatabase(Uri)` builds a backup list containing:
+  - `lime.db`
+  - `lime.db-journal`
+  - shared prefs backup
+  - preference manifest
+- It calls `LIMEUtilities.zip(...)` at about line 438.
+- It catches broad exceptions at about lines 450-452, logs `Error backing up database`, shows an error notification, and currently does not rethrow.
 
-### Completed or partly completed by reporter
+Fix requirements:
 
-- Storage space check: reporter says storage is sufficient.
-- Second local destination: reporter says saving to `document/tmp` still does not work; screenshot evidence should be used only as file/path evidence, not as a fully parsed log or root cause.
+- Treat `lime.db-journal` as optional, or make the ZIP helper skip explicitly optional missing files.
+- Preserve required-file failures for `lime.db` and preference/manifest files unless separately determined safe.
+- Ensure backup failures propagate to `DbManagerFragment.performBackup(...)` so the UI shows failure rather than `db_status_backup_ok`.
+- Consider logging temp ZIP size and copied byte count, and fail visibly if copied bytes are zero.
 
-### Still needed from reporter, if feasible
+### ZIP helper
 
-Items 1, 3, and 4 below were already asked publicly in https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059; item 2 has not been asked yet. Do not post another duplicate diagnostic ping before a reporter response or a targeted fix/APK.
+File: `LimeStudio/app/src/main/java/net/toload/main/hd/global/LIMEUtilities.java`
 
-1. Confirm whether old `limeBackup*.zip` files were deleted before the latest attempts.
-2. Check the newly-created backup file in a second file viewer, if available, to rule out Samsung My Files metadata/cache display mismatch.
-3. Provide file details for the newly-created 0 B file: exact path, modified time, and size.
-4. If possible, capture logcat around one backup attempt.
+Relevant current code:
 
-Suggested adb commands:
-
-```bash
-adb logcat -c
-adb logcat -v time DBServer:D DbManagerFragment:D LIMEUtilities:D AndroidRuntime:E '*:S'
-```
-
-Then run backup once and paste the relevant lines. If filtered logs are too sparse:
-
-```bash
-adb logcat -d -v time | grep -iE 'DBServer|DbManagerFragment|LIMEUtilities|backup|zip|openOutputStream|MediaStore|Exception|error|No space left'
-```
-
-Expected interpretation:
-
-- `Error backing up database`: app/IO path failed.
-- `openOutputStream` / provider exception: destination provider or permission issue.
-- `No space left on device`: storage full despite UI report.
-- Missing source file exception: source ZIP-list robustness issue.
-- No relevant errors but file is 0 B: need deeper instrumentation around temp ZIP size and copied byte count.
-
-## Developer-side diagnostic tests
-
-### Test 1: Forced output failure
-
-This does not prove the reporter’s natural root cause, but tests whether UI can falsely report success after a write failure.
-
-Temporary local debug patch in `DBServer.backupDatabase(Uri)` after opening output stream:
+- `addFileToZip(...)` has an old commented-out missing-file skip:
 
 ```java
-inputStream = new FileInputStream(tempZip);
-outputStream = appContext.getContentResolver().openOutputStream(uri);
-
-// TEMP #94 diagnostic: simulate output provider failure after destination exists.
-throw new IOException("Forced #94 output failure after Uri opened");
+//if( item==null || !item.exists()) return; //skip if the file is not exist
 ```
 
-Expected interpretation:
+Fix requirements:
 
-- If UI still shows success and a 0 B file exists, error propagation is a real app-side robustness bug.
-- This still does not prove the reporter hit this path naturally; it validates one possible failure class.
+- Do not blindly skip every missing file if that would hide required backup corruption.
+- Prefer an explicit optional-file handling path for `lime.db-journal`, or pass structured backup entries with required/optional metadata.
 
-### Test 2: Add byte-count instrumentation
+### UI flow
 
-Create a debug APK that logs:
+File: `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/DbManagerFragment.java`
 
-- temp ZIP path and `tempZip.length()` before copy
-- selected output `Uri`
-- total bytes copied to output stream
-- whether output stream closed successfully
+Relevant current code:
 
-Expected interpretation:
+- `performBackup(Uri)` calls `setupImController.performBackup(uri)` and then sets `db_status_backup_ok` if no exception is thrown.
 
-- `tempZip.length() > 0`, copied bytes `0`: output provider/write problem.
-- `tempZip.length() == 0`: backup ZIP generation problem.
-- exception before temp ZIP: source/preparation problem.
-- copied bytes > 0 but user sees 0 B: wrong file, stale file, provider metadata/cache issue, or file-manager issue.
+Fix requirements:
 
-### Test 3: Missing journal coverage
+- With DBServer rethrowing failures, this existing UI catch path can display `db_status_backup_fail`.
+- Add/adjust tests so a backup failure does not report success.
 
-Force/delete `lime.db-journal` before backup or add a unit/instrumentation test that excludes it.
+## Verification plan
 
-Expected interpretation:
+Developer-side checks for the fix:
 
-- If backup fails only when journal is absent: optional journal robustness bug.
-- If backup succeeds without journal: rule this out.
+1. Add or update a backup test where `lime.db-journal` is absent and verify backup still creates a non-empty ZIP containing the required DB/preferences/manifest.
+2. Add or update a failure-propagation test showing a genuine backup/ZIP/copy failure reaches the UI/controller instead of reporting success.
+3. Run Android compile checks:
+   - `cd LimeStudio && ./gradlew :app:compileDebugJavaWithJavac`
+   - `cd LimeStudio && ./gradlew :app:compileDebugAndroidTestJavaWithJavac`
+4. After a fixed APK is built, ask the reporter to retest only that scoped behavior:
+   - delete old `limeBackup*.zip`
+   - create a new backup
+   - confirm the file is non-zero and can restore
 
-## Safe fix policy before full root-cause proof
+## Public follow-up status
 
-Given the latest reporter evidence, it is reasonable to implement defensive backup-path improvements while keeping root-cause language scoped:
+A concise public reply was posted after the logcat attachment to confirm that the log identified the likely failure path and that no more logs are needed before a fix.
 
-- improve backup logging
-- report temp ZIP size and copied byte count in debug logs
-- fail visibly if temp ZIP length or copied byte count is zero
-- rethrow backup exceptions so UI does not show success after internal failure
-- optionally handle missing journal as non-fatal if verified safe
-
-Avoid a broad backup rewrite until logs or instrumentation identify the failing layer.
-
+Do not ask the reporter for another generic APK retest until a newer APK contains a targeted #94 backup fix.
