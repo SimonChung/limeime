@@ -31,13 +31,14 @@ Community reporter `ejmoog` reports that LIME Android backup consistently produc
 ## Relevant Code Paths Inspected
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/DbManagerFragment.java`
-  - `backupLocalDrive()` uses `Intent.ACTION_CREATE_DOCUMENT` for `application/zip`, or falls back to `saveBackupToDownloads()`.
+  - `backupLocalDrive()` prepares the backup flow by checking for an `Intent.ACTION_CREATE_DOCUMENT` handler for `application/zip` and showing the confirmation dialog; `launchBackupFilePicker()` launches the SAF picker, while `saveBackupToDownloads()` handles the Downloads/MediaStore fallback.
   - `performBackup(Uri)` calls `setupImController.performBackup(uri)` and then shows `db_status_backup_ok` if no exception reaches the fragment.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/SetupImController.java`
   - `performBackup(Uri)` delegates to `dbServer.backupDatabase(uri)` and rethrows exceptions only if `DBServer` throws them.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/DBServer.java`
   - `backupDatabase(Uri)` prepares `LIME.SHARED_PREFS_BACKUP_NAME`, `PreferenceBackupAdapter.MANIFEST_PATH`, `lime.db`, and `lime.db-journal`, zips them to a temp file, then copies the temp ZIP to the selected output URI.
   - The `catch (Exception e)` block logs and shows a notification but does not rethrow, so callers can still report success after a failed backup.
+  - The `finally` block always calls the backup-finished notification, so a failed backup can still produce both a finished notification and the fragment success status.
   - The method does not currently verify that the temp ZIP exists and has non-zero length before copying, or that the selected output stream received any bytes.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/global/LIMEUtilities.java`
   - `zip(...)` throws if one of the requested source files cannot be opened.
@@ -47,17 +48,18 @@ Community reporter `ejmoog` reports that LIME Android backup consistently produc
 
 The backup flow can create the destination document before the actual ZIP copy succeeds. If `DBServer.backupDatabase(Uri)` fails while preparing the ZIP or copying it to the output URI, the exception is swallowed inside `DBServer`, so `DbManagerFragment.performBackup(Uri)` still shows backup success. Because Android document providers and MediaStore may already have created the destination entry, the user can be left with a visible `limeBackup.zip` of 0 bytes.
 
-A likely concrete trigger is the backup file list including `lime.db-journal` even when SQLite has no journal file at that moment. `LIMEUtilities.addFileToZip(...)` attempts to open every listed item and throws on missing files. This would prevent writing a valid ZIP while still leaving the UI success path reachable because the exception is not propagated.
+A code-backed likely trigger is the backup file list including `lime.db-journal` even when SQLite has no journal file at that moment. `DBServer.backupDatabase(Uri)` closes the database before zipping; in the normal rollback-journal path, a clean close commonly leaves no `lime.db-journal` file. `LIMEUtilities.addFileToZip(...)` attempts to open every listed item and throws on missing files, and its old missing-file skip guard is currently commented out. This can prevent writing a valid ZIP while still leaving the UI success path reachable because the exception is not propagated.
 
 ## Proposed Fix / Investigation Plan
 
-1. Make Android backup return explicit success/failure:
-   - Let `DBServer.backupDatabase(Uri)` throw an `IOException`/`RemoteException` or return a failure result when ZIP creation or output copy fails.
-   - Keep `DbManagerFragment.performBackup(Uri)` success UI gated on a verified successful backup, similar to the #85 restore-failure propagation fix.
+1. Make Android backup return explicit success/failure from `DBServer.backupDatabase(Uri)`:
+   - Let `DBServer.backupDatabase(Uri)` throw a `RemoteException` or return a failure result when ZIP creation or output copy fails.
+   - `SetupImController.performBackup(Uri)` and `DbManagerFragment.performBackup(Uri)` already have rethrow/catch failure paths; once `DBServer` stops swallowing the error, the existing UI can show `db_status_backup_fail` instead of `db_status_backup_ok`.
 2. Validate backup artifacts:
-   - Ensure the temp ZIP exists and is non-zero before copying.
+   - Ensure `LIMEUtilities.zip(...)` completes without exception.
+   - Validate that the temp ZIP exists, is non-zero, and can be read end-to-end as a ZIP before copying.
    - Track copied byte count to the selected output URI and fail if zero bytes were written.
-   - Flush and close the output stream before reporting success.
+   - Treat output-stream open failures or zero bytes copied as backup failures.
 3. Treat `lime.db-journal` as optional:
    - Add it to the backup only if it exists, or make ZIP creation skip expected optional-missing files safely.
    - Keep `lime.db` required; fail if the main database is missing or zero-sized.
@@ -81,7 +83,7 @@ Do not ask for retest until a newer APK contains a targeted backup-generation fi
 - On Android 15, run backup to:
   - Downloads/MediaStore fallback when available.
   - A Storage Access Framework document provider target.
-- Verify the resulting `limeBackup.zip` is non-zero and contains at least `lime.db` plus expected preference entries.
+- Verify the resulting `limeBackup.zip` is non-zero, can be read end-to-end as a ZIP, and contains at least `lime.db`, the legacy shared-preferences backup, and `PreferenceBackupAdapter.MANIFEST_PATH`.
 - Verify backup still succeeds when `lime.db-journal` is absent.
 - Verify backup failure shows an error status and does not show `db_status_backup_ok`.
 - Verify a 0-byte or invalid output is not treated as a successful backup.
