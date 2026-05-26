@@ -1,6 +1,6 @@
 # Automation Issue Context: Monitor lime-ime/limeime GitHub
 
-Last updated: 2026-05-26T16:04:12+08:00 (CST)
+Last updated: 2026-05-26T16:47:14+08:00 (CST)
 
 ## Source Of Rules
 - Canonical role, communication style, issue-tracking policy, and APK/build policy are stored in the local automation memory file:
@@ -8,8 +8,8 @@ Last updated: 2026-05-26T16:04:12+08:00 (CST)
 - This repo file is for mutable issue-tracking context, operational handoffs, and shared task-board items only, so scheduled runs and different agent identities can read/update current state through GitHub API.
 
 ## Current Observed Repo State
-- Latest GitHub Release observed: `v6.1.12` (published 2026-05-25) at https://github.com/lime-ime/limeime/releases/tag/v6.1.12, with release asset `LIMEHD2026-6.1.12.apk` and the same Android APK/version already tracked below. Previous formal release was `v6.0.2` (published 2026-04-23).
-- Android pre-release/build artifacts are not necessarily public GitHub Releases; as of v6.1.12, the tracked Android APK is also attached to the official GitHub Release.
+- Latest GitHub Release observed: `v6.1.15` (published 2026-05-26) at https://github.com/lime-ime/limeime/releases/tag/v6.1.15, with release asset `LIMEHD2026-6.1.15.apk`; download link https://github.com/lime-ime/limeime/releases/download/v6.1.15/LIMEHD2026-6.1.15.apk. Previous formal release was `v6.1.12` (published 2026-05-25); 6.1-series baseline before that was `v6.0.2` (published 2026-04-23).
+- Android pre-release/build artifacts are not necessarily public GitHub Releases; as of v6.1.15, the tracked Android APK is also attached to the official GitHub Release.
 - Scheduled/API-only APK source of truth: `LimeStudio/app/release/output-metadata.json`.
 - Last observed pre-release APK: `LIMEHD2026-6.1.15.apk` (versionName 6.1.15), metadata observed 2026-05-26T15:40+08:00 after commit `d0eb4c047aac`. Direct raw APK link `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.15.apk`. This APK contains the #88 legacy v5.2.4/v6.0 restore/import emoji FTS fallback fix (`emoji_fts already exists`) and retains prior v6.1.14 Samsung/One UI IME settings activity metadata fix plus v6.1.13 Samsung/Android 13 settings scrollbar fix. #88 reporter `peter8777555` confirmed v6.1.15 is fully normal in https://github.com/lime-ime/limeime/issues/88#issuecomment-4541845116, closed the issue, and automation acknowledged in https://github.com/lime-ime/limeime/issues/88#issuecomment-4541914188. The previous tracked APK was `LIMEHD2026-6.1.14.apk` / version 6.1.14.
 - Raw APK URL pattern: `https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/<apk filename>`.
