@@ -114,6 +114,29 @@ Source inspection confirms `LimeStudio/app/src/main/res/xml/method.xml` currentl
 
 But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher activity `.ui.LIMESettings` and settings/preference activity `.ui.LIMEPreference`, not `.ui.MainActivity`. The IME settings entry uses the standard `android:settingsActivity` hook; on the reporter's Samsung/One UI device this fails with `ActivityNotFoundException` because the target activity is not declared. This is likely a separate remaining #88 failure path after the v6.1.13 scrollbar fix. PR #89 (https://github.com/lime-ime/limeime/pull/89) is the current targeted Android fix: it updates the IME metadata to point at declared `net.toload.main.hd.ui.LIMESettings`. Verify launching LIME from Android/Samsung input-method settings, not only via launcher/monkey.
 
+### MainActivity scan results and naming follow-up
+
+A production-source scan of `LimeStudio/app/src/main` excluding Android/unit tests found only three remaining `MainActivity` references:
+
+```text
+LimeStudio/app/src/main/java/net/toload/main/hd/ui/LIMESettings.java:190
+    setupImController.setMainActivityView(this);
+
+LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/SetupImController.java:58
+    public void setMainActivityView(LIMESettingsView view) {
+
+LimeStudio/app/src/main/res/xml/method.xml:31
+    android:settingsActivity="net.toload.main.hd.ui.MainActivity"
+```
+
+Only the `method.xml` reference is an Android runtime entry point and explains why Samsung Settings still calls `MainActivity`. The two Java references are internal method names left from the `MainActivity` -> `LIMESettings` rename; they do not launch an activity and are not the immediate crash cause.
+
+Recommended cleanup after the functional metadata fix:
+
+1. Fix `method.xml` to point `android:settingsActivity` at the declared settings activity, currently `net.toload.main.hd.ui.LIMESettings` in PR #89.
+2. Rename the remaining internal `setMainActivityView(...)` naming to `setLIMESettingsView(...)` or a neutral name such as `setSettingsView(...)` to finish the class-rename cleanup and reduce future confusion.
+3. Update/trim stale docs/tests that still describe `MainActivity` as the current Android settings activity, or explicitly mark them historical if they remain as architecture notes.
+
 ## Verification plan
 
 - Reproduce on Android 13 if possible, preferably with a Samsung/One UI environment or a comparable Android 13 emulator/device.
