@@ -1,65 +1,79 @@
-# Issue #92 — iOS DB restore double spinner and spinner dialog theme colors
+# Issue #92: iOS DB restore double spinner and spinner dialog theme colors
 
 ## Problem statement
 
-The iOS database restore flow can show two loading spinners at the same time. Spinner/progress dialogs also appear to use incorrect font/theme colors, making the dialog styling inconsistent with the current app theme and potentially reducing readability.
+Maintainer-created iOS bug report. During iOS database restore, the settings app can show two loading indicators at the same time, and spinner/progress dialog text or controls can use colors that do not match the active light/dark theme.
 
-GitHub issue: https://github.com/lime-ime/limeime/issues/92
+Live issue state at triage:
 
-## Current classification
-
-- Type: bug
-- Area: iOS UI / restore progress dialog styling
+- Issue: https://github.com/lime-ime/limeime/issues/92
+- Author: `limeimetw`
 - Labels: `bug`, `Usability`
-- Owner: `jrywu`
-- Reporter/source: maintainer request from Jeremy
+- Assignee: `jrywu`
+- State: open
 
-## Observed behavior
+No public acknowledgement or community retest request is needed because this is a maintainer-created tracking issue.
 
-- iOS DB restore can display a duplicated spinner / double loading indicator.
-- Spinner/progress dialogs have incorrect font or theme colors.
-- The color problem may affect all spinner dialogs, not only the DB restore path.
+## Relevant code paths inspected
 
-## Expected behavior
+- `LimeIME-iOS/LimeSettings/Views/DBManagerView.swift`
+  - Owns local restore/backup UI state through `@State private var isWorking`.
+  - Renders a local `.overlay` whenever `isWorking` is true.
+  - `performRestore(from:)` sets `isWorking = true` before calling `setupController.restoreDB(from:)`.
+  - `restoreBundledDatabase()` also sets `isWorking = true` before calling `setupController.restoreBundledDatabase()`.
+- `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift`
+  - `restoreDB(from:)` calls `progress.show(status: "還原中…")`, then `progress.dismiss()`.
+  - `restoreBundledDatabase()` calls `progress.show(status: "還原預設資料庫…")`, then `progress.dismiss()`.
+- `LimeIME-iOS/LimeSettings/LimeSettingsView.swift`
+  - Renders a global progress overlay whenever `progressManager.isVisible` is true.
+  - The overlay uses a circular `ProgressView`, white tint/text, and `.regularMaterial` background.
+- `LimeIME-iOS/LimeSettings/Controllers/ProgressManager.swift`
+  - Shared observable global progress state.
 
-- A single restore operation should show only one progress/loading indicator.
-- Spinner/progress dialogs should use theme-aware, readable colors for title/body/action text and controls.
-- Light mode and dark mode should both be readable and visually consistent with the app.
+## Likely root cause
 
-## Likely root cause / investigation notes
+The database restore screen currently has two independent progress presentation systems:
 
-This likely needs inspection of the iOS restore flow and shared spinner/progress dialog presentation code. Possible causes:
+1. `DBManagerView` sets `isWorking = true` and shows its local overlay.
+2. `SetupImController.restoreDB(from:)` also calls `ProgressManager.show(...)`, causing `LimeSettingsView` to show the global overlay.
 
-1. The restore flow may present both a custom loading overlay and a system progress dialog/spinner.
-2. A shared spinner/progress dialog component may hard-code text/control colors instead of using semantic iOS colors.
-3. A UIKit/SwiftUI bridge or custom alert wrapper may not update color styling when the app theme changes.
+For restore and restore-bundled flows, those states overlap, so a user can see both the DB manager overlay and the global progress overlay for a single operation.
 
-Relevant areas to inspect:
+The color/theme mismatch is likely a shared overlay styling issue rather than only a restore-flow issue. `LimeSettingsView` hard-codes white spinner tint and text (`.tint(.white)`, `.foregroundColor(.white)`) on top of `.regularMaterial`; `DBManagerView` uses a different local dialog style with `Color(.systemBackground)` and default text/progress colors. Mixing these styles can produce inconsistent or low-contrast spinner dialogs across light/dark mode and different progress call sites.
 
-- iOS database restore UI flow around restore start/completion/error handling.
-- Shared spinner/progress dialog helpers or loading overlay components.
-- Light/dark mode color definitions used by iOS settings/dialog UI.
+## Proposed fix / investigation plan
 
-## Proposed solution
-
-1. Identify the restore path that shows progress while DB restore is running.
-2. Ensure only one loading UI is presented for a single restore operation.
-3. Centralize or fix spinner/progress dialog styling so it uses theme-aware semantic colors.
-4. Audit other spinner dialog call sites to ensure the shared fix covers all affected dialogs.
-
-## Follow-up questions
-
-- Which iOS screen/action reliably reproduces the double spinner during DB restore?
-- Does the wrong text color happen in light mode, dark mode, or both?
-- Are action buttons also affected, or only dialog title/body text?
+1. Consolidate progress UI for DB restore operations so each restore operation presents only one spinner/dialog.
+   - Prefer one shared loading-overlay component/style for the settings app.
+   - Either remove the `DBManagerView` local overlay for restore flows that already use `ProgressManager`, or let restore/restore-bundled methods accept a caller-owned-progress option so only the local overlay is used.
+   - Keep backup/share progress separate if it needs a determinate progress bar and share-sheet lifecycle handling.
+2. Standardize spinner/progress dialog styling.
+   - Avoid hard-coded white text/spinner colors unless the background is guaranteed to require white.
+   - Use theme-aware colors such as `.primary`, `.secondary`, `.tint`, `Color(.label)`, `Color(.secondaryLabel)`, and system background/material combinations with verified contrast.
+   - Ensure title/status text, spinner, determinate progress bar, and any action text remain readable in light and dark mode.
+3. Audit other `ProgressManager.show(...)` call sites and local `isWorking` overlays for duplicate presentations or inconsistent styling.
+4. Preserve UI behavior while changing presentation:
+   - Restore button remains disabled during work.
+   - Status message still updates after success/failure.
+   - IM and related-list invalidation still happens after restore.
+   - Backup/share progress still shows useful determinate feedback.
 
 ## Verification plan
 
-- Run iOS database restore and confirm only one spinner/progress indicator appears.
-- Verify spinner/progress dialogs in light mode and dark mode.
-- Confirm dialog title/body/action text colors remain readable and consistent with the app theme.
-- Check other spinner dialog call sites to ensure the theme fix applies generally.
+- iOS settings app, DB management tab:
+  - Start database restore from a backup and confirm only one spinner/progress dialog is visible.
+  - Start bundled/default database restore and confirm only one spinner/progress dialog is visible.
+  - Confirm buttons are disabled during work and re-enabled after completion/failure.
+  - Confirm success and failure status messages still appear.
+- Theme checks:
+  - Verify restore progress dialog in light mode and dark mode.
+  - Verify backup/share progress dialog in light mode and dark mode.
+  - Verify other `ProgressManager` call sites such as import/seed flows still have readable spinner/status text.
+- Regression checks:
+  - Confirm restored IM list and related list refresh after restore.
+  - Confirm the keyboard extension still receives the `lime_db_restored_at` reload signal.
+  - Confirm backup share-sheet lifecycle still clears the overlay and temporary backup file.
 
-## Current follow-up status
+## Follow-up condition
 
-Open. Waiting for iOS implementation fix and verification. No community retest request is needed because this is maintainer-created/internal tracking.
+Keep issue #92 open until the iOS restore/progress UI is fixed and manually verified in light and dark mode. No Android APK retest is relevant for this iOS-only maintainer-created issue.
