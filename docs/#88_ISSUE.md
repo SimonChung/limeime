@@ -112,7 +112,7 @@ Source inspection confirms `LimeStudio/app/src/main/res/xml/method.xml` currentl
 <input-method ... android:settingsActivity="net.toload.main.hd.ui.MainActivity"/>
 ```
 
-But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher activity `.ui.LIMESettings` and settings/preference activity `.ui.LIMEPreference`, not `.ui.MainActivity`. The IME settings entry uses the standard `android:settingsActivity` hook; on the reporter's Samsung/One UI device this fails with `ActivityNotFoundException` because the target activity is not declared. This is likely a separate remaining #88 failure path after the v6.1.13 scrollbar fix. PR #89 (https://github.com/lime-ime/limeime/pull/89) is the current targeted Android fix: it updates the IME metadata to point at declared `net.toload.main.hd.ui.LIMESettings`. Verify launching LIME from Android/Samsung input-method settings, not only via launcher/monkey.
+But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher activity `.ui.LIMESettings` and settings/preference activity `.ui.LIMEPreference`, not `.ui.MainActivity`. The IME settings entry uses the standard `android:settingsActivity` hook; on the reporter's Samsung/One UI device this fails with `ActivityNotFoundException` because the target activity is not declared. This is likely a separate remaining #88 failure path after the v6.1.13 scrollbar fix. PR #89 (https://github.com/lime-ime/limeime/pull/89) was merged by `jrywu` on 2026-05-26 as merge commit `ca2fde90883a386f83517ac87894d5c56cd1111b`. It updates the IME metadata to point at the declared `net.toload.main.hd.ui.LIMESettings`. No newer APK has been published yet; verify launching LIME from Android/Samsung input-method settings after the next APK/build, not only via launcher/monkey.
 
 ### MainActivity scan results and naming follow-up
 
@@ -133,7 +133,7 @@ Only the `method.xml` reference is an Android runtime entry point and explains w
 
 Recommended cleanup after the functional metadata fix:
 
-1. Fix `method.xml` to point `android:settingsActivity` at the declared settings activity, currently `net.toload.main.hd.ui.LIMESettings` in PR #89.
+1. `method.xml` now points `android:settingsActivity` at the declared settings activity `net.toload.main.hd.ui.LIMESettings` via merged PR #89 / merge commit `ca2fde90883a386f83517ac87894d5c56cd1111b`; this still needs to reach a newer APK/build before reporter retest.
 2. Rename the remaining internal `setMainActivityView(...)` naming to `setLIMESettingsView(...)` or a neutral name such as `setSettingsView(...)` to finish the class-rename cleanup and reduce future confusion.
 3. Update/trim stale docs/tests that still describe `MainActivity` as the current Android settings activity, or explicitly mark them historical if they remain as architecture notes.
 
@@ -143,7 +143,7 @@ Recommended cleanup after the functional metadata fix:
 - Historical context: `ejmoog` reported that clean reinstall of v6.1.12 reproduced the crash while in-place upgrade over an existing LIME 6 install could work; the original reporter later said both upgrade and reinstall paths still fail on v6.1.13.
 - Do not ask for more generic v6.1.13 logs before a new targeted settings-entry APK exists; the current second log is actionable enough for PR #89 / equivalent metadata fix.
 - Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
-- For the newly captured Samsung Settings path, review/verify PR #89's `android:settingsActivity` change in `LimeStudio/app/src/main/res/xml/method.xml` so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
+- For the newly captured Samsung Settings path, verify merged PR #89's `android:settingsActivity` change in `LimeStudio/app/src/main/res/xml/method.xml` through a newer APK/build so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
 - Verify launching LIME from Samsung input-method settings after install/upgrade, because this path is different from launcher/`monkey -p net.toload.main.hd2026 1` launch.
 - Also verify normal launcher `.ui.LIMESettings` launch still works and the v6.1.13 scrollbar fix remains intact.
 - If a future log shows a real `net.toload.main.hd2026` `AndroidRuntime` crash after the settingsActivity fix, compare whether it is still `NestedScrollView.draw()` / `ScrollBarDrawable.mutate()` or another settings-launch path.
@@ -163,6 +163,8 @@ Reporter `peter8777555` uploaded a first `lime88_crash.zip` in https://github.co
 
 Reporter later noted in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540069317 that v5.2.4 still works on the same device but lacks microphone input, and then asked in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540095503 whether installing a newer version over v5.2.4 will automatically import all settings. Automation answered in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540141863 that same-package direct upgrades usually preserve app data, but v5.2.4-to-newer compatibility is not guaranteed, so the reporter should back up/export first and avoid uninstalling before upgrade.
 
-Current next debugging/fix area: PR #89 (https://github.com/lime-ime/limeime/pull/89) corrects the IME settings activity metadata. Verify the Android/Samsung input-method settings launch path before producing a newer targeted APK. Do not ask for another APK retest until a newer targeted fix/build exists.
+Current next status: PR #89 (https://github.com/lime-ime/limeime/pull/89) correcting the IME settings activity metadata is merged to `master` as `ca2fde90883a386f83517ac87894d5c56cd1111b`, and the issue was reopened after GitHub auto-closed it from the PR merge. `LimeStudio/app/release/output-metadata.json` still points to `LIMEHD2026-6.1.13.apk`, so no reporter retest should be requested yet. Build/publish a newer targeted APK containing PR #89, then ask the reporter to retest both Android/Samsung input-method settings launch and direct app launch.
+
+PR #89 merge note: GitHub auto-closed #88 when PR #89 merged, but this is a community-reported issue and reporter confirmation is still required after a newer APK. Automation reopened the issue on 2026-05-26 and posted a short note in https://github.com/lime-ime/limeime/issues/88#issuecomment-4540382676 that PR #89 is merged but not yet available in a newer APK; keep #88 open until the reporter validates the APK containing the metadata fix.
 
 Still useful before final closure: #64 visual regression checks for overflowing settings pages, but that regression check should not block the renewed crash investigation.
