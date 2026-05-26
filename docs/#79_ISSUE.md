@@ -1,4 +1,4 @@
-# Issue #79: Android dark-mode emoji search field stays bright
+# Issue #79: Android dark-mode emoji search field was bright (closed/resolved)
 
 ## Problem statement
 
@@ -15,19 +15,13 @@ Relevant comments:
 - Follow-up compatibility comparison from another tester (Pixel 9 / Android 16): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531768150
 - Reporter device context for the adjacent emoji-search input behavior (Samsung A16 / Android 16 / One UI 8.0): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531782542
 - Maintainer clarification that APK 6.1.12 supports Chinese emoji search while 6.1.11 and earlier did not: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839
-- Closing acknowledgement / completion note: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910
-
-## Current status
-
-Resolved / closed. The original Android dark-mode emoji search-field visual bug was reporter-confirmed fixed on APK `6.1.12` in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505. Maintainer context clarified the adjacent emoji-search Chinese input behavior in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839, and `limeimetw` closed #79 with completion note https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910.
-
-Scope of confirmation: Android APK `6.1.12` dark-mode search-field background/icon brightness. The reporter's Samsung A16 / Android 16 / One UI 8.0 emoji-search input observation remains historical adjacent context only; do not keep #79 on an active reporter-watch unless the issue is reopened or new 6.1.12+ evidence is provided. iOS/TestFlight visual parity remains an internal/manual QA consideration, not reporter-confirmed by this issue.
+- Closing acknowledgement: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910
 
 ## Classification
 
-This was tracked as a bug, not just an enhancement, because the dark keyboard/emoji panel theme is already active but one visible control does not follow it. The bug is visual/theme parity for the emoji search field in dark mode.
+This was tracked as a bug, not just an enhancement, because the dark keyboard/emoji panel theme was already active but one visible control did not follow it. The bug was visual/theme parity for the emoji search field in dark mode.
 
-Final public labels remained `bug` + `Usability`.
+Public labels at closure: `bug` + `Usability`.
 
 ## Reproduction steps
 
@@ -87,29 +81,27 @@ Implemented on `master` in commit `a763ee80b199` / `a763ee80b199360140185066f94e
 
 ## Fix / APK follow-up status
 
+Current status: closed/resolved. The issue was closed after the reporter confirmed the Android dark-mode emoji search-field visual fix and after maintainer clarification of the adjacent emoji-search input behavior. `limeimetw` closing acknowledgement: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910
+
 Android APK `LIMEHD2026-6.1.12.apk` contains the scoped emoji search-field theme fix from the latest emoji search/theme polish push.
 
-Retest request posted: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
+Retest request was posted for Android APK 6.1.12: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 
-Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope. A later comment from `Limeroshenko` also reported normal APK 6.1.12 behavior on Pixel 9 / Android 16, but that comment should not be overread as resolving the separate Chinese-IM-code input question. The issue is now closed as completed after the maintainer clarification and completion note in https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910.
+Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope. A later comment from `Limeroshenko` also reported normal APK 6.1.12 emoji-search behavior on Pixel 9 / Android 16.
 
-The same comment raised a separate product/behavior question: during emoji search, typing table codes such as `100` with 行列/倉頡 did not enter the emoji search field; the code appeared in the host app's text field instead. `SmithCCho` later clarified the test environment as APK 6.1.12 on Samsung A16 / Android 16 / One UI 8.0. Current Android code explains why Chinese IM code-key behavior may differ from English/ASCII emoji search input:
+The same comment raised a separate product/behavior question: during emoji search, typing table codes such as `100` with 行列/倉頡 did not enter the emoji search field; the code appeared in the host app's text field instead. `SmithCCho` later clarified the test environment as APK 6.1.12 on Samsung A16 / Android 16 / One UI 8.0.
 
-- Entering emoji search calls `setEmojiSearchKeyboard(emojiSearchInitialEnglishOnly(mEmojiSourceWasEnglish))`, so the search keyboard initially follows whether the user came from English mode.
-- `handleEmojiSearchKey()` appends printable keys directly to `mEmojiSearchQuery` only when `shouldEmojiSearchConsumePrintableKey(primaryCode, mEnglishOnly)` is true.
-- `shouldEmojiSearchConsumePrintableKey()` currently returns true only for English mode printable ASCII (`englishOnly && primaryCode >= 32 && primaryCode < 127`).
-- In non-English IM mode, key events can continue through the normal IM/composition path; only a picked non-code candidate can be appended to emoji search through `appendPickedCandidateToEmojiSearch()`.
-
-Maintainer `jrywu` subsequently clarified in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839 that APK 6.1.12 supports Chinese emoji search, while 6.1.11 and earlier did not. The code path above still means direct printable key consumption differs between English/ASCII mode and Chinese IM composition/candidate selection, so the reporter's Samsung A16 observation should be treated as an adjacent emoji-search input follow-up, not as evidence that the dark-mode color fix failed. Do not overclaim this as a confirmed remaining 6.1.12 bug unless the reporter retests after the maintainer clarification or provides steps showing 6.1.12 Chinese emoji search still fails.
+Maintainer `jrywu` subsequently clarified in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839 that APK 6.1.12 supports Chinese emoji search, while 6.1.11 and earlier did not. Record that adjacent input-behavior question as answered by the maintainer in this issue. If a future report on APK 6.1.12 or later provides concrete steps where a specific Chinese IM/device path still cannot search emoji, handle it as a separate follow-up bug/enhancement investigation rather than as a failed retest of this dark-mode color fix.
 
 The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
 
 ## Follow-up status
 
-- No active reporter watch remains for #79. Reopen or split only if SmithCCho or another reporter provides new 6.1.12+ evidence that the emoji-search input behavior still fails after the maintainer clarification, or if a separate product decision asks to track Chinese-IM-code emoji search behavior independently.
-- iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
+- #79 is closed for the confirmed Android visual/theme bug. No active reporter watch is needed unless the issue is reopened or new evidence appears.
+- The adjacent Chinese emoji-search input discussion was answered by maintainer clarification in this issue. No separate follow-up bug was filed from the current thread.
+- iOS manual/device verification remains release-QA scope, not an active #79 public watch. Android APK confirmation does not verify iOS/TestFlight behavior.
 
-## Verification plan
+## Verification plan / historical checks
 
 Android manual checks:
 
