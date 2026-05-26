@@ -1,10 +1,10 @@
-# LIME 2026 — 版本 v6.1.12
+# LIME 2026 — 版本 v6.1.15
 
-**版本標籤：** `v6.1.12`
-**APK：** [`LIMEHD2026-6.1.12.apk`](https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.12.apk)
+**版本標籤：** `v6.1.15`
+**APK：** [`LIMEHD2026-6.1.15.apk`](https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.15.apk)
 **套件名稱：** `net.toload.main.hd2026`
 **目標 SDK：** 36 | **最低 SDK：** 21
-**前一正式版本：** [v6.0.2](https://github.com/lime-ime/limeime/releases/tag/v6.0.2)
+**前一正式版本：** [v6.1.12](https://github.com/lime-ime/limeime/releases/tag/v6.1.12)（6.1 系列基準前一版：[v6.0.2](https://github.com/lime-ime/limeime/releases/tag/v6.0.2)）
 
 ## 更新內容
 
@@ -35,6 +35,15 @@
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/84>
 
 ### Android 修正與改善
+
+- **#88 — Samsung / Android 13 設定開啟閃退與舊版備份還原後無法再開啟**
+  - v6.1.13 修正 Samsung Android 13 設定頁捲動條 drawable 在特定裝置上造成的 settings crash。
+  - v6.1.14 修正 Samsung/One UI 從系統輸入法設定開啟 LIME 設定時，仍指向已移除舊設定 Activity 的問題。
+  - v6.1.15 修正還原／匯入舊版 v5.2.4 / v6.0 備份後，emoji FTS 索引初始化可能因 `emoji_fts already exists` 導致設定 app 無法再開啟的問題。
+  - Samsung A71 / Android 13 回報者已確認 v6.1.15 正常；另有 Samsung A52 5G / Android 15 回報 v6.1.13 可正常使用。
+  - 相關 issue：<https://github.com/lime-ime/limeime/issues/88>
+  - 相關 PR：<https://github.com/lime-ime/limeime/pull/89>
+  - 分析文件：[#88_ISSUE.md](https://github.com/lime-ime/limeime/blob/master/docs/%2388_ISSUE.md)
 
 - **#54 — Brave URL 欄候選字重疊／白色區塊問題**
   - 修正 URL/瀏覽器輸入情境下候選列與鍵盤區域顯示異常，改善候選字不正常覆蓋與底部白色區塊。
