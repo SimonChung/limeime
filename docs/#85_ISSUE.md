@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Maintainer-created Android and iOS bug tracking issue for database backup restore. When a user selects a full database backup ZIP from a cloud-backed document provider while the file is still an on-demand/offline placeholder, restore may fail without a clear visible error. The UI can still show restore success even though the database and preferences were not restored.
+Maintainer-created Android and iOS bug tracking issue for database backup restore. When a user selects a full database backup ZIP from a cloud-backed document provider while the file is still an on-demand/offline placeholder, restore may fail without a clear visible error. The UI could show restore success even though the database and preferences were not restored.
 
 ## Classification
 
@@ -10,9 +10,9 @@ Maintainer-created Android and iOS bug tracking issue for database backup restor
 - Type: bug
 - Platform: Android and iOS
 - Area: database backup/restore, Android Storage Access Framework, iOS File Provider / security-scoped URL handling
-- Live state at creation: open, labeled `bug`, assigned to `jrywu`
-- Current state after PR #87 merge: issue remains open because PR #87 covers the Android restore-failure path only; iOS restore/state-sync work remains separate.
-- Reporter/source: maintainer account (`limeimetw`), so no routine public acknowledgement or community retest request is needed.
+- Reporter/source: maintainer account (`limeimetw`).
+- Live labels/assignee at closure: `bug`, assigned to `jrywu`.
+- Current live state: closed by maintainer `jrywu` on 2026-05-26 via GitHub-visible commit `520416371d32c2392190e42883d3bd68b933fe19` (`Fix #85 #88 #92 iOS restore feedback and emoji DB repair`).
 
 ## Reproduction Notes
 
@@ -28,69 +28,41 @@ Maintainer-created Android and iOS bug tracking issue for database backup restor
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/DbManagerFragment.java`
   - `restoreLocalDrive()` checks for a restore-capable picker and shows a confirmation dialog; `launchRestoreFilePicker()` uses `Intent.ACTION_GET_CONTENT`, `CATEGORY_OPENABLE`, and MIME type `application/zip`.
-  - `performRestore(Uri)` calls `setupImController.performRestore(uri)` and then unconditionally sets `db_status_restore_ok` if no exception is thrown to the fragment.
+  - `performRestore(Uri)` previously called `setupImController.performRestore(uri)` and then showed success if no exception reached the fragment.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/SetupImController.java`
-  - `performRestore(Uri)` calls `dbServer.restoreDatabase(uri)` inside a try/catch.
-  - The catch path handles/logs the error but does not rethrow or return a failure result to the fragment.
+  - `performRestore(Uri)` previously handled lower-level restore failures without reliably surfacing them to the fragment.
 - `LimeStudio/app/src/main/java/net/toload/main/hd/DBServer.java`
-  - `restoreDatabase(Uri)` opens the selected URI via `ContentResolver.openInputStream(uri)`, copies it into a cache temp ZIP, and calls `restoreDatabase(String)`.
-  - Exceptions are caught internally and converted to logs/notifications, not propagated to the UI caller.
-  - `restoreDatabase(String)` also catches unzip failures internally and returns without signalling failure to the caller.
-
+  - `restoreDatabase(Uri)` copies the selected URI stream into a cache temp ZIP and calls the path-based restore.
+  - Earlier code could convert restore failures into logs/notifications without an explicit failure result to the UI caller.
 
 ### iOS
 
 - `LimeIME-iOS/LimeSettings/Views/DBManagerView.swift`
   - `.fileImporter` accepts a selected backup URL and calls `performRestore(from:)`.
-  - `performRestore(from:)` sets success UI state when `setupController.restoreDB(from:)` returns `.success`.
+  - `performRestore(from:)` shows restore status based on `SetupImController.restoreDB(from:)`.
 - `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift`
-  - `restoreDB(from:)` calls `server.restoreDatabase(uri:)` in a detached task.
-  - The method then re-registers known IMs, signals `lime_db_restored_at`, dismisses progress, and returns `.success(())` unconditionally.
+  - `restoreDB(from:)` previously called `server.restoreDatabase(uri:)`, then re-registered IMs, signalled keyboard reload, dismissed progress, and returned `.success(())` even when lower-level restore failed.
 - `LimeIME-iOS/Shared/Database/DBServer.swift`
-  - `restoreDatabase(uri:)` starts security-scoped access and uses `NSFileCoordinator` around the selected URL, which is the right direction for File Provider/on-demand downloads.
-  - Coordinator/copy errors are printed and return without throwing.
-  - `restoreDatabase(srcFilePath:)` returns early for invalid/missing archives or missing `lime.db`, and catches extraction errors without propagating failure to callers.
+  - `restoreDatabase(uri:)` uses security-scoped URL access and `NSFileCoordinator` around the selected URL, which is the right direction for File Provider/on-demand downloads.
+  - Earlier coordinator/copy/archive/extract failures were printed/returned rather than propagated to callers.
 
-## Likely Root Cause
+## Root Cause
 
-Both platform restore paths do not consistently model restore as an explicit success/failure operation. Cloud-backed providers may delay, fail, or provide an unreadable/incomplete stream while a selected file is being fetched on demand. iOS already attempts File Provider coordination, but the failure result is still not propagated to the SwiftUI caller. Even when the lower-level restore fails, exceptions are swallowed in `DBServer`/`SetupImController`, so `DbManagerFragment.performRestore()` can show success after the method returns.
-
-The issue may be triggered by cloud on-demand behavior, but the UI false-success problem is broader: any unreadable, zero-byte, incomplete, or invalid backup URI can be reported as successful if the error is handled internally and not propagated.
+Both platform restore flows lacked a consistent explicit success/failure contract. Cloud-backed providers may delay, fail, or provide an unreadable/incomplete stream while a selected file is being fetched on demand. Even though iOS already attempted File Provider coordination, lower-level coordinator/copy/archive/extract failures were not propagated to the SwiftUI caller. The UI false-success problem was broader than cloud placeholders: unreadable, zero-byte, incomplete, invalid, or wrong backup archives could be reported as successful if the error was handled internally.
 
 ## Implementation Status
 
-- Android: PR #87 (`fix(android): surface database restore failures`) was merged to `master` as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25. It propagates restore failures from `DBServer` through `SetupImController` to `DbManagerFragment`, rejects zero-byte restore copies and invalid/wrong ZIP backups, and keeps the visible success path gated on a completed restore. The PR reports `./gradlew :app:compileDebugJavaWithJavac`, `./gradlew :app:compileDebugAndroidTestJavaWithJavac`, `git diff --check`, and a narrow Claude Code review as passing.
-- iOS: still open/separate. The Swift/iOS restore path still needs explicit failure propagation from `DBServer` / `SetupImController.restoreDB(from:)` to `DBManagerView`, plus validation/error reporting for File Provider/cloud-backed restore failures.
-- APK/build status: Android release APK `LIMEHD2026-6.1.12.apk` was rebuilt in push `8d6a33e93b226` → `c97ee41f6ee2` (APK binary commit `e5b06c79d22c`) after Android fix commit `f80ce0cb8884` (`fix: restore legacy Android backup archives`). The metadata filename/version stayed `6.1.12`, but the raw APK content changed and now contains the Android restore-failure propagation from PR #87 plus the legacy Android backup archive compatibility fix. Do not request community retest because #85 is maintainer-created. Keep the issue open unless the maintainer decides Android is sufficiently split from the remaining iOS restore path.
+- Android: fixed on `master` through PR #87 (`fix(android): surface database restore failures`), merged as `d22afcfddc82c0fc1260a5a09789590778199ec1` on 2026-05-25. Follow-up commit `f80ce0cb8884` restored compatibility with legacy Android backup archives that contain leading-slash entries. Android release APK `LIMEHD2026-6.1.12.apk` was rebuilt after those fixes.
+- iOS: fixed on `master` by commit `520416371d32c2392190e42883d3bd68b933fe19` on 2026-05-26. The commit changes `DBServer.restoreDatabase(uri:)` / `restoreDatabase(srcFilePath:)` to throw on invalid source, empty file, invalid archive, missing `lime.db`, coordinator/copy failures, or extraction failures. `SetupImController.restoreDB(from:)` now returns failure instead of unconditional success, and restore-related re-registration / keyboard reload happens only after successful restore. The direct callback restore path also reports errors to the view. Tests were updated to expect failures for invalid restore inputs.
+- Related but separate changes in the same commit: #92 iOS progress-overlay/styling adjustments and #88 iOS emoji FTS repair coverage. Those should not be treated as additional #85 verification scope.
 
-## Proposed Fix / Investigation Plan
+## Verification Plan / Evidence
 
-1. Change restore APIs to return a boolean/result object or throw checked/runtime errors upward on both platforms:
-   - Android `DBServer.restoreDatabase(Uri)` / `DBServer.restoreDatabase(String)` / `SetupImController.performRestore(Uri)`
-   - iOS `DBServer.restoreDatabase(uri:)` / `DBServer.restoreDatabase(srcFilePath:)` / `SetupImController.restoreDB(from:)`
-2. In Android `DbManagerFragment.performRestore(Uri)` and iOS `DBManagerView.performRestore(from:)`, show success only after an explicit successful restore result.
-3. Validate the temp copy before applying it:
-   - copied byte count > 0
-   - valid ZIP
-   - contains expected full-backup entries such as `lime.db` / `databases/lime.db` and optional preferences entries
-4. Android: consider using `ACTION_OPEN_DOCUMENT` and persistable read permissions for restore, or otherwise document why `ACTION_GET_CONTENT` is sufficient.
-5. iOS: keep `NSFileCoordinator` and security-scoped URL access, but surface coordinator/copy/archive/extract errors to the UI.
-6. Run URI copy and restore work in a background task with progress/error reporting so slow cloud provider download does not look like an immediate silent success.
-7. Ensure failure leaves the current database intact or clearly warns if restore partially progressed.
-
-## Verification Plan
-
-- Add tests/mocks for restore from:
-  - valid local backup ZIP
-  - zero-byte stream
-  - invalid ZIP stream
-  - `openInputStream()` throwing `FileNotFoundException` / `IOException`
-  - stream that fails during read
-- Confirm the UI reports failure for invalid/unreadable streams and does not show `db_status_restore_ok`.
-- Manually verify on Android with a cloud-backed document provider where the backup file is not cached locally before selection.
-- Manually verify on iOS with iCloud Drive / Files or another File Provider where the backup file is not downloaded locally before selection.
-- Verify existing local-device restore still succeeds on both Android and iOS.
+- Android PR #87 reported these checks as passing: `./gradlew :app:compileDebugJavaWithJavac`, `./gradlew :app:compileDebugAndroidTestJavaWithJavac`, `git diff --check`, and a narrow Claude Code review.
+- iOS commit `520416371d32c2392190e42883d3bd68b933fe19` includes updated tests in `DBServerTest.swift` and `SetupImControllerTest.swift` for invalid restore sources reporting errors instead of silent success.
+- Remaining release QA, if needed, is platform delivery verification: Android fix delivery was recorded in the 6.1.12 APK rebuild; iOS source is on `master` and should be verified when the next TestFlight/App Store build is prepared.
+- If this issue resurfaces, test restore from valid local ZIP, cloud/on-demand ZIP, zero-byte file, invalid ZIP, missing-`lime.db` archive, and stream-open/read failures, then confirm the UI reports failure and does not show restore success.
 
 ## Follow-up Condition
 
-Android restore failure propagation and invalid/zero-byte ZIP validation landed on `master` via PR #87 (`d22afcfddc82c0fc1260a5a09789590778199ec1`), and Android release APK `LIMEHD2026-6.1.12.apk` was rebuilt in commit `e5b06c79d22c` after follow-up commit `f80ce0cb8884` restored compatibility with legacy Android backup archives that contain leading-slash entries. Android delivery for the known #85 path is therefore present in the current raw 6.1.12 APK link, even though `output-metadata.json` still reports the same version/file name. Keep #85 open until the remaining iOS restore failure propagation/validation work is implemented or explicitly split to #86/#another issue, and until maintainer build/testing status is clear. No public acknowledgement/retest request is needed because the issue is maintainer-created.
+Closed as maintainer-fixed on 2026-05-26. Do not keep #85 as an active public watch and do not post community retest requests because it is a maintainer-created tracking issue. Reopen or create a new issue only if Android/iOS restore still silently succeeds after a failed restore, or if release QA finds a platform-specific regression not covered by the implemented failure-propagation fixes.
