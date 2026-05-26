@@ -181,11 +181,19 @@ final class SetupImController: BaseController {
         progress.show(status: "還原中…")
         let server = self.dbServer
         Task.detached(priority: .userInitiated) {
-            server.restoreDatabase(uri: url)
-            await MainActor.run {
-                self.progress.dismiss()
-                view?.onProgress(100, status: "資料庫還原完成")
-                view?.refreshImList()
+            do {
+                try server.restoreDatabase(uri: url)
+                await MainActor.run {
+                    self.progress.dismiss()
+                    view?.onProgress(100, status: "資料庫還原完成")
+                    view?.refreshImList()
+                }
+            } catch {
+                let msg = error.localizedDescription
+                await MainActor.run {
+                    self.progress.dismiss()
+                    view?.onError("還原失敗：\(msg)")
+                }
             }
         }
     }
@@ -195,19 +203,26 @@ final class SetupImController: BaseController {
     func restoreDB(from url: URL) async -> Result<Void, Error> {
         await MainActor.run { progress.show(status: "還原中…") }
         let server = self.dbServer
-        await Task.detached(priority: .userInitiated) {
-            server.restoreDatabase(uri: url)
+        let result: Result<Void, Error> = await Task.detached(priority: .userInitiated) {
+            do {
+                try server.restoreDatabase(uri: url)
+                return .success(())
+            } catch {
+                return .failure(error)
+            }
         }.value
-        // Re-register all known IMs in iOS structured format.
-        // Android backups store im configs as key-value rows; registerIM replaces
-        // them with single iOS-format rows that getAllImConfigs() can read correctly.
-        await reregisterKnownIMs()
-        // Signal the keyboard extension to reload its database connection.
-        // The keyboard holds a stale DatabaseQueue to the old file after restore.
-        UserDefaults(suiteName: "group.net.toload.limeime")?
-            .set(Date().timeIntervalSince1970, forKey: "lime_db_restored_at")
+        if case .success = result {
+            // Re-register all known IMs in iOS structured format.
+            // Android backups store im configs as key-value rows; registerIM replaces
+            // them with single iOS-format rows that getAllImConfigs() can read correctly.
+            await reregisterKnownIMs()
+            // Signal the keyboard extension to reload its database connection.
+            // The keyboard holds a stale DatabaseQueue to the old file after restore.
+            UserDefaults(suiteName: "group.net.toload.limeime")?
+                .set(Date().timeIntervalSince1970, forKey: "lime_db_restored_at")
+        }
         await MainActor.run { progress.dismiss() }
-        return .success(())
+        return result
     }
 
     // MARK: - Re-register IMs after Android backup restore

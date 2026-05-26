@@ -83,15 +83,17 @@ struct LimeSettingsView: View {
                     VStack(spacing: 12) {
                         ProgressView()
                             .progressViewStyle(.circular)
-                            .tint(.white)
                         if !progressManager.status.isEmpty {
                             Text(progressManager.status)
                                 .font(.caption)
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                     }
                     .padding(24)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color(.systemBackground))
+                            .shadow(radius: 8))
                 }
             }
         }

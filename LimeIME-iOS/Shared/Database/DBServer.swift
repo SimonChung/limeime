@@ -322,7 +322,7 @@ final class DBServer {
     }
 
     // MARK: - 10. restoreDatabase (URL)
-    func restoreDatabase(uri: URL) {
+    func restoreDatabase(uri: URL) throws {
         // Start security-scoped access for document-picker URLs.
         let startedScopedAccess = uri.startAccessingSecurityScopedResource()
         defer { if startedScopedAccess { uri.stopAccessingSecurityScopedResource() } }
@@ -345,22 +345,20 @@ final class DBServer {
         }
         if let err = coordinatorError ?? copyError {
             print("[DBServer] restoreDatabase(url): error copying file — \(err)")
-            return
+            throw err
         }
-        restoreDatabase(srcFilePath: tempZip.path)
+        try validateRestoreFile(at: tempZip.path)
+        try restoreDatabase(srcFilePath: tempZip.path)
     }
 
     // MARK: - 11. restoreDatabase (path)
-    func restoreDatabase(srcFilePath: String?) {
+    func restoreDatabase(srcFilePath: String?) throws {
         guard let srcFilePath = srcFilePath, !srcFilePath.isEmpty else {
             print("[DBServer] restoreDatabase: srcFilePath is nil or empty")
-            return
+            throw DBServerError.invalidRestoreSource("備份檔路徑是空的")
         }
-        guard FileManager.default.fileExists(atPath: srcFilePath) else {
-            print("[DBServer] restoreDatabase: file not found at \(srcFilePath)")
-            return
-        }
-        guard datasource != nil else { return }
+        try validateRestoreFile(at: srcFilePath)
+        guard datasource != nil else { throw DBServerError.datasourceUnavailable }
 
         let dataDir = dataDirURL
         let sharedPrefBackup = dataDir.appendingPathComponent(DBServer.sharedPrefsBackupName)
@@ -417,7 +415,7 @@ final class DBServer {
                 archive = try Archive(url: URL(fileURLWithPath: srcFilePath), accessMode: .read)
             } catch {
                 print("[DBServer] restoreDatabase: cannot open archive at \(srcFilePath): \(error)")
-                return
+                throw DBServerError.invalidRestoreArchive(srcFilePath)
             }
             // Extract the DB plus preference sidecars — skip directory entries and unknown files.
             // We look for lime.db at any depth (handles both iOS layout "lime.db"
@@ -451,12 +449,26 @@ final class DBServer {
             }
             guard dbExtracted else {
                 print("[DBServer] restoreDatabase: lime.db not found in archive")
-                return
+                throw DBServerError.missingDatabaseInRestoreArchive
             }
+            try validateRestoreFile(at: tempDBPath.path)
             restoreSucceeded = true
         } catch {
             print("[DBServer] restoreDatabase: extract failed — \(error)")
             try? FileManager.default.removeItem(at: tempDBPath)
+            throw error
+        }
+    }
+
+    private func validateRestoreFile(at path: String) throws {
+        guard FileManager.default.fileExists(atPath: path) else {
+            print("[DBServer] restoreDatabase: file not found at \(path)")
+            throw DBServerError.fileNotFound(path)
+        }
+        let size = ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.uint64Value ?? 0
+        guard size > 0 else {
+            print("[DBServer] restoreDatabase: file is empty at \(path)")
+            throw DBServerError.emptyRestoreFile(path)
         }
     }
 
@@ -1052,9 +1064,42 @@ enum DBServerError: Error {
     case bundledDatabaseMissing
     case archiveCreationFailed
     case fileNotFound(String)
+    case emptyRestoreFile(String)
+    case invalidRestoreSource(String)
+    case invalidRestoreArchive(String)
+    case missingDatabaseInRestoreArchive
     case unsafeZipEntry(String)       // SEC: zip-slip rejected entry path
     case zipBombDetected              // SEC: archive exceeded size/count/ratio cap
     case securityScopedAccessDenied   // SEC: couldn't start security-scoped resource
+}
+
+extension DBServerError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .datasourceUnavailable:
+            return "資料庫尚未開啟"
+        case .bundledDatabaseMissing:
+            return "找不到預設資料庫"
+        case .archiveCreationFailed:
+            return "無法建立備份壓縮檔"
+        case .fileNotFound(let path):
+            return "找不到檔案：\(path)"
+        case .emptyRestoreFile:
+            return "備份檔是空的"
+        case .invalidRestoreSource(let message):
+            return message
+        case .invalidRestoreArchive:
+            return "備份檔格式不正確"
+        case .missingDatabaseInRestoreArchive:
+            return "備份檔內找不到 lime.db"
+        case .unsafeZipEntry:
+            return "備份檔包含不安全的路徑"
+        case .zipBombDetected:
+            return "備份檔過大或壓縮格式異常"
+        case .securityScopedAccessDenied:
+            return "無法取得檔案存取權限"
+        }
+    }
 }
 
 // MARK: - Test hook

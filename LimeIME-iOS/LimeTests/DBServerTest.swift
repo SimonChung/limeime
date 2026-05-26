@@ -382,36 +382,31 @@ final class DBServerTest: XCTestCase {
     func testDBServerRestoreDatabaseWithStringPath() {
         let server = DBServer()
 
-        // Non-existent path — should log and return without crashing.
-        server.restoreDatabase(srcFilePath: "/nonexistent_\(UUID()).zip")
-        XCTAssertTrue(true, "restoreDatabase with non-existent path should handle gracefully")
+        // Non-existent path
+        XCTAssertThrowsError(try server.restoreDatabase(srcFilePath: "/nonexistent_\(UUID()).zip"))
 
         // nil path
-        server.restoreDatabase(srcFilePath: nil)
-        XCTAssertTrue(true, "restoreDatabase with nil path should handle gracefully")
+        XCTAssertThrowsError(try server.restoreDatabase(srcFilePath: nil))
 
         // Empty path
-        server.restoreDatabase(srcFilePath: "")
-        XCTAssertTrue(true, "restoreDatabase with empty path should handle gracefully")
+        XCTAssertThrowsError(try server.restoreDatabase(srcFilePath: ""))
     }
 
     func testDBServerRestoreDatabaseWithUri() throws {
-        // Create empty file to test URL-based restore (will fail gracefully on bad format)
+        // Empty files must be reported as restore failures, not silent success.
         let testURL = tempFile(".zip")
         defer { try? FileManager.default.removeItem(at: testURL) }
         FileManager.default.createFile(atPath: testURL.path, contents: nil)
 
         let server = DBServer()
-        server.restoreDatabase(uri: testURL)
-        XCTAssertTrue(true, "restoreDatabase with URL should complete")
+        XCTAssertThrowsError(try server.restoreDatabase(uri: testURL))
     }
 
     func testDBServerRestoreDatabaseWithNullUri() {
         // Simulated: restore with a non-existent URL path
         let bogusURL = URL(fileURLWithPath: "/nonexistent_\(UUID()).zip")
         let server = DBServer()
-        server.restoreDatabase(uri: bogusURL)
-        XCTAssertTrue(true, "restoreDatabase with null-equivalent URL should handle gracefully")
+        XCTAssertThrowsError(try server.restoreDatabase(uri: bogusURL))
     }
 
     func testDBServerBackupDatabaseWithUri() {
@@ -878,7 +873,7 @@ final class DBServerTest: XCTestCase {
         let server = DBServer()
         do {
             try server.backupDatabase(uri: backupURL)
-            server.restoreDatabase(uri: backupURL)
+            try server.restoreDatabase(uri: backupURL)
         } catch {
             // Errors acceptable in test sandbox
         }
@@ -908,11 +903,7 @@ final class DBServerTest: XCTestCase {
         // backup may fail; restore the result (which may be nil)
         do { try server.backupDatabase(uri: backupURL) } catch {}
 
-        if FileManager.default.fileExists(atPath: backupURL.path) {
-            server.restoreDatabase(uri: backupURL)
-        } else {
-            server.restoreDatabase(uri: backupURL)
-        }
+        do { try server.restoreDatabase(uri: backupURL) } catch {}
         XCTAssertTrue(true, "restoreDatabase should complete without crashing")
     }
 
@@ -951,7 +942,7 @@ final class DBServerTest: XCTestCase {
         sharedDefaults.synchronize()
         standardDefaults.synchronize()
 
-        server.restoreDatabase(srcFilePath: backupURL.path)
+        try server.restoreDatabase(srcFilePath: backupURL.path)
 
         assertDefaults(sharedDefaults, standardDefaults: standardDefaults, equal: expected)
 
@@ -992,7 +983,7 @@ final class DBServerTest: XCTestCase {
         sharedDefaults.synchronize()
         standardDefaults.synchronize()
 
-        server.restoreDatabase(srcFilePath: fixtureURL.path)
+        try server.restoreDatabase(srcFilePath: fixtureURL.path)
 
         assertDefaults(sharedDefaults, standardDefaults: standardDefaults, equal: expected)
         for key in androidOnlyPrefsTableFixture().keys {

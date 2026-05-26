@@ -2506,6 +2506,36 @@ final class LimeDBTest: XCTestCase {
         assertEmojiSchemaAndDataLoaded(db)
     }
 
+    func testDB103OpeningOldDatabaseRepairsStaleEmojiFTSSchema() throws {
+        tempURL = try makeDB103SeedVariant(name: "lime_ios_102_stale_emoji_fts.db",
+                                           userVersion: 102,
+                                           dropEmojiSchema: true,
+                                           insertCurrentEmojiVersion: false)
+        let queue = try DatabaseQueue(path: tempURL.path)
+        try queue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS emoji_data (
+                    value TEXT PRIMARY KEY,
+                    cp TEXT NOT NULL,
+                    group_name TEXT NOT NULL,
+                    subgroup TEXT NOT NULL,
+                    sort_order INTEGER NOT NULL,
+                    name_en TEXT,
+                    name_tw TEXT,
+                    tags_en TEXT,
+                    tags_tw TEXT,
+                    version REAL NOT NULL
+                )
+            """)
+            try db.execute(sql: "CREATE TABLE emoji_fts (name_en TEXT)")
+        }
+
+        let db = try makeLimeDB()
+
+        XCTAssertEqual(try db.databaseVersionForTest(), 104)
+        assertEmojiSchemaAndDataLoaded(db)
+    }
+
     func testDB103OpeningDatabaseRemovesStaleCj4KeyboardRow() throws {
         tempURL = try makeDB103SeedVariant(name: "lime_ios_104_stale_cj4_keyboard.db",
                                            userVersion: 104,
@@ -2577,7 +2607,7 @@ final class LimeDBTest: XCTestCase {
         let backup = try backupLiveDBForTest(liveDB)
         defer { restoreLiveDBForTest(liveDB, backup: backup) }
 
-        DBServer().restoreDatabase(srcFilePath: restoreZip.path)
+        try DBServer().restoreDatabase(srcFilePath: restoreZip.path)
 
         let stats = try rawDB103Stats(liveDB)
         XCTAssertEqual(stats.version, 104)

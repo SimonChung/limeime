@@ -245,7 +245,7 @@ final class SetupImControllerTest: XCTestCase {
 
     // MARK: - restoreDB
 
-    func testRestoreDBFromInvalidURLCompletesGracefully() async throws {
+    func testRestoreDBFromInvalidURLReportsError() async throws {
         let (url, db) = try makeDB()
         defer { try? FileManager.default.removeItem(at: url) }
         let mock = await MockSetupImView()
@@ -259,7 +259,29 @@ final class SetupImControllerTest: XCTestCase {
         try await Task.sleep(nanoseconds: 500_000_000)
 
         await MainActor.run {
-            XCTAssertFalse(mock.progressCalls.isEmpty, "Should reach completion handler")
+            XCTAssertFalse(mock.errors.isEmpty, "Expected restore failure to reach the view")
+            XCTAssertTrue(mock.progressCalls.isEmpty, "Invalid restore must not report completion")
+            XCTAssertEqual(mock.refreshCount, 0, "Invalid restore must not refresh the IM list")
+        }
+    }
+
+    func testAsyncRestoreDBFromInvalidURLReturnsFailureAndDismissesProgress() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let progress = await LimeIME.ProgressManager()
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: progress
+        )
+        let badURL = URL(fileURLWithPath: "/tmp/nonexistent_\(UUID().uuidString).zip")
+
+        let result = await controller.restoreDB(from: badURL)
+
+        if case .success = result {
+            XCTFail("Expected restore failure for invalid path")
+        }
+        await MainActor.run {
+            XCTAssertFalse(progress.isVisible, "Restore must dismiss progress after failure")
         }
     }
 

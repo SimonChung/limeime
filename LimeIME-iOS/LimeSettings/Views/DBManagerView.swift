@@ -119,7 +119,7 @@ struct DBManagerView: View {
                 if let url = backupURL { ShareSheet(activityItems: [url]) }
             }
             .overlay {
-                if isWorking {
+                if shouldShowLocalWorkingOverlay {
                     ZStack {
                         Color.black.opacity(0.3).ignoresSafeArea()
                         VStack(spacing: 12) {
@@ -205,7 +205,7 @@ struct DBManagerView: View {
                     presentationState.finishBackupAndPresentShare()
                     self.apply(presentationState)
                     self.backupURL = dest
-                    self.statusMessage = "備份已準備完成"
+                    self.statusMessage = "資料庫備份完成"
                 }
             } catch {
                 await MainActor.run {
@@ -232,6 +232,10 @@ struct DBManagerView: View {
         }
     }
 
+    private var shouldShowLocalWorkingOverlay: Bool {
+        isWorking && (preparingShare || backupProgress > 0)
+    }
+
     // MARK: - Init DB
 
     private func restoreBundledDatabase() {
@@ -254,6 +258,7 @@ struct DBManagerView: View {
 
     private func performRestore(from url: URL) {
         isWorking = true
+        statusMessage = "還原中…"
         Task {
             let result = await setupController.restoreDB(from: url)
             switch result {

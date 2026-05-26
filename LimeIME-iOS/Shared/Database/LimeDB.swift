@@ -2441,7 +2441,7 @@ final class LimeDB {
 
     private static func createEmojiTables(_ db: Database, forceRecreate: Bool) throws {
         if forceRecreate {
-            try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_FTS)")
+            try LimeDB.dropEmojiFTSIfPresent(db)
             try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_USER)")
             try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_DATA)")
         }
@@ -2460,6 +2460,7 @@ final class LimeDB {
             )
         """)
         try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_emoji_group ON \(EMOJI_TABLE_DATA)(group_name, sort_order)")
+        try LimeDB.dropEmojiFTSIfUnusable(db)
         if try !db.tableExists(EMOJI_TABLE_FTS) {
             do {
                 try db.execute(sql: """
@@ -2470,6 +2471,7 @@ final class LimeDB {
                     )
                 """)
             } catch {
+                try LimeDB.dropEmojiFTSIfPresent(db)
                 try db.execute(sql: """
                     CREATE VIRTUAL TABLE \(EMOJI_TABLE_FTS) USING fts4(
                         name_en, name_tw, tags_en, tags_tw,
@@ -2486,6 +2488,55 @@ final class LimeDB {
                 use_count INTEGER NOT NULL DEFAULT 0
             )
         """)
+    }
+
+    private static func dropEmojiFTSIfUnusable(_ db: Database) throws {
+        guard try db.tableExists(EMOJI_TABLE_FTS) else { return }
+        let createSQL = try String.fetchOne(db, sql: """
+            SELECT sql FROM sqlite_schema
+            WHERE type = 'table' AND name = ?
+        """, arguments: [EMOJI_TABLE_FTS]) ?? ""
+        let normalizedSQL = createSQL.lowercased()
+        guard normalizedSQL.contains("virtual table") &&
+              (normalizedSQL.contains("using fts4") || normalizedSQL.contains("using fts5")) else {
+            try LimeDB.dropEmojiFTSIfPresent(db)
+            return
+        }
+        do {
+            _ = try Int.fetchOne(db, sql: "SELECT 1 FROM \(EMOJI_TABLE_FTS) LIMIT 1")
+        } catch {
+            try LimeDB.dropEmojiFTSIfPresent(db)
+        }
+    }
+
+    private static func dropEmojiFTSIfPresent(_ db: Database) throws {
+        do {
+            try db.execute(sql: "DROP TABLE IF EXISTS \(EMOJI_TABLE_FTS)")
+        } catch {
+            try LimeDB.removeEmojiFTSSchemaEntries(db)
+        }
+    }
+
+    private static func removeEmojiFTSSchemaEntries(_ db: Database) throws {
+        let schemaVersion = try Int.fetchOne(db, sql: "PRAGMA schema_version") ?? 0
+        try db.execute(sql: "PRAGMA writable_schema = ON")
+        do {
+            try db.execute(sql: """
+                DELETE FROM sqlite_schema
+                WHERE tbl_name = ?
+                   OR name = ?
+                   OR name LIKE ?
+            """, arguments: [
+                EMOJI_TABLE_FTS,
+                EMOJI_TABLE_FTS,
+                "\(EMOJI_TABLE_FTS)_%"
+            ])
+            try db.execute(sql: "PRAGMA schema_version = \(schemaVersion + 1)")
+            try db.execute(sql: "PRAGMA writable_schema = OFF")
+        } catch {
+            try? db.execute(sql: "PRAGMA writable_schema = OFF")
+            throw error
+        }
     }
 
     private static func ensureCj4Schema(_ db: Database) throws {
