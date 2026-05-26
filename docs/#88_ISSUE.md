@@ -111,7 +111,7 @@ Source inspection confirms `LimeStudio/app/src/main/res/xml/method.xml` currentl
 <input-method ... android:settingsActivity="net.toload.main.hd.ui.MainActivity"/>
 ```
 
-But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher activity `.ui.LIMESettings` and settings/preference activity `.ui.LIMEPreference`, not `.ui.MainActivity`. The IME settings entry uses the standard `android:settingsActivity` hook; on the reporter's Samsung/One UI device this fails with `ActivityNotFoundException` because the target activity is not declared. This is likely a separate remaining #88 failure path after the v6.1.13 scrollbar fix. The next targeted Android fix should update the IME metadata to point at a declared settings activity such as `.ui.LIMESettings` or `.ui.LIMEPreference` as appropriate, or otherwise provide a compatible declared activity, and verify launching LIME from Android/Samsung input-method settings, not only via launcher/monkey.
+But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher activity `.ui.LIMESettings` and settings/preference activity `.ui.LIMEPreference`, not `.ui.MainActivity`. The IME settings entry uses the standard `android:settingsActivity` hook; on the reporter's Samsung/One UI device this fails with `ActivityNotFoundException` because the target activity is not declared. This is likely a separate remaining #88 failure path after the v6.1.13 scrollbar fix. PR #89 (https://github.com/lime-ime/limeime/pull/89) is the current targeted Android fix: it updates the IME metadata to point at declared `net.toload.main.hd.ui.LIMESettings`. Verify launching LIME from Android/Samsung input-method settings, not only via launcher/monkey.
 
 ## Verification plan
 
@@ -119,7 +119,7 @@ But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher act
 - Historical context: `ejmoog` reported that clean reinstall of v6.1.12 reproduced the crash while in-place upgrade over an existing LIME 6 install could work; the original reporter later said both upgrade and reinstall paths still fail on v6.1.13.
 - Do not ask for more generic v6.1.13 logs before a new targeted settings-entry APK exists; the current second log is actionable enough for PR #89 / equivalent metadata fix.
 - Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
-- For the newly captured Samsung Settings path, update/fix `android:settingsActivity` in `LimeStudio/app/src/main/res/xml/method.xml` so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
+- For the newly captured Samsung Settings path, review/verify PR #89's `android:settingsActivity` change in `LimeStudio/app/src/main/res/xml/method.xml` so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
 - Verify launching LIME from Samsung input-method settings after install/upgrade, because this path is different from launcher/`monkey -p net.toload.main.hd2026 1` launch.
 - Also verify normal launcher `.ui.LIMESettings` launch still works and the v6.1.13 scrollbar fix remains intact.
 - If a future log shows a real `net.toload.main.hd2026` `AndroidRuntime` crash after the settingsActivity fix, compare whether it is still `NestedScrollView.draw()` / `ScrollBarDrawable.mutate()` or another settings-launch path.
