@@ -36,7 +36,7 @@ The most likely immediate trigger is the root `NestedScrollView` in `LimeStudio/
 - `sheet_manage_related_add.xml`
 - `sheet_manage_related_edit.xml`
 
-Do not assume this is fixed by a newer APK until a relevant crash stack/reproducer is available and a targeted change lands.
+Do not assume the renewed Samsung Settings entry-point failure is fixed by the v6.1.13 scrollbar APK; that second path needs its own targeted metadata change, build, and reporter retest before closure.
 
 ## Fix implemented
 
@@ -116,8 +116,8 @@ But `LimeStudio/app/src/main/AndroidManifest.xml` declares exported launcher act
 ## Verification plan
 
 - Reproduce on Android 13 if possible, preferably with a Samsung/One UI environment or a comparable Android 13 emulator/device.
-- Test clean reinstall of v6.1.12 early, because `ejmoog` reports uninstall/reinstall is sufficient to reproduce the crash.
-- Test in-place upgrade from an existing LIME 6 install separately, because reporter evidence now differs between upgrade and reinstall paths.
+- Historical context: `ejmoog` reported that clean reinstall of v6.1.12 reproduced the crash while in-place upgrade over an existing LIME 6 install could work; the original reporter later said both upgrade and reinstall paths still fail on v6.1.13.
+- Do not ask for more generic v6.1.13 logs before a new targeted settings-entry APK exists; the current second log is actionable enough for PR #89 / equivalent metadata fix.
 - Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
 - For the newly captured Samsung Settings path, update/fix `android:settingsActivity` in `LimeStudio/app/src/main/res/xml/method.xml` so Samsung Settings no longer tries the undeclared `net.toload.main.hd.ui.MainActivity` class.
 - Verify launching LIME from Samsung input-method settings after install/upgrade, because this path is different from launcher/`monkey -p net.toload.main.hd2026 1` launch.
@@ -131,7 +131,7 @@ Locally reproduced on Samsung `SM-A325N`, Android 13 / API 33. Not reproduced on
 
 Fix implemented in remote commit `5a73ac1d2842` and released in Android pre-release APK `LIMEHD2026-6.1.13.apk` / version `6.1.13`. The fix was verified locally on Samsung `SM-A325N`, Android 13 / API 33: `:app:assembleDebug` succeeded, the fixed build launched `.ui.LIMESettings` twice without an `AndroidRuntime` fatal exception, and release `LIMEHD2026-6.1.13.apk` was clean-installed and launched without the settings crash.
 
-Because GitHub auto-closed this community issue from the `Fix #88` commit before reporter confirmation, automation reopened the issue and posted the v6.1.13 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4539808310. Reporter negative retest on 2026-05-26: `peter8777555` reported that v6.1.13 still cannot be used on the original Samsung A71 4G / Android 13 device after the install/update flow shown in screenshots. See https://github.com/lime-ime/limeime/issues/88#issuecomment-4539874261. The attached screenshots show the v6.1.13 install/update flow followed by an Android crash dialog saying 「萊姆輸入法2026」屢次停止運作, plus Android Settings showing 「無法開啟『萊姆輸入法2026』的設定」.
+Because GitHub auto-closed this community issue from the `Fix #88` commit before reporter confirmation, automation reopened the issue and posted the v6.1.13 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4539808310. Reporter negative retest on 2026-05-26: `peter8777555` reported that v6.1.13 still cannot be used on the original Samsung A71 4G / Android 13 device after the install/update flow shown in screenshots. See https://github.com/lime-ime/limeime/issues/88#issuecomment-4539874261. The attached screenshots show the v6.1.13 install/update flow followed by an Android crash dialog saying 「萊姆輸入法2026」屢次停止運作, plus Android Settings showing 「無法開啟『萊姆輸入法2026』的設定」. The uploaded second log corroborates the Samsung Settings entry-point failure, but does not include a LIME `AndroidRuntime` crash stack for the screenshot-only crash dialog.
 
 This means the v6.1.13 scrollbar fix was not sufficient for the reporter's device/path, even though it passed local Samsung `SM-A325N` Android 13 verification. Keep the issue open and do not close from the fix commit or APK alone. Automation kept a single targeted logcat collection request at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539952465 after duplicate concurrent follow-up comments were removed, then added a mobile-logcat alternative at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539984855.
 
