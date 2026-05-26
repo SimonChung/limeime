@@ -1,12 +1,14 @@
 package net.toload.main.hd.ui.view;
 
 import android.app.Activity;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,6 +25,7 @@ public final class ScrollableTabHelper {
     public static void applyToNestedScrollView(@Nullable Activity activity,
                                                @NonNull NestedScrollView scrollView) {
         applyBottomNavInset(activity, scrollView);
+        applySafeScrollbarDrawables(scrollView);
         scrollView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         scrollView.setVerticalScrollBarEnabled(false);
         scrollView.setScrollbarFadingEnabled(true);
@@ -37,6 +40,15 @@ public final class ScrollableTabHelper {
             }
             setScrollbarVisibleWhenScrollable(scrollView, canScroll);
         });
+    }
+
+    private static void applySafeScrollbarDrawables(@NonNull View view) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+
+        view.setVerticalScrollbarThumbDrawable(
+                ContextCompat.getDrawable(view.getContext(), R.drawable.settings_scrollbar_thumb));
+        view.setVerticalScrollbarTrackDrawable(
+                ContextCompat.getDrawable(view.getContext(), R.drawable.settings_scrollbar_track));
     }
 
     public static void applyToRecyclerView(@Nullable Activity activity,

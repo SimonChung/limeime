@@ -6,27 +6,76 @@ Community reporter `peter8777555` reports that LIME v6.1.12 cannot be used on a 
 
 Live issue state checked 2026-05-26: issue is open, labeled `bug`, assigned to `jrywu`, and has one `limeimetw` acknowledgement asking for crash-scope details and logcat/crash stack evidence. Reporter follow-up now confirms the crash happens when opening the 「萊姆輸入法」 settings app. The original reporter reproduced it after upgrading from LIME v6.0.0 to v6.1.12, while another reporter (`ejmoog`) added that uninstalling and reinstalling v6.1.12 also crashes, but installing v6.1.12 over an existing LIME 6 install can still work.
 
-## Likely root cause
+Local reproduction on 2026-05-26: clean install of `LimeStudio/app/release/LIMEHD2026-6.1.12.apk` on Samsung `SM-A325N`, Android 13 / API 33, reproduces the settings launch crash. Clean installs on a Google API 33 `sdk_gphone64_x86_64` emulator and an Android 16 `sdk_gphone64_x86_64` emulator did not reproduce it, so current evidence points to Samsung/One UI Android 13 behavior rather than an API 33-wide crash.
 
-Unknown pending crash evidence, but the failure scope has narrowed. The report is consistent with an Android settings-app startup crash introduced somewhere between the reporter's currently usable v6.0.2 workaround and failing v6.1.12. Repository inspection shows the v6.1.12 Android package is `applicationId` `net.toload.main.hd2026`, versionName `6.1.12`, with launcher settings activity `.ui.LIMESettings` and input method service `.LIMEService`.
+## Root cause
 
-Reporter evidence now points to a settings-app startup crash that can occur after at least some upgrade and reinstall paths. `ejmoog`'s report that reinstalling v6.1.12 crashes, while an in-place install over an existing LIME 6 setup can work, makes first-run / fresh data-directory initialization a stronger suspect, but does not rule out upgrade-path state differences. Settings startup constructs `SearchServer`, `DBServer`, and `LimeDB`, then immediately builds the IM navigation list through `ManageImController.getImConfigFullNameList()` before showing the setup tab. SearchServer/LimeDB startup also initializes caches and preloads emoji category pages. Without a stack trace, keep this as a hypothesis only; possible areas include first-run database creation/default table or emoji data initialization, bundled database/resource loading, upgrade-vs-reinstall preference/database state, and settings-fragment navigation with empty/fresh data.
+Confirmed app-level root cause: the LIME settings screen renders a `NestedScrollView` with platform scrollbars enabled on Samsung Android 13 / One UI. On this device family, Android's framework scrollbar draw path can hold a null `ScrollBarDrawable`; when the first settings page is drawn, framework code calls `ScrollBarDrawable.mutate()` and crashes before the UI can remain open. The same APK does not crash on a Google API 33 emulator, so this appears device/vendor-specific rather than Android 13/API 33 generic.
+
+The crash is a rendering-time crash in the settings UI, not a first-run database creation, migration, bundled table, or emoji initialization crash. The fatal exception is:
+
+```text
+java.lang.NullPointerException: Attempt to invoke virtual method
+'android.widget.ScrollBarDrawable android.widget.ScrollBarDrawable.mutate()'
+on a null object reference
+    at android.view.View.onDrawScrollBars(View.java:21718)
+    at android.view.View.onDrawForeground(View.java:26440)
+    at android.view.View.draw(View.java:24425)
+    at androidx.core.widget.NestedScrollView.draw(NestedScrollView.java:2409)
+```
+
+The app package is `net.toload.main.hd2026`, versionName `6.1.12`, with launcher settings activity `.ui.LIMESettings` and input method service `.LIMEService`. On the Samsung `SM-A325N` API 33 reproduction, `monkey -p net.toload.main.hd2026 1` starts `.ui.LIMESettings`, then the process exits and foreground returns to Android Settings.
+
+The most likely immediate trigger is the root `NestedScrollView` in `LimeStudio/app/src/main/res/layout/fragment_setup.xml` (`@+id/setup_scroll`), because it is the default settings landing page and the stack reaches `NestedScrollView.draw()`. Other settings screens also use `NestedScrollView` and should receive the same defensive treatment to avoid the same Samsung/Android 13 framework path:
+
+- `fragment_setup.xml` / `@+id/setup_scroll`
+- `fragment_db_manager.xml` / `@+id/db_manager_scroll`
+- `fragment_im_detail.xml` / `@+id/im_detail_scroll`
+- `sheet_manage_im_add.xml`
+- `sheet_manage_im_edit.xml`
+- `sheet_manage_related_add.xml`
+- `sheet_manage_related_edit.xml`
 
 Do not assume this is fixed by a newer APK until a relevant crash stack/reproducer is available and a targeted change lands.
 
-## Proposed solution / investigation plan
+## Fix implemented
 
-1. Reproduce a clean install of v6.1.12 on Android 13 (Samsung/One UI if available) and capture `adb logcat` while launching 「萊姆輸入法」 settings.
-2. If local reproduction is not available, ask the reporters for either an Android bug report or a short `adb logcat` capture filtered around `net.toload.main.hd2026` / `AndroidRuntime`.
-3. Distinguish the failing entry point:
-   - launching the LIME settings app after a clean install;
-   - launching settings after an in-place upgrade from LIME 6.x;
-   - enabling or switching to the keyboard;
-   - restoring/importing existing data;
-   - first-run initialization with an empty data directory vs migrated preferences/database.
-4. Compare the startup paths between v6.0.2 and v6.1.12, focusing first on settings launch and first-run DB/resource initialization: `LIMESettings.onCreate()`, `SearchServer` constructor, `DBServer.getInstance()`, `LimeDB` constructor/`ensureCurrentDatabase()`, and initial IM config/navigation loading.
-5. If the stack points to database restore/migration or bundled/default table initialization, reproduce with both clean install and upgrade-from-6.0.x data.
-6. Prepare a focused Android fix and verify on an Android 13 device/emulator before asking the reporter to retest.
+Fixed locally on 2026-05-26. The fix does not disable settings scrollbars globally, because that would regress issue #64, where the main settings tabs need a visible scroll affordance when content overflows and enough bottom padding so the last row is not hidden behind the bottom navigation.
+
+The implemented approach keeps the #64 behavior in `ScrollableTabHelper`: bottom-navigation inset, `clipToPadding=false`, and conditional scrollbar visibility only when the container can actually scroll. It changes the scrollbar implementation so Samsung Android 13 never draws a null platform scrollbar drawable.
+
+Changed files:
+
+- `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/ScrollableTabHelper.java`
+- `LimeStudio/app/src/main/res/drawable/settings_scrollbar_thumb.xml`
+- `LimeStudio/app/src/main/res/drawable/settings_scrollbar_track.xml`
+
+Implementation details:
+
+1. Added small non-null settings scrollbar thumb/track drawables.
+2. Updated `ScrollableTabHelper.applyToNestedScrollView()` to install those drawables on API 29+ before the helper conditionally enables the scrollbar.
+3. Kept `setVerticalScrollBarEnabled(false)` during setup, then continued to call `setScrollbarVisibleWhenScrollable(scrollView, canScroll)` after layout.
+4. Preserved #64 behavior: visible scrollbars still appear only on overflowing settings pages; the bottom-navigation inset and `clipToPadding=false` behavior remain unchanged.
+5. Avoided broad theme-level or app-wide scrollbar changes, so keyboard candidate popups, lists, and unrelated UI surfaces are not touched.
+
+Samsung verification commands used:
+
+```text
+adb -s localhost:8167 uninstall net.toload.main.hd2026
+adb -s localhost:8167 install <fixed-apk>
+adb -s localhost:8167 logcat -c
+adb -s localhost:8167 shell monkey -p net.toload.main.hd2026 1
+adb -s localhost:8167 logcat -d -v time AndroidRuntime:E *:S
+```
+
+Result: `.ui.LIMESettings` remained foreground after launch, the process stayed alive, and no `AndroidRuntime` fatal exception was emitted.
+
+Release APK verification on 2026-05-26:
+
+- Tested `LimeStudio/app/release/LIMEHD2026-6.1.13.apk` on Samsung `SM-A325N`, Android 13 / API 33.
+- Confirmed installed package reports `versionName=6.1.13`.
+- Clean-installed the release APK, launched `net.toload.main.hd2026` with `monkey -p net.toload.main.hd2026 1`, and confirmed the LIME process stayed alive with no `AndroidRuntime` fatal exception.
+- Ran a second force-stop plus explicit `.ui.LIMESettings` launch. The LIME process stayed alive and `AndroidRuntime:E` remained empty. Foreground moved to Android keyboard settings during the setup flow, but there was no app crash.
 
 ## Follow-up questions
 
@@ -35,13 +84,13 @@ Already answered / added publicly:
 - `peter8777555` confirmed the crash happens when opening the 「萊姆輸入法」 settings app.
 - `peter8777555` reproduced it after upgrading from LIME v6.0.0 to v6.1.12, and is currently using v6.0.2 normally.
 - `ejmoog` reported the same issue after uninstalling and reinstalling v6.1.12; their in-place upgrade over an existing LIME 6 install can still work.
-- No crash stack is available yet; `peter8777555` asked for a complete path/instructions to find the requested crash/logcat evidence.
+- A local crash stack is now available from Samsung `SM-A325N` API 33.
 
 Still useful:
 
 1. Confirm whether the IME keyboard itself also crashes when enabled/switched to after a clean install, or whether the observed failure is limited to opening settings.
-2. Obtain `adb logcat` / Android bug report evidence for `net.toload.main.hd2026` around the settings launch crash.
-3. If a developer can reproduce locally, compare clean-install vs upgrade behavior before asking reporters for more steps.
+2. Re-run #64 visual checks: on the four top-level phone tabs, overflowing content must still show a visible scrollbar and the last row must scroll fully above the bottom navigation.
+3. Smoke-test a Google API 33 emulator with the fixed build to ensure settings pages still scroll correctly and the custom scrollbar behavior does not regress non-Samsung Android 13.
 
 ## Verification plan
 
@@ -53,4 +102,8 @@ Still useful:
 
 ## Current follow-up status
 
-Open / pending crash stack or local reproduction. New corroborating reporter evidence points toward a v6.1.12 clean-install / first-run settings crash. No retest request yet because no relevant fix APK exists for this issue.
+Locally reproduced on Samsung `SM-A325N`, Android 13 / API 33. Not reproduced on Google API 33 or Android 16 emulators. Crash stack points to `NestedScrollView.draw()` / Samsung framework scrollbar rendering.
+
+Fix implemented and verified locally on Samsung `SM-A325N`, Android 13 / API 33: `:app:assembleDebug` succeeded, clean-installed the debug `LIMEHD2026-6.1.12.apk`, launched `.ui.LIMESettings` twice, process stayed alive, settings remained foreground, and `adb logcat -d -v time AndroidRuntime:E *:S` emitted no fatal exception.
+
+Release `LIMEHD2026-6.1.13.apk` was also clean-installed and verified on the same Samsung Android 13 device with no `AndroidRuntime` crash. Still need #64 visual regression checks before public retest request.
