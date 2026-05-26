@@ -1,4 +1,4 @@
-# Issue #88: LIME v6.1.12 crashes / cannot be used on Android 13
+# Issue #88: LIME v6.1.12 / v6.1.13 settings crash on Samsung Android 13
 
 ## Problem statement
 
@@ -85,7 +85,7 @@ Already answered / added publicly:
 - `peter8777555` reproduced it after upgrading from LIME v6.0.0 to v6.1.12, and is currently using v6.0.2 normally.
 - `ejmoog` reported the same issue after uninstalling and reinstalling v6.1.12; their in-place upgrade over an existing LIME 6 install can still work.
 - A local v6.1.12 crash stack is available from Samsung `SM-A325N` API 33.
-- `peter8777555` reported that v6.1.13 still crashes/cannot be opened on Samsung A71 4G / Android 13 after both upgrade and uninstall/reinstall, with screenshots of the Android crash dialog and Settings failure toast.
+- `peter8777555` reported that v6.1.13 still crashes/cannot be opened on Samsung A71 4G / Android 13 after the install/update flow shown in screenshots. The screenshots show the Android crash dialog and Android Settings displaying 「無法開啟『萊姆輸入法2026』的設定」.
 
 Still useful:
 
@@ -99,7 +99,7 @@ Still useful:
 - Test clean reinstall of v6.1.12 early, because `ejmoog` reports uninstall/reinstall is sufficient to reproduce the crash.
 - Test in-place upgrade from an existing LIME 6 install separately, because reporter evidence now differs between upgrade and reinstall paths.
 - Verify both app launch (`.ui.LIMESettings`) and IME activation/input (`.LIMEService`).
-- After v6.1.13 failed on the original Samsung A71 / Android 13 device, collect a fresh v6.1.13 crash stack/logcat for both upgrade and uninstall/reinstall paths before assuming the next fix area.
+- After v6.1.13 failed on the original Samsung A71 / Android 13 device, collect a fresh v6.1.13 crash stack/logcat for the reporter's actual failing path before assuming the next fix area. If feasible later, separately verify both upgrade and uninstall/reinstall paths.
 - Verify whether the reporter's new failure is the same `NestedScrollView.draw()` / `ScrollBarDrawable.mutate()` stack or a separate settings-launch crash path not covered by the v6.1.13 scrollbar fix.
 - After any additional targeted fix lands in a newer Android APK, ask the reporter(s) to retest with the direct APK link and confirm whether the settings launch crash is resolved for both clean install and upgrade paths.
 
@@ -109,7 +109,7 @@ Locally reproduced on Samsung `SM-A325N`, Android 13 / API 33. Not reproduced on
 
 Fix implemented in remote commit `5a73ac1d2842` and released in Android pre-release APK `LIMEHD2026-6.1.13.apk` / version `6.1.13`. The fix was verified locally on Samsung `SM-A325N`, Android 13 / API 33: `:app:assembleDebug` succeeded, the fixed build launched `.ui.LIMESettings` twice without an `AndroidRuntime` fatal exception, and release `LIMEHD2026-6.1.13.apk` was clean-installed and launched without the settings crash.
 
-Because GitHub auto-closed this community issue from the `Fix #88` commit before reporter confirmation, automation reopened the issue and posted the v6.1.13 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4539808310. Reporter negative retest on 2026-05-26: `peter8777555` reported that v6.1.13 still cannot be used on the original Samsung A71 4G / Android 13 device in both requested paths: upgrading from an older version and uninstalling before reinstalling. See https://github.com/lime-ime/limeime/issues/88#issuecomment-4539874261. The attached screenshots show the v6.1.13 install/update flow followed by an Android crash dialog saying 「萊姆輸入法2026」屢次停止運作, plus Android Settings showing 「無法開啟『萊姆輸入法2026』的設定」.
+Because GitHub auto-closed this community issue from the `Fix #88` commit before reporter confirmation, automation reopened the issue and posted the v6.1.13 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4539808310. Reporter negative retest on 2026-05-26: `peter8777555` reported that v6.1.13 still cannot be used on the original Samsung A71 4G / Android 13 device after the install/update flow shown in screenshots. See https://github.com/lime-ime/limeime/issues/88#issuecomment-4539874261. The attached screenshots show the v6.1.13 install/update flow followed by an Android crash dialog saying 「萊姆輸入法2026」屢次停止運作, plus Android Settings showing 「無法開啟『萊姆輸入法2026』的設定」.
 
 This means the v6.1.13 scrollbar fix was not sufficient for the reporter's device/path, even though it passed local Samsung `SM-A325N` Android 13 verification. Keep the issue open and do not close from the fix commit or APK alone. Automation kept a single targeted logcat collection request at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539952465 after duplicate concurrent follow-up comments were removed, then added a mobile-logcat alternative at https://github.com/lime-ime/limeime/issues/88#issuecomment-4539984855.
 
