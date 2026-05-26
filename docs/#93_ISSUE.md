@@ -1,77 +1,63 @@
-# Issue #93 — iOS .lime import without cname does not appear in installed IM list
+# Issue #93: iOS .lime import without cname does not appear in installed IM list
 
 ## Problem statement
 
-On iOS, importing a `.lime` table that does not include `@cname@` / `%cname` metadata can report success, but the IM manager / installed IM list shows no installed input method afterward. The IM catalog still marks the same IM/table as installed, creating contradictory state.
-
-GitHub issue: https://github.com/lime-ime/limeime/issues/93
+Maintainer-created tracking issue #93 reports that on iOS, importing a `.lime` text table without `@cname@` / `%cname` metadata can finish successfully, yet the imported table does not appear in the installed input-method list. The missing-cname condition is the observed report shape; code inspection suggests the registration failure is broader than cname fallback alone. The IM catalog can still show the same table as installed because it detects mapping data separately.
 
 ## Current classification
 
-- Type: bug
-- Area: iOS `.lime` text import / IM registration / installed-list state
-- Labels: `bug`, `Usability`
-- Owner: `jrywu`
-- Reporter/source: maintainer request from Jeremy
+- Type: bug / usability
+- Platform: iOS
+- Reporter/source: maintainer-created (`limeimetw`)
+- Live labels: `bug`, `Usability`
+- Live assignee: `jrywu`
+- Public acknowledgement: not needed; this is an internal maintainer tracking issue.
 
-## Observed behavior
+## Code paths inspected
 
-- User imports a `.lime` file without cname metadata.
-- Import completes successfully.
-- The IM manager / installed IM list shows no installed IM.
-- The IM catalog still shows the imported IM/table as installed.
-
-## Expected behavior
-
-After a successful `.lime` import, iOS should register and display the imported IM in the installed IM list even when cname metadata is missing. If cname is absent, the app should use a safe fallback display name such as version metadata, file name, table name, or a localized custom-table name.
-
-The IM catalog installed state and the installed IM list should agree.
-
-## Relevant source paths inspected
-
-- `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift`
-  - `importTxtFile(url:tableName:view:)` and async `importTxtFile(url:tableName:restoreLearning:)` call `server.importTxtFile(...)` and report success, but do not appear to register an IM row or rebuild activated keyboard state afterward.
 - `LimeIME-iOS/Shared/Database/LimeDB.swift`
-  - `importTxtFile(at:tableName:progress:)` writes imported mappings and sets `im` config fields such as `source`, `version`, `name`, and `amount`; when `@cname@` / `%cname` is absent, `name` falls back to `sourceName`.
-  - `registerIM(imName:tableName:label:keyboardId:)` exists but is used by catalog/download and some restore paths, not clearly by the text `.lime` import path.
-- `LimeIME-iOS/LimeSettings/Controllers/ManageImController.swift`
-  - `loadIMList()` reads installed-list data via `DBServer.getAllImConfigs()`.
-- `LimeIME-iOS/LimeSettings/Controllers/IMStoreView.swift`
-  - `refreshInstalledTables()` marks catalog installed state by `tableHasData(...)`, so catalog can say installed when mappings exist even if the `im` list/registration state is missing or incomplete.
-- `LimeIME-iOS/Shared/Preferences/LIMEPreferenceManager.swift`
-  - `syncIMActivatedState(dbServer:)` rebuilds `keyboard_state` from `im.enabled` rows; text import does not clearly call it after success.
+  - `importTxtFile(at:tableName:progress:)` parses `@version@`, `@cname@`, `%version`, and `%cname`; version/cname metadata cross-populates the display-name fallback, and `sourceName` is used when no usable version/name metadata is available.
+  - After import it writes only key-value rows such as `source`, `version`, `name`, `amount`, `import`, `selkey`, `endkey`, `spacestyle`, `imkeys`, and `imkeynames` through `setImConfig(...)`.
+  - `setImConfig(...)` inserts rows with `code`, `title`, and `desc` only; even if called with `field == "keyboard"`, it does not populate the `keyboard` column that `getAllImConfigs()` reads.
+  - `getAllImConfigs()` groups `im` rows by `code`, looks for a non-key-value seed row, then requires a non-empty keyboard id from either a `title="keyboard"` row or the seed row's `keyboard` column before returning an `ImConfig`.
+  - The key-value field allowlist excludes `source`, `amount`, and `import`, so those metadata rows can be treated as candidate seed rows, but they still lack a keyboard id.
+- `LimeIME-iOS/LimeSettings/Views/IMInstallView.swift`
+  - After text import, `seedCustomIM()` is called only for `tableName == "custom"`, but `seedCustomIM()` bails out when any `im` row already exists for `custom`. A text import has already written metadata rows, so the seed row is not synthesized. Text imports targeting non-`custom` tables do not get this seed attempt at all.
+  - The catalog refresh uses `IMDownloadManager.refreshInstalledTables()` / `DBServer.tableHasData(...)`, so it can mark a table as installed based on mapping data even when `getAllImConfigs()` cannot surface it in the installed list.
+- `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift`
+  - Restore-specific `reregisterKnownIMs()` is separate and only handles known bundled IMs, not arbitrary `.lime` text imports.
 
 ## Likely root cause
 
-The iOS text import path likely populates the mapping table but does not consistently create/update the corresponding `im` table row and activated keyboard state after a successful `.lime` import. The catalog uses `tableHasData(...)`, so it can mark the table installed based only on mapping rows, while the installed IM list depends on `getAllImConfigs()` and therefore appears empty or stale.
+The iOS text-import path writes mappings and metadata for the imported table without ensuring the `im` table also has a usable registration/seed row and keyboard configuration. The installed-list failure does not depend only on cname absence: metadata rows such as `source`, `amount`, and `import` can be treated as seed candidates because they are not in `getAllImConfigs()`'s key-value field allowlist, but those rows have no keyboard id. `title="name"` is a key-value field and cannot become the seed row. Because `seedCustomIM()` skips seeding once any metadata row exists, non-`custom` imports have no seed attempt, and `setImConfig(...)` does not populate the `keyboard` column, the installed-list query will return no `ImConfig` for metadata-only text-import registration even though `tableHasData(...)` makes the catalog treat the table as installed.
 
-Missing cname metadata may expose this because the import flow relies on metadata-derived naming/registration instead of always using a safe fallback and registering the imported table.
+## Proposed fix / investigation plan
 
-## Proposed solution
-
-1. After successful `.lime` / text import, ensure the imported table has a valid `im` row with:
-   - stable code/table identity,
-   - non-empty fallback display title/name,
-   - enabled state appropriate for a newly imported custom IM,
-   - keyboard id fallback if needed.
-2. Rebuild `keyboard_state` through `LIMEPreferenceManager.syncIMActivatedState(dbServer:)` after registration.
-3. Invalidate/reload the IM manager list and catalog installed state so both views agree.
-4. Add regression coverage for `.lime` import without `@cname@` / `%cname`.
-
-## Follow-up questions
-
-- Which table name is selected by the iOS import UI for this `.lime` file (`custom` or another table)?
-- Does the imported table contain `@version@` / `%version`, or no metadata at all?
-- Is the issue limited to `.lime`, or does `.cin` without `%cname` show the same installed-list/catalog mismatch?
+1. Add a failing iOS unit test that imports a `.lime` text file without `@cname@` / `%cname` and verifies:
+   - mapping rows are imported;
+   - `getAllImConfigs()` returns the imported table;
+   - the label falls back to a safe display value such as `@version@`, file name, table name, or localized custom-table name;
+   - the config has a non-empty keyboard id.
+   Include at least one case with no cname/version metadata and one case with cname or version metadata present, because the registration failure appears broader than the no-cname symptom.
+2. Adjust the text-import completion path so successful imports always ensure a usable IM registration for the target table:
+   - preserve explicit `name`/`version` metadata when present;
+   - choose a safe fallback label when cname/name is missing;
+   - ensure a default keyboard id appropriate to the table (for `custom`, likely `lime_abc` unless a better table-specific mapping exists);
+   - avoid overwriting richer cloud/known-IM metadata unnecessarily.
+   A naive `setImConfig(tableName, "keyboard", ...)` call is not sufficient unless `getAllImConfigs()` is also changed to read `kbRow.desc`, because the current query uses the `keyboard` column. The fix should either insert/merge a row with the `keyboard` column populated, make `registerIM(...)` merge registration data into existing metadata-only rows, or update `getAllImConfigs()` fallback behavior deliberately.
+3. Revisit `seedCustomIM()` / `registerIM(...)` early-return behavior so metadata-only rows do not prevent creation of the required seed/keyboard registration. Registration may need to run before metadata writes, use a narrower existing-row check, or merge the missing keyboard/seed data into existing rows.
+4. Consider updating `getAllImConfigs()` so metadata keys such as `source`, `amount`, and `import` are not mistaken for seed rows, while still supporting legacy/imported rows.
+5. After registration changes, rebuild/sync keyboard state as needed so the keyboard extension can see the imported IM.
 
 ## Verification plan
 
-- Import a `.lime` file without `@cname@` / `%cname` metadata.
-- Confirm the imported table appears in the installed IM list with a fallback name.
-- Confirm the IM catalog installed state and installed IM list agree.
-- Confirm the imported IM can be enabled/disabled.
-- Confirm the keyboard can select/use the imported IM after import.
+- Import a `.lime` file without `@cname@` / `%cname` on iOS.
+- Confirm the import reports success and the mapping rows are queryable.
+- Confirm the imported table appears in the installed IM list with a non-empty fallback display name.
+- Confirm the pre-fix catalog/installed-list divergence is covered by a regression check, then confirm after the fix that the IM catalog installed marker and installed IM list agree.
+- Confirm the imported IM can be enabled/disabled and selected/used by the keyboard.
+- Regression-check `.lime` / `.cin` files that do include `@cname@`, `%cname`, `@version@`, or `%version` metadata.
 
-## Current follow-up status
+## Follow-up / retest condition
 
-Open. Waiting for iOS implementation fix and verification. No community retest request is needed because this is maintainer-created/internal tracking.
+No community retest request is needed because #93 is maintainer-created. Close this issue only after an iOS fix is implemented and verified locally or through the next iOS/TestFlight build path.
