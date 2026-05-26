@@ -104,6 +104,8 @@ Still useful:
 
 Locally reproduced on Samsung `SM-A325N`, Android 13 / API 33. Not reproduced on Google API 33 or Android 16 emulators. Crash stack points to `NestedScrollView.draw()` / Samsung framework scrollbar rendering.
 
-Fix implemented and verified locally on Samsung `SM-A325N`, Android 13 / API 33: `:app:assembleDebug` succeeded, clean-installed the debug `LIMEHD2026-6.1.12.apk`, launched `.ui.LIMESettings` twice, process stayed alive, settings remained foreground, and `adb logcat -d -v time AndroidRuntime:E *:S` emitted no fatal exception.
+Fix implemented in remote commit `5a73ac1d2842` and released in Android pre-release APK `LIMEHD2026-6.1.13.apk` / version `6.1.13`. The fix was verified locally on Samsung `SM-A325N`, Android 13 / API 33: `:app:assembleDebug` succeeded, the fixed build launched `.ui.LIMESettings` twice without an `AndroidRuntime` fatal exception, and release `LIMEHD2026-6.1.13.apk` was clean-installed and launched without the settings crash.
 
-Release `LIMEHD2026-6.1.13.apk` was also clean-installed and verified on the same Samsung Android 13 device with no `AndroidRuntime` crash. Still need #64 visual regression checks before public retest request.
+Because GitHub auto-closed this community issue from the `Fix #88` commit before reporter confirmation, automation reopened the issue and posted the v6.1.13 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4539808310. The issue should remain open pending reporter confirmation, especially on the original Samsung A71 / Android 13 device and on both upgrade and uninstall/reinstall paths.
+
+Still useful before final closure: #64 visual regression checks for overflowing settings pages, but that regression check should not block the current reporter crash retest request.
