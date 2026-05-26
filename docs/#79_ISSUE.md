@@ -15,12 +15,19 @@ Relevant comments:
 - Follow-up compatibility comparison from another tester (Pixel 9 / Android 16): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531768150
 - Reporter device context for the adjacent emoji-search input behavior (Samsung A16 / Android 16 / One UI 8.0): https://github.com/lime-ime/limeime/issues/79#issuecomment-4531782542
 - Maintainer clarification that APK 6.1.12 supports Chinese emoji search while 6.1.11 and earlier did not: https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839
+- Closing acknowledgement / completion note: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910
+
+## Current status
+
+Resolved / closed. The original Android dark-mode emoji search-field visual bug was reporter-confirmed fixed on APK `6.1.12` in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505. Maintainer context clarified the adjacent emoji-search Chinese input behavior in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531795839, and `limeimetw` closed #79 with completion note https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910.
+
+Scope of confirmation: Android APK `6.1.12` dark-mode search-field background/icon brightness. The reporter's Samsung A16 / Android 16 / One UI 8.0 emoji-search input observation remains historical adjacent context only; do not keep #79 on an active reporter-watch unless the issue is reopened or new 6.1.12+ evidence is provided. iOS/TestFlight visual parity remains an internal/manual QA consideration, not reporter-confirmed by this issue.
 
 ## Classification
 
-This should be tracked as a bug, not just an enhancement, because the dark keyboard/emoji panel theme is already active but one visible control does not follow it. The bug is visual/theme parity for the emoji search field in dark mode.
+This was tracked as a bug, not just an enhancement, because the dark keyboard/emoji panel theme is already active but one visible control does not follow it. The bug is visual/theme parity for the emoji search field in dark mode.
 
-Final public labels: `bug` + `Usability`. Issue closed after the reporter-confirmed Android visual/theme fix and maintainer clarification of the adjacent emoji-search input question.
+Final public labels remained `bug` + `Usability`.
 
 ## Reproduction steps
 
@@ -78,13 +85,13 @@ Implemented on `master` in commit `a763ee80b199` / `a763ee80b199360140185066f94e
 4. The theme palette includes explicit light, dark, pink, tech-blue, fashion-purple, relax-green, and system-following branches.
 5. Rounded shape, padding, and search-field height are preserved.
 
-## Fix / closure status
+## Fix / APK follow-up status
 
 Android APK `LIMEHD2026-6.1.12.apk` contains the scoped emoji search-field theme fix from the latest emoji search/theme polish push.
 
 Retest request posted: https://github.com/lime-ime/limeime/issues/79#issuecomment-4529659072
 
-Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope. A later comment from `Limeroshenko` also reported normal APK 6.1.12 behavior on Pixel 9 / Android 16, but that comment should not be overread as resolving the separate Chinese-IM-code input question.
+Reporter SmithCCho confirmed in https://github.com/lime-ime/limeime/issues/79#issuecomment-4531664505 that, in the tested Android dark-mode case, the search-field background and icon are no longer too bright. Treat the original visual/theme bug as reporter-confirmed fixed for the Android APK 6.1.12 scope. A later comment from `Limeroshenko` also reported normal APK 6.1.12 behavior on Pixel 9 / Android 16, but that comment should not be overread as resolving the separate Chinese-IM-code input question. The issue is now closed as completed after the maintainer clarification and completion note in https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910.
 
 The same comment raised a separate product/behavior question: during emoji search, typing table codes such as `100` with 行列/倉頡 did not enter the emoji search field; the code appeared in the host app's text field instead. `SmithCCho` later clarified the test environment as APK 6.1.12 on Samsung A16 / Android 16 / One UI 8.0. Current Android code explains why Chinese IM code-key behavior may differ from English/ASCII emoji search input:
 
@@ -97,13 +104,10 @@ Maintainer `jrywu` subsequently clarified in https://github.com/lime-ime/limeime
 
 The same commit also includes iOS emoji search/polish source work, but Android APK availability does not verify iOS delivery or TestFlight behavior.
 
-## Closure decision
+## Follow-up status
 
-Jeremy confirmed #79 can be closed. The original Android dark-mode emoji search-field visual bug is reporter-confirmed fixed in APK 6.1.12. The adjacent Chinese emoji-search input question was publicly clarified by maintainer `jrywu`; no further reporter evidence was provided that the original visual/theme fix failed.
-
-Closure comment: https://github.com/lime-ime/limeime/issues/79#issuecomment-4545418910. Live issue is closed by `limeimetw` on 2026-05-26 after Jeremy confirmed it can be closed.
-
-Remaining scope: iOS manual/device verification can still be useful for release QA because Android APK confirmation does not verify iOS/TestFlight behavior, but it is not a reason to keep this Android reporter issue open.
+- No active reporter watch remains for #79. Reopen or split only if SmithCCho or another reporter provides new 6.1.12+ evidence that the emoji-search input behavior still fails after the maintainer clarification, or if a separate product decision asks to track Chinese-IM-code emoji search behavior independently.
+- iOS manual/device verification remains useful even though commit `a763ee80b199` added iOS emoji-search/theme UI work and screenshot coverage; do not treat Android APK confirmation as iOS/TestFlight confirmation.
 
 ## Verification plan
 
