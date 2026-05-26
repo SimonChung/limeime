@@ -166,3 +166,11 @@ Reporter later noted in https://github.com/lime-ime/limeime/issues/88#issuecomme
 Current follow-up state: PR #89 (https://github.com/lime-ime/limeime/pull/89) corrected the IME settings activity metadata and was merged by `jrywu` on 2026-05-26 as `ca2fde90883a`. The issue is currently open after the post-merge reopen/comment because the authoritative APK metadata still points to `LIMEHD2026-6.1.13.apk` / version `6.1.13`, so there is not yet a newer APK known to contain the PR #89 metadata fix. If a future APK includes PR #89 and maintainer/Jeremy wants reporter validation, ask for a scoped retest of the Android/Samsung input-method settings launch path and direct app launch.
 
 Remaining release-QA note: #64 visual regression checks for overflowing settings pages remain useful, but they are separate from #88's now-merged metadata/settings-launch source fix and should not trigger public issue follow-up by themselves.
+
+## Webhook update: v6.1.14 APK retest request
+
+Commit `60f078f5744e` (`Fix #88 Samsung settings entry and release APK`) built Android pre-release APK `LIMEHD2026-6.1.14.apk` / version `6.1.14` after PR #89. This APK contains the IME settings metadata fix that points Samsung/Android input-method settings at the declared `net.toload.main.hd.ui.LIMESettings` activity, plus the prior v6.1.13 Samsung/Android 13 settings scrollbar fix.
+
+GitHub auto-closed #88 from the fixing commit, but this is a community-reported issue and the reporter has not yet confirmed the new APK on the original Samsung A71 / Android 13 device. Automation reopened the issue and posted a scoped v6.1.14 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4540597661.
+
+Current state: #88 is open/pending reporter confirmation for APK `LIMEHD2026-6.1.14.apk` (https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.14.apk). The requested verification is narrow: confirm both the Samsung/Android input-method settings entry path and direct app launch. Do not ask for more generic v6.1.13 logs; if v6.1.14 still fails, collect the exact operation path, screenshots, or a fresh log for that build.
