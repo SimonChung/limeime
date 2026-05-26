@@ -1,4 +1,4 @@
-# Issue #88: LIME v6.1.12 / v6.1.13 settings crash on Samsung Android 13
+# Issue #88: LIME v6.1.12–v6.1.14 Samsung Android 13 settings crash/retest
 
 ## Problem statement
 
@@ -70,7 +70,7 @@ adb -s localhost:8167 logcat -d -v time AndroidRuntime:E *:S
 
 Result: `.ui.LIMESettings` remained foreground after launch, the process stayed alive, and no `AndroidRuntime` fatal exception was emitted.
 
-Release APK verification on 2026-05-26 (launcher path only; this did not exercise the input-method settings entry point now implicated by the second reporter log):
+Release APK verification on 2026-05-26 for v6.1.13 (launcher path only; this did not exercise the input-method settings entry point now implicated by the second reporter log; see the v6.1.14 Webhook update for current retest status):
 
 - Tested `LimeStudio/app/release/LIMEHD2026-6.1.13.apk` on Samsung `SM-A325N`, Android 13 / API 33.
 - Confirmed installed package reports `versionName=6.1.13`.
@@ -169,8 +169,10 @@ Remaining release-QA note: #64 visual regression checks for overflowing settings
 
 ## Webhook update: v6.1.14 APK retest request
 
-Commit `60f078f5744e` (`Fix #88 Samsung settings entry and release APK`) built Android pre-release APK `LIMEHD2026-6.1.14.apk` / version `6.1.14` after PR #89. This APK contains the IME settings metadata fix that points Samsung/Android input-method settings at the declared `net.toload.main.hd.ui.LIMESettings` activity, plus the prior v6.1.13 Samsung/Android 13 settings scrollbar fix.
+Commit `60f078f5744e` (`Fix #88 Samsung settings entry and release APK`) built Android pre-release APK `LIMEHD2026-6.1.14.apk` / version `6.1.14` after PR #89. Based on that commit's changed files and `output-metadata.json`, this APK is expected to contain the IME settings metadata fix that points Samsung/Android input-method settings at the declared `net.toload.main.hd.ui.LIMESettings` activity, plus the prior v6.1.13 Samsung/Android 13 settings scrollbar fix.
 
-GitHub auto-closed #88 from the fixing commit, but this is a community-reported issue and the reporter has not yet confirmed the new APK on the original Samsung A71 / Android 13 device. Automation reopened the issue and posted a scoped v6.1.14 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4540597661.
+No local Samsung `SM-A325N` install/launch verification of v6.1.14 has been recorded yet. Also, the reporter's v6.1.13 screenshot crash dialog was not matched to a captured LIME `AndroidRuntime` stack; the actionable log evidence specifically identified the Samsung Settings `ActivityNotFoundException` path. Therefore v6.1.14 should be treated as a targeted settings-entry retest, not proof that every screenshot-only crash symptom is resolved.
 
-Current state: #88 is open/pending reporter confirmation for APK `LIMEHD2026-6.1.14.apk` (https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.14.apk). The requested verification is narrow: confirm both the Samsung/Android input-method settings entry path and direct app launch. Do not ask for more generic v6.1.13 logs; if v6.1.14 still fails, collect the exact operation path, screenshots, or a fresh log for that build.
+GitHub auto-closed #88 from the commit that built the PR-#89-containing APK, but this is a community-reported issue and the reporter has not yet confirmed the new APK on the original Samsung A71 / Android 13 device. Automation reopened the issue and posted a scoped v6.1.14 retest request: https://github.com/lime-ime/limeime/issues/88#issuecomment-4540597661.
+
+Current state: #88 is open/pending reporter confirmation for APK `LIMEHD2026-6.1.14.apk` (https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.14.apk). The requested reporter verification is narrow: confirm both the Samsung/Android input-method settings entry path and direct app launch. #64 visual regression checks and non-Samsung emulator smoke tests remain internal QA, not part of the reporter ask. Do not ask for more generic v6.1.13 logs; if v6.1.14 still fails, request the exact operation path, screenshots, and preferably a filtered `net.toload.main.hd2026` logcat captured during the failing launch path rather than another broad device-wide dump.
