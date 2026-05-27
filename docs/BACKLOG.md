@@ -31,10 +31,15 @@ Last reviewed: 2026-05-27
   - Current state: Android import can succeed but cname/version metadata may not be read or saved correctly; Array10 `.lime` includes several `#` comment lines, so comment-line support must be verified.
   - Next action: Verify whether `.lime` supports `#`-prefixed comments like `.cin`, then fix metadata parsing/persistence and add regression coverage.
 
+- #96 — Android — direct `,` / `.` table mappings should highlight the direct full-width punctuation match
+  - Status: Open bug + enhancement/question/usability issue.
+  - Current state: If a table defines direct mappings such as `, = ，` and `. = 。`, the current Android candidate path can still keep the composing-code record as the effective first selection instead of the direct match.
+  - Next action: Fix Android candidate selection so direct exact mappings are highlighted/selected before the composing-code fallback when appropriate, without globally forcing punctuation for tables that use `,`/`.` as roots.
+
 ## Confirmed feature / product work
 
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
-  - Status: Open enhancement/question/usability issue.
+  - Status: Open enhancement/question/usability issue with related Android bug scope tracked above.
   - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction.
   - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior.
 
