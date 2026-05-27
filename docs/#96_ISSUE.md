@@ -23,6 +23,7 @@ The discussion has two related but separate scopes:
 
 - Original report asked whether Chinese keyboard punctuation order can prefer full-width `，` / `。`.
 - `Limeroshenko` noted a workaround by manually adding table mappings such as `,= ，` and `.= 。`, then warned that some long-time users use `,` and `.` as custom roots or short-phrase codes.
+- `Limeroshenko` later clarified that the current official 行列10 `.lime` table does not contain the punctuation mapping rows; adding `,|，` and `.|。` enables the existing comma-plus-Space path, and if `.lime @endkey@` support is implemented they suggested making official Array10 opt in with `@endkey@ |,.` plus those punctuation mappings.
 - `SmithCCho` later clarified:
   - 行列30 and 大易 use `,` / `.` as roots, so they should not directly output punctuation.
   - 行列10, 嘸蝦米, and 倉頡 are closer to direct punctuation output expectations.
@@ -66,8 +67,8 @@ This should not be fixed by globally swapping punctuation candidates. The fix sh
 2. Preserve compatibility for tables where `,` / `.` are roots or short-phrase codes. Do not globally force punctuation output.
 3. Add metadata parsing/runtime support for explicit end-key behavior:
    - `.cin`: `%endkey ,.`
-   - `.lime`: `@endkey@` equivalent
-4. For tables with `,` / `.` as roots, do not put those keys in endkey metadata. Direct `，` / `。` output should remain unavailable unless the table explicitly opts in.
+   - `.lime`: `@endkey@` equivalent; for opt-in tables such as official 行列10, this likely also requires table-level punctuation mappings such as `,|，` and `.|。`.
+4. For tables with `,` / `.` as roots, do not put those keys in endkey metadata. Direct `，` / `。` output should remain unavailable unless the table explicitly opts in, so users' personal tables without `@endkey@` are not changed.
 
 ## Verification plan
 
@@ -79,7 +80,7 @@ This should not be fixed by globally swapping punctuation candidates. The fix sh
   - Verify root input remains available and direct punctuation behavior is not forced.
 - `%endkey ,.` / `@endkey@` feature:
   - Import a `.cin` with `%endkey ,.` plus punctuation mappings.
-  - Import a `.lime` equivalent once supported.
+  - Import a `.lime` equivalent once supported, including opt-in metadata and punctuation mappings such as `@endkey@ |,.`, `,|，`, and `.|。`.
   - Verify pressing `,` / `.` commits according to the table metadata without requiring extra Space/Enter.
 - Regression:
   - Confirm existing custom `,` / `.` root/short-phrase mappings still work when endkey is not configured.
