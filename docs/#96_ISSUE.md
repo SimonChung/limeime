@@ -5,6 +5,7 @@
 - Issue: https://github.com/lime-ime/limeime/issues/96
 - Status: open
 - Current labels: `bug`, `enhancement`, `question`, `Usability`
+- Assignee: `jrywu`
 - Reporter: `SmithCCho`
 - Community context: #95 was consolidated into #96 for the `%endkey ,.` / punctuation-commit discussion.
 
@@ -30,7 +31,7 @@ The discussion has two related but separate scopes:
 
 ## Source evidence inspected
 
-Android candidate construction currently always creates a composing-code `Mapping` and adds it before database results:
+Android candidate construction in the inspected path creates a composing-code `Mapping` and adds it before database results:
 
 - `LimeStudio/app/src/main/java/net/toload/main/hd/SearchServer.java`
   - `getMappingByCode(...)` creates `self`, sets `word = code`, `code = code`, and marks it with `setComposingCodeRecord()`.
@@ -55,7 +56,7 @@ Relevant code area on current `master`:
 
 ## Likely root cause
 
-The direct-match bug is likely caused by candidate list construction placing the composing-code record before exact table mappings for all one-key inputs, including punctuation keys. For codes such as `,` or `.`, if the DB returns exact mappings to `，` or `。`, the selection/highlight logic still sees the composing-code record first.
+The direct-match bug is likely caused by the inspected candidate-list construction path placing the composing-code record before exact table mappings, including punctuation-key direct matches. For codes such as `,` or `.`, if the DB returns exact mappings to `，` or `。`, the selection/highlight logic still sees the composing-code record first.
 
 This should not be fixed by globally swapping punctuation candidates. The fix should distinguish ordinary composing-code fallback from exact direct mappings that should be selected first for that table.
 
