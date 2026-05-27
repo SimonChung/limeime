@@ -32,9 +32,9 @@ Last reviewed: 2026-05-27
   - Next action: Verify whether `.lime` supports `#`-prefixed comments like `.cin`, then fix metadata parsing/persistence and add regression coverage.
 
 - #96 — Android — direct `,` / `.` table mappings should highlight the direct full-width punctuation match
-  - Status: Open bug + enhancement/question/usability issue.
+  - Status: Open bug + enhancement/question/usability issue, assigned to `jrywu`.
   - Current state: If a table defines direct mappings such as `, = ，` and `. = 。`, the current Android candidate path can still keep the composing-code record as the effective first selection instead of the direct match.
-  - Next action: Fix Android candidate selection so direct exact mappings are highlighted/selected before the composing-code fallback when appropriate, without globally forcing punctuation for tables that use `,`/`.` as roots.
+  - Next action: Fix Android candidate selection so direct exact mappings are highlighted/selected before the composing-code fallback when appropriate, without globally forcing punctuation for tables that use `,`/`.` as roots; add regression coverage, then ship a newer APK and ask the reporter to retest.
 
 ## Confirmed feature / product work
 
