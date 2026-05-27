@@ -26,6 +26,11 @@ Last reviewed: 2026-05-27
   - Current state: Import can succeed and catalog can mark the table installed, but the IM manager / installed IM list remains empty when cname metadata is missing.
   - Next action: Fix iOS text-import registration/fallback naming so successful imports create visible installed IM configs, then verify import and keyboard availability.
 
+- #93 — Android — `.lime` import should correctly read `@cname@` and `@version@` metadata
+  - Status: Open maintainer-created bug scope, assigned to `jrywu`.
+  - Current state: Android import can succeed but cname/version metadata may not be read or saved correctly; Array10 `.lime` includes several `#` comment lines, so comment-line support must be verified.
+  - Next action: Verify whether `.lime` supports `#`-prefixed comments like `.cin`, then fix metadata parsing/persistence and add regression coverage.
+
 ## Confirmed feature / product work
 
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
