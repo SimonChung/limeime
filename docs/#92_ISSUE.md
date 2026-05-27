@@ -6,14 +6,15 @@ Maintainer-created iOS bug report. During iOS database restore, the settings app
 
 GitHub issue: https://github.com/lime-ime/limeime/issues/92
 
-Live issue state at rewrite:
+Live issue state at closure update:
 
-- State: open
-- Labels: `bug`, `Usability`
-- Assignee: `jrywu`
+- State: closed as completed after source fix on `master`
+- Labels at closure check: `bug`, `Usability`
+- Assignee at closure check: `jrywu`
 - Reporter/source: maintainer-created tracking issue
+- Fix commit: `520416371d32c2392190e42883d3bd68b933fe19` (`Fix #85 #88 #92 iOS restore feedback and emoji DB repair`)
 
-No public acknowledgement or community retest request is needed because this is maintainer-created/internal tracking.
+No public acknowledgement or community retest request was needed because this is maintainer-created/internal tracking. iOS release/TestFlight delivery remains release QA, not an Android APK follow-up.
 
 ## Source evidence inspected
 
@@ -190,6 +191,6 @@ Option A is simpler because `SetupImController` already owns progress presentati
 - Dismissing the share sheet still clears local backup state and deletes the temporary backup file.
 - No duplicate overlays appear in other paths where a view-local overlay and `ProgressManager` could overlap.
 
-## Follow-up condition
+## Resolution / follow-up status
 
-Keep issue #92 open until the iOS restore/progress UI is fixed and manually verified in light and dark mode. No Android APK retest is relevant for this iOS-only maintainer-created issue.
+Issue #92 is source-fixed on `master` by commit `520416371d32c2392190e42883d3bd68b933fe19`, which updates the iOS restore feedback/progress UI paths and related tests. The GitHub issue can be closed as completed for source tracking. No Android APK retest is relevant for this iOS-only maintainer-created issue; iOS release/TestFlight delivery remains separate release QA.
