@@ -1,0 +1,43 @@
+# LIME IME Backlog
+
+Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
+
+Last reviewed: 2026-05-27
+
+## Pending fixes
+
+- #91 — Android — `.cin` import should preserve duplicate-code candidate order from the source file
+  - Status: Open bug, assigned to `jrywu`.
+  - Current state: Reporter showed `vmi` candidates from 哈哈倉頡 changing from source order `狀 绒 戕` to `狀 戕 绒` even with `啟動選取排序` disabled.
+  - Next action: Fix Android `.cin` import/query ordering so same-code candidates can follow source-file order when selection sorting is disabled, then ship in a newer APK and ask reporter to retest.
+
+- #94 / PR #97 — Android — backup must not create a 0 B `limeBackup.zip` while reporting success
+  - Status: Open bug with open fix PR #97.
+  - Current state: Logcat traced the failure to treating missing transient SQLite rollback journal `lime.db-journal` as fatal, while the UI could still report success and leave a 0 B backup file.
+  - Next action: Review/merge PR #97, ship a newer APK, then ask reporter to confirm backup creates a non-empty ZIP and can restore normally.
+
+- #86 — iOS — keyboard extension should see restored IM tables immediately after successful DB restore
+  - Status: Open maintainer-created bug, assigned to `jrywu`.
+  - Current state: LIME Settings sees restored IM tables, but the iOS keyboard extension can still behave as if there are zero IMs until the user removes and re-adds the keyboard in iOS Settings.
+  - Next action: Fix restore-to-keyboard handoff / app-group runtime database state sync, then verify in iOS app + keyboard extension.
+
+- #93 — iOS — imported `.lime` tables without cname metadata should appear in the installed IM list
+  - Status: Open maintainer-created bug, assigned to `jrywu`.
+  - Current state: Import can succeed and catalog can mark the table installed, but the IM manager / installed IM list remains empty when cname metadata is missing.
+  - Next action: Fix iOS text-import registration/fallback naming so successful imports create visible installed IM configs, then verify import and keyboard availability.
+
+## Confirmed feature / product work
+
+- #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
+  - Status: Open enhancement/question/usability issue.
+  - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction.
+  - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior if Jeremy confirms this belongs in the backlog.
+
+## Not in backlog yet
+
+- #90 — Android keyboard UI customization / old-style layout / button visibility / theme options
+  - Reason: Product direction is still being clarified with the reporter. Do not add to public backlog until Jeremy or a maintainer confirms the exact feature scope.
+
+- Closed/source-fixed items such as #92
+  - Reason: Do not list as pending backlog unless Jeremy wants a separate iOS TestFlight/release-QA tracking item.
+
