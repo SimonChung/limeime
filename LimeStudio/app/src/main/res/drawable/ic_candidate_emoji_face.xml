@@ -6,20 +6,20 @@
     android:viewportHeight="24">
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#FF000000"
+        android:strokeColor="@color/candidate_emoji_icon_default"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="1.8"
         android:pathData="M12,21a9,9 0,1 0,0 -18a9,9 0,0 0,0 18z" />
     <path
-        android:fillColor="#FF000000"
+        android:fillColor="@color/candidate_emoji_icon_default"
         android:pathData="M8.2,10.2a1.15,1.15 0,1 0,0 -2.3a1.15,1.15 0,0 0,0 2.3z" />
     <path
-        android:fillColor="#FF000000"
+        android:fillColor="@color/candidate_emoji_icon_default"
         android:pathData="M15.8,10.2a1.15,1.15 0,1 0,0 -2.3a1.15,1.15 0,0 0,0 2.3z" />
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#FF000000"
+        android:strokeColor="@color/candidate_emoji_icon_default"
         android:strokeLineCap="round"
         android:strokeWidth="1.8"
         android:pathData="M8,14c1.1,1.7 2.4,2.55 4,2.55S14.9,15.7 16,14" />

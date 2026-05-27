@@ -22,10 +22,10 @@ python3 scripts/check_ui_theme_literals.py --limit 0
 Current baseline result:
 
 ```text
-high  color: 41
-info  color: 72
+high  color: 39
+info  color: 73
 info metric: 133
-medium  color: 9
+medium  color: 5
 medium metric: 597
 ```
 
@@ -277,7 +277,7 @@ For those, keep visual verification for high-risk surfaces:
 
 1. Done: add `SettingsTheme.swift` and migrate direct Settings colors.
 2. Done: add `SettingsMetrics.swift` and migrate repeated Settings layout metrics.
-3. Make `ic_candidate_emoji_face.xml` theme/tint aware instead of hardcoded black.
+3. Done: move `ic_candidate_emoji_face.xml` hardcoded black into `@color/candidate_emoji_icon_default`.
 4. Move Android settings layout constants into `res/values/dimens.xml` and shared styles.
 5. Move Android candidate programmatic colors/metrics into one candidate theme/metrics helper.
 6. Add the guard command to CI or the release checklist:
@@ -293,3 +293,8 @@ python3 scripts/check_ui_theme_literals.py --limit 0
 - `python3 scripts/check_ui_theme_literals.py --limit 0`
 - `xcodebuild -project LimeIME-iOS/LimeIME.xcodeproj -scheme LimeIME -destination 'id=58BCFA46-0EE8-4631-B2A0-6331EF124A75' -derivedDataPath .Codex/DerivedData-ios-theme-literals -only-testing:LimeTests/KeyboardViewControllerTest/testSettingsAndKeyboardThemeLiteralsUseCentralRoles test`
 - Simulator smoke screenshots captured in `.Codex/txt/ios_theme_literal_light.png` and `.Codex/txt/ios_theme_literal_dark.png`.
+
+## Android Pass Verification
+
+- `python3 scripts/check_ui_theme_literals.py --limit 0`
+- `python3 scripts/check_ui_theme_literals.py --no-baseline --limit 260 | rg "ic_candidate_emoji_face|HIGH   color"` now reports only the vector dimensions for `ic_candidate_emoji_face.xml`, not hardcoded icon color.
