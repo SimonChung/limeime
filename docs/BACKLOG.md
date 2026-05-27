@@ -31,7 +31,7 @@ Last reviewed: 2026-05-27
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
   - Status: Open enhancement/question/usability issue.
   - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction.
-  - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior if Jeremy confirms this belongs in the backlog.
+  - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior.
 
 ## Not in backlog yet
 
