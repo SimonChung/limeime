@@ -35,7 +35,13 @@ Follow-up maintainer context also adds an Android scope: Android can import a `.
 
 ## Likely root cause
 
-The iOS text-import path writes mappings and metadata for the imported table without ensuring the `im` table also has a usable registration/seed row and keyboard configuration. On Android, the suspected failure is separate: successful `.lime` import may not correctly parse or persist `@version@` / `@cname@`, potentially related to whether `#`-prefixed comment lines are skipped like `.cin` comments. The installed-list failure does not depend only on cname absence: metadata rows such as `source`, `amount`, and `import` can be treated as seed candidates because they are not in `getAllImConfigs()`'s key-value field allowlist, but those rows have no keyboard id. `title="name"` is a key-value field and cannot become the seed row. Because `seedCustomIM()` skips seeding once any metadata row exists, non-`custom` imports have no seed attempt, and `setImConfig(...)` does not populate the `keyboard` column, the installed-list query will return no `ImConfig` for metadata-only text-import registration even though `tableHasData(...)` makes the catalog treat the table as installed.
+### iOS installed-list registration
+
+The iOS text-import path writes mappings and metadata for the imported table without ensuring the `im` table also has a usable registration/seed row and keyboard configuration. On iOS, the installed-list failure does not depend only on cname absence: metadata rows such as `source`, `amount`, and `import` can be treated as seed candidates because they are not in `getAllImConfigs()`'s key-value field allowlist, but those rows have no keyboard id. `title="name"` is a key-value field and cannot become the seed row. Because `seedCustomIM()` skips seeding once any metadata row exists, non-`custom` imports have no seed attempt, and `setImConfig(...)` does not populate the `keyboard` column, the installed-list query will return no `ImConfig` for metadata-only text-import registration even though `tableHasData(...)` makes the catalog treat the table as installed.
+
+### Android metadata parsing / persistence
+
+The Android failure path is still pending code inspection. The current suspected failure is separate from the iOS installed-list registration path: successful `.lime` import may not correctly parse or persist `@version@` / `@cname@`, potentially related to whether `#`-prefixed lines are skipped like `.cin` comments. The intended `.lime` behavior for `#` lines should be documented before tests lock in the expected parser behavior.
 
 ## Proposed fix / investigation plan
 
@@ -54,7 +60,7 @@ The iOS text-import path writes mappings and metadata for the imported table wit
 3. Revisit `seedCustomIM()` / `registerIM(...)` early-return behavior so metadata-only rows do not prevent creation of the required seed/keyboard registration. Registration may need to run before metadata writes, use a narrower existing-row check, or merge the missing keyboard/seed data into existing rows.
 4. Consider updating `getAllImConfigs()` so metadata keys such as `source`, `amount`, and `import` are not mistaken for seed rows, while still supporting legacy/imported rows.
 5. After registration changes, rebuild/sync keyboard state as needed so the keyboard extension can see the imported IM.
-6. For Android, add/verify regression coverage using an Array10-style `.lime` file that includes several `#` comment lines before/around `@version@` and `@cname@`; confirm import success, cname/version persistence, and exported/displayed metadata.
+6. For Android, add/verify regression coverage using an Array10-style `.lime` file that includes several `#` comment lines before/around `@version@` and `@cname@`; document whether the `.lime` parser is expected to treat `#` as a comment marker, then confirm import success, cname/version persistence, and exported/displayed metadata.
 
 ## Verification plan
 
@@ -64,7 +70,7 @@ The iOS text-import path writes mappings and metadata for the imported table wit
 - Confirm the pre-fix catalog/installed-list divergence is covered by a regression check, then confirm after the fix that the IM catalog installed marker and installed IM list agree.
 - Confirm the imported IM can be enabled/disabled and selected/used by the keyboard.
 - Regression-check `.lime` / `.cin` files that do include `@cname@`, `%cname`, `@version@`, or `%version` metadata.
-- On Android, import an Array10-style `.lime` file with multiple `#` comment lines plus `@version@` and `@cname@`; confirm the comments are ignored as intended and cname/version metadata are correctly read and saved.
+- On Android, import an Array10-style `.lime` file with multiple `#` comment lines plus `@version@` and `@cname@`; confirm whether `#`-prefixed lines are skipped, document the intended behavior, and verify cname/version metadata are correctly read and saved regardless of preceding `#` lines.
 
 ## Follow-up / retest condition
 
