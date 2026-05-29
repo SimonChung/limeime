@@ -2,7 +2,7 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-05-27
+Last reviewed: 2026-05-29
 
 ## Pending fixes
 
@@ -38,6 +38,11 @@ Last reviewed: 2026-05-27
 
 ## Confirmed feature / product work
 
+- #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
+  - Status: Open enhancement/usability issue; product scope confirmed for backlog by maintainer direction.
+  - Current state: The 6.1 `系統設定` keyboard theme follows the system light/dark mode only. Reporter tested on motorola razr60 / Android 16 and clarified that it does not apply the system theme/accent color.
+  - Next action: Evaluate Android dynamic color / system accent color support for the keyboard theme, then design it so it remains optional and compatible with existing fixed light/dark/color themes.
+
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
   - Status: Open enhancement/question/usability issue with related Android bug scope tracked above.
   - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction. Community follow-up noted official 行列10 currently lacks `,|，` / `.|。` rows and would need explicit opt-in metadata plus mappings if the table should support one-key punctuation.
@@ -46,7 +51,7 @@ Last reviewed: 2026-05-27
 ## Not in backlog yet
 
 - #90 — Android keyboard UI customization / old-style layout / button visibility / theme options
-  - Reason: Product direction is still being clarified with the reporter. Do not add to public backlog until Jeremy or a maintainer confirms the exact feature scope.
+  - Reason: Only the system accent/dynamic color theme scope is confirmed above. Other #90 UI customization requests, such as hiding/repositioning 中英／123, Emoji, and voice buttons or making selected layouts retain active IM labels, remain product-evaluation scope until Jeremy or a maintainer confirms the exact feature direction.
 
 - Closed/source-fixed items such as #92
   - Reason: Do not list as pending backlog unless Jeremy wants a separate iOS TestFlight/release-QA tracking item.
