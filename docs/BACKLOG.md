@@ -36,6 +36,11 @@ Last reviewed: 2026-05-29
   - Current state: If a table defines direct mappings such as `, = ，` and `. = 。`, the current Android candidate path can still keep the composing-code record as the effective first selection instead of the direct match.
   - Next action: Fix Android candidate selection so direct exact mappings are highlighted/selected before the composing-code fallback when appropriate, without globally forcing punctuation for tables that use `,`/`.` as roots; add regression coverage, then ship a newer APK and ask the reporter to retest.
 
+- #99 — Android — caps-lock / shifted state should not change 注音 composing-code lookup
+  - Status: Open bug, assigned to `jrywu`.
+  - Current state: Reporter showed that the same intended 注音 input for `測試` works in lowercase state (`hk4g`) but caps-lock / shifted state changes the composing code to uppercase/symbol form (`HK$G`) and no longer highlights the intended candidate.
+  - Next action: Fix Android Chinese IM key normalization so caps lock remains useful for English typing but does not corrupt 注音 candidate lookup, add regression coverage, then ship a newer APK and ask the reporter to retest.
+
 ## Confirmed feature / product work
 
 - #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
