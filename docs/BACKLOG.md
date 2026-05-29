@@ -49,15 +49,19 @@ Last reviewed: 2026-05-29
   - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction. Community follow-up noted official 行列10 currently lacks `,|，` / `.|。` rows and would need explicit opt-in metadata plus mappings if the table should support one-key punctuation.
   - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior; for opt-in official tables, coordinate table metadata/mapping additions separately from the engine feature.
 
-- #99 — Android — hide or adjust non-alphabet IM root labels while shifted
+- #99 — Android — shifted keyboard layouts should hide non-alphabet IM root labels
   - Status: Closed question/enhancement/usability issue; product scope confirmed for backlog by maintainer direction.
-  - Current state: Shift / caps-lock behavior remains by design so users can enter uppercase letters and symbols in hybrid input. Reporter suggested that non-alphabet keys should not keep showing Chinese IM root labels while shifted, because those labels can make users think Chinese roots are still entered normally.
-  - Next action: Evaluate Android keyboard UI changes so shifted layouts remove or adjust only non-alphabet IM root labels, while preserving normal alphabet labels and shifted symbol input behavior.
+  - Current state: Shift / caps-lock behavior remains by design so users can enter uppercase letters and symbols in hybrid input. The improvement is only about what the shifted keyboard layout displays: non-alphabet keys such as number/symbol positions should not continue showing Chinese IM root labels when those shifted keys now input symbols.
+  - Scope: Layout/label adjustment only. Do not change input handling, composing-code logic, candidate lookup, Shift/caps-lock behavior, or hybrid symbol input behavior.
+  - Expected behavior: Alphabet keys may continue showing alphabet/root labels as appropriate, because `abc...` -> `ABC...` can still be meaningful for some IM roots. Only non-alphabet shifted keys should remove or adjust IM root labels to avoid suggesting they still input the original Chinese IM roots.
+  - Next action: Update the Android shifted keyboard layout resources/labels for affected IM layouts so non-alphabet shifted keys no longer show misleading IM root labels; verify the visual layout and confirm no runtime code change is needed.
 
-- #99 — iOS — hide or adjust non-alphabet IM root labels while shifted
+- #99 — iOS — shifted keyboard layouts should hide non-alphabet IM root labels
   - Status: Cross-platform feature parity backlog item from the #99 Android discussion.
-  - Current state: The public report was Android-specific, but the UI principle applies to any iOS LIME keyboard layout that shows IM root labels on non-alphabet keys while Shift / caps-lock is active.
-  - Next action: Audit iOS keyboard shifted-state labeling and, if applicable, align non-alphabet IM root label visibility with the Android design decision.
+  - Current state: The public report was Android-specific, but the same UI rule should apply to iOS if any shifted LIME keyboard layout shows IM root labels on non-alphabet keys while those keys input shifted symbols.
+  - Scope: Layout/label adjustment only. Do not change input handling, composing-code logic, candidate lookup, Shift/caps-lock behavior, or hybrid symbol input behavior.
+  - Expected behavior: Preserve alphabet/root labels where shifted alphabet keys remain meaningful; remove or adjust only non-alphabet shifted-key IM root labels that would mislead users into thinking Chinese roots are still entered normally.
+  - Next action: Audit iOS shifted keyboard layout assets/resources and update labels where applicable; verify the visual layout and confirm no runtime code change is needed.
 
 ## Not in backlog yet
 
