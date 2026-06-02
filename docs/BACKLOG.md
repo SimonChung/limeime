@@ -2,7 +2,7 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-05-29
+Last reviewed: 2026-06-02
 
 ## Pending fixes
 
@@ -20,6 +20,11 @@ Last reviewed: 2026-05-29
   - Status: Open maintainer-created bug, assigned to `jrywu`.
   - Current state: LIME Settings sees restored IM tables, but the iOS keyboard extension can still behave as if there are zero IMs until the user removes and re-adds the keyboard in iOS Settings.
   - Next action: Fix restore-to-keyboard handoff / app-group runtime database state sync, then verify in iOS app + keyboard extension.
+
+- #100 — iOS — contextual Enter/Send key should not become light-on-light in light theme
+  - Status: Open maintainer-created bug, assigned to `jrywu`.
+  - Current state: Programmatic return-key overrides such as Send/Search/Go use white foreground on an accent background, but touch release/cancel can restore the normal light modifier background without updating the foreground.
+  - Next action: Centralize contextual Enter-key background restoration so initial render, release, and cancel keep a readable foreground/background pair; verify Send/Search/Go/Next/Done in light and dark themes.
 
 - #93 — iOS — imported `.lime` tables without cname metadata should appear in the installed IM list
   - Status: Open maintainer-created bug, assigned to `jrywu`.
