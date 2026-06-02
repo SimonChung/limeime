@@ -20,7 +20,7 @@ Maintainer-created tracking issue #100 records an iOS keyboard visual/interactio
   - `enterKeyOverride(for:)` returns contextual Enter-key substitutions for non-default return key types, including `.send` -> `Send`, `.search` / `.google` / `.yahoo` -> `magnifyingglass`, `.go` -> `arrow.right`, `.next` -> `Next`, `.join` -> `Join`, `.route` -> `Route`, `.done` -> `Done`, and `.continue` -> `Continue`.
   - `applyButtonStyle(...)` detects `enterKeyOverride(for:) != nil` and paints the contextual Enter key with `.systemBlue` rather than the normal modifier-key background.
   - `styleKeyContent(...)` detects the same override and uses `.white` foreground for the icon/label so it reads on the `.systemBlue` background.
-  - `keyUp(...)` and `keyCancel(...)` restore only `keyDef.isModifier ? modifierKeyColor : normalKeyColor`, without checking the Enter-key override. For the contextual Enter key in light theme, this can leave the white override text/icon on a light modifier background after the first touch cycle.
+  - `keyUp(...)` and `keyCancel(...)` restore only `keyDef.isModifier ? modifierKeyColor : normalKeyColor`, without checking the Enter-key override. For the contextual Enter key in light theme, this can leave the white override text/icon on a light modifier background after any release/cancel until the keyboard is rebuilt.
 
 ## Existing test coverage assessment
 
@@ -72,7 +72,8 @@ The inspected code strongly supports the reported visual regression. The Enter-k
 - Repeat with `.search` / `.go` / `.next` / `.join` / `.route` / `.done` / `.continue` contexts to verify both icon and label override paths.
 - Verify dark theme and non-default color themes still maintain readable contrast.
 - Verify default Enter/Return (`.default`) still renders/restores as the normal modifier key and still commits/dismisses according to existing behavior.
-- Regression-test touch cancel if practical (drag off key / cancelled touch path) so `keyCancel(...)` is covered as well as `keyUp(...)`.
+- Verify `.touchUpOutside` behavior if practical (drag off key and release) because it shares the `keyUp(...)` restoration path.
+- Regression-test `keyCancel(...)` with a simulated/system `.touchCancel` path if practical so cancellation restoration is covered separately from normal release.
 
 ## Follow-up / retest condition
 
