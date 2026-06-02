@@ -23,7 +23,7 @@ Last reviewed: 2026-06-02
 
 - #100 — iOS — contextual Enter/Send key should not become light-on-light in light theme
   - Status: Open maintainer-created bug, assigned to `jrywu`.
-  - Current state: Programmatic return-key overrides such as Send/Search/Go use white foreground on an accent background, but touch release/cancel can restore the normal light modifier background without updating the foreground.
+  - Current state: Programmatic return-key overrides such as Send/Search/Go use white foreground on the correct blue highlighted/accent background, but after the user hits Enter, touch release/cancel can restore the unhighlighted gray modifier background without updating the foreground.
   - Next action: Centralize contextual Enter-key background restoration so initial render, release, and cancel keep a readable foreground/background pair; verify Send/Search/Go/Next/Done in light and dark themes.
 
 - #93 — iOS — imported `.lime` tables without cname metadata should appear in the installed IM list

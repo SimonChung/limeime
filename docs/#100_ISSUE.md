@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-Maintainer-created tracking issue #100 records an iOS keyboard visual/interaction bug: when the host text field requests a non-default return key type such as `Send`, `Search`, `Go`, `Next`, `Join`, `Route`, `Done`, or `Continue`, LIME's iOS keyboard programmatically replaces the normal Enter key content with a contextual primary-action label or icon. In light theme, the key can become white text/icon on a light modifier-key background after touch release or cancel, making the action hard to read.
+Maintainer-created tracking issue #100 records an iOS keyboard visual/interaction bug: when the host text field requests a non-default return key type such as `Send`, `Search`, `Go`, `Next`, `Join`, `Route`, `Done`, or `Continue`, LIME's iOS keyboard programmatically replaces the normal Enter key content with a contextual primary-action label or icon. The highlighted/accent state with the blue background is readable and expected. The bug appears after the user hits Enter: in light theme, the key can return to an unhighlighted/restored gray modifier-key background while the action text/icon remains white, making the action hard to read.
 
 ## Current classification
 
@@ -20,13 +20,13 @@ Maintainer-created tracking issue #100 records an iOS keyboard visual/interactio
   - `enterKeyOverride(for:)` returns contextual Enter-key substitutions for non-default return key types, including `.send` -> `Send`, `.search` / `.google` / `.yahoo` -> `magnifyingglass`, `.go` -> `arrow.right`, `.next` -> `Next`, `.join` -> `Join`, `.route` -> `Route`, `.done` -> `Done`, and `.continue` -> `Continue`.
   - `applyButtonStyle(...)` detects `enterKeyOverride(for:) != nil` and paints the contextual Enter key with `.systemBlue` rather than the normal modifier-key background.
   - `styleKeyContent(...)` detects the same override and uses `.white` foreground for the icon/label so it reads on the `.systemBlue` background.
-  - `keyUp(...)` and `keyCancel(...)` restore only `keyDef.isModifier ? modifierKeyColor : normalKeyColor`, without checking the Enter-key override. For the contextual Enter key in light theme, this can leave the white override text/icon on a light modifier background after any release/cancel until the keyboard is rebuilt.
+  - `keyUp(...)` and `keyCancel(...)` restore only `keyDef.isModifier ? modifierKeyColor : normalKeyColor`, without checking the Enter-key override. For the contextual Enter key in light theme, this can leave the white override text/icon on the unhighlighted/restored light gray modifier background after release/cancel until the keyboard is rebuilt.
 
 ## Existing test coverage assessment
 
 - Existing iOS tests include `KeyboardViewControllerTest.swift`, but this issue is a low-level `KeyboardView` styling-state regression around contextual Enter-key background restoration.
 - No focused regression test was found that verifies the contextual Enter key keeps the same readable foreground/background combination after `applyButtonStyle(...)`, touch-down, `keyUp(...)`, and `keyCancel(...)` paths.
-- The bug is easy to miss if testing only the initial render state, because `applyButtonStyle(...)` sets the correct blue background before touch handling mutates it.
+- The bug is easy to miss if testing only the initial highlighted/accent render state, because `applyButtonStyle(...)` sets the correct blue background before touch handling mutates/restores it.
 
 ## Code fragility assessment
 
