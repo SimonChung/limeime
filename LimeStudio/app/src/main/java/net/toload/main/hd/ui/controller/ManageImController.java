@@ -412,8 +412,8 @@ public class ManageImController extends BaseController {
      * Updates one editable IM metadata field.
      *
      * @param table the IM table / code
-     * @param field either {@code name} or {@code version}
-     * @param value the value to store; blank is allowed only for version
+     * @param field either {@code name}, {@code version}, or {@code limeendkey}
+     * @param value the value to store; blank is allowed for version and limeendkey
      * @return true when the value was persisted
      */
     public boolean updateIMMetadataField(String table, String field, String value) {
@@ -421,7 +421,9 @@ public class ManageImController extends BaseController {
         String trimmedField = field == null ? "" : field.trim();
         String trimmedValue = value == null ? "" : value.trim();
         if (trimmedTable.isEmpty()) return false;
-        if (!"name".equals(trimmedField) && !"version".equals(trimmedField)) return false;
+        if (!"name".equals(trimmedField)
+                && !"version".equals(trimmedField)
+                && !LIME.IM_LIME_ENDKEY.equals(trimmedField)) return false;
         if ("name".equals(trimmedField) && trimmedValue.isEmpty()) return false;
 
         try {

@@ -36,12 +36,6 @@ Last reviewed: 2026-06-02
   - Current state: Android import can succeed but cname/version metadata may not be read or saved correctly; Array10 `.lime` includes several `#` comment lines, so comment-line support must be verified.
   - Next action: Verify whether `.lime` supports `#`-prefixed comments like `.cin`, then fix metadata parsing/persistence and add regression coverage.
 
-- #96 — Android — direct `,` / `.` table mappings should highlight the direct full-width punctuation match
-  - Status: Open bug + enhancement/question/usability issue, assigned to `jrywu`.
-  - Current state: If a table defines direct mappings such as `, = ，` and `. = 。`, the current Android candidate path can still keep the composing-code record as the effective first selection instead of the direct match.
-  - Next action: Fix Android candidate selection so direct exact mappings are highlighted/selected before the composing-code fallback when appropriate, without globally forcing punctuation for tables that use `,`/`.` as roots; add regression coverage, then ship a newer APK and ask the reporter to retest.
-
-
 ## Confirmed feature / product work
 
 - #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
@@ -50,9 +44,9 @@ Last reviewed: 2026-06-02
   - Next action: Evaluate Android dynamic color / system accent color support for the keyboard theme, then design it so it remains optional and compatible with existing fixed light/dark/color themes.
 
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
-  - Status: Open enhancement/question/usability issue with related Android bug scope tracked above.
-  - Current state: Reporter clarified that 行列30/大易 may use `,`/`.` as roots, while 行列10/嘸蝦米/倉頡 expect punctuation behavior; prior discussion identified `.cin` `%endkey ,.` and future `.lime` `@endkey@` as the likely compatible feature direction. Community follow-up noted official 行列10 currently lacks `,|，` / `.|。` rows and would need explicit opt-in metadata plus mappings if the table should support one-key punctuation.
-  - Next action: Design configurable end-key support that preserves tables where `,`/`.` are defined roots, then implement `.cin %endkey` and `.lime @endkey@` parsing/runtime behavior; for opt-in official tables, coordinate table metadata/mapping additions separately from the engine feature.
+  - Status: Android engine/settings support implemented on `android-next-release-all-fixes`; iOS and official table-data coordination remain pending.
+  - Current state: Android parses and persists conventional `.cin %endkey` / `.lime @endkey@` metadata for compatibility, parses Lime-specific `.cin %limeendkey` / `.lime @limeendkey@` for runtime commit behavior, exposes editable per-IM `limeendkey` metadata in LIME Settings, and commits the highlighted candidate only when an active table opts into a Lime end key. Tables without Lime end-key metadata still keep `,`/`.` roots usable.
+  - Next action: Include Android support in the review APK. iOS should be addressed later and aligned with the Android implementation. Official table metadata/mapping updates, such as adding opt-in 行列10 punctuation rows, are deferred to separate table-data release coordination.
 
 - #99 — Android — shifted keyboard layouts should hide non-alphabet IM root labels
   - Status: Closed question/enhancement/usability issue; product scope confirmed for backlog by maintainer direction.
@@ -82,4 +76,3 @@ Last reviewed: 2026-06-02
 
 - Closed/source-fixed items such as #92
   - Reason: Do not list as pending backlog unless Jeremy wants a separate iOS TestFlight/release-QA tracking item.
-

@@ -17,13 +17,12 @@
 - #91 — `.cin` duplicate-code import/query order should preserve source-file order when selection sorting is disabled.
 - #94 / PR #97 — backup must not create/report a 0 B `limeBackup.zip`; missing transient `lime.db-journal` must not break backup.
 - #93 — Android `.lime` import should read/persist `@cname@` and `@version@`, including Array10-style files with `#` comments.
-- #96 — direct `,` / `.` table mappings should highlight/select the direct full-width punctuation match before the composing-code fallback.
 
 ### Confirmed Android features
 
 - #90 — keyboard theme option should optionally follow Android system accent / dynamic colors, not only system light/dark.
-- #96 — support explicit table end-key behavior for `.cin %endkey` and `.lime @endkey@` on Android, without breaking tables where `,` / `.` are roots.
-- #96 — audit bundled/official Android table assets, if any, and either add opt-in end-key metadata plus direct punctuation mappings for the tables Jeremy confirms or document that table-data release coordination is separate from the engine change.
+- #96 — support explicit Lime table end-key behavior for `.cin %limeendkey` and `.lime @limeendkey@` on Android, without breaking tables where `,` / `.` are roots.
+- #96 — audit bundled/official Android table assets, if any, and either add opt-in Lime end-key metadata plus direct punctuation mappings for the tables Jeremy confirms or document that table-data release coordination is separate from the engine change.
 - #99 — shifted symbol-keyboard layouts should remove Chinese IM root sub-labels only from non-alphabet shifted keys such as `!@#...`; shifted capital-letter keys may keep root sub-labels because `A-Z` can still be valid roots.
 
 ### Explicitly out of scope for this plan
@@ -298,13 +297,13 @@ git commit -m "fix(android): parse lime metadata with comments"
 
 ---
 
-## Task 7: Add end-key metadata model, parser tests, and editable IM detail field for #96
+## Task 7: Add Lime end-key metadata model, parser tests, and editable IM detail field for #96
 
-**Objective:** Define Android runtime representation for `%endkey` / `@endkey@`, expose it as editable per-IM metadata in LIME Settings IM detail view, and document the setting before implementing key behavior.
+**Objective:** Define Android runtime representation for Lime-specific `%limeendkey` / `@limeendkey@`, expose it as editable per-IM metadata in LIME Settings IM detail view, and document how it differs from conventional `%endkey` / `@endkey@` compatibility metadata before implementing key behavior.
 
 **Files:**
 - Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java`
-- Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/global/LIME.java` if a constant for `endkey` is missing
+- Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/global/LIME.java` if a constant for `limeendkey` is missing
 - Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/ui/controller/ManageImController.java:411-444`
 - Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/ui/view/ImDetailFragment.java:58-191,285-320,422-485`
 - Modify: `LimeStudio/app/src/main/res/layout/fragment_im_detail.xml:86-192`
@@ -320,15 +319,15 @@ Add tests for both import formats:
 
 ```java
 @Test
-public void cinImportPersistsEndkeyMetadata() throws Exception {
-    // Fixture includes "%endkey ;/".
-    // Assert getImConfig(table, "endkey") returns ";/".
+public void cinImportPersistsLimeEndkeyMetadata() throws Exception {
+    // Fixture includes "%limeendkey ;/".
+    // Assert getImConfig(table, "limeendkey") returns ";/".
 }
 
 @Test
-public void limeImportPersistsEndkeyMetadata() throws Exception {
-    // Fixture includes "@endkey@ |;/".
-    // Assert getImConfig(table, "endkey") returns ";/".
+public void limeImportPersistsLimeEndkeyMetadata() throws Exception {
+    // Fixture includes "@limeendkey@ |;/".
+    // Assert getImConfig(table, "limeendkey") returns ";/".
 }
 ```
 
@@ -336,41 +335,41 @@ Add controller/UI-seam coverage where practical:
 
 ```java
 @Test
-public void updateIMMetadataFieldAllowsEndkey() {
-    assertTrue(controller.updateIMMetadataField("custom", "endkey", ";/"));
-    assertEquals(";/", searchServer.getImConfig("custom", "endkey"));
+public void updateIMMetadataFieldAllowsLimeEndkey() {
+    assertTrue(controller.updateIMMetadataField("custom", "limeendkey", ";/"));
+    assertEquals(";/", searchServer.getImConfig("custom", "limeendkey"));
 }
 ```
 
 **Implementation requirements:**
 
 1. Normalize metadata value by stripping optional delimiter/prefix whitespace.
-2. Persist as `setImConfig(table, "endkey", normalizedValue)`.
-3. Do not infer end keys from direct punctuation mappings. End-key behavior must be explicit.
-4. Update `ManageImController.updateIMMetadataField(...)` so editable metadata fields include `name`, `version`, and `endkey`.
+2. Persist as `setImConfig(table, "limeendkey", normalizedValue)`.
+3. Do not infer Lime end keys from direct punctuation mappings or conventional `endkey` metadata. Lime end-key behavior must be explicit.
+4. Update `ManageImController.updateIMMetadataField(...)` so editable metadata fields include `name`, `version`, and `limeendkey`.
    - `name` remains required/non-empty.
-   - `version` and `endkey` may be blank; blank `endkey` means no end-key commit triggers for that table.
+   - `version` and `limeendkey` may be blank; blank `limeendkey` means no Lime runtime end-key commit triggers for that table.
    - Trim leading/trailing whitespace, but do **not** sort or deduplicate characters unless the runtime parser also does so consistently.
 5. Add an **Endkey / 結束鍵** row in `fragment_im_detail.xml` under the same 輸入法資訊 card as 名稱 and 版本, using the same tappable/editable row pattern and chevron icon.
-6. In `ImDetailFragment`, load `getImConfig(tableCode, "endkey")`, display `-` when empty, and open the same metadata edit dialog for field `"endkey"`.
-7. Editing `endkey` saves immediately through `updateIMMetadataField(table, "endkey", editedValue)`, updates the row text, and refreshes any metadata/cache needed by the active IM.
+6. In `ImDetailFragment`, load `getImConfig(tableCode, "limeendkey")`, display `-` when empty, and open the same metadata edit dialog for field `"limeendkey"`.
+7. Editing the Endkey row saves immediately through `updateIMMetadataField(table, "limeendkey", editedValue)`, updates the row text, and refreshes any metadata/cache needed by the active IM.
 8. Hide the Endkey row for the synthetic `related` table just like editable name/version rows.
-9. Document `.lime @endkey@ |;/` and `.cin %endkey ;/` as opt-in metadata in `docs/CIN_LIME_SPEC.md`.
+9. Document `.lime @limeendkey@ |;/` and `.cin %limeendkey ;/` as opt-in Lime runtime metadata in `docs/CIN_LIME_SPEC.md`; document `.cin %endkey` / `.lime @endkey@` as conventional compatibility metadata.
 10. Update `docs/LIME_SETTINGS.md` so the LIME Settings IM detail view spec includes an editable Endkey metadata field alongside cname/name and version. Explain that users can view or edit the table's end-key list there, and that empty means disabled.
 11. Search the repo for bundled `.lime`, `.cin`, or generated table assets. If Android ships official table data in this repo, list affected tables and add opt-in metadata/mappings only for tables Jeremy confirms should support one-key commit triggers. If no bundled table assets exist, record that table-data coordination is separate from the engine change.
 
 **Manual acceptance examples:**
 
 - LIME Settings → 輸入法 → IM detail shows editable rows for 名稱, 版本, and Endkey/結束鍵.
-- Tapping Endkey opens an edit dialog prefilled with the current `endkey` metadata value such as `;/`.
-- Saving `;/` persists `getImConfig(table, "endkey") == ";/"`; reopening the screen shows `;/`.
+- Tapping Endkey opens an edit dialog prefilled with the current `limeendkey` metadata value such as `;/`.
+- Saving `;/` persists `getImConfig(table, "limeendkey") == ";/"`; reopening the screen shows `;/`.
 - Clearing the Endkey field persists an empty value and the detail row displays `-`.
 
 ---
 
 ## Task 8: Implement Android end-key runtime behavior
 
-**Objective:** Implement `endkey` as a general per-table commit trigger. When the user presses **any key in the active table's end-key list** while composing, LIME should end composition immediately and commit the currently highlighted candidate item, matching the existing confirm behavior for Space and Enter. This is not a comma/period-only feature.
+**Objective:** Implement `limeendkey` as a general per-table commit trigger. When the user presses **any key in the active table's end-key list** while composing, LIME should end composition immediately and commit the currently highlighted candidate item, matching the existing confirm behavior for Space and Enter. This is not a comma/period-only feature.
 
 **Files:**
 - Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` around key input / composing dispatch / Space/Enter candidate-confirm behavior / `commitTyped(...)`
@@ -380,34 +379,35 @@ public void updateIMMetadataFieldAllowsEndkey() {
 
 **Implementation requirements:**
 
-1. Load active table end-key metadata when the active IM/table changes. Treat it as a character set/list, not as special handling for comma and period.
-2. If currently composing and the pressed key is in the active table's `endkey` set:
+1. Load active table Lime end-key metadata when the active IM/table changes. Treat it as a character set/list, not as special handling for comma and period.
+2. If currently composing and the pressed key is in the active table's `limeendkey` set:
    - do **not** append the end-key character to the composing code;
    - do **not** query for a special direct punctuation mapping unless the existing Space/Enter confirm path already does so;
    - immediately commit the currently highlighted candidate item using the same selected-candidate path as Space/Enter;
    - clear composing state;
    - consume the key event so the raw end-key character is not emitted afterward.
 3. If there is no highlighted candidate but the normal Space/Enter path has an established fallback, reuse that fallback exactly. Do not invent a separate end-key-specific fallback.
-4. If no end-key metadata exists, preserve current behavior exactly.
+4. If no Lime end-key metadata exists, preserve current behavior exactly.
 5. If the active table uses any potential end-key character as a normal root but does not opt into end keys, preserve root input.
 6. Do not change candidate-list ordering; the first candidate remains composing-code fallback. Endkey changes commit behavior only.
 7. Keep physical-keyboard and soft-keyboard behavior consistent unless code inspection shows separate intentional paths.
 
 **Test requirements:**
 
-- Regression test with a table whose end-key list contains more than comma/period, e.g. `%endkey ;/` or `@endkey@ |;/`:
+- Regression test with a table whose end-key list contains more than comma/period, e.g. `%limeendkey ;/` or `@limeendkey@ |;/`:
   - type a composing code that shows candidates;
   - move/highlight a non-first candidate if the test seam allows;
   - press `;` or `/`;
   - assert the highlighted candidate is committed and composing is cleared;
   - assert the raw `;` or `/` is not committed.
-- Compatibility test for comma/period as normal roots with no end-key metadata: they remain input roots and are not treated as commit triggers.
+- Compatibility test for comma/period as normal roots with no Lime end-key metadata: they remain input roots and are not treated as commit triggers.
 - Test that Space/Enter behavior remains unchanged after refactoring shared confirm logic.
 
 **Manual acceptance examples:**
 
-- Table with `%endkey ;/`: after typing a code and highlighting a candidate, pressing `;` or `/` commits that highlighted candidate immediately, just like pressing Space/Enter would.
-- `.lime` with `@endkey@ |,.`: comma/period are only examples of keys in the list; they should use the same general end-key path.
+- Required visual verification: run `android-visual-verify` with Computer Use and inspect the composing/candidate strip before and after the end-key press, confirming the highlighted candidate commits and composing clears.
+- Table with `%limeendkey ;/`: after typing a code and highlighting a candidate, pressing `;` or `/` commits that highlighted candidate immediately, just like pressing Space/Enter would.
+- `.lime` with `@limeendkey@ |,.`: comma/period are only examples of keys in the list; they should use the same general end-key path.
 - 行列30/大易 style table without endkey metadata: comma/period or any other punctuation roots remain usable roots.
 
 **Commit:**
@@ -631,8 +631,8 @@ Expected: all connected Android tests pass. If a device is unavailable, record t
 4. Direct punctuation:
    - table with `, = ，`, `. = 。` highlights direct punctuation first.
 5. Endkey:
-   - opt-in table with `%endkey ,.` / `@endkey@ |,.` commits punctuation directly;
-   - table without endkey still treats `,` / `.` as roots if defined.
+   - opt-in table with `%limeendkey ,.` / `@limeendkey@ |,.` commits punctuation directly;
+   - table without Lime endkey still treats `,` / `.` as roots if defined.
 6. Dynamic color:
    - theme 0-6 unchanged;
    - new dynamic/accent theme follows accent where supported and falls back safely where not.

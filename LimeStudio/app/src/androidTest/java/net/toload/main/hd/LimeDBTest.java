@@ -222,6 +222,118 @@ public class LimeDBTest {
         }
     }
 
+    @Test(timeout = 15000)
+    public void cinImportPersistsEndkeyMetadata() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        File fixture = new File(appContext.getCacheDir(), "issue96_endkey.cin");
+        try {
+            writeUtf8(fixture,
+                    "%version Endkey Test\n" +
+                    "%cname Endkey Table\n" +
+                    "%endkey ;/\n" +
+                    "%chardef begin\n" +
+                    "aa \u6E2C\n" +
+                    "%chardef end\n");
+
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals(";/", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "endkey"));
+        } finally {
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue96 cin fixture");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void limeImportPersistsEndkeyMetadata() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        File fixture = new File(appContext.getCacheDir(), "issue96_endkey.lime");
+        try {
+            writeUtf8(fixture,
+                    "@version@|Endkey Test\n" +
+                    "@cname@|Endkey Table\n" +
+                    "@endkey@ |;/\n" +
+                    "aa|\u6E2C\n");
+
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals(";/", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "endkey"));
+        } finally {
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue96 lime fixture");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void cinImportPersistsLimeEndkeyMetadata() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        File fixture = new File(appContext.getCacheDir(), "issue96_limeendkey.cin");
+        try {
+            writeUtf8(fixture,
+                    "%version Lime Endkey Test\n" +
+                    "%cname Lime Endkey Table\n" +
+                    "%endkey abcdefghijklmnopqrstuvwxyz\n" +
+                    "%limeendkey ;/\n" +
+                    "%chardef begin\n" +
+                    "aa \u6E2C\n" +
+                    "%chardef end\n");
+
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("abcdefghijklmnopqrstuvwxyz", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "endkey"));
+            assertEquals(";/", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "limeendkey"));
+        } finally {
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue96 limeendkey cin fixture");
+            }
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void limeImportPersistsLimeEndkeyMetadata() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        File fixture = new File(appContext.getCacheDir(), "issue96_limeendkey.lime");
+        try {
+            writeUtf8(fixture,
+                    "@version@|Lime Endkey Test\n" +
+                    "@cname@|Lime Endkey Table\n" +
+                    "@endkey@|abcdefghijklmnopqrstuvwxyz\n" +
+                    "@limeendkey@|;/\n" +
+                    "aa|\u6E2C\n");
+
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("abcdefghijklmnopqrstuvwxyz", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "endkey"));
+            assertEquals(";/", limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "limeendkey"));
+        } finally {
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue96 limeendkey lime fixture");
+            }
+        }
+    }
+
     @Test
     public void testLimeDBInitialization() {
         // Test LimeDB initialization

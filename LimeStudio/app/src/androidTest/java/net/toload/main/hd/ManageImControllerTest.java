@@ -109,4 +109,18 @@ public class ManageImControllerTest {
         assertTrue(controller.updateIMMetadataField("custom", "version", editedVersion));
         assertEquals(editedVersion, dbServer.getImConfig("custom", "version"));
     }
+
+    @Test
+    public void updateIMMetadataField_allowsLimeEndkey() {
+        android.content.Context context = ApplicationProvider.getApplicationContext();
+        DBServer dbServer = DBServer.getInstance(context);
+        SearchServer searchServer = new SearchServer(context);
+        ManageImController controller = new ManageImController(searchServer);
+
+        assertTrue(controller.updateIMMetadataField("custom", "limeendkey", " ;/ "));
+        assertEquals(";/", dbServer.getImConfig("custom", "limeendkey"));
+
+        assertTrue(controller.updateIMMetadataField("custom", "limeendkey", " "));
+        assertEquals("", dbServer.getImConfig("custom", "limeendkey"));
+    }
 }

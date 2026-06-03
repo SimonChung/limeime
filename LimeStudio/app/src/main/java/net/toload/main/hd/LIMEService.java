@@ -2082,6 +2082,8 @@ public class LIMEService extends InputMethodService
             // Jeremy '11,5,31 Rewrite softkeybaord enter/space and english separator processing.
         } else if (primaryCode == KEYCODE_SWITCH_TO_IM_MODE && mInputView != null) { //eng -> chi
             switchKeyboard(primaryCode);
+        } else if (handleEndkeyCommit(primaryCode)) {
+            // End-key commit is opt-in per IM table metadata and consumes the trigger key.
         } else if ( //Jeremy '12,7,1 bug fixed on enter not functioning in english mode
                 ((primaryCode == MY_KEYCODE_SPACE && !mEnglishOnly && !activeIM.equals(LIME.IM_PHONETIC))
                         || (primaryCode == MY_KEYCODE_SPACE && !mEnglishOnly &&
@@ -2115,6 +2117,42 @@ public class LIMEService extends InputMethodService
                 }
             }
         }
+    }
+
+    static boolean isEndkeyCommitKey(int primaryCode, String endkey, boolean englishOnly,
+                                     int composingLength, boolean candidatesShown) {
+        return !englishOnly
+                && composingLength > 0
+                && candidatesShown
+                && endkey != null
+                && endkey.indexOf((char) primaryCode) >= 0;
+    }
+
+    private boolean handleEndkeyCommit(int primaryCode) {
+        String endkey = "";
+        if (SearchSrv != null && activeIM != null) {
+            endkey = SearchSrv.getImConfig(activeIM, LIME.IM_LIME_ENDKEY);
+        }
+        if (!isEndkeyCommitKey(primaryCode, endkey, mEnglishOnly, mComposing.length(), hasCandidatesShown)) {
+            return false;
+        }
+
+        if (pickHighlightedCandidate()) {
+            return true;
+        }
+
+        if (selectedCandidate != null) {
+            commitTyped(getCurrentInputConnection());
+            if (mComposing.length() == 0) {
+                hideCandidateView();
+            }
+            return true;
+        }
+
+        if (mComposing.length() == 0) {
+            hideCandidateView();
+        }
+        return false;
     }
 
     private void showEmojiKeyboard() {

@@ -1,4 +1,4 @@
-# #96 — Chinese keyboard comma/period punctuation and end-key behavior
+# #96 — Table IM Lime end-key behavior
 
 ## Live issue state
 
@@ -11,13 +11,30 @@
 
 ## Problem statement
 
-The discussion has two related but separate scopes:
+Implement generic, opt-in Lime end-key behavior for table IMs without changing candidate ordering or adding punctuation-specific handling.
 
-1. **Bug scope — direct punctuation mappings should be selectable correctly.**
-   When an IM table defines direct mappings such as `, = ，` and `. = 。`, LIME should highlight/select the first direct match (`，` / `。`) instead of leaving the composing-code record (`，` candidate path represented by the typed code) as the effective first selection. Simply swapping `,` with `，` in the candidate order is not the right model because the first row is generally a composing-code record, not an ordinary candidate.
+- Android keeps conventional `.cin %endkey` / `.lime @endkey@` as compatibility metadata only.
+- LimeIME runtime commit behavior uses Lime-specific metadata: `.cin %limeendkey ...` and `.lime @limeendkey@ |...`.
+- Configured Lime end-key characters should finish the current composition and commit through the same candidate-confirm semantics as existing confirmation keys.
+- Tables without Lime end-key metadata remain unchanged. Keys such as `,` and `.` may still be ordinary roots/composing codes.
+- Search/candidate construction must not special-case Chinese punctuation for this feature.
 
-2. **Feature scope — `%endkey ,.` / `@endkey@` support.**
-   Some table IMs expect `,` and `.` to finish composition directly when the table also maps them to `，` and `。`. This requires explicit end-key metadata, for example `.cin` `%endkey ,.` and a future `.lime` `@endkey@` equivalent. Tables that use `,` / `.` as roots, such as 行列30 or 大易, must not opt into those end keys because direct punctuation output would break root/short-phrase compatibility.
+## Android implementation status
+
+Implemented in Android source on branch `android-next-release-all-fixes`.
+
+Feature scope:
+
+- Android imports and persists `.cin %endkey` / `.lime @endkey@` as conventional compatibility metadata.
+- Android imports and persists `.cin %limeendkey` / `.lime @limeendkey@` as Lime runtime commit metadata.
+- LIME Settings IM detail shows an editable `limeendkey` metadata row labeled `結束鍵`.
+- Android runtime treats the active table's configured Lime end-key characters as opt-in commit triggers.
+- Tables without Lime end-key metadata remain unchanged; roots are not globally converted or reordered.
+
+Official table-data scope:
+
+- This branch implements engine/settings support only. Packaged Android table data is represented by database resources rather than editable `.cin`/`.lime` source tables in this branch, so official table metadata/mapping updates are deferred to separate table-data release coordination.
+- iOS/table-format parity remains pending and should align with the Android implementation when addressed.
 
 ## Reporter and maintainer clarifications
 
@@ -28,7 +45,7 @@ The discussion has two related but separate scopes:
   - 行列30 and 大易 use `,` / `.` as roots, so they should not directly output punctuation.
   - 行列10, 嘸蝦米, and 倉頡 are closer to direct punctuation output expectations.
   - A practical distinction is whether `,` / `.` are defined as roots in the table.
-- Maintainer clarification posted in https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179 records that direct-match highlighting is a bug, while `%endkey ,.` / `@endkey@` is the compatible feature mechanism.
+- Android now separates conventional `%endkey` / `@endkey@` metadata from the Lime-specific `%limeendkey` / `@limeendkey@` runtime feature mechanism to avoid conflict with historical CIN semantics.
 
 ## Source evidence inspected
 
@@ -55,48 +72,38 @@ Relevant code area on current `master`:
 
 - `LIMEService.java` lines 1664–1678: `commitTyped(...)` requires a selected candidate and commits its `word`.
 
-## Likely root cause
-
-The direct-match bug is likely caused by the inspected candidate-list construction path placing the composing-code record before exact table mappings, including punctuation-key direct matches. For codes such as `,` or `.`, if the DB returns exact mappings to `，` or `。`, the selection/highlight logic still sees the composing-code record first.
-
-This should not be fixed by globally swapping punctuation candidates. The fix should distinguish ordinary composing-code fallback from exact direct mappings that should be selected first for that table.
-
 ## Proposed solution / investigation plan
 
-1. Add or adjust candidate-order logic so exact direct matches for `,` / `.` can be highlighted/selected ahead of the composing-code fallback when the active table defines those mappings.
-2. Preserve compatibility for tables where `,` / `.` are roots or short-phrase codes. Do not globally force punctuation output.
-3. Add metadata parsing/runtime support for explicit end-key behavior:
-   - `.cin`: `%endkey ,.`
-   - `.lime`: `@endkey@` equivalent; for opt-in tables such as official 行列10, this likely also requires table-level punctuation mappings such as `,|，` and `.|。`.
-4. For tables with `,` / `.` as roots, do not put those keys in endkey metadata. Direct `，` / `。` output should remain unavailable unless the table explicitly opts in, so users' personal tables without `@endkey@` are not changed.
+1. Add metadata parsing/runtime support for explicit Lime end-key behavior:
+   - `.cin`: `%limeendkey ...`
+   - `.lime`: `@limeendkey@` equivalent.
+2. Preserve conventional `%endkey` / `@endkey@` as imported/exported compatibility metadata.
+3. Keep candidate-list ordering unchanged. The composing-code fallback remains item 0.
+4. For tables with any potential end-key character as a root, do not put that character in Lime end-key metadata unless the table intentionally opts in.
 
 ## Verification plan
 
-- Android table with direct mappings only:
-  - Add/import mappings `, = ，` and `. = 。`.
-  - Type `,` and `.`.
-  - Verify the first direct match `，` / `。` is highlighted/selected instead of the composing-code record.
 - Android table using `,` / `.` as roots:
   - Verify root input remains available and direct punctuation behavior is not forced.
-- `%endkey ,.` / `@endkey@` feature:
-  - Import a `.cin` with `%endkey ,.` plus punctuation mappings.
-  - Import a `.lime` equivalent once supported, including opt-in metadata and punctuation mappings such as `@endkey@ |,.`, `,|，`, and `.|。`.
-  - Verify pressing `,` / `.` commits according to the table metadata without requiring extra Space/Enter.
+- `%limeendkey ,.` / `@limeendkey@` feature:
+  - Import a `.cin` with `%limeendkey ;/`.
+  - Import a `.lime` equivalent with `@limeendkey@ |;/`.
+  - Verify pressing configured end-key characters commits according to table metadata without requiring extra Space/Enter.
 - Regression:
-  - Confirm existing custom `,` / `.` root/short-phrase mappings still work when endkey is not configured.
+  - Confirm existing custom `,` / `.` root/short-phrase mappings still work when Lime endkey is not configured.
 
 ## Platform impact analysis
 
 ### Android
 
-Confirmed relevant platform for #96. The inspected Android search/candidate path shows a plausible mechanism for the direct-match bug: composing-code `self` is inserted ahead of exact table mappings.
+Confirmed relevant platform for #96. Android runtime/settings/import support is implemented for Lime-specific end-key metadata without SearchServer candidate-order changes.
 
 ### iOS / table format
 
-No concrete iOS runtime evidence has been inspected for the same highlight behavior yet. The table-format feature request (`%endkey ,.` and `.lime @endkey@`) can affect both Android and iOS if both platforms import and honor the same table metadata. iOS parity should be assessed separately before claiming the Android candidate-order bug exists there.
+The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @limeendkey@`) can affect both Android and iOS if both platforms import and honor the same table metadata. iOS parity should be assessed separately and aligned with Android later.
 
 ## Follow-up status
 
 - Public clarification posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179
-- Current classification: mixed bug + enhancement/product work.
-- Next action: implement/fix Android direct-match candidate selection first, then design `%endkey ,.` / `.lime @endkey@` support without breaking tables that use `,` / `.` as roots.
+- Current classification: enhancement/product work for generic table IM end-key behavior.
+- Next action: include Android support in review APK; address iOS/table-data coordination later.

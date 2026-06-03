@@ -165,6 +165,48 @@
                         android:layout_height="1dp"
                         android:background="?android:attr/listDivider" />
 
+                    <!-- 結束鍵 row -->
+                    <LinearLayout
+                        android:id="@+id/row_endkey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/im_detail_label_endkey"
+                            android:textAppearance="?attr/textAppearanceBody2" />
+
+                        <TextView
+                            android:id="@+id/txtImEndkey"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:textAppearance="?attr/textAppearanceBody2"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:gravity="end"
+                            android:text="-" />
+
+                        <ImageView
+                            android:id="@+id/iv_edit_endkey"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="6dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?android:attr/textColorSecondary"
+                            android:contentDescription="@string/im_detail_edit_endkey_title" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/divider_endkey"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?android:attr/listDivider" />
+
                     <!-- 筆數 row -->
                     <LinearLayout
                         android:layout_width="match_parent"

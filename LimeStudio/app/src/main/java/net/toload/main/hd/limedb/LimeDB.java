@@ -3652,6 +3652,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 String imname = "";
                 String line;
                 String endkey = "";
+                String limeendkey = "";
                 String selkey = "";
                 String spacestyle = "";
                 boolean escapedFormat = false;
@@ -3782,6 +3783,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         || line.trim().toLowerCase(Locale.US).startsWith("%cname")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%selkey")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%endkey")
+                                        || line.trim().toLowerCase(Locale.US).startsWith("%limeendkey")
                                         || line.trim().toLowerCase(Locale.US).startsWith("%spacestyle")
                                 )) {
                                     continue;
@@ -3849,6 +3851,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         continue;
                                     } else if ("@endkey@".equals(metaKey)) {
                                         endkey = metaValue;
+                                        continue;
+                                    } else if ("@limeendkey@".equals(metaKey)) {
+                                        limeendkey = metaValue;
                                         continue;
                                     } else if ("@spacestyle@".equals(metaKey)) {
                                         spacestyle = metaValue;
@@ -4043,6 +4048,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 endkey = metadataWord;
                                 if (DEBUG) Log.i(TAG, "loadfile(): endkey:" + endkey);
                                 continue;
+                            } else if (!escapedMetadataCode && codeLower.equals("%limeendkey")) {
+                                limeendkey = metadataWord;
+                                if (DEBUG) Log.i(TAG, "loadfile(): limeendkey:" + limeendkey);
+                                continue;
                             } else if (!escapedMetadataCode && codeLower.equals("%spacestyle")) {
                                 spacestyle = metadataWord;
                                 continue;
@@ -4139,6 +4148,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     } else {
                         if (!selkey.isEmpty()) setImConfig(table, "selkey", selkey);
                         if (!endkey.isEmpty()) setImConfig(table, "endkey", endkey);
+                        if (!limeendkey.isEmpty()) setImConfig(table, LIME.IM_LIME_ENDKEY, limeendkey);
                         if (!spacestyle.isEmpty()) setImConfig(table, "spacestyle", spacestyle);
                         if (!imkeysHeader.isEmpty()) setImConfig(table, "imkeys", imkeysHeader);
                         else if (!imkeys.toString().isEmpty()) setImConfig(table, "imkeys", imkeys.toString());
@@ -4382,6 +4392,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 || lower.startsWith("%cname")
                 || lower.startsWith("%selkey")
                 || lower.startsWith("%endkey")
+                || lower.startsWith("%limeendkey")
                 || lower.startsWith("%spacestyle")));
     }
 
@@ -5478,7 +5489,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
      * <ul>
      *   <li><b>Regular mapping tables:</b> .lime format
      *     <ul>
-     *       <li>Header lines with IM info (@format@, @version@, @cname@, @selkey@, @endkey@, @spacestyle@) if imConfig provided</li>
+     *       <li>Header lines with IM info (@format@, @version@, @cname@, @selkey@, @endkey@, @limeendkey@, @spacestyle@) if imConfig provided</li>
      *       <li>Data lines: code|word|score|basescore</li>
      *     </ul>
      *   </li>
@@ -5626,6 +5637,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 String name = "";
                                 String selkey = "";
                                 String endkey = "";
+                                String limeendkey = "";
                                 String spacestyle = "";
                                 String imkeys = "";
                                 String imkeynames = "";
@@ -5636,6 +5648,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                     else if (LIME.IM_FULL_NAME.equals(i.getTitle()) || "name".equals(i.getTitle())) name = i.getDesc();
                                     else if (LIME.IM_SELKEY.equals(i.getTitle())) selkey = i.getDesc();
                                     else if (LIME.IM_ENDKEY.equals(i.getTitle())) endkey = i.getDesc();
+                                    else if (LIME.IM_LIME_ENDKEY.equals(i.getTitle())) limeendkey = i.getDesc();
                                     else if (LIME.IM_SPACESTYLE.equals(i.getTitle())) spacestyle = i.getDesc();
                                     else if ("imkeys".equals(i.getTitle())) imkeys = i.getDesc();
                                     else if ("imkeynames".equals(i.getTitle())) imkeynames = i.getDesc();
@@ -5644,6 +5657,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         || needsEscapedField(name, "|", false)
                                         || needsEscapedField(selkey, "|", false)
                                         || needsEscapedField(endkey, "|", false)
+                                        || needsEscapedField(limeendkey, "|", false)
                                         || needsEscapedField(spacestyle, "|", false)
                                         || needsEscapedField(imkeys, "|", false)
                                         || needsEscapedField(imkeynames, "|", false)) {
@@ -5668,6 +5682,10 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                 }
                                 if (!endkey.isEmpty()) {
                                     fout.write("@endkey@|" + (useEscapedFormat ? escapeField(endkey, "|") : endkey));
+                                    fout.newLine();
+                                }
+                                if (!limeendkey.isEmpty()) {
+                                    fout.write("@limeendkey@|" + (useEscapedFormat ? escapeField(limeendkey, "|") : limeendkey));
                                     fout.newLine();
                                 }
                                 if (!spacestyle.isEmpty()) {

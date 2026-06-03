@@ -65,6 +65,23 @@ import static org.mockito.Mockito.*;
 @RunWith(AndroidJUnit4.class)
 public class LIMEServiceTest {
 
+    private void setPrivateField(Object target, String fieldName, Object value) throws Exception {
+        Class<?> currentClass = target.getClass();
+        Field field = null;
+        while (currentClass != null && field == null) {
+            try {
+                field = currentClass.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                currentClass = currentClass.getSuperclass();
+            }
+        }
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
     @Before
     public void clearEmojiDisplayPositionPrefs() {
         // Tests in this class write to enable_emoji / enable_emoji_position to
@@ -122,6 +139,110 @@ public class LIMEServiceTest {
 
         assertEquals(4, LIMEService.adjustedEmojiInsertionPosition(commaCandidates, 3));
         assertEquals(4, LIMEService.adjustedEmojiInsertionPosition(periodCandidates, 3));
+    }
+
+    @Test
+    public void endkeyCommitKeyRequiresOptInComposingCandidates() {
+        assertTrue(LIMEService.isEndkeyCommitKey(';', ";/", false, 2, true));
+        assertTrue(LIMEService.isEndkeyCommitKey('/', ";/", false, 2, true));
+
+        assertFalse(LIMEService.isEndkeyCommitKey(';', "", false, 2, true));
+        assertFalse(LIMEService.isEndkeyCommitKey(';', null, false, 2, true));
+        assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", true, 2, true));
+        assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", false, 0, true));
+        assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", false, 2, false));
+        assertFalse(LIMEService.isEndkeyCommitKey(',', ";/", false, 2, true));
+    }
+
+    @Test
+    public void endkeyCommitConsumesOptedInKeyThroughHighlightedCandidate() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DBServer.getInstance(appContext).setImConfig("custom", "limeendkey", ";/");
+
+        LIMEService service = new LIMEService();
+        setPrivateField(service, "SearchSrv", new SearchServer(appContext));
+        setPrivateField(service, "activeIM", "custom");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", true);
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(true);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ';'));
+        verify(candidateView).takeSelectedSuggestion();
+
+        assertFalse((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
+    }
+
+    @Test
+    public void endkeyCommitFallsBackToSelectedCandidateWhenHighlightedViewSelectionFails() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        Mapping candidate = createCandidate("aa", "日");
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfig("cj4", LIME.IM_LIME_ENDKEY)).thenReturn(",.");
+        when(searchServer.getRealCodeLength(candidate, "aa")).thenReturn(2);
+        when(searchServer.getRelatedByWord("日", false)).thenReturn(new LinkedList<>());
+
+        TestableLIMEService service = new TestableLIMEService();
+        setPrivateField(service, "SearchSrv", searchServer);
+        setPrivateField(service, "activeIM", "cj4");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", true);
+        setPrivateField(service, "hasMappingList", true);
+        setPrivateField(service, "selectedCandidate", candidate);
+        setPrivateField(service, "currentSoftKeyboard", "cj");
+        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(false);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
+        verify(candidateView).takeSelectedSuggestion();
+        verify(inputConnection).commitText("日", 1);
+    }
+
+    @Test
+    public void conventionalEndkeyMetadataDoesNotTriggerLimeEndkeyCommit() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DBServer.getInstance(appContext).setImConfig("custom", "endkey", ";/");
+        DBServer.getInstance(appContext).setImConfig("custom", "limeendkey", "");
+
+        LIMEService service = new LIMEService();
+        setPrivateField(service, "SearchSrv", new SearchServer(appContext));
+        setPrivateField(service, "activeIM", "custom");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", true);
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(true);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertFalse((Boolean) handleEndkeyCommit.invoke(service, (int) ';'));
+        verify(candidateView, never()).takeSelectedSuggestion();
     }
 
     @Test
