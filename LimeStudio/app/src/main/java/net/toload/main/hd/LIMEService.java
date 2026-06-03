@@ -58,6 +58,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.KeyCharacterMap;
@@ -6158,7 +6159,12 @@ public class LIMEService extends InputMethodService
     }
 
     static EmojiPanelColors emojiPanelColorsForTheme(int themeIndex, boolean systemDark) {
+        return emojiPanelColorsForTheme(themeIndex, systemDark, 0);
+    }
+
+    static EmojiPanelColors emojiPanelColorsForTheme(int themeIndex, boolean systemDark, int systemAccent) {
         int resolvedTheme = themeIndex == 6 ? (systemDark ? 1 : 0) : themeIndex;
+        int accentOverlay = isUsableAccentColor(systemAccent) ? withAlpha(systemAccent, 0x33) : 0;
         switch (resolvedTheme) {
             case 1:
                 return new EmojiPanelColors(
@@ -6167,7 +6173,7 @@ public class LIMEService extends InputMethodService
                         0xFFCFD8DC,
                         0xFFCFD8DC,
                         0xFFCFD8DC,
-                        0x33FFFFFF);
+                        themeIndex == 6 && accentOverlay != 0 ? accentOverlay : 0x33FFFFFF);
             case 2:
                 return new EmojiPanelColors(
                         0xFFFEF3F7,
@@ -6208,12 +6214,51 @@ public class LIMEService extends InputMethodService
                         0xFF000000,
                         0xFF000000,
                         0xFF000000,
-                        0x22000000);
+                        themeIndex == 6 && accentOverlay != 0 ? accentOverlay : 0x22000000);
         }
     }
 
     private EmojiPanelColors currentEmojiPanelColors() {
-        return emojiPanelColorsForTheme(mKeyboardThemeIndex, isEffectiveDarkTheme());
+        int fallbackAccent = isEffectiveDarkTheme() ? 0x33FFFFFF : 0x22000000;
+        int accent = isFollowSystemTheme() ? resolveSystemAccentColor(fallbackAccent) : 0;
+        return emojiPanelColorsForTheme(mKeyboardThemeIndex, isEffectiveDarkTheme(), accent);
+    }
+
+    private boolean isFollowSystemTheme() {
+        return mKeyboardThemeIndex == 6;
+    }
+
+    private int resolveSystemAccentColor(int fallbackColor) {
+        int resolved = resolveThemeColor(com.google.android.material.R.attr.colorPrimary, 0);
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(com.google.android.material.R.attr.colorSecondary, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(android.R.attr.colorAccent, 0);
+        }
+        return isUsableAccentColor(resolved) ? resolved : fallbackColor;
+    }
+
+    private int resolveThemeColor(int attr, int fallbackColor) {
+        TypedValue value = new TypedValue();
+        if (getTheme().resolveAttribute(attr, value, true)) {
+            if (value.resourceId != 0) {
+                return ContextCompat.getColor(this, value.resourceId);
+            }
+            if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT
+                    && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                return value.data;
+            }
+        }
+        return fallbackColor;
+    }
+
+    private static boolean isUsableAccentColor(int color) {
+        return Color.alpha(color) != 0;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     private int getKeyboardTheme() {

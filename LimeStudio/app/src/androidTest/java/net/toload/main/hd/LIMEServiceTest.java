@@ -329,6 +329,28 @@ public class LIMEServiceTest {
     }
 
     @Test
+    public void emojiPanelFollowSystemUsesSystemAccentHighlight() {
+        int dynamicPurple = 0xFF6750A4;
+
+        LIMEService.EmojiPanelColors systemLight = LIMEService.emojiPanelColorsForTheme(6, false, dynamicPurple);
+        LIMEService.EmojiPanelColors systemDark = LIMEService.emojiPanelColorsForTheme(6, true, dynamicPurple);
+
+        assertEquals(0x336750A4, systemLight.categoryHighlight);
+        assertEquals(0x336750A4, systemDark.categoryHighlight);
+        assertEquals(0x22000000, LIMEService.emojiPanelColorsForTheme(0, false, dynamicPurple).categoryHighlight);
+        assertEquals(0x33FFFFFF, LIMEService.emojiPanelColorsForTheme(1, true, dynamicPurple).categoryHighlight);
+    }
+
+    @Test
+    public void keyboardThemeValuesKeepExistingFollowSystemOption() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        assertArrayEquals(
+                new String[]{"0", "1", "2", "3", "4", "5", "6"},
+                appContext.getResources().getStringArray(R.array.keyboard_themes_values));
+    }
+
+    @Test
     public void emojiCategoryPaginationKeepsCategoryCompact() {
         MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
         List<List<String>> categories = new ArrayList<>();

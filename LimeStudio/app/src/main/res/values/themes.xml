@@ -33,7 +33,7 @@
     <!-- Action bar follows surface/background — not affected by colorPrimary -->
     <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
     <item name="actionBarTheme">@style/LIME.ToolbarContentTheme</item>
-    <!-- Blue active tabs + buttons; green switches — matches iOS LIME brand -->
+    <!-- Fallback accents; DynamicColors overrides these on supported devices. -->
     <item name="colorPrimary">@color/material_blue</item>
     <item name="colorPrimaryVariant">@color/material_blue</item>
     <item name="colorSecondary">@color/lime_green</item>
@@ -51,7 +51,7 @@
     <!-- Action bar follows surface/background — not affected by colorPrimary -->
     <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
     <item name="actionBarTheme">@style/LIME.ToolbarContentTheme</item>
-    <!-- Blue active tabs + buttons; green switches — matches iOS LIME brand -->
+    <!-- Fallback accents; DynamicColors overrides these on supported devices. -->
     <item name="colorPrimary">@color/material_blue</item>
     <item name="colorPrimaryVariant">@color/material_blue</item>
     <item name="colorSecondary">@color/lime_green</item>

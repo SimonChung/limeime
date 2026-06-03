@@ -27,6 +27,7 @@ import net.toload.main.hd.ui.controller.SetupImController;
 import net.toload.main.hd.ui.dialog.HelpDialog;
 import net.toload.main.hd.ui.dialog.NewsDialog;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.color.DynamicColors;
 import com.google.android.material.navigationrail.NavigationRailView;
 import net.toload.main.hd.ui.view.LIMESettingsView;
 
@@ -144,6 +145,7 @@ public class LIMESettings extends AppCompatActivity implements LIMESettingsView 
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(savedInstanceState);
         // Register back gesture/press callback for AndroidX
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
