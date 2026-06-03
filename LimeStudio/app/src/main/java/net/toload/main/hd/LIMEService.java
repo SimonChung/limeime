@@ -67,6 +67,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.CompletionInfo;
@@ -164,6 +165,7 @@ public class LIMEService extends InputMethodService
     private boolean mPredictionOn;
     private boolean mCompletionOn;
     private boolean mCapsLock;
+    private long mLastShiftTime = -1;
     private boolean mAutoCap;
     private boolean mHasShift;
 
@@ -4564,29 +4566,77 @@ public class LIMEService extends InputMethodService
             return;
         }
 
+        boolean doubleTap = isShiftDoubleTap();
         if (mKeyboardSwitcher.isAlphabetMode()) {
-            // Alphabet keyboard
-            checkToggleCapsLock();
-            mInputView.setShifted(mCapsLock || !mInputView.isShifted());
-            mHasShift = mCapsLock || !mInputView.isShifted();
-            if (mHasShift) {
-                mKeyboardSwitcher.toggleShift();
-            }
+            ShiftTapState nextState = nextShiftTapState(mInputView.isShifted(), mCapsLock, doubleTap);
+            applyAlphabetShiftState(nextState);
         } else {
-            if (mCapsLock) {
-                toggleCapsLock();
-                mHasShift = false;
-            } else if (mHasShift) {
-                toggleCapsLock();
-                mHasShift = true;
-            } else {
-                mKeyboardSwitcher.toggleShift();
-                mHasShift = mKeyboardSwitcher.isShifted();
-
-            }
+            ShiftTapState nextState = nextShiftTapState(mHasShift, mCapsLock, doubleTap);
+            applyImShiftState(nextState);
         }
     }
 
+    private boolean isShiftDoubleTap() {
+        long now = SystemClock.uptimeMillis();
+        boolean doubleTap = mLastShiftTime > 0
+                && now - mLastShiftTime <= ViewConfiguration.getDoubleTapTimeout();
+        mLastShiftTime = now;
+        return doubleTap;
+    }
+
+    static ShiftTapState nextShiftTapState(boolean shifted, boolean capsLock, boolean doubleTap) {
+        if (capsLock) {
+            return new ShiftTapState(false, false);
+        }
+        if (doubleTap) {
+            return new ShiftTapState(true, true);
+        }
+        return new ShiftTapState(!shifted, false);
+    }
+
+    static final class ShiftTapState {
+        final boolean shifted;
+        final boolean capsLock;
+
+        ShiftTapState(boolean shifted, boolean capsLock) {
+            this.shifted = shifted;
+            this.capsLock = capsLock;
+        }
+    }
+
+    private void applyAlphabetShiftState(ShiftTapState state) {
+        setCapsLockState(state.capsLock);
+        mInputView.setShifted(state.shifted);
+        mHasShift = state.shifted;
+        if (state.shifted && !mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        } else if (!state.shifted && mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        }
+    }
+
+    private void applyImShiftState(ShiftTapState state) {
+        setCapsLockState(state.capsLock);
+        if (state.shifted && !mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        } else if (!state.shifted && mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        }
+        mHasShift = state.shifted;
+    }
+
+    private void setCapsLockState(boolean capsLock) {
+        if (mCapsLock == capsLock) {
+            if (mInputView != null && mInputView.getKeyboard() instanceof LIMEKeyboard) {
+                ((LIMEKeyboard) mInputView.getKeyboard()).setShiftLocked(capsLock);
+            }
+            return;
+        }
+        mCapsLock = capsLock;
+        if (mInputView != null && mInputView.getKeyboard() instanceof LIMEKeyboard) {
+            ((LIMEKeyboard) mInputView.getKeyboard()).setShiftLocked(mCapsLock);
+        }
+    }
 
     /**
      * Integrated all soft keyboards switching in this function.

@@ -414,6 +414,36 @@ public class LIMEServiceTest {
     }
 
     @Test
+    public void singleShiftTapTogglesBetweenShiftedAndUnshiftedOnly() {
+        LIMEService.ShiftTapState state = LIMEService.nextShiftTapState(false, false, false);
+        assertTrue(state.shifted);
+        assertFalse(state.capsLock);
+
+        state = LIMEService.nextShiftTapState(state.shifted, state.capsLock, false);
+        assertFalse(state.shifted);
+        assertFalse(state.capsLock);
+
+        state = LIMEService.nextShiftTapState(state.shifted, state.capsLock, false);
+        assertTrue(state.shifted);
+        assertFalse(state.capsLock);
+    }
+
+    @Test
+    public void doubleShiftTapEntersShiftLockAndSingleTapUnlocks() {
+        LIMEService.ShiftTapState state = LIMEService.nextShiftTapState(false, false, true);
+        assertTrue(state.shifted);
+        assertTrue(state.capsLock);
+
+        state = LIMEService.nextShiftTapState(state.shifted, state.capsLock, false);
+        assertFalse(state.shifted);
+        assertFalse(state.capsLock);
+
+        state = LIMEService.nextShiftTapState(true, false, true);
+        assertTrue(state.shifted);
+        assertTrue(state.capsLock);
+    }
+
+    @Test
     public void imPickerSelectionShowsSelectedImNameToast() {
         MockInputMethodServiceHelper helper = new MockInputMethodServiceHelper();
         CandidateView candidateView = helper.injectMockCandidateView();
