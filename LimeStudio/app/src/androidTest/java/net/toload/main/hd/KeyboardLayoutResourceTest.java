@@ -59,6 +59,16 @@ public class KeyboardLayoutResourceTest {
         assertSelectorDoesNotContainFocusedState(context, R.drawable.btn_emoji_relax_green);
     }
 
+    @Test
+    public void shiftedSymbolKeysDoNotShowChineseRootSubLabels() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        assertNoSubLabelsOnShiftedSymbolKeys(context, R.xml.lime_phonetic_shift);
+        assertNoSubLabelsOnShiftedSymbolKeys(context, R.xml.lime_ez_shift);
+        assertNoSubLabelsOnShiftedSymbolKeys(context, R.xml.lime_et_41_shift);
+        assertNoSubLabelsOnShiftedSymbolKeys(context, R.xml.lime_dayi_sym_shift);
+    }
+
     private void assertLetterKeyCodes(Context context, int layoutId, boolean shouldBeUppercase) {
         List<KeyDefinition> letterKeys = readLetterKeys(context, layoutId);
         assertFalse("HS layout should contain Latin letter keys", letterKeys.isEmpty());
@@ -104,6 +114,63 @@ public class KeyboardLayoutResourceTest {
             fail("Unable to read keyboard XML resource " + layoutId + ": " + e.getMessage());
         }
         return keys;
+    }
+
+    private void assertNoSubLabelsOnShiftedSymbolKeys(Context context, int layoutId) {
+        boolean sawSymbolKey = false;
+        boolean sawAlphabetSubLabel = false;
+        try {
+            XmlPullParser parser = context.getResources().getXml(layoutId);
+            int eventType;
+            while ((eventType = parser.next()) != XmlPullParser.END_DOCUMENT) {
+                if (eventType != XmlPullParser.START_TAG || !"Key".equals(parser.getName())) {
+                    continue;
+                }
+
+                String value = parser.getAttributeValue(LIME_ATTR_NS, "codes");
+                if (value == null || value.isEmpty() || value.contains(",")) {
+                    continue;
+                }
+
+                int code = Integer.parseInt(value);
+                String label = parser.getAttributeValue(LIME_ATTR_NS, "keyLabel");
+                if (label == null) {
+                    continue;
+                }
+
+                String normalizedLabel = label.replace("\\n", "\n");
+                if (isUppercaseAsciiLetter(code)) {
+                    if (normalizedLabel.contains("\n")) {
+                        sawAlphabetSubLabel = true;
+                    }
+                    continue;
+                }
+
+                if (isPrintableNonAlphabetSymbol(code)) {
+                    sawSymbolKey = true;
+                    assertFalse("Shifted symbol key should not show root sub-label in layout "
+                                    + layoutId + ": code=" + code + " label=" + label,
+                            normalizedLabel.contains("\n"));
+                }
+            }
+        } catch (Exception e) {
+            fail("Unable to read keyboard XML resource " + layoutId + ": " + e.getMessage());
+        }
+
+        assertTrue("Shifted layout should contain printable symbol keys: " + layoutId, sawSymbolKey);
+        assertTrue("Shifted alphabet roots should remain in layout: " + layoutId, sawAlphabetSubLabel);
+    }
+
+    private boolean isPrintableNonAlphabetSymbol(int code) {
+        return code >= 33 && code <= 126 && !isUppercaseAsciiLetter(code) && !isLowercaseAsciiLetter(code);
+    }
+
+    private boolean isUppercaseAsciiLetter(int code) {
+        return code >= 'A' && code <= 'Z';
+    }
+
+    private boolean isLowercaseAsciiLetter(int code) {
+        return code >= 'a' && code <= 'z';
     }
 
     private void assertVectorPaintUsesOnlyColor(Context context, int drawableId, int expectedColorId) {
