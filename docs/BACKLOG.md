@@ -68,6 +68,13 @@ Last reviewed: 2026-06-02
   - Expected behavior: Preserve alphabet/root labels where shifted alphabet keys remain meaningful; remove or adjust only non-alphabet shifted-key IM root labels that would mislead users into thinking Chinese roots are still entered normally.
   - Next action: Audit iOS shifted keyboard layout assets/resources and update labels where applicable; verify the visual layout and confirm no runtime code change is needed.
 
+- Unfiled — Android + iOS — simplify Shift key cycle and use double-click for Shift Lock
+  - Status: New cross-platform feature request from maintainer direction.
+  - Current state: Shift currently cycles through three states by repeated single taps: first tap = shifted, second tap = Shift Lock, third tap = unshifted, then repeats.
+  - Expected behavior: Single tap should only toggle between shifted and unshifted. Double tap should enter Shift Lock. When Shift Lock is active, a single tap should leave Shift Lock and return to unshifted.
+  - Scope: Update Shift key state-machine/input handling on both Android and iOS. Preserve existing shifted keyboard layouts, caps/lock visual indicators, and normal key output semantics except for the tap gesture/state transition change.
+  - Next action: Audit Android and iOS Shift key handling, add regression coverage or focused manual test cases for single-tap toggle, double-tap lock, and single-tap unlock, then update both platforms consistently.
+
 ## Not in backlog yet
 
 - #90 — Android keyboard UI customization / old-style layout / button visibility / theme options
