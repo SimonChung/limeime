@@ -146,6 +146,47 @@ public class LimeDBTest {
     }
 
     @Test
+    public void cinImportPreservesDuplicateCodeOrderWhenSelectionSortDisabled() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        boolean oldPhysicalSort = PreferenceManager.getDefaultSharedPreferences(appContext)
+                .getBoolean("physical_keyboard_sort", true);
+        File fixture = new File(appContext.getCacheDir(), "issue91_order.cin");
+        try {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putBoolean("physical_keyboard_sort", false).commit();
+            writeUtf8(fixture,
+                    "%ename issue91\n" +
+                    "%cname Issue91\n" +
+                    "%chardef begin\n" +
+                    "vmi \u72C0\n" +
+                    "vmi \u7ED2\n" +
+                    "vmi \u6215\n" +
+                    "%chardef end\n");
+
+            limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+            limeDB.clearTable(LIME.DB_TABLE_CUSTOM);
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            List<Mapping> mappings = limeDB.getMappingByCode("vmi", false, true);
+            assertTrue("Expected at least three duplicate-code mappings", mappings.size() >= 3);
+            assertEquals("\u72C0", mappings.get(0).getWord());
+            assertEquals("\u7ED2", mappings.get(1).getWord());
+            assertEquals("\u6215", mappings.get(2).getWord());
+        } finally {
+            PreferenceManager.getDefaultSharedPreferences(appContext)
+                    .edit().putBoolean("physical_keyboard_sort", oldPhysicalSort).commit();
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue91 fixture");
+            }
+        }
+    }
+
+    @Test
     public void testLimeDBInitialization() {
         // Test LimeDB initialization
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
