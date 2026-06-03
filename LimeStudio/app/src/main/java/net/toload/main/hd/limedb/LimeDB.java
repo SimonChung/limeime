@@ -3676,6 +3676,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     List<String> templist = new ArrayList<>();
                     while ((line = buf.readLine()) != null
                             && !isCinFormat) {
+                        if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                            continue;
+                        }
                         templist.add(line);
                         if (i >= maxLinesToProcess) {
                             break;
@@ -3817,6 +3820,9 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                             }
                             firstline = false;
                         } else if (line.trim().isEmpty()) {
+                            continue;
+                        }
+                        if (!isCinFormat && line.trim().startsWith("#")) {
                             continue;
                         }
                         //else { line.length() }

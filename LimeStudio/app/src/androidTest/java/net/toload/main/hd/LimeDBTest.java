@@ -186,6 +186,42 @@ public class LimeDBTest {
         }
     }
 
+    @Test(timeout = 15000)
+    public void limeImportSkipsHashCommentsAndPersistsCnameVersion() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        assertTrue(initializeDatabase(limeDB));
+
+        File fixture = new File(appContext.getCacheDir(), "issue93_array10.lime");
+        try {
+            writeUtf8(fixture,
+                    "# Array10 comment before metadata\n" +
+                    "@version@ |\u884C\u521710\u6E2C\u8A66\u7248\n" +
+                    "# Comment between metadata\n" +
+                    "@cname@ |\u884C\u521710\u6E2C\u8A66\n" +
+                    "# Comment before mappings\n" +
+                    ",|\uFF0C\n" +
+                    ".|\u3002\n");
+
+            limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+            limeDB.clearTable(LIME.DB_TABLE_CUSTOM);
+            limeDB.setFilename(fixture);
+            limeDB.importTxtTable(LIME.DB_TABLE_CUSTOM, null);
+            waitForImportThread(limeDB);
+
+            assertEquals("\u884C\u521710\u6E2C\u8A66",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
+            assertEquals("\u884C\u521710\u6E2C\u8A66\u7248",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("\uFF0C", limeDB.getMappingByCode(",", false, true).get(0).getWord());
+            assertEquals("\u3002", limeDB.getMappingByCode(".", false, true).get(0).getWord());
+        } finally {
+            if (fixture.exists() && !fixture.delete()) {
+                Log.w(TAG, "Failed to delete issue93 fixture");
+            }
+        }
+    }
+
     @Test
     public void testLimeDBInitialization() {
         // Test LimeDB initialization

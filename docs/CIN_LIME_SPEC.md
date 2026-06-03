@@ -123,6 +123,8 @@ ab|試|0|456
 
 Importers accept `.lime` mapping lines with or without `%chardef begin/end`. Exporters include the block for readability and compatibility.
 
+Lines beginning with `#` are skipped as comments and are ignored during delimiter detection.
+
 ### 2.2 Encoding
 
 Exporters write UTF-8. Use UTF-8 text for imports. Importers accept a UTF-8 BOM on the first line.
