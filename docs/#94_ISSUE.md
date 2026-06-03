@@ -66,6 +66,16 @@ Root cause for this reproduced path is now sufficiently identified:
 
 This does **not** mean the entire backup implementation is generally broken. Existing tests and #88 still show backup/restore can work in other paths. #94 is specifically a missing-journal/error-propagation bug in the Android backup path.
 
+## Android implementation status
+
+Implemented in Android source on branch `android-next-release-all-fixes`.
+
+- This branch supersedes/recreates the relevant PR #97 behavior instead of depending on a separate PR merge.
+- `lime.db-journal` is included only when it exists, because it is a transient SQLite rollback journal.
+- Backup failures propagate to callers instead of allowing UI success status after ZIP/copy failure.
+- Regression coverage verifies backup succeeds without `lime.db-journal` and propagates output-write failure.
+- Status after source implementation: awaiting full branch verification, review APK build, and reporter retest for non-empty ZIP creation/restoration.
+
 ## Code paths to fix
 
 ### Backup implementation
@@ -137,4 +147,4 @@ Developer-side checks for the fix:
 
 A concise public reply was posted after the logcat attachment to confirm that the log identified the likely failure path and that no more logs are needed before a fix.
 
-Do not ask the reporter for another generic APK retest until a newer APK contains a targeted #94 backup fix.
+Do not ask the reporter for another generic APK retest until a newer APK contains this targeted #94 backup fix.

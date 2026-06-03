@@ -2,19 +2,19 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-06-02
+Last reviewed: 2026-06-03
 
 ## Pending fixes
 
 - #91 — Android — `.cin` import should preserve duplicate-code candidate order from the source file
-  - Status: Open bug, assigned to `jrywu`.
-  - Current state: Reporter showed `vmi` candidates from 哈哈倉頡 changing from source order `狀 绒 戕` to `狀 戕 绒` even with `啟動選取排序` disabled.
-  - Next action: Fix Android `.cin` import/query ordering so same-code candidates can follow source-file order when selection sorting is disabled, then ship in a newer APK and ask reporter to retest.
+  - Status: Implemented in Android source on `android-next-release-all-fixes`; awaiting review APK and reporter retest.
+  - Current state: Android now keeps same-code `.cin` exact matches in source insertion order when selection sorting is disabled, with regression coverage for the `vmi` / `狀 绒 戕` case shape.
+  - Next action: Include in the next Android review APK, then ask reporter to retest 哈哈倉頡 `vmi`.
 
 - #94 / PR #97 — Android — backup must not create a 0 B `limeBackup.zip` while reporting success
-  - Status: Open bug with open fix PR #97.
-  - Current state: Logcat traced the failure to treating missing transient SQLite rollback journal `lime.db-journal` as fatal, while the UI could still report success and leave a 0 B backup file.
-  - Next action: Review/merge PR #97, ship a newer APK, then ask reporter to confirm backup creates a non-empty ZIP and can restore normally.
+  - Status: Implemented in Android source on `android-next-release-all-fixes`; PR #97 behavior is superseded/recreated in this branch pending APK retest.
+  - Current state: Backup no longer requires a missing transient `lime.db-journal`, failure propagates instead of reporting success, and regression coverage verifies non-empty backup output plus output-write failure propagation.
+  - Next action: Include in the next Android review APK, then ask reporter to confirm backup creates a non-empty ZIP and restores normally.
 
 - #86 — iOS — keyboard extension should see restored IM tables immediately after successful DB restore
   - Status: Open maintainer-created bug, assigned to `jrywu`.
@@ -32,16 +32,16 @@ Last reviewed: 2026-06-02
   - Next action: Fix iOS text-import registration/fallback naming so successful imports create visible installed IM configs, then verify import and keyboard availability.
 
 - #93 — Android — `.lime` import should correctly read `@cname@` and `@version@` metadata
-  - Status: Open maintainer-created bug scope, assigned to `jrywu`.
-  - Current state: Android import can succeed but cname/version metadata may not be read or saved correctly; Array10 `.lime` includes several `#` comment lines, so comment-line support must be verified.
-  - Next action: Verify whether `.lime` supports `#`-prefixed comments like `.cin`, then fix metadata parsing/persistence and add regression coverage.
+  - Status: Implemented in Android source on `android-next-release-all-fixes`; maintainer-created issue still needs final Android APK verification and separate iOS work.
+  - Current state: Android `.lime` import now skips `#` comment lines during delimiter detection/parsing and persists `@cname@` / `@version@`, with Array10-style regression coverage.
+  - Next action: Include in the Android review APK. iOS #93 remains pending separately and should stay aligned with Android metadata semantics where applicable.
 
 ## Confirmed feature / product work
 
 - #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
-  - Status: Open enhancement/usability issue; product scope confirmed for backlog by maintainer direction.
-  - Current state: The 6.1 `系統設定` keyboard theme follows the system light/dark mode only. Reporter tested on motorola razr60 / Android 16 and clarified that it does not apply the system theme/accent color.
-  - Next action: Evaluate Android dynamic color / system accent color support for the keyboard theme, then design it so it remains optional and compatible with existing fixed light/dark/color themes.
+  - Status: Implemented in Android source on `android-next-release-all-fixes`; awaiting APK review.
+  - Current state: Existing `6 = 系統設定` remains the only follow-system theme option. Android now applies Material dynamic color to LIME Settings where available and uses resolved system accent for follow-system keyboard/emoji highlights while fixed themes `0-5` remain fixed.
+  - Next action: Include in the next Android review APK and visually verify dynamic/accent behavior on supported Android versions. Button/layout customization remains outside the backlog until confirmed.
 
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
   - Status: Android engine/settings support implemented on `android-next-release-all-fixes`; iOS and official table-data coordination remain pending.
@@ -49,11 +49,11 @@ Last reviewed: 2026-06-02
   - Next action: Include Android support in the review APK. iOS should be addressed later and aligned with the Android implementation. Official table metadata/mapping updates, such as adding opt-in 行列10 punctuation rows, are deferred to separate table-data release coordination.
 
 - #99 — Android — shifted keyboard layouts should hide non-alphabet IM root labels
-  - Status: Closed question/enhancement/usability issue; product scope confirmed for backlog by maintainer direction.
-  - Current state: Shift / caps-lock behavior remains by design so users can enter uppercase letters and symbols in hybrid input. The improvement is only about what the shifted keyboard layout displays: non-alphabet keys such as number/symbol positions should not continue showing Chinese IM root labels when those shifted keys now input symbols.
+  - Status: Implemented in Android source on `android-next-release-all-fixes`; awaiting APK visual verification.
+  - Current state: Shifted Android phonetic/EZ/ET41/Dayi symbol layouts remove root sub-labels from non-alphabet shifted symbol keys while preserving shifted alphabet-key root labels. Shift/caps-lock runtime behavior is handled by the separate unfiled Shift item.
   - Scope: Layout/label adjustment only. Do not change input handling, composing-code logic, candidate lookup, Shift/caps-lock behavior, or hybrid symbol input behavior.
   - Expected behavior: Alphabet keys may continue showing alphabet/root labels as appropriate, because `abc...` -> `ABC...` can still be meaningful for some IM roots. Only non-alphabet shifted keys should remove or adjust IM root labels to avoid suggesting they still input the original Chinese IM roots.
-  - Next action: Update the Android shifted keyboard layout resources/labels for affected IM layouts so non-alphabet shifted keys no longer show misleading IM root labels; verify the visual layout and confirm no runtime code change is needed.
+  - Next action: Include in the next Android review APK and visually verify at least one edited shifted layout.
 
 - #99 — iOS — shifted keyboard layouts should hide non-alphabet IM root labels
   - Status: Cross-platform feature parity backlog item from the #99 Android discussion.
@@ -63,11 +63,11 @@ Last reviewed: 2026-06-02
   - Next action: Audit iOS shifted keyboard layout assets/resources and update labels where applicable; verify the visual layout and confirm no runtime code change is needed.
 
 - Unfiled — Android + iOS — simplify Shift key cycle and use double-click for Shift Lock
-  - Status: New cross-platform feature request from maintainer direction.
-  - Current state: Shift currently cycles through three states by repeated single taps: first tap = shifted, second tap = Shift Lock, third tap = unshifted, then repeats.
+  - Status: Android implemented on `android-next-release-all-fixes`; iOS remains pending.
+  - Current state: Android single Shift taps now toggle shifted/unshifted only, double-tap enters Shift Lock, and a single Shift tap exits Shift Lock. Regression coverage locks the Android state machine. iOS still needs the matching implementation later.
   - Expected behavior: Single tap should only toggle between shifted and unshifted. Double tap should enter Shift Lock. When Shift Lock is active, a single tap should leave Shift Lock and return to unshifted.
   - Scope: Update Shift key state-machine/input handling on both Android and iOS. Preserve existing shifted keyboard layouts, caps/lock visual indicators, and normal key output semantics except for the tap gesture/state transition change.
-  - Next action: Audit Android and iOS Shift key handling, add regression coverage or focused manual test cases for single-tap toggle, double-tap lock, and single-tap unlock, then update both platforms consistently.
+  - Next action: Include Android in the review APK and visually verify the Shift states. Address iOS later and keep its behavior aligned with the Android implementation.
 
 ## Not in backlog yet
 

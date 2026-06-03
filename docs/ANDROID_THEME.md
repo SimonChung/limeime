@@ -1,7 +1,7 @@
 # Android Theming — LimeIME Architecture Notes
 
 **Date:** 2026-04-19
-**Status:** Implemented in v6.1
+**Status:** Implemented in v6.1; Android dynamic-accent follow-system updates added on `android-next-release-all-fixes`
 
 ---
 
@@ -21,6 +21,8 @@ LimeIME supports 6 keyboard themes (indices 0–5) plus a 7th virtual theme (ind
 | 5     | RelaxGreen     | `R.style.LIMETheme_RelaxGreen` |
 
 Index 6 (`系統設定`) is a **virtual theme** — it is not in the array and has no dedicated style. At runtime it resolves to index 1 (dark) or index 0 (light) based on `Configuration.UI_MODE_NIGHT_MASK`.
+
+In the Android next-release branch, index 6 also resolves a system/dynamic accent color for highlight surfaces when Android exposes one. Fixed themes 0–5 remain fixed and do not inherit system accent colors.
 
 ### Theme application flow
 
@@ -70,11 +72,21 @@ boolean isDark = (uiMode == Configuration.UI_MODE_NIGHT_YES);
 
 These are system styles available on API 21+ and require no custom resource definitions.
 
+### Dynamic accent in follow-system mode
+
+`LIMEService.currentEmojiPanelColors()` now resolves a system accent only when `mKeyboardThemeIndex == 6`. The service checks Material/system theme attributes in this order:
+
+1. `com.google.android.material.R.attr.colorPrimary`
+2. `com.google.android.material.R.attr.colorSecondary`
+3. `android.R.attr.colorAccent`
+
+If no usable accent is available, it falls back to the existing light/dark highlight colors. The resolved accent is applied as a translucent selected/highlight overlay for the follow-system keyboard/emoji UI path. Fixed themes `0-5` continue using their existing theme-specific colors.
+
 ---
 
 ## 3. App UI — Follow System (MainActivity + Settings)
 
-The main app UI (`MainActivity`) and the Settings screen (`LIMEPreference`) both follow the system day/night mode. This is independent of the keyboard's theme setting — the app chrome always tracks the OS, while the keyboard honors the user-chosen theme index.
+The main app UI (`MainActivity`) and the Settings screen (`LIMEPreference` / `LIMESettings`) both follow the system day/night mode. This is independent of the keyboard's theme setting — the app chrome always tracks the OS, while the keyboard honors the user-chosen theme index.
 
 ### Mechanism
 
@@ -125,6 +137,10 @@ controller.setAppearanceLightNavigationBars(isLight);
 - `setAppearanceLightStatusBars(true)` = **dark** icons on a **light** bar (day mode).
 - `setAppearanceLightStatusBars(false)` = **light** icons on a **dark** bar (night mode).
 
+### Material dynamic color in LIME Settings
+
+`LIMESettings.onCreate(...)` applies `DynamicColors.applyToActivityIfAvailable(this)` before `super.onCreate(...)`. On Android versions/devices with Material dynamic color, bottom navigation, buttons, switches, and related Material surfaces can follow the system accent family. The explicit `colorPrimary` / `colorSecondary` values in `themes.xml` remain fallback accents for unsupported devices or contexts where dynamic color is unavailable.
+
 ---
 
 ## 4. Gotchas Hit During Implementation
@@ -166,3 +182,4 @@ Verified on Android 16 emulator (API 36, system in dark mode):
 - LIMEPreference: dark ActionBar, dark preference list, white text, dark dialogs (for ListPreference pickers).
 - News/Help dialogs in MainActivity: dark background, white text.
 - Keyboard with Theme 6 selected: follows system dark/light including popup menus.
+- Android next-release dynamic-accent check: LIME Settings rendered cleanly in dark mode after `DynamicColors.applyToActivityIfAvailable(...)`; focused regression tests verified follow-system emoji/category highlights use the supplied system accent while fixed themes ignore it.

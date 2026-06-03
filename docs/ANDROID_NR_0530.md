@@ -2,9 +2,9 @@
 
 > **For Hermes:** Use `subagent-driven-development` to implement this plan task-by-task. Keep this as one Android next-release feature/fix train, but use small commits and review gates so regressions are isolated.
 
-**Goal:** Finish the confirmed Android bug fixes and confirmed Android new-feature backlog in one coordinated next-release branch/APK.
+**Goal:** Finish the confirmed Android bug fixes, confirmed Android new-feature backlog, and Android side of the new Shift-key behavior request in one coordinated next-release branch/APK.
 
-**Architecture:** Treat import parsing, candidate ordering, backup/restore, keyboard theming, and keyboard-layout resources as separate vertical slices with their own regression tests, then run a full Android compile/test/release-candidate verification pass before building the APK. Do not expand into unconfirmed #90 button-layout customization scope; only implement the confirmed Android backlog items.
+**Architecture:** Treat import parsing, candidate ordering, backup/restore, keyboard theming, Shift-key state handling, and keyboard-layout resources as separate vertical slices with their own regression tests, then run a full Android compile/test/release-candidate verification pass before building the APK. Do not expand into unconfirmed #90 button-layout customization scope; only implement the confirmed Android backlog items.
 
 **Tech Stack:** Android Java, SQLite, XML keyboard resources, Android instrumentation tests (`connectedDebugAndroidTest`), Gradle under `LimeStudio/`.
 
@@ -24,12 +24,17 @@
 - #96 — support explicit Lime table end-key behavior for `.cin %limeendkey` and `.lime @limeendkey@` on Android, without breaking tables where `,` / `.` are roots.
 - #96 — audit bundled/official Android table assets, if any, and either add opt-in Lime end-key metadata plus direct punctuation mappings for the tables Jeremy confirms or document that table-data release coordination is separate from the engine change.
 - #99 — shifted symbol-keyboard layouts should remove Chinese IM root sub-labels only from non-alphabet shifted keys such as `!@#...`; shifted capital-letter keys may keep root sub-labels because `A-Z` can still be valid roots.
+- Unfiled — Android side of the cross-platform Shift-key behavior change: single tap toggles only shifted/unshifted, double tap enters Shift Lock, and single tap exits Shift Lock to unshifted.
 
 ### Explicitly out of scope for this plan
 
 - #90 button visibility/repositioning (`中英／123`, Emoji, voice) and old-style layout customization; this remains product-evaluation scope.
-- iOS #86/#93/#96/#99 implementation. Mention parity in docs/backlog only if Android changes define shared table-format semantics.
+- iOS #86/#93/#96/#99 implementation. For the unfiled Shift-key behavior request, this plan covers Android implementation and docs/parity tracking only; implement iOS in the matching iOS work item unless Jeremy explicitly expands this Android APK branch.
 - Public GitHub issue replies until a test APK exists and Jeremy approves wording.
+
+### Visual verification requirement
+
+Any task that changes visible Android UI, keyboard layout, keyboard state indicators, candidate highlighting/selection, settings screens, dialogs, themes, colors, labels, or other user-visible presentation must run `android-visual-verify` with Computer Use after build/install. Capture and retain screenshot/inspection notes with the task or APK verification notes.
 
 ---
 
@@ -206,6 +211,7 @@ Run only `LimeDBTest` first and confirm this test fails before Task 4.
 - #91 test passes.
 - Existing `LimeDBTest` ordering/search tests pass.
 - Manual test with 哈哈倉頡 `vmi`: expected `狀`, `绒`, `戕` when selection sorting is disabled.
+- Because this affects candidate ordering in the visible candidate strip, run `android-visual-verify` with Computer Use and inspect the candidate order screenshot before signing off.
 
 **Commit:**
 
@@ -360,6 +366,7 @@ public void updateIMMetadataFieldAllowsLimeEndkey() {
 
 **Manual acceptance examples:**
 
+- Required visual verification: run `android-visual-verify` with Computer Use and inspect screenshots for the IM detail row, edit dialog, saved value, and cleared-value `-` state.
 - LIME Settings → 輸入法 → IM detail shows editable rows for 名稱, 版本, and Endkey/結束鍵.
 - Tapping Endkey opens an edit dialog prefilled with the current `limeendkey` metadata value such as `;/`.
 - Saving `;/` persists `getImConfig(table, "limeendkey") == ";/"`; reopening the screen shows `;/`.
@@ -488,6 +495,7 @@ git commit -m "feat(android): support table end-key commit trigger"
 
 **Manual verification:**
 
+- Required visual verification: run `android-visual-verify` with Computer Use after building/installing the APK. Capture/inspect screenshots for the keyboard and LIME Settings app before signing off on this task.
 - Android 12+ device/emulator: set keyboard theme to `系統設定`, change wallpaper/accent, restart/reopen keyboard if needed, confirm LIME highlights/selection accents follow the system accent while light/dark still follows system theme.
 - Android 12+ device/emulator: open LIME Settings app and confirm navigation selected state, switches, buttons, tabs, and text fields use the system accent family.
 - Android 11 or older emulator: confirm no crash and existing fallback accents remain acceptable.
@@ -544,10 +552,11 @@ The helper should inspect each `<Key>` where `limehd:codes` emits a non-alphabet
 
 **Manual verification:**
 
+- Required visual verification: run `android-visual-verify` with Computer Use for at least one edited shifted IM layout, and inspect screenshots to confirm symbol labels changed without damaging alphabet-root labels.
 - 注音 + Shift: symbol keys such as `!@#$...` no longer show 注音 root sub-labels.
 - Shifted capital-letter keys still show their root sub-labels.
 - The same symbol keys still input symbols exactly as before.
-- Shift/caps-lock behavior and candidate lookup are unchanged.
+- This #99 task does not change Shift/caps-lock behavior or candidate lookup; Task 11 owns the separate Shift gesture behavior change.
 
 **Commit:**
 
@@ -559,7 +568,81 @@ git commit -m "feat(android): remove root labels from shifted symbol keys"
 
 ---
 
-## Task 11: Documentation/backlog synchronization
+## Task 11: Simplify Android Shift key cycle and use double-tap for Shift Lock
+
+**Objective:** Change Android Shift handling so repeated single taps no longer cycle through Shift Lock. A single Shift tap toggles between shifted and unshifted. A double tap enters Shift Lock. While Shift Lock is active, a single Shift tap exits Shift Lock and returns to unshifted.
+
+**Files:**
+- Inspect/modify: `LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/PointerTracker.java` for multi-tap/double-tap dispatch behavior.
+- Inspect/modify: `LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/LIMEKeyboardBaseView.java` for keyboard view Shift/touch state callbacks if the double-tap signal is handled there.
+- Inspect/modify: `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` for final `KEYCODE_SHIFT` state transitions.
+- Inspect/modify: `LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/LIMEBaseKeyboard.java` / `LimeKeyboard.java` only if the current Shift Lock visual state is tied directly to the old three-state single-tap cycle.
+- Test: `LimeStudio/app/src/androidTest/java/net/toload/main/hd/LIMEServiceTest.java` or the closest existing Android keyboard/input test class.
+
+**Behavior requirements:**
+
+1. Starting unshifted, one Shift tap enters shifted one-shot state and shows the existing shifted keyboard/active Shift indicator.
+2. Starting shifted, one Shift tap returns to unshifted. It must not enter Shift Lock.
+3. Starting unshifted or shifted, a double tap on Shift enters Shift Lock and shows the existing Shift Lock/caps visual indicator.
+4. Starting Shift Lock, one Shift tap exits Shift Lock and returns to unshifted.
+5. Existing held-Shift behavior, shifted layouts, caps/lock visual indicators, and normal character output semantics must remain unchanged except for the tap gesture/state transition.
+6. Do not change #99 shifted-symbol label edits as part of this task; this task owns only Shift gesture/state behavior.
+
+**Test requirements:**
+
+Add focused state-machine coverage where the existing Android test harness can drive Shift events:
+
+```java
+@Test
+public void singleShiftTapTogglesBetweenShiftedAndUnshiftedOnly() {
+    pressShift();
+    assertShifted();
+    assertNotShiftLocked();
+
+    pressShift();
+    assertUnshifted();
+    assertNotShiftLocked();
+
+    pressShift();
+    assertShifted();
+    assertNotShiftLocked();
+}
+
+@Test
+public void doubleShiftTapEntersShiftLockAndSingleTapUnlocks() {
+    doubleTapShift();
+    assertShiftLocked();
+
+    pressShift();
+    assertUnshifted();
+    assertNotShiftLocked();
+}
+```
+
+If the current test surface cannot synthesize real double-tap timing, extract the Shift transition logic behind a package-visible helper or controller that can be tested directly, then keep one manual APK smoke test for the Android touch/timing path.
+
+**Manual verification:**
+
+- Required visual verification: run `android-visual-verify` with Computer Use and inspect screenshots for unshifted, shifted, and Shift Lock visual states.
+- Android IM keyboard from unshifted: tap Shift once, confirm shifted keyboard; tap Shift again, confirm unshifted and not locked.
+- Android IM keyboard from unshifted: double-tap Shift, confirm Shift Lock visual state and repeated shifted output.
+- Android IM keyboard from Shift Lock: tap Shift once, confirm unshifted.
+- Android English keyboard and at least one Chinese IM keyboard both follow the same transitions.
+- Long/held Shift still previews shifted output while held and returns to the correct non-locked state on release.
+
+**Commit:**
+
+```bash
+git add LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/PointerTracker.java \
+        LimeStudio/app/src/main/java/net/toload/main/hd/keyboard/LIMEKeyboardBaseView.java \
+        LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java \
+        LimeStudio/app/src/androidTest/java/net/toload/main/hd/LIMEServiceTest.java
+git commit -m "feat(android): use double tap for shift lock"
+```
+
+---
+
+## Task 12: Documentation/backlog synchronization
 
 **Objective:** Keep public repo docs aligned with the implementation without exposing local automation state.
 
@@ -569,7 +652,8 @@ git commit -m "feat(android): remove root labels from shifted symbol keys"
 - Modify: `docs/#93_ISSUE.md`
 - Modify: `docs/#94_ISSUE.md`
 - Modify: `docs/#96_ISSUE.md`
-- Modify/create: `docs/ANDROID_NR.md` (this plan)
+- Modify: `docs/ANDROID_NR_0530.md` (this plan)
+- Modify: `docs/ANDROID_IPHONE_KEYBOARD.md` after Shift behavior implementation, documenting the final Android behavior and the iOS parity status.
 - Modify: `docs/CIN_LIME_SPEC.md` if `%endkey` / `@endkey@` semantics changed
 - Modify: `docs/ANDROID_THEME.md` if dynamic-color architecture is implemented
 
@@ -580,21 +664,24 @@ git commit -m "feat(android): remove root labels from shifted symbol keys"
 3. For #96, keep bug and feature scopes separate:
    - direct mapping selection fix;
    - opt-in end-key feature.
-4. For #90, state only dynamic-color/accent support was implemented; leave button/layout customization out of backlog until confirmed.
-5. Do not update local-only `github-mutable-state.md` in this repo commit; that lives outside the repo and should be updated separately after the APK/release state changes.
-6. For #96 end-key support, document whether bundled Android table assets existed in the repo and whether any official table metadata/mapping updates were included or deferred for separate table-data coordination.
+4. When updating `docs/BACKLOG.md` for a fix/feature that impacts both Android and iOS, mark only the Android side complete for this Android branch. Add a note that iOS remains to be addressed later and should stay aligned with the Android implementation.
+5. For #90, state only dynamic-color/accent support was implemented; leave button/layout customization out of backlog until confirmed.
+6. Do not update local-only `github-mutable-state.md` in this repo commit; that lives outside the repo and should be updated separately after the APK/release state changes.
+7. For #96 end-key support, document whether bundled Android table assets existed in the repo and whether any official table metadata/mapping updates were included or deferred for separate table-data coordination.
+8. For the unfiled Shift-key behavior request, update `docs/ANDROID_IPHONE_KEYBOARD.md` after the Android implementation is finished so the shared keyboard reference says: single tap toggles shifted/unshifted, double tap enters Shift Lock, and single tap exits Shift Lock. In `docs/BACKLOG.md`, mark only Android complete for this branch and state that iOS should be addressed later and aligned with the Android implementation.
 
 **Commit:**
 
 ```bash
 git add docs/BACKLOG.md docs/#91_ISSUE.md docs/#93_ISSUE.md docs/#94_ISSUE.md \
-        docs/#96_ISSUE.md docs/ANDROID_NR.md docs/CIN_LIME_SPEC.md docs/ANDROID_THEME.md
+        docs/#96_ISSUE.md docs/ANDROID_NR_0530.md docs/ANDROID_IPHONE_KEYBOARD.md \
+        docs/CIN_LIME_SPEC.md docs/ANDROID_THEME.md
 git commit -m "docs: update Android next-release plan and issue status"
 ```
 
 ---
 
-## Task 12: Full Android verification pass
+## Task 13: Full Android verification pass
 
 **Objective:** Prove the branch is ready for Jeremy review and APK build.
 
@@ -616,6 +703,8 @@ ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk ./gradlew :app
 Expected: all connected Android tests pass. If a device is unavailable, record that as the only blocked verification item.
 
 **Manual smoke tests:**
+
+For all visual-related smoke tests below, run `android-visual-verify` with Computer Use and retain the screenshot/inspection notes with the APK verification notes.
 
 1. Backup:
    - create backup;
@@ -639,11 +728,16 @@ Expected: all connected Android tests pass. If a device is unavailable, record t
 7. Shifted symbol labels:
    - shifted symbol keys such as `!@#$...` no longer show Chinese IM root sub-labels;
    - shifted capital-letter keys still keep useful root sub-labels;
-   - Shift/caps-lock behavior and candidate lookup are unchanged.
+   - candidate lookup is unchanged by the label-only edits.
+8. Shift key behavior:
+   - single Shift taps toggle shifted/unshifted only;
+   - double-tap Shift enters Shift Lock;
+   - single Shift tap exits Shift Lock to unshifted;
+   - held Shift behavior still works.
 
 ---
 
-## Task 13: Build review APK and prepare retest notes
+## Task 14: Build review APK and prepare retest notes
 
 **Objective:** Produce a single Android APK for Jeremy review and later reporter retest.
 
@@ -662,7 +756,8 @@ Expected: release APK produced under `LimeStudio/app/build/outputs/apk/release/`
 - #94: ask reporter to retest non-empty backup creation and restore.
 - #96: ask reporters to retest direct punctuation mappings and, if they have an opt-in endkey table, direct comma/period commit.
 - #90: describe as new optional dynamic/accent theme behavior, not a bug retest request.
-- #99: describe the shifted-symbol-label UI clarification; no retest request for input behavior because Shift/Caps Lock behavior is unchanged by design.
+- #99: describe the shifted-symbol-label UI clarification; keep any Shift/Caps Lock input retest under the separate unfiled Shift behavior item.
+- Unfiled Shift behavior: ask Jeremy to retest single-tap toggle, double-tap Shift Lock, and single-tap unlock on Android; note iOS parity status separately if iOS has not yet been updated.
 - #93 is maintainer-created; no community retest needed unless Jeremy asks.
 
 ---
@@ -674,6 +769,6 @@ Expected: release APK produced under `LimeStudio/app/build/outputs/apk/release/`
 - [ ] Tests compile and targeted regression tests pass.
 - [ ] Connected Android tests run, or lack of device/emulator is explicitly documented.
 - [ ] Manual APK smoke tests are recorded.
-- [ ] `docs/BACKLOG.md` and issue docs match branch state.
+- [ ] `docs/BACKLOG.md`, `docs/ANDROID_IPHONE_KEYBOARD.md`, and issue docs match branch state.
 - [ ] No local-only automation state is committed into the repo.
 - [ ] Jeremy reviews before merge/release/public replies.
