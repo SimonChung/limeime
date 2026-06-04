@@ -46,9 +46,9 @@
             android:layout_height="48dp"
             android:text="備份資料庫"
             android:textAllCaps="false"
-            android:textColor="@color/material_blue"
+            android:textColor="?attr/colorPrimary"
             app:icon="@drawable/ic_upload_24"
-            app:iconTint="@color/material_blue"
+            app:iconTint="?attr/colorPrimary"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
  />

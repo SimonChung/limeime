@@ -45,6 +45,8 @@ import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -52,6 +54,7 @@ import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.StateSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -201,6 +204,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
     private int mShadowColor;
     private float mShadowRadius;
     private Drawable mKeyBackground;
+    private Drawable mBaseKeyBackground;
     private float mBackgroundDimAmount;
     private float mKeyHysteresisDistance;
     private float mVerticalCorrection;
@@ -687,6 +691,7 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
 
         mPadding = new Rect(0, 0, 0, 0);
         if(mKeyBackground != null) {
+            mBaseKeyBackground = mKeyBackground;
             mKeyBackground.getPadding(mPadding);
         }
 
@@ -741,6 +746,50 @@ public class LIMEKeyboardBaseView extends View implements PointerTracker.UIProxy
         mHasDistinctMultitouch = context.getPackageManager()
                 .hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN_MULTITOUCH_DISTINCT);
         mKeyRepeatInterval = res.getInteger(R.integer.config_key_repeat_interval);
+    }
+
+    public void applyFollowSystemAccentColor(int accentColor, boolean darkTheme) {
+        if ((accentColor >>> 24) == 0) return;
+
+        mKeyTextColorPressed = accentColor;
+        mFunctionKeyTextColorPressed = accentColor;
+        mKeySubLabelTextColorPressed = accentColor;
+        if (mPreviewText != null) {
+            mPreviewText.setTextColor(accentColor);
+        }
+
+        StateListDrawable keyBackground = new StateListDrawable();
+        keyBackground.addState(
+                new int[]{android.R.attr.state_single, android.R.attr.state_pressed},
+                createFollowSystemPressedKeyDrawable(accentColor, darkTheme));
+        keyBackground.addState(
+                new int[]{android.R.attr.state_pressed},
+                createFollowSystemPressedKeyDrawable(accentColor, darkTheme));
+        Drawable baseBackground = mBaseKeyBackground != null ? mBaseKeyBackground : mKeyBackground;
+        if (baseBackground != null) {
+            keyBackground.addState(StateSet.WILD_CARD, baseBackground);
+        }
+        mKeyBackground = keyBackground;
+        mKeyBackground.getPadding(mPadding);
+
+        mKeyboardChanged = true;
+        invalidateAllKeys();
+    }
+
+    private Drawable createFollowSystemPressedKeyDrawable(int accentColor, boolean darkTheme) {
+        final float density = getResources().getDisplayMetrics().density;
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadius(3f * density);
+        drawable.setColor(withAlpha(accentColor, darkTheme ? 0x66 : 0x44));
+        drawable.setStroke(Math.max(1, Math.round(2f * density)),
+                darkTheme ? 0xFF141414 : 0xFFE1E1E1);
+        drawable.setSize(Math.round(30f * density), Math.round(46f * density));
+        return drawable;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     public void setOnKeyboardActionListener(OnKeyboardActionListener listener) {

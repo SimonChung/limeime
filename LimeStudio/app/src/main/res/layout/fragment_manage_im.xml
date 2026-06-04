@@ -104,7 +104,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/manage_im_previous"
                 android:id="@+id/btnManageImPrevious"
-                android:textColor="@color/material_blue"
+                android:textColor="?attr/colorPrimary"
                 android:textAllCaps="false"
                 android:paddingRight="12dp"
                 android:paddingLeft="12dp" />
@@ -126,7 +126,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/manage_im_next"
                 android:id="@+id/btnManageImNext"
-                android:textColor="@color/material_blue"
+                android:textColor="?attr/colorPrimary"
                 android:textAllCaps="false"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp" />

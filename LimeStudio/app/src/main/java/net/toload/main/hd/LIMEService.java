@@ -88,6 +88,7 @@ import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.global.LIMEUtilities;
+import net.toload.main.hd.global.SystemAccentColor;
 import net.toload.main.hd.keyboard.LIMEBaseKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboardBaseView;
@@ -104,6 +105,8 @@ import net.toload.main.hd.voice.VoiceInputMode;
 import net.toload.main.hd.voice.VoiceInputRoute;
 import net.toload.main.hd.voice.VoicePermissionHelper;
 import net.toload.main.hd.voice.VoicePermissionState;
+
+import com.google.android.material.color.DynamicColors;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -4897,6 +4900,7 @@ public class LIMEService extends InputMethodService
         }
         if (mCandidateView != mCandidateViewInInputView)
             mCandidateView = mCandidateViewInInputView;
+        applyFollowSystemAccentColors();
 
 
         // Check if mKeyboardSwitcher == null
@@ -6402,8 +6406,43 @@ public class LIMEService extends InputMethodService
         return mKeyboardThemeIndex == 6;
     }
 
+    private void applyFollowSystemAccentColors() {
+        if (!isFollowSystemTheme()) return;
+
+        int accent = resolveSystemAccentColor(0);
+        if (!isUsableAccentColor(accent)) return;
+
+        boolean darkTheme = isEffectiveDarkTheme();
+        if (mInputView != null) {
+            mInputView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+        if (mCandidateViewInInputView != null) {
+            mCandidateViewInInputView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+        if (mCandidateView != null && mCandidateView != mCandidateViewInInputView) {
+            mCandidateView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+    }
+
     private int resolveSystemAccentColor(int fallbackColor) {
-        int resolved = resolveThemeColor(com.google.android.material.R.attr.colorPrimary, 0);
+        int systemSeed = SystemAccentColor.resolveSeedColor(this, 0);
+        if (isUsableAccentColor(systemSeed)) {
+            return systemSeed;
+        }
+
+        Context dynamicColorContext = DynamicColors.wrapContextIfAvailable(
+                this,
+                SystemAccentColor.dynamicColorOptions(this));
+        int resolved = resolveThemeColor(dynamicColorContext, com.google.android.material.R.attr.colorPrimary, 0);
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(dynamicColorContext, com.google.android.material.R.attr.colorSecondary, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(dynamicColorContext, android.R.attr.colorAccent, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(com.google.android.material.R.attr.colorPrimary, 0);
+        }
         if (!isUsableAccentColor(resolved)) {
             resolved = resolveThemeColor(com.google.android.material.R.attr.colorSecondary, 0);
         }
@@ -6414,10 +6453,14 @@ public class LIMEService extends InputMethodService
     }
 
     private int resolveThemeColor(int attr, int fallbackColor) {
+        return resolveThemeColor(this, attr, fallbackColor);
+    }
+
+    private int resolveThemeColor(Context context, int attr, int fallbackColor) {
         TypedValue value = new TypedValue();
-        if (getTheme().resolveAttribute(attr, value, true)) {
+        if (context.getTheme().resolveAttribute(attr, value, true)) {
             if (value.resourceId != 0) {
-                return ContextCompat.getColor(this, value.resourceId);
+                return ContextCompat.getColor(context, value.resourceId);
             }
             if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT
                     && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {

@@ -373,7 +373,7 @@
                         android:layout_height="22dp"
                         android:layout_marginEnd="12dp"
                         android:src="@drawable/ic_grid_on_24"
-                        app:tint="@color/material_blue"
+                        app:tint="?attr/colorPrimary"
                         android:contentDescription="@null" />
 
                     <TextView

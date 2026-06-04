@@ -77,6 +77,22 @@ public class KeyboardLayoutResourceTest {
         assertLayoutContainsTextResource(context, R.layout.fragment_im_detail, R.string.auto_commit_summary);
     }
 
+    @Test
+    public void settingsActionLayoutsUseThemeAccentInsteadOfFixedBlue() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_db_manager, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_im_list, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_manage_im, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_manage_related, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_im_detail, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.fragment_setup, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.sheet_manage_im_add, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.sheet_manage_im_edit, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.sheet_manage_related_add, R.color.material_blue);
+        assertLayoutDoesNotReferenceColor(context, R.layout.sheet_manage_related_edit, R.color.material_blue);
+    }
+
     private void assertLayoutContainsTextResource(Context context, int layoutId, int textResId) throws Exception {
         XmlPullParser parser = context.getResources().getLayout(layoutId);
         while (parser.next() != XmlPullParser.END_DOCUMENT) {
@@ -92,6 +108,27 @@ public class KeyboardLayoutResourceTest {
         fail("Layout " + context.getResources().getResourceEntryName(layoutId)
                 + " should contain text resource "
                 + context.getResources().getResourceEntryName(textResId));
+    }
+
+    private void assertLayoutDoesNotReferenceColor(Context context, int layoutId, int colorId) throws Exception {
+        XmlPullParser parser = context.getResources().getLayout(layoutId);
+        while (parser.next() != XmlPullParser.END_DOCUMENT) {
+            if (parser.getEventType() != XmlPullParser.START_TAG) {
+                continue;
+            }
+
+            AttributeSet attrs = Xml.asAttributeSet(parser);
+            for (int i = 0; i < attrs.getAttributeCount(); i++) {
+                int value = attrs.getAttributeResourceValue(i, 0);
+                assertNotEquals("Settings layout "
+                                + context.getResources().getResourceEntryName(layoutId)
+                                + " should use theme accent instead of fixed "
+                                + context.getResources().getResourceEntryName(colorId)
+                                + " on <" + parser.getName() + "> attribute "
+                                + attrs.getAttributeName(i),
+                        colorId, value);
+            }
+        }
     }
 
     private void assertLetterKeyCodes(Context context, int layoutId, boolean shouldBeUppercase) {

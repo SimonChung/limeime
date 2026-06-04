@@ -22,6 +22,7 @@ import net.toload.main.hd.R;
 import net.toload.main.hd.SearchServer;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
+import net.toload.main.hd.global.SystemAccentColor;
 import net.toload.main.hd.ui.controller.ManageImController;
 import net.toload.main.hd.ui.controller.SetupImController;
 import net.toload.main.hd.ui.dialog.HelpDialog;
@@ -145,7 +146,7 @@ public class LIMESettings extends AppCompatActivity implements LIMESettingsView 
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DynamicColors.applyToActivityIfAvailable(this);
+        DynamicColors.applyToActivityIfAvailable(this, SystemAccentColor.dynamicColorOptions(this));
         super.onCreate(savedInstanceState);
         // Register back gesture/press callback for AndroidX
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {

@@ -348,6 +348,29 @@ public class CandidateView extends View implements View.OnClickListener {
 
     }
 
+    public void applyFollowSystemAccentColor(int accentColor, boolean darkTheme) {
+        if ((accentColor >>> 24) == 0) return;
+
+        mDrawableSuggestHighlight = createFollowSystemSuggestHighlight(accentColor, darkTheme);
+        mColorComposingCode = accentColor;
+        mColorSelKeyShifted = accentColor;
+        mColorNormalTextHighlight = darkTheme ? 0xFFFFFFFF : 0xFF000000;
+        invalidate();
+    }
+
+    private Drawable createFollowSystemSuggestHighlight(int accentColor, boolean darkTheme) {
+        final float density = getResources().getDisplayMetrics().density;
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadius(4f * density);
+        drawable.setColor(withAlpha(accentColor, darkTheme ? 0x66 : 0x44));
+        return drawable;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    }
+
     /*
     * New embedded composing view inside candidate container for floating candidate mode. Jeremy '15,6,14
     * (android 5.1 does not allow popup composing go over candidate area).
