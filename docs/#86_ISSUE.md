@@ -7,12 +7,12 @@ Live issue: https://github.com/lime-ime/limeime/issues/86
 - State: closed as completed on 2026-06-04
 - Label: `bug`
 - Assignee: `jrywu`
-- Source: maintainer-created bug report from Jeremy
+- Source: maintainer-created bug report from `limeimetw` (Jeremy)
 - Platform: iOS
-- Public reporter follow-up: none needed; this is maintainer-created.
-- Fix commit: [`90b8fbc51ea137ceeb0646221cda763d40d72d13`](https://github.com/lime-ime/limeime/commit/90b8fbc51ea137ceeb0646221cda763d40d72d13)
+- Fix commit: [`90b8fbc51ea137ceeb0646221cda763d40d72d13`](https://github.com/lime-ime/limeime/commit/90b8fbc51ea137ceeb0646221cda763d40d72d13) (`#86 iOS fix keyboard: reopen DB after restore; align default-DB to Android`)
 - Closing comment: https://github.com/lime-ime/limeime/issues/86#issuecomment-4625047817
-- Remaining scope: normal iOS/TestFlight/App Store release QA; this is not Android APK-testable.
+- Public reporter follow-up: none needed; this is maintainer-created.
+- Remaining scope: normal iOS/TestFlight/App Store release QA; this is not Android APK-testable or an active public issue watch.
 
 ## Symptom
 
