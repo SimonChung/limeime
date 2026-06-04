@@ -41,6 +41,7 @@ Official table-data scope:
 - Original report asked whether Chinese keyboard punctuation order can prefer full-width `，` / `。`.
 - `Limeroshenko` noted a workaround by manually adding table mappings such as `,= ，` and `.= 。`, then warned that some long-time users use `,` and `.` as custom roots or short-phrase codes.
 - `Limeroshenko` later clarified that the current official 行列10 `.lime` table does not contain the punctuation mapping rows; adding `,|，` and `.|。` enables the existing comma-plus-Space path, and if `.lime @endkey@` support is implemented they suggested making official Array10 opt in with `@endkey@ |,.` plus those punctuation mappings.
+- After testing Android APK `LIMEHD2026-6.1.16.apk`, `Limeroshenko` reported that with the official table and end-key disabled, `,` + Space now directly outputs full-width `，`; with Lime end-key `,.` enabled, pressing `,` directly outputs `，`; and after disabling end-key again, their personal table's `,` prefix symbol mappings still work normally.
 - `SmithCCho` later clarified:
   - 行列30 and 大易 use `,` / `.` as roots, so they should not directly output punctuation.
   - 行列10, 嘸蝦米, and 倉頡 are closer to direct punctuation output expectations.
@@ -109,4 +110,5 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 - Current classification: enhancement/product work for generic table IM end-key behavior.
 - Android 6.1.16 retest request posted/edited after the metadata export/re-import preservation fix: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
 - Current test APK: `LIMEHD2026-6.1.16.apk` (`https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk`), blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
-- Current next action: wait for Android feedback that opt-in Lime end-key behavior works, export/re-import preserves `%limeendkey` / `@limeendkey@`, and tables without Lime end-key metadata keep their existing root/short-phrase behavior; address remaining iOS/table-data coordination later.
+- Community validation: `Limeroshenko` confirmed in https://github.com/lime-ime/limeime/issues/96#issuecomment-4625176200 that Android 6.1.16 is close to the requested behavior for their tested paths: official table comma-plus-Space outputs full-width punctuation, opt-in Lime end-key `,.` allows direct comma output, and personal-table `,` prefix symbol behavior remains normal when end-key is disabled.
+- Current next action: keep the issue open unless the original reporter/maintainer decides the Android scope is sufficiently resolved; separately handle any remaining iOS/table-data coordination in the release/backlog flow.
