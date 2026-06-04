@@ -147,4 +147,4 @@ Developer-side checks for the fix:
 
 A concise public reply was posted after the logcat attachment to confirm that the log identified the likely failure path and that no more logs are needed before a fix.
 
-A scoped retest request was posted after PR #101 merged the targeted #94 backup fix into the current test APK. Do not post another generic retest request unless a newer/different build contains additional relevant changes or the reporter replies with new evidence.
+A scoped retest request was posted and then edited after the targeted #94 backup fix reached the current `LIMEHD2026-6.1.16.apk` test APK. Do not post another generic retest request unless a newer/different build contains additional relevant changes or the reporter replies with new evidence.

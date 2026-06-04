@@ -19,7 +19,7 @@ Last reviewed: 2026-06-05
 - #94 / PR #97 — Android — backup must not create a 0 B `limeBackup.zip` while reporting success
   - Status: Completed and verified in the Android next-release work; PR #97 is superseded by the newer batched PR/work.
   - Current state: Backup no longer treats a missing transient SQLite rollback journal as fatal, and backup success/failure is reported consistently.
-  - Follow-up: Ship in the next Android APK and ask the reporter to confirm backup/restore if needed.
+  - Follow-up: Shipped in Android test APK `LIMEHD2026-6.1.16.apk`; reporter retest is pending for non-empty backup creation and restore.
 
 - #93 — Android + iOS — `.lime` metadata, fallback names, and installed IM visibility
   - Status: Completed and verified/aligned.
