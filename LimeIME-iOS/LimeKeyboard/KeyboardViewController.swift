@@ -1087,6 +1087,10 @@ final class KeyboardViewController: UIInputViewController {
         case LimeKeyCode.arrowDown.rawValue:
             moveByLine(forward: true)
         default:
+            if handleLimeEndkeyCommit(code) {
+                consumeShiftAfterCharacter()
+                return
+            }
             handleCharacter(code)
             // Auto-commit check: array10 phone-numpad keyboard only.
             // Android uses currentSoftKeyboard.contains("phone") which accidentally also
@@ -1294,6 +1298,106 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         consumeShiftAfterCharacter()
+    }
+
+    // MARK: - LIME Endkey Commit
+
+    private func activeImkeysForEndkey() -> String {
+        let configured = searchServer?.getImConfig(activeIM, "imkeys") ?? ""
+        return configured.isEmpty ? currentImKeys : configured
+    }
+
+    private func handleLimeEndkeyCommit(_ primaryCode: Int) -> Bool {
+        let limeendkey = searchServer?.getImConfig(activeIM, "limeendkey") ?? ""
+        guard LimeEndkeyPolicy.isCommitKey(primaryCode: primaryCode,
+                                           endkey: limeendkey,
+                                           englishOnly: mEnglishOnly) else {
+            return false
+        }
+
+        if LimeEndkeyPolicy.isKeyInImkeys(primaryCode: primaryCode, imkeys: activeImkeysForEndkey()) {
+            return commitComposingWithAppendedEndkey(primaryCode)
+        }
+
+        if !mComposing.isEmpty && !commitCurrentEndkeyComposing() {
+            return false
+        }
+        return commitFreshEndkeyOrRaw(primaryCode)
+    }
+
+    private func commitComposingWithAppendedEndkey(_ primaryCode: Int) -> Bool {
+        guard appendEndkeyToComposing(primaryCode) else { return false }
+        return commitResolvedEndkeyComposing()
+    }
+
+    private func commitCurrentEndkeyComposing() -> Bool {
+        if hasCurrentEndkeySelectedCandidate() {
+            commitSelectedEndkeyCandidate()
+            return true
+        }
+        return commitResolvedEndkeyComposing()
+    }
+
+    private func commitFreshEndkeyOrRaw(_ primaryCode: Int) -> Bool {
+        guard appendEndkeyToComposing(primaryCode) else { return false }
+        if commitResolvedEndkeyComposing() {
+            return true
+        }
+        clearComposing(force: false)
+        return true
+    }
+
+    private func appendEndkeyToComposing(_ primaryCode: Int) -> Bool {
+        guard primaryCode > 0, let scalar = UnicodeScalar(primaryCode) else { return false }
+        let char = String(Character(scalar))
+        let insertChar = (isShiftOn && primaryCode != LimeKeyCode.space.rawValue) ? char.uppercased() : char
+        mComposing += insertChar
+        isSelfUpdate = true
+        textDocumentProxy.insertText(insertChar)
+        isSelfUpdate = false
+        composingLength += 1
+        candidateBar.setIdleToolsSuppressed(true)
+        showComposingPopup()
+        return true
+    }
+
+    private func commitResolvedEndkeyComposing() -> Bool {
+        guard resolveEndkeySelectedCandidate() != nil else { return false }
+        commitSelectedEndkeyCandidate()
+        return true
+    }
+
+    private func commitSelectedEndkeyCandidate() {
+        commitTyped()
+        clearSuggestions()
+    }
+
+    private func resolveEndkeySelectedCandidate() -> Mapping? {
+        if hasCurrentEndkeySelectedCandidate() {
+            return selectedCandidate
+        }
+        guard !mComposing.isEmpty,
+              let ss = searchServer else { return nil }
+
+        currentSearchID &+= 1
+        let candidates = ss.getMappingByCode(mComposing, isSoftKeyboard: true)
+        guard !candidates.isEmpty else { return nil }
+
+        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)
+        guard idx >= 0, idx < candidates.count else { return nil }
+        mCandidateList = candidates
+        selectedCandidate = candidates[idx]
+        hasCandidatesShown = true
+        isShowingRelatedPhrases = false
+        hasChineseSymbolCandidatesShown = false
+        return selectedCandidate
+    }
+
+    private func hasCurrentEndkeySelectedCandidate() -> Bool {
+        guard let candidate = selectedCandidate else { return false }
+        return !candidate.isComposingCodeRecord
+            && !candidate.code.isEmpty
+            && mComposing == candidate.code
     }
 
     // MARK: - English Character Handling (spec §5 English Mode)
@@ -1689,15 +1793,7 @@ final class KeyboardViewController: UIInputViewController {
               !full.isEmpty else { return }
         mCandidateList = full
         hasCandidatesShown = true
-        let idx: Int
-        if full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord) {
-            idx = 1
-        } else if let first = full.first,
-                  first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
-            idx = 0
-        } else {
-            idx = -1
-        }
+        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)
         selectedCandidate = (idx >= 0) ? full[idx] : nil
         candidateBar.appendCandidates(full, selectedIndex: idx)
         // If the expanded grid is currently visible for normal candidates,
@@ -1722,15 +1818,7 @@ final class KeyboardViewController: UIInputViewController {
         // Normal-candidate selection seed (mirrors Android CandidateView.setSuggestions,
         // CandidateView.java:1182–1196). Associated lists (related phrases, punctuation,
         // English) bypass this method entirely and stay at selectedIndex = -1.
-        let selectedIdx: Int
-        if list.count > 1 && (list[1].isExactMatchToCodeRecord || list[1].isPartialMatchToCodeRecord) {
-            selectedIdx = 1
-        } else if let first = list.first,
-                  first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
-            selectedIdx = 0
-        } else {
-            selectedIdx = -1
-        }
+        let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)
         selectedCandidate = (selectedIdx >= 0) ? list[selectedIdx] : nil
         candidateBar.setIdleToolsSuppressed(false)
 
@@ -3293,7 +3381,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         guard !activatedIMs.isEmpty else { return }
         var items: [(title: String, action: () -> Void)] = []
         for (i, im) in activatedIMs.enumerated() {
-            let label = im.label.isEmpty ? im.tableNick : im.label
+            let label = im.label
             let display = (i == activeIMIndex) ? "✓ \(label)" : label
             items.append((display, { [weak self] in self?.switchIM(toIndex: i) }))
         }

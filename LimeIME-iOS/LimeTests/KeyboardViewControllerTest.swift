@@ -671,6 +671,86 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertTrue(layoutSource.contains(".frame(height: titleSectionHeight)"))
     }
 
+    func testIMDetailViewShowsEditableLimeEndkeyField() throws {
+        let sourceURL = projectFileURL("LimeSettings/Views/IMDetailView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("case endkey"))
+        XCTAssertTrue(source.contains("case .endkey: return \"結束鍵\""))
+        XCTAssertTrue(source.contains("case .endkey: return \"編輯結束鍵\""))
+        XCTAssertTrue(source.contains("case .endkey: return \"limeendkey\""))
+        XCTAssertTrue(source.contains("DBServer.shared.getImConfig(im.tableNick, \"limeendkey\")"))
+        XCTAssertTrue(source.contains("beginMetadataEdit(.endkey)"))
+        XCTAssertTrue(source.contains("editableMetadataRow(label: \"結束鍵\", value: displayEndkey)"))
+    }
+
+    func testLimeEndkeyPolicyMatchesAndroidTriggerRules() {
+        XCTAssertTrue(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: ".,",
+            englishOnly: false
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: ".,",
+            englishOnly: true
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: "",
+            englishOnly: false
+        ))
+
+        XCTAssertTrue(LimeEndkeyPolicy.isKeyInImkeys(
+            primaryCode: Int(UnicodeScalar("A").value),
+            imkeys: "abc"
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isKeyInImkeys(
+            primaryCode: Int(UnicodeScalar(",").value),
+            imkeys: "abc"
+        ))
+    }
+
+    func testLimeEndkeyDefaultCandidatePrefersRealCommitCandidate() {
+        let composing = Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.composingCode)
+        let exact = Mapping(id: 1, code: ",", word: "，", score: 0, baseScore: 0,
+                            recordType: Mapping.RecordType.exactMatchToCode)
+        let punctuation = Mapping(id: 2, code: ".", word: "。", score: 0, baseScore: 0,
+                                  recordType: Mapping.RecordType.chinesePunctuation)
+
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, exact]), 1)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, punctuation]), 1)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing]), 0)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([]), -1)
+    }
+
+    func testKeyboardControllerRoutesLimeEndkeyBeforeNormalCharacterHandling() throws {
+        let source = try String(
+            contentsOf: projectFileURL("LimeKeyboard/KeyboardViewController.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("if handleLimeEndkeyCommit(code)"))
+        XCTAssertTrue(source.contains("searchServer?.getImConfig(activeIM, \"limeendkey\")"))
+        XCTAssertTrue(source.contains("commitComposingWithAppendedEndkey(primaryCode)"))
+        XCTAssertTrue(source.contains("commitFreshEndkeyOrRaw(primaryCode)"))
+        XCTAssertTrue(source.contains("LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)"))
+        XCTAssertTrue(source.contains("currentSearchID &+= 1"))
+    }
+
+    func testNormalCandidateSelectionUsesSameDefaultPolicyAsLimeEndkey() throws {
+        let source = try String(
+            contentsOf: projectFileURL("LimeKeyboard/KeyboardViewController.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)"))
+        XCTAssertTrue(source.contains("let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)"))
+        XCTAssertFalse(source.contains("full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord)"))
+        XCTAssertFalse(source.contains("list.count > 1 && (list[1].isExactMatchToCodeRecord || list[1].isPartialMatchToCodeRecord)"))
+    }
+
     func testSettingsGroupedSurfacesMatchSetupTabColors() throws {
         let settingsSource = try String(
             contentsOf: projectFileURL("LimeSettings/LimeSettingsView.swift"),

@@ -118,7 +118,15 @@ final class LimeDB {
     private static let DAYI_CHAR = "言|牛|目|四|王|門|田|米|足|金|石|山|一|工|糸|火|艸|木|口|耳|人|革|日|土|手|鳥|月|立|女|虫|心|水|鹿|禾|馬|魚|雨|力|舟|竹"
     private static let ARRAY_KEY  = "qazwsxedcrfvtgbyhnujmik,ol.p;/"
     private static let ARRAY_CHAR = "1^|1-|1v|2^|2-|2v|3^|3-|3v|4^|4-|4v|5^|5-|5v|6^|6-|6v|7^|7-|7v|8^|8-|8v|9^|9-|9v|0^|0-|0v|"
-
+    private static let IM_CODES = [
+        "custom", "cj", "scj", "cj5", "ecj", "dayi", "phonetic", "ez",
+        "array", "array10", "wb", "hs", "pinyin", "cj4"
+    ]
+    private static let IM_FULL_NAMES = [
+        "自建輸入法", "倉頡輸入法", "快倉輸入法", "倉頡五代輸入法", "速成輸入法",
+        "大易輸入法", "注音輸入法", "輕鬆輸入法", "行列輸入法", "行列10輸入法",
+        "筆順五碼輸入法", "華象直覺輸入法", "拼音輸入法", "四碼倉頡輸入法"
+    ]
     // MARK: - Initializer
 
     /// Opens (or creates) lime.db at the given path.
@@ -1126,35 +1134,42 @@ final class LimeDB {
     /// Enabled state is stored in the key-value row where title="disable", desc="true"/"false".
     func getAllImConfigs() throws -> [ImConfig] {
         // Known key-value field names — rows with these titles are config entries, not IM seed rows.
-        let kvFields: Set<String> = ["keyboard","disable","selkey","endkey","spacestyle",
+        let kvFields: Set<String> = ["keyboard","disable","selkey","endkey","limeendkey","spacestyle",
                                      "imkeys","imkeynames","name","label","version"]
         let allRows = getImConfigList(nil, nil)
 
         // Group all rows by IM code.
         var grouped: [String: [LimeImConfigRow]] = [:]
         for row in allRows where !row.code.isEmpty {
+            if row.code == "emoji" { continue }
             grouped[row.code, default: []].append(row)
         }
 
         return grouped.compactMap { (code, rows) -> ImConfig? in
             // Seed/registration row: title is the display label, not a config field name.
+            // Legacy DBs may only contain kv rows; still surface them through the DB model
+            // and resolve their display names below.
             guard let seedRow = rows.first(where: { !kvFields.contains($0.title) && !$0.title.isEmpty })
+                    ?? rows.first(where: { $0.title == "name" })
+                    ?? rows.first(where: { !$0.title.isEmpty })
             else { return nil }
             // Keyboard code: from key-value row (title="keyboard"), fall back to seed row column.
             let kbRow = rows.first(where: { $0.title == "keyboard" })
             let keyboardId = kbRow?.keyboard.isEmpty == false ? kbRow!.keyboard : seedRow.keyboard
-            guard !keyboardId.isEmpty else { return nil }
             // Enabled state: from key-value row (title="disable", desc="true"/"false").
             let disableStr = rows.first(where: { $0.title == "disable" })?.desc ?? "false"
             let enabled = disableStr != "true"
             // Full name from title="name" config entry (mirrors Android LIME.IM_FULL_NAME / sidebar).
-            let fullName = rows.first(where: { $0.title == "name" })?.desc ?? ""
+            // Legacy DBs may only have seed rows; keep the fallback here so UI lists and pickers
+            // can consume the resolved label directly.
+            let storedFullName = rows.first(where: { $0.title == "name" })?.desc ?? ""
+            let fullName = storedFullName.isEmpty ? defaultImFullName(code, fallback: seedRow.title) : storedFullName
             // Display label: prefer the cloud DB's `name` kv row (e.g. "拼音輸入法"),
             // because for cloud-installed IMs the seedRow.title is an arbitrary
             // non-kv field (`source` / `amount` / `original` / `import`) — whichever
             // row happens to be first. The synthetic legacy registerIM flow stores
             // the friendly label in `seedRow.title`, so fall back to that.
-            let label = !fullName.isEmpty ? fullName : seedRow.title
+            let label = fullName
             return ImConfig(
                 id:                  Int64(seedRow.id),
                 imName:              code,
@@ -2959,6 +2974,17 @@ final class LimeDB {
                     ])
                 }
             }
+            try db.execute(sql: """
+                INSERT INTO im (code, title, desc)
+                SELECT ?, 'name', ?
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM im WHERE code = ? AND title = 'name'
+                )
+            """, arguments: [
+                tableName,
+                defaultImFullName(tableName, fallback: tableName),
+                tableName,
+            ])
         }
     }
 
@@ -3004,11 +3030,13 @@ final class LimeDB {
             var useEscapedFormat = records.contains {
                 needsEscaping($0.code, delimiter: "|", codeField: true) || needsEscaping($0.word, delimiter: "|")
             }
-            if let configs = imConfig {
+            let configs = imConfig ?? getImConfigList(table, nil)
+            if !configs.isEmpty {
                 var version = ""
                 var name = ""
                 var selkey = ""
                 var endkey = ""
+                var limeendkey = ""
                 var spacestyle = ""
                 var imkeys = ""
                 var imkeynames = ""
@@ -3017,6 +3045,7 @@ final class LimeDB {
                     if c.title == "name" { name = c.desc }
                     if c.title == "selkey" { selkey = c.desc }
                     if c.title == "endkey" { endkey = c.desc }
+                    if c.title == "limeendkey" { limeendkey = c.desc }
                     if c.title == "spacestyle" { spacestyle = c.desc }
                     if c.title == "imkeys" { imkeys = c.desc }
                     if c.title == "imkeynames" { imkeynames = c.desc }
@@ -3025,6 +3054,7 @@ final class LimeDB {
                     || needsEscaping(name, delimiter: "|")
                     || needsEscaping(selkey, delimiter: "|")
                     || needsEscaping(endkey, delimiter: "|")
+                    || needsEscaping(limeendkey, delimiter: "|")
                     || needsEscaping(spacestyle, delimiter: "|")
                     || needsEscaping(imkeys, delimiter: "|")
                     || needsEscaping(imkeynames, delimiter: "|") {
@@ -3036,6 +3066,7 @@ final class LimeDB {
                 if !name.isEmpty { lines.append("@cname@|\(useEscapedFormat ? escapeField(name, delimiter: "|") : name)") }
                 if !selkey.isEmpty { lines.append("@selkey@|\(useEscapedFormat ? escapeField(selkey, delimiter: "|") : selkey)") }
                 if !endkey.isEmpty { lines.append("@endkey@|\(useEscapedFormat ? escapeField(endkey, delimiter: "|") : endkey)") }
+                if !limeendkey.isEmpty { lines.append("@limeendkey@|\(useEscapedFormat ? escapeField(limeendkey, delimiter: "|") : limeendkey)") }
                 if !spacestyle.isEmpty { lines.append("@spacestyle@|\(useEscapedFormat ? escapeField(spacestyle, delimiter: "|") : spacestyle)") }
                 if !imkeys.isEmpty { lines.append("@imkeys@|\(useEscapedFormat ? escapeField(imkeys, delimiter: "|") : imkeys)") }
                 if !imkeynames.isEmpty { lines.append("@imkeynames@|\(useEscapedFormat ? escapeField(imkeynames, delimiter: "|") : imkeynames)") }
@@ -3075,6 +3106,7 @@ final class LimeDB {
         var name = ""
         var selkey = ""
         var endkey = ""
+        var limeendkey = ""
         var spacestyle = ""
         var imkeys = ""
         var imkeynamesHeader = ""
@@ -3109,7 +3141,6 @@ final class LimeDB {
                         escapedFormat = value.lowercased() == "lime-text-v2"
                     case "@version@":
                         version = value
-                        if name.isEmpty { name = value }
                     case "@cname@":
                         name = value
                         if version.isEmpty { version = value }
@@ -3117,6 +3148,8 @@ final class LimeDB {
                         selkey = value
                     case "@endkey@":
                         endkey = value
+                    case "@limeendkey@":
+                        limeendkey = value
                     case "@spacestyle@":
                         spacestyle = value
                     case "@imkeys@":
@@ -3134,7 +3167,6 @@ final class LimeDB {
                 switch meta.key {
                 case "version":
                     version = meta.value
-                    if name.isEmpty { name = meta.value }
                 case "cname":
                     name = meta.value
                     if version.isEmpty { version = meta.value }
@@ -3144,6 +3176,8 @@ final class LimeDB {
                     selkey = meta.value
                 case "endkey":
                     endkey = meta.value
+                case "limeendkey":
+                    limeendkey = meta.value
                 case "spacestyle":
                     spacestyle = meta.value
                 default:
@@ -3222,16 +3256,24 @@ final class LimeDB {
         if !importCancelled {
             setImConfig(tableName, "source", sourceName)
             setImConfig(tableName, "version", version.isEmpty ? sourceName : version)
-            setImConfig(tableName, "name", name.isEmpty ? sourceName : name)
+            setImConfig(tableName, "name", name.isEmpty ? defaultImFullName(tableName, fallback: sourceName) : name)
             setImConfig(tableName, "amount", String(totalInserted))
             setImConfig(tableName, "import", Date().description)
             if !selkey.isEmpty { setImConfig(tableName, "selkey", selkey) }
             if !endkey.isEmpty { setImConfig(tableName, "endkey", endkey) }
+            if !limeendkey.isEmpty { setImConfig(tableName, "limeendkey", limeendkey) }
             if !spacestyle.isEmpty { setImConfig(tableName, "spacestyle", spacestyle) }
             if !imkeys.isEmpty { setImConfig(tableName, "imkeys", imkeys) }
             if !imkeynamesHeader.isEmpty { setImConfig(tableName, "imkeynames", imkeynamesHeader) }
             else if !imkeynames.isEmpty { setImConfig(tableName, "imkeynames", imkeynames.joined(separator: "|")) }
         }
+    }
+
+    private func defaultImFullName(_ tableName: String, fallback: String) -> String {
+        if let index = Self.IM_CODES.firstIndex(of: tableName), index < Self.IM_FULL_NAMES.count {
+            return Self.IM_FULL_NAMES[index]
+        }
+        return fallback
     }
 
     /// Auto-detect field delimiter from a data line (mirrors Java identifyDelimiter()).
@@ -3257,7 +3299,7 @@ final class LimeDB {
         }
 
         let lower = trimmed.lowercased()
-        for prefix in ["%version", "%cname", "%selkey", "%endkey", "%spacestyle"] where lower.hasPrefix(prefix) {
+        for prefix in ["%version", "%cname", "%selkey", "%endkey", "%limeendkey", "%spacestyle"] where lower.hasPrefix(prefix) {
             let rawValue = String(trimmed.dropFirst(prefix.count))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let key = String(prefix.dropFirst())
@@ -3332,6 +3374,7 @@ final class LimeDB {
                 || lower.hasPrefix("%cname")
                 || lower.hasPrefix("%selkey")
                 || lower.hasPrefix("%endkey")
+                || lower.hasPrefix("%limeendkey")
                 || lower.hasPrefix("%spacestyle")))
     }
 
