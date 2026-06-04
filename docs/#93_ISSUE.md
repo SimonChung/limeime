@@ -14,7 +14,7 @@ Follow-up maintainer context added an Android scope: Android could import a `.li
 - Live labels: `bug`, `Usability`
 - Live assignee: `jrywu`
 - Public maintainer context: https://github.com/lime-ime/limeime/issues/93#issuecomment-4556745511 recorded the Android metadata parsing scope.
-- Closure: #93 is closed as completed. Maintainer/automation closure comment: https://github.com/lime-ime/limeime/issues/93#issuecomment-4625074355.
+- Closure: #93 was closed as completed on 2026-06-04. Maintainer closure comment: https://github.com/lime-ime/limeime/issues/93#issuecomment-4625074355.
 
 ## Implementation and closure status
 
@@ -30,7 +30,7 @@ Fixed on `master` by PR #101 merge commit `43aa6c887d9eebf162891549d0ef04fca9b6f
 ## Code paths inspected
 
 - `LimeIME-iOS/Shared/Database/LimeDB.swift`
-  - `importTxtFile(at:tableName:progress:)` parses `@version@`, `@cname@`, `%version`, and `%cname`; version/cname metadata cross-populates the display-name fallback, and `sourceName` is used when no usable version/name metadata is available.
+  - `importTxtFile(at:tableName:progress:)` parses `@version@`, `@cname@`, `%version`, and `%cname`; cname/name metadata is preserved as the display name, while no-name imports use a safe fallback (`defaultImFullName(tableName, fallback: sourceName)`).
   - Before the fix, the text-import path could write mappings and metadata without ensuring the installed-list query had a usable display/registration fallback.
 - `LimeIME-iOS/LimeSettings/Controllers/ManageImController.swift` / iOS installed-list code
   - The fix aligns imported-table visibility with the catalog/data state so successful text imports appear in the installed IM list.
