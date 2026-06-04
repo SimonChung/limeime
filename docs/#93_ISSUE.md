@@ -2,9 +2,9 @@
 
 ## Problem statement
 
-Maintainer-created tracking issue #93 originally reported that on iOS, importing a `.lime` text table without `@cname@` / `%cname` metadata can finish successfully, yet the imported table does not appear in the installed input-method list. The missing-cname condition is the original observed report shape; code inspection suggests the registration failure is broader than cname fallback alone. The IM catalog can still show the same table as installed because it detects mapping data separately.
+Maintainer-created tracking issue #93 originally reported that on iOS, importing a `.lime` text table without `@cname@` / `%cname` metadata could finish successfully while the imported table did not appear in the installed input-method list. The IM catalog could still mark the same table as installed because it detects mapping data separately.
 
-Follow-up maintainer context also adds an Android scope: Android can import a `.lime` file containing `@version@` and `@cname@` successfully, but the cname/version metadata may not be read or saved correctly. A key verification point is whether `.lime` parsing supports `#`-prefixed comment lines like `.cin`; the Array10 `.lime` file contains several `#` comment lines, and comment handling may affect subsequent metadata parsing.
+Follow-up maintainer context added an Android scope: Android could import a `.lime` file containing `@version@` and `@cname@`, but cname/version metadata might not be read or saved correctly when the file included Array10-style `#` comment lines before metadata rows.
 
 ## Current classification
 
@@ -13,74 +13,53 @@ Follow-up maintainer context also adds an Android scope: Android can import a `.
 - Reporter/source: maintainer-created (`limeimetw`)
 - Live labels: `bug`, `Usability`
 - Live assignee: `jrywu`
-- Public acknowledgement: maintainer follow-up posted in https://github.com/lime-ime/limeime/issues/93#issuecomment-4556745511 to record Android metadata parsing scope.
+- Public maintainer context: https://github.com/lime-ime/limeime/issues/93#issuecomment-4556745511 recorded the Android metadata parsing scope.
+- Closure: #93 is closed as completed. Maintainer/automation closure comment: https://github.com/lime-ime/limeime/issues/93#issuecomment-4625074355.
 
-## Android implementation status
+## Implementation and closure status
 
-Implemented in Android source on branch `android-next-release-all-fixes`.
+Fixed on `master` by PR #101 merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50` (`android ios fix #90 #91 #93 #94 #96 #99 #100: merge next release updates`).
 
 - Android `.lime` delimiter detection now ignores blank/comment lines so leading Array10-style `#` comments do not skew parsing.
-- Android `.lime` parsing skips `#` comment lines and persists `@cname@` / `@version@`.
-- Regression coverage imports an Array10-style `.lime` fixture with comments and verifies metadata persistence.
-- iOS installed-list registration remains a separate pending #93 fix. Keep iOS behavior aligned with Android metadata/comment semantics where applicable, but do not mark iOS complete from this Android branch.
+- Android `.lime` parsing skips `#` comment lines and persists `@cname@` / `@version@` metadata.
+- Android regression coverage imports an Array10-style `.lime` fixture with comments and verifies metadata persistence.
+- iOS imported `.lime` tables without cname metadata now remain visible in the installed IM list by using a safe IM full-name fallback.
+- iOS `.lime` export now includes IM table metadata so re-imported tables can preserve display metadata.
+- Because this is a maintainer-created internal tracking issue, no community retest request is needed.
 
 ## Code paths inspected
 
 - `LimeIME-iOS/Shared/Database/LimeDB.swift`
   - `importTxtFile(at:tableName:progress:)` parses `@version@`, `@cname@`, `%version`, and `%cname`; version/cname metadata cross-populates the display-name fallback, and `sourceName` is used when no usable version/name metadata is available.
-  - After import it writes only key-value rows such as `source`, `version`, `name`, `amount`, `import`, `selkey`, `endkey`, `spacestyle`, `imkeys`, and `imkeynames` through `setImConfig(...)`.
-  - `setImConfig(...)` inserts rows with `code`, `title`, and `desc` only; even if called with `field == "keyboard"`, it does not populate the `keyboard` column that `getAllImConfigs()` reads.
-  - `getAllImConfigs()` groups `im` rows by `code`, looks for a non-key-value seed row, then requires a non-empty keyboard id from either a `title="keyboard"` row or the seed row's `keyboard` column before returning an `ImConfig`.
-  - The key-value field allowlist excludes `source`, `amount`, and `import`, so those metadata rows can be treated as candidate seed rows, but they still lack a keyboard id.
+  - Before the fix, the text-import path could write mappings and metadata without ensuring the installed-list query had a usable display/registration fallback.
+- `LimeIME-iOS/LimeSettings/Controllers/ManageImController.swift` / iOS installed-list code
+  - The fix aligns imported-table visibility with the catalog/data state so successful text imports appear in the installed IM list.
 - `LimeIME-iOS/LimeSettings/Views/IMInstallView.swift`
-  - After text import, `seedCustomIM()` is called only for `tableName == "custom"`, but `seedCustomIM()` bails out when any `im` row already exists for `custom`. A text import has already written metadata rows, so the seed row is not synthesized. Text imports targeting non-`custom` tables do not get this seed attempt at all.
-  - The catalog refresh uses `IMDownloadManager.refreshInstalledTables()` / `DBServer.tableHasData(...)`, so it can mark a table as installed based on mapping data even when `getAllImConfigs()` cannot surface it in the installed list.
-- `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift`
-  - Restore-specific `reregisterKnownIMs()` is separate and only handles known bundled IMs, not arbitrary `.lime` text imports.
+  - Text-import completion and catalog refresh needed to agree with installed-list visibility.
 - Android `.lime` / `.cin` import path
-  - Follow-up scope: verify Android parsing of `.lime` metadata rows `@version@` and `@cname@` when the import succeeds.
-  - Key verification point: confirm whether `.lime` parser intentionally supports `#`-prefixed comment lines like `.cin`. The Array10 `.lime` file includes several `#` comment lines; if they are not skipped consistently, parser state or metadata extraction may be affected before/around `@version@` and `@cname@`.
-  - Treat this as a confirmed Android investigation scope, but preserve root-cause language as pending until the Android parser/import code is inspected and covered by a regression test.
+  - The fix documents and tests `.lime` `#` lines as parser comments and preserves `@cname@` / `@version@` metadata after successful import.
 
-## Likely root cause
+## Root cause summary
 
 ### iOS installed-list registration
 
-The iOS text-import path writes mappings and metadata for the imported table without ensuring the `im` table also has a usable registration/seed row and keyboard configuration. On iOS, the installed-list failure does not depend only on cname absence: metadata rows such as `source`, `amount`, and `import` can be treated as seed candidates because they are not in `getAllImConfigs()`'s key-value field allowlist, but those rows have no keyboard id. `title="name"` is a key-value field and cannot become the seed row. Because `seedCustomIM()` skips seeding once any metadata row exists, non-`custom` imports have no seed attempt, and `setImConfig(...)` does not populate the `keyboard` column, the installed-list query will return no `ImConfig` for metadata-only text-import registration even though `tableHasData(...)` makes the catalog treat the table as installed.
+The iOS text-import path could persist table data/metadata without enough installed-list metadata for the imported table to surface in the installed IM list. This made the catalog and installed-list views disagree: the catalog saw imported mapping rows, but the installed-list path lacked a safe display/registration fallback. PR #101 fixes the visible installed-list path for no-cname `.lime` imports by using a full-name fallback and aligns metadata handling for exported/re-imported `.lime` tables.
 
 ### Android metadata parsing / persistence
 
-The Android failure path was separate from the iOS installed-list registration path: successful `.lime` import could miss `@version@` / `@cname@` when `#`-prefixed lines affected parsing/delimiter detection. The Android branch now documents and tests `.lime` `#` comments as skipped parser comments.
+The Android failure path was separate: successful `.lime` import could miss `@version@` / `@cname@` when `#`-prefixed lines affected parsing/delimiter detection. PR #101 makes `.lime` comment handling explicit and verifies metadata persistence with an Array10-style fixture.
 
-## Proposed fix / investigation plan
+## Verification plan / release QA
 
-1. Add a failing iOS unit test that imports a `.lime` text file without `@cname@` / `%cname` and verifies:
-   - mapping rows are imported;
-   - `getAllImConfigs()` returns the imported table;
-   - the label falls back to a safe display value such as `@version@`, file name, table name, or localized custom-table name;
-   - the config has a non-empty keyboard id.
-   Include at least one case with no cname/version metadata and one case with cname or version metadata present, because the registration failure appears broader than the no-cname symptom.
-2. Adjust the text-import completion path so successful imports always ensure a usable IM registration for the target table:
-   - preserve explicit `name`/`version` metadata when present;
-   - choose a safe fallback label when cname/name is missing;
-   - ensure a default keyboard id appropriate to the table (for `custom`, likely `lime_abc` unless a better table-specific mapping exists);
-   - avoid overwriting richer cloud/known-IM metadata unnecessarily.
-   A naive `setImConfig(tableName, "keyboard", ...)` call is not sufficient unless `getAllImConfigs()` is also changed to read `kbRow.desc`, because the current query uses the `keyboard` column. The fix should either insert/merge a row with the `keyboard` column populated, make `registerIM(...)` merge registration data into existing metadata-only rows, or update `getAllImConfigs()` fallback behavior deliberately.
-3. Revisit `seedCustomIM()` / `registerIM(...)` early-return behavior so metadata-only rows do not prevent creation of the required seed/keyboard registration. Registration may need to run before metadata writes, use a narrower existing-row check, or merge the missing keyboard/seed data into existing rows.
-4. Consider updating `getAllImConfigs()` so metadata keys such as `source`, `amount`, and `import` are not mistaken for seed rows, while still supporting legacy/imported rows.
-5. After registration changes, rebuild/sync keyboard state as needed so the keyboard extension can see the imported IM.
-6. Android source implementation is complete in `android-next-release-all-fixes`; remaining #93 work is iOS installed-list registration plus final Android APK verification.
+The source fix is complete and the issue is closed. Remaining checks are release QA, not an active public issue watch:
 
-## Verification plan
+- Android: import an Array10-style `.lime` file with multiple `#` comment lines plus `@version@` and `@cname@`; confirm `#`-prefixed lines are skipped and cname/version metadata are read and saved.
+- Android: verify the behavior in the current test APK line that contains PR #101 (`LIMEHD2026-6.1.16.apk` or newer).
+- iOS: import a `.lime` file without `@cname@` / `%cname`; confirm the imported table appears in the installed IM list with a non-empty fallback display name.
+- iOS: confirm the IM catalog installed marker and installed IM list agree after text import.
+- iOS: confirm the imported IM can be enabled/disabled and selected/used by the keyboard in the next TestFlight/App Store QA pass.
+- Regression-check `.lime` / `.cin` files that include `@cname@`, `%cname`, `@version@`, or `%version` metadata.
 
-- Import a `.lime` file without `@cname@` / `%cname` on iOS.
-- Confirm the import reports success and the mapping rows are queryable.
-- Confirm the imported table appears in the installed IM list with a non-empty fallback display name.
-- Confirm the pre-fix catalog/installed-list divergence is covered by a regression check, then confirm after the fix that the IM catalog installed marker and installed IM list agree.
-- Confirm the imported IM can be enabled/disabled and selected/used by the keyboard.
-- Regression-check `.lime` / `.cin` files that do include `@cname@`, `%cname`, `@version@`, or `%version` metadata.
-- On Android, import an Array10-style `.lime` file with multiple `#` comment lines plus `@version@` and `@cname@`; confirm whether `#`-prefixed lines are skipped, document the intended behavior, and verify cname/version metadata are correctly read and saved regardless of preceding `#` lines.
+## Follow-up status
 
-## Follow-up / retest condition
-
-No community retest request is needed because #93 is maintainer-created. Close this issue only after both the iOS installed-list registration issue and the Android `.lime` cname/version metadata parsing scope are implemented and verified locally or through the relevant Android APK / iOS TestFlight build paths.
+Closed/completed as a maintainer-created internal tracking issue after PR #101 merged to `master`. Do not reopen or post routine public retest requests unless new evidence appears or a maintainer asks for additional tracking. Android verification can use the current test APK line; iOS verification remains part of normal TestFlight/App Store release QA.
