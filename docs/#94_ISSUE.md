@@ -68,13 +68,13 @@ This does **not** mean the entire backup implementation is generally broken. Exi
 
 ## Android implementation status
 
-Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.15.apk` in `LimeStudio/app/release/`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/`.
 
 - PR #101 supersedes/recreates the relevant PR #97 behavior instead of depending on a separate PR merge.
 - `lime.db-journal` is included only when it exists, because it is a transient SQLite rollback journal.
 - Backup failures propagate to callers instead of allowing UI success status after ZIP/copy failure.
 - Regression coverage verifies backup succeeds without `lime.db-journal` and propagates output-write failure.
-- Current follow-up: reporter retest requested in https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896 for non-empty ZIP creation and restore using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.15.apk
+- Current follow-up: reporter retest requested in https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896 for non-empty ZIP creation and restore using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk (verified APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes)
 
 ## Code paths to fix
 

@@ -107,7 +107,6 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 
 - Public clarification posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179
 - Current classification: enhancement/product work for generic table IM end-key behavior.
-- Android 6.1.15 retest request posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
-- Android 6.1.16 retest request posted after the metadata export/re-import preservation fix: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624974083
+- Android 6.1.16 retest request posted/edited after the metadata export/re-import preservation fix: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
 - Current test APK: `LIMEHD2026-6.1.16.apk` (`https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk`), blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
 - Current next action: wait for Android feedback that opt-in Lime end-key behavior works, export/re-import preserves `%limeendkey` / `@limeendkey@`, and tables without Lime end-key metadata keep their existing root/short-phrase behavior; address remaining iOS/table-data coordination later.
