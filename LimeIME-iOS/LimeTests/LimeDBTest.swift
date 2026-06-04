@@ -318,6 +318,57 @@ final class LimeDBTest: XCTestCase {
                                  "Partial matches should not exceed similarCodeCandidatesCap")
     }
 
+    func testLimeDBGetMappingByCodePreservesDuplicateCodeInsertionOrderWhenSortingDisabled() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.sortSuggestions = false
+        db.similarCodeCandidatesCap = 0
+
+        let code = "vmi"
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "狀", 0)
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "绒", 20)
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "戕", 0)
+
+        let results = try XCTUnwrap(db.getMappingByCode(code, softKeyboard: true, getAllRecords: true))
+        let exactWords = results
+            .filter { $0.code == code && $0.isExactMatchToCodeRecord }
+            .map(\.word)
+
+        XCTAssertGreaterThanOrEqual(exactWords.count, 3)
+        XCTAssertEqual(Array(exactWords.prefix(3)), ["狀", "绒", "戕"],
+                       "When suggestion sorting is disabled, exact duplicate-code records must follow source/_id order even if one row has a learned score")
+    }
+
+    func testCinImportPreservesDuplicateCodeOrderWhenSelectionSortDisabled() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.sortSuggestions = false
+        db.similarCodeCandidatesCap = 0
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".cin")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        %ename issue91
+        %cname Issue91
+        %chardef begin
+        vmi 狀
+        vmi 绒
+        vmi 戕
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        let results = try XCTUnwrap(db.getMappingByCode("vmi", softKeyboard: true, getAllRecords: true))
+        let exactWords = results
+            .filter { $0.code == "vmi" && $0.isExactMatchToCodeRecord }
+            .map(\.word)
+
+        XCTAssertEqual(Array(exactWords.prefix(3)), ["狀", "绒", "戕"])
+    }
+
     func testLimeDBGetMappingByCodeWithAllRecords() throws {
         let db = try makeLimeDB()
         db.setTableName(LIME.DB_TABLE_CUSTOM)

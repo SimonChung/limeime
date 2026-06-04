@@ -608,12 +608,14 @@ final class LimeDB {
         }
 
         // Jeremy '15, 6, 1 between search clause without using related column for better sorting order.
-        var sortClause = "( exactmatch = 1 and ( score > 0 or  basescore >0) and length(word)=1) desc, exactmatch desc,"
-                       + " (length(\(codeCol)) >= \(codeLen) ) desc, "
+        var sortClause = "exactmatch desc, (length(\(codeCol)) >= \(codeLen) ) desc, "
         // Jeremy '11,6,11 separated suggestions sorting option for physical keyboard
         // iOS is always soft keyboard — mirrors Android softKeyboard=true path
         // NOTE: score sort must come BEFORE the length tiebreaker (mirrors Android LimeDB.java order)
-        if sortSuggestions { sortClause += " score desc, basescore desc, " }
+        if sortSuggestions {
+            sortClause += "( exactmatch = 1 and ( score > 0 or  basescore >0) and length(word)=1) desc, "
+            sortClause += "score desc, basescore desc, "
+        }
         sortClause += "(length(\(codeCol)) <= \(min(codeLen, 5)) )*length(\(codeCol)) desc, "
         sortClause += "_id asc"
 

@@ -725,6 +725,7 @@ final class SearchServer {
     /// - Deduplicates within the emoji results using a Set<String> (mirrors Android emojiCheck HashMap).
     /// - Inserts at `insertAt` (0-based index into `list`). Clamped to list.count.
     func injectEmoji(into list: [Mapping], insertAt: Int = 3) -> [Mapping] {
+        guard SearchServer.shouldInjectEmojiCandidates(insertAt: insertAt) else { return list }
         guard !list.isEmpty else { return list }
 
         var emojiList: [Mapping] = []
@@ -771,6 +772,7 @@ final class SearchServer {
     /// Direct emoji injection by explicit word and type.
     /// Used for the English prediction path where the lookup word is known directly.
     func injectEmoji(into list: [Mapping], word: String, type: Int, insertAt: Int = 3) -> [Mapping] {
+        guard SearchServer.shouldInjectEmojiCandidates(insertAt: insertAt) else { return list }
         let candidates = emojiConvert(word, type)
         guard !candidates.isEmpty else { return list }
         let existingWords = Set(list.map { $0.word })
@@ -793,6 +795,10 @@ final class SearchServer {
             }
         }
         return index
+    }
+
+    static func shouldInjectEmojiCandidates(insertAt: Int) -> Bool {
+        insertAt > 0
     }
 
     private func isChinesePeriodOrComma(_ candidate: Mapping) -> Bool {
