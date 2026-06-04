@@ -200,8 +200,8 @@ public class LimeDBTest {
                     "# Comment between metadata\n" +
                     "@cname@ |\u884C\u521710\u6E2C\u8A66\n" +
                     "# Comment before mappings\n" +
-                    ",|\uFF0C\n" +
-                    ".|\u3002\n");
+                    ",\t\uFF0C\n" +
+                    ".\t\u3002\n");
 
             limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
             limeDB.clearTable(LIME.DB_TABLE_CUSTOM);
@@ -805,6 +805,41 @@ public class LimeDBTest {
         if (imConfigByCode != null) {
             assertTrue("IM list by code should be accessible", true);
         }
+    }
+
+    @Test(timeout = 5000)
+    public void testGetImConfigListNameFallsBackToBuiltInFullNameForLegacyRows() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection. Database may be on hold from a previous operation. Test cannot proceed.");
+        }
+
+        limeDB.resetImConfig(LIME.DB_TABLE_CUSTOM);
+        limeDB.setIMConfigKeyboard(LIME.DB_TABLE_CUSTOM, "Legacy Keyboard", "lime");
+
+        List<ImConfig> configs = limeDB.getImConfigList(LIME.DB_TABLE_CUSTOM, LIME.IM_FULL_NAME);
+        assertFalse("Legacy IM row should still be surfaced for the name list", configs.isEmpty());
+        assertEquals("自建輸入法", configs.get(0).getDesc());
+    }
+
+    @Test(timeout = 5000)
+    public void testGetImConfigListNameFallsBackToBuiltInFullNameWhenDescIsEmpty() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection. Database may be on hold from a previous operation. Test cannot proceed.");
+        }
+
+        limeDB.resetImConfig(LIME.DB_TABLE_ARRAY10);
+        limeDB.setImConfig(LIME.DB_TABLE_ARRAY10, "source", "array10a-v2023-1.0-20260517.lime");
+        limeDB.setImConfig(LIME.DB_TABLE_ARRAY10, LIME.IM_FULL_NAME, "");
+
+        List<ImConfig> configs = limeDB.getImConfigList(LIME.DB_TABLE_ARRAY10, LIME.IM_FULL_NAME);
+        assertFalse("IM name row should be surfaced for the name list", configs.isEmpty());
+        assertEquals("行列10輸入法", configs.get(0).getDesc());
     }
 
     @Test(timeout = 5000) // 5 second timeout to prevent infinite hang
@@ -5415,6 +5450,8 @@ public class LimeDBTest {
 
             assertEquals("My Android Table 2026.05",
                     limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "version"));
+            assertEquals("自建輸入法",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
             assertEquals("123456789",
                     limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"));
             assertEquals("2",
@@ -5521,6 +5558,8 @@ public class LimeDBTest {
 
             assertEquals("2",
                     limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"));
+            assertEquals("自建輸入法",
+                    limeDB.getImConfig(LIME.DB_TABLE_CUSTOM, "name"));
             assertEquals(0,
                     limeDB.countRecords(LIME.DB_TABLE_CUSTOM, "code = ?", new String[]{"#"}));
             assertEquals(0,

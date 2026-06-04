@@ -65,6 +65,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -3330,6 +3331,19 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     + " (code, title, desc, keyboard, disable, selkey, endkey, spacestyle) "
                     + "select code, title, desc, keyboard, disable, selkey, endkey, spacestyle "
                     + "from sourceDB." + LIME.DB_TABLE_IM);
+                for (String tableName : validTableNames) {
+                    db.execSQL("insert into " + LIME.DB_TABLE_IM
+                        + " (code, title, desc) "
+                        + "select ?, ?, ? where not exists (select 1 from " + LIME.DB_TABLE_IM
+                        + " where code=? and title=?)",
+                        new Object[]{
+                            tableName,
+                            LIME.IM_FULL_NAME,
+                            defaultImFullName(tableName, tableName),
+                            tableName,
+                            LIME.IM_FULL_NAME
+                        });
+                }
             }
 
             // Import related table if requested
@@ -3831,7 +3845,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                         try {
                             if (!isCinFormat && line.trim().startsWith("@")) {
-                                List<String> metaParts = splitEscapedFields(line, delimiter_symbol, escapedFormat);
+                                List<String> metaParts = splitLimeMetadataFields(line, escapedFormat);
                                 if (metaParts.size() >= 2) {
                                     String metaKey = metaParts.get(0).trim().toLowerCase(Locale.US);
                                     String metaValue = metaParts.get(1).trim();
@@ -3840,7 +3854,6 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                                         continue;
                                     } else if ("@version@".equals(metaKey)) {
                                         version = metaValue;
-                                        if (imname.isEmpty()) imname = version;
                                         continue;
                                     } else if ("@cname@".equals(metaKey)) {
                                         imname = metaValue;
@@ -4034,7 +4047,6 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
                             if (!escapedMetadataCode && codeLower.equals("%version")) {
                                 version = metadataWord;
-                                if (imname.isEmpty()) imname = version;
                                 continue;
                             } else if (!escapedMetadataCode && codeLower.equals("%cname")) {
                                 imname = metadataWord;
@@ -4123,7 +4135,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                     }
                     setImConfig(table, "version", version);
                     if (imname.isEmpty()) {
-                        setImConfig(table, "name", filename.getName());
+                        setImConfig(table, "name", defaultImFullName(table, filename.getName()));
                     } else {
                         setImConfig(table, "name", imname);
                     }
@@ -4296,6 +4308,40 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             return " ";
         }
 
+    }
+
+    private List<String> splitLimeMetadataFields(String line, boolean escapedFormat) {
+        String[] delimiters = {"|", "\t", ",", " "};
+        for (String delimiter : delimiters) {
+            List<String> parts = splitEscapedFields(line, delimiter, escapedFormat);
+            if (parts.size() >= 2 && parts.get(0).trim().startsWith("@")) {
+                if (parts.size() == 2) {
+                    return parts;
+                }
+                List<String> merged = new ArrayList<>();
+                merged.add(parts.get(0));
+                StringBuilder value = new StringBuilder(parts.get(1));
+                for (int i = 2; i < parts.size(); i++) {
+                    value.append(delimiter).append(parts.get(i));
+                }
+                merged.add(value.toString());
+                return merged;
+            }
+        }
+        List<String> fallback = new ArrayList<>();
+        fallback.add(line);
+        return fallback;
+    }
+
+    private String defaultImFullName(String table, String fallback) {
+        if (table != null) {
+            for (int i = 0; i < LIME.IM_CODES.length && i < LIME.IM_FULL_NAMES.length; i++) {
+                if (table.equals(LIME.IM_CODES[i])) {
+                    return LIME.IM_FULL_NAMES[i];
+                }
+            }
+        }
+        return fallback;
     }
 
     private List<String> splitEscapedFields(String line, String delimiter, boolean escapedFormat) {
@@ -5907,23 +5953,76 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
                 //result.add(ImConfig.get(cursor));
-                ImConfig record = new ImConfig();
-                record.setId(getCursorInt(cursor, LIME.DB_IM_COLUMN_ID));
-                record.setCode(getCursorString(cursor, LIME.DB_IM_COLUMN_CODE));
-                record.setTitle(getCursorString(cursor, LIME.DB_IM_COLUMN_TITLE));
-                record.setDesc(getCursorString(cursor, LIME.DB_IM_COLUMN_DESC));
-                record.setKeyboard(getCursorString(cursor, LIME.DB_IM_COLUMN_KEYBOARD));
-                String disableStr = getCursorString(cursor, LIME.DB_IM_COLUMN_DISABLE);
-                record.setDisable(Boolean.parseBoolean(disableStr));
-                record.setSelkey(getCursorString(cursor, LIME.DB_IM_COLUMN_SELKEY));
-                record.setEndkey(getCursorString(cursor, LIME.DB_IM_COLUMN_ENDKEY));
-                record.setSpacestyle(getCursorString(cursor, LIME.DB_IM_COLUMN_SPACESTYLE));
+                ImConfig record = getImConfigFromCursor(cursor);
                 cursor.moveToNext();
                 result.add(record);
             }
             cursor.close();
         }
+        appendLegacyFullNameConfigs(result, code, configEntry);
+        applyFullNameFallbacks(result, configEntry);
         return result;
+    }
+
+    private ImConfig getImConfigFromCursor(Cursor cursor) {
+        ImConfig record = new ImConfig();
+        record.setId(getCursorInt(cursor, LIME.DB_IM_COLUMN_ID));
+        record.setCode(getCursorString(cursor, LIME.DB_IM_COLUMN_CODE));
+        record.setTitle(getCursorString(cursor, LIME.DB_IM_COLUMN_TITLE));
+        record.setDesc(getCursorString(cursor, LIME.DB_IM_COLUMN_DESC));
+        record.setKeyboard(getCursorString(cursor, LIME.DB_IM_COLUMN_KEYBOARD));
+        String disableStr = getCursorString(cursor, LIME.DB_IM_COLUMN_DISABLE);
+        record.setDisable(Boolean.parseBoolean(disableStr));
+        record.setSelkey(getCursorString(cursor, LIME.DB_IM_COLUMN_SELKEY));
+        record.setEndkey(getCursorString(cursor, LIME.DB_IM_COLUMN_ENDKEY));
+        record.setSpacestyle(getCursorString(cursor, LIME.DB_IM_COLUMN_SPACESTYLE));
+        return record;
+    }
+
+    private void appendLegacyFullNameConfigs(List<ImConfig> result, String code, String configEntry) {
+        if (!LIME.IM_FULL_NAME.equals(configEntry)) return;
+
+        Set<String> existingCodes = new HashSet<>();
+        for (ImConfig record : result) {
+            if (record != null && record.getCode() != null) {
+                existingCodes.add(record.getCode());
+            }
+        }
+
+        for (int i = 0; i < LIME.IM_CODES.length && i < LIME.IM_FULL_NAMES.length; i++) {
+            String imCode = LIME.IM_CODES[i];
+            if (code != null && code.length() > 1 && !imCode.equals(code)) continue;
+            if (existingCodes.contains(imCode)) continue;
+            ImConfig legacy = getFirstImConfigForCode(imCode);
+            if (legacy == null) continue;
+            legacy.setTitle(LIME.IM_FULL_NAME);
+            legacy.setDesc(LIME.IM_FULL_NAMES[i]);
+            result.add(legacy);
+        }
+    }
+
+    private void applyFullNameFallbacks(List<ImConfig> result, String configEntry) {
+        if (!LIME.IM_FULL_NAME.equals(configEntry)) return;
+        for (ImConfig record : result) {
+            if (record == null) continue;
+            String desc = record.getDesc();
+            if (desc == null || desc.isEmpty()) {
+                record.setDesc(defaultImFullName(record.getCode(), record.getCode()));
+            }
+        }
+    }
+
+    private ImConfig getFirstImConfigForCode(String code) {
+        Cursor cursor = db.query(LIME.DB_TABLE_IM, null,
+                LIME.DB_IM_COLUMN_CODE + " = ?",
+                new String[]{code}, null, null, LIME.DB_IM_COLUMN_ID + " ASC", "1");
+        if (cursor == null) return null;
+        try {
+            if (!cursor.moveToFirst()) return null;
+            return getImConfigFromCursor(cursor);
+        } finally {
+            cursor.close();
+        }
     }
 
     /**

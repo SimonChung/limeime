@@ -122,6 +122,7 @@ public class LIMEService extends InputMethodService
 
     private static final boolean DEBUG = false;
     private static final String TAG = "LIMEService";
+    private static final String IMKEYS_CONFIG = "imkeys";
 
     private static Thread queryThread; // queryThread for no-blocking I/O  Jeremy '15,6,1
 
@@ -2125,30 +2126,47 @@ public class LIMEService extends InputMethodService
     static boolean isEndkeyCommitKey(int primaryCode, String endkey, boolean englishOnly,
                                      int composingLength, boolean candidatesShown) {
         return !englishOnly
-                && composingLength > 0
-                && candidatesShown
                 && endkey != null
                 && endkey.indexOf((char) primaryCode) >= 0;
     }
 
     private boolean handleEndkeyCommit(int primaryCode) {
         String endkey = "";
+        String imkeys = "";
         if (SearchSrv != null && activeIM != null) {
             endkey = SearchSrv.getImConfig(activeIM, LIME.IM_LIME_ENDKEY);
+            imkeys = SearchSrv.getImConfig(activeIM, IMKEYS_CONFIG);
         }
         if (!isEndkeyCommitKey(primaryCode, endkey, mEnglishOnly, mComposing.length(), hasCandidatesShown)) {
             return false;
         }
 
-        if (pickHighlightedCandidate()) {
+        if (isKeyInImkeys(primaryCode, imkeys)) {
+            return commitComposingWithAppendedEndkey(primaryCode);
+        }
+
+        if (mComposing.length() > 0 && !commitCurrentEndkeyComposing()) {
+            return false;
+        }
+
+        return commitFreshEndkeyOrRaw(primaryCode);
+    }
+
+    private boolean commitCurrentEndkeyComposing() {
+        if (hasCurrentEndkeySelectedCandidate() && pickHighlightedCandidate()) {
+            if (mComposing.length() > 0) {
+                clearComposing(false);
+            }
+            hideCandidateView();
             return true;
         }
 
-        if (selectedCandidate != null) {
+        if (resolveEndkeySelectedCandidate() != null) {
             commitTyped(getCurrentInputConnection());
-            if (mComposing.length() == 0) {
-                hideCandidateView();
+            if (mComposing.length() > 0) {
+                clearComposing(false);
             }
+            hideCandidateView();
             return true;
         }
 
@@ -2156,6 +2174,118 @@ public class LIMEService extends InputMethodService
             hideCandidateView();
         }
         return false;
+    }
+
+    private boolean commitComposingWithAppendedEndkey(int primaryCode) {
+        String code = String.valueOf((char) primaryCode);
+        mComposing.append(code);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null && mPredictionOn) {
+            ic.setComposingText(mComposing, 1);
+        }
+        return commitResolvedEndkeyComposing();
+    }
+
+    private boolean commitFreshEndkeyOrRaw(int primaryCode) {
+        String code = String.valueOf((char) primaryCode);
+        mComposing.append(code);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null && mPredictionOn) {
+            ic.setComposingText(mComposing, 1);
+        }
+        if (commitResolvedEndkeyComposing()) {
+            return true;
+        }
+        clearComposing(false);
+        if (ic != null) {
+            ic.commitText(code, 1);
+        }
+        finishComposing();
+        return true;
+    }
+
+    private boolean commitResolvedEndkeyComposing() {
+        if (resolveEndkeySelectedCandidate() == null) {
+            return false;
+        }
+        commitTyped(getCurrentInputConnection());
+        if (mComposing.length() > 0) {
+            clearComposing(false);
+        }
+        hideCandidateView();
+        return true;
+    }
+
+    private Mapping resolveEndkeySelectedCandidate() {
+        if (hasCurrentEndkeySelectedCandidate()) {
+            return selectedCandidate;
+        }
+        if (SearchSrv == null || mComposing.length() == 0) {
+            return null;
+        }
+        if (queryThread != null && queryThread.isAlive()) {
+            queryThread.interrupt();
+        }
+        try {
+            List<Mapping> candidates = SearchSrv.getMappingByCode(mComposing.toString(),
+                    !hasPhysicalKeyPressed, false);
+            if (candidates == null || candidates.isEmpty()) {
+                return null;
+            }
+            mCandidateList = new LinkedList<>(candidates);
+            selectedCandidate = defaultSelectedCandidateForSuggestions(mCandidateList, hasPhysicalKeyPressed);
+            hasMappingList = selectedCandidate != null;
+            hasCandidatesShown = selectedCandidate != null;
+            return selectedCandidate;
+        } catch (RemoteException e) {
+            Log.e(TAG, "Error resolving end-key candidate", e);
+            return null;
+        }
+    }
+
+    private static boolean isKeyInImkeys(int primaryCode, String imkeys) {
+        if (imkeys == null || imkeys.isEmpty()) {
+            return false;
+        }
+        String key = String.valueOf((char) primaryCode);
+        return imkeys.contains(key) || imkeys.contains(key.toLowerCase(Locale.US));
+    }
+
+    private boolean hasCurrentEndkeySelectedCandidate() {
+        return selectedCandidate != null
+                && !selectedCandidate.isComposingCodeRecord()
+                && selectedCandidate.getCode() != null
+                && mComposing.toString().equals(selectedCandidate.getCode());
+    }
+
+    public static Mapping defaultSelectedCandidateForSuggestions(List<Mapping> suggestions,
+                                                                 boolean physicalKeyPressed) {
+        int selectedIndex = defaultSelectedCandidateIndex(suggestions, physicalKeyPressed);
+        if (selectedIndex < 0) {
+            return null;
+        }
+        return suggestions.get(selectedIndex);
+    }
+
+    public static int defaultSelectedCandidateIndex(List<Mapping> suggestions,
+                                                    boolean physicalKeyPressed) {
+        if (suggestions == null || suggestions.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < suggestions.size(); i++) {
+            if (isDefaultCommitCandidate(suggestions.get(i))) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean isDefaultCommitCandidate(Mapping candidate) {
+        return candidate != null
+                && !candidate.isComposingCodeRecord()
+                && (candidate.isExactMatchToCodeRecord()
+                || candidate.isPartialMatchToCodeRecord()
+                || candidate.isChinesePunctuationSymbolRecord());
     }
 
     private void showEmojiKeyboard() {
@@ -3445,7 +3575,7 @@ public class LIMEService extends InputMethodService
                 if (index < 0) continue;
                 if (activeState.length() > 0) activeState.append(";");
                 activeState.append(index);
-                activatedIMFullNameList.add(fullNames[index]);
+                activatedIMFullNameList.add(im.getDesc());
                 activatedIMShortNameList.add(shortNames[index]);
                 activatedIMList.add(IMs[index]);
             }
@@ -4380,13 +4510,7 @@ public class LIMEService extends InputMethodService
                 mCandidateList = (LinkedList<Mapping>) suggestions;
                 try {
 
-                    if (suggestions.size() > 1 && ( !hasPhysicalKeyPressed || suggestions.get(1).isExactMatchToCodeRecord() || suggestions.get(1).isPartialMatchToCodeRecord())) {
-                        selectedCandidate = suggestions.get(1);
-                        // this is for no exact match condition with code.  //do not set default suggestion for other record type like chinese punctuation symbols1 or related phrases. Jeremy '15,6,4
-                    } else if (!suggestions.isEmpty()) {
-                        selectedCandidate = suggestions.get(0);
-
-                    }
+                    selectedCandidate = defaultSelectedCandidateForSuggestions(suggestions, hasPhysicalKeyPressed);
                 } catch (Exception e) {
                     Log.e(TAG, "Error in suggestion processing", e);
                 }

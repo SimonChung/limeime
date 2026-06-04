@@ -709,7 +709,7 @@
     <string name="auto_chinese_symbol_summary">無候選字詞時顯示中文標點選項</string>
 
     <!-- 自動上屏設定 -->
-    <string name="auto_commit">電話鍵盤自動上屏</string>
+    <string name="auto_commit">自動上屏</string>
     <string name="auto_commit_summary">當輸入字根符合設定數則自動送出組字</string>
     <string-array name="auto_commit_labels">
         <item>無</item>

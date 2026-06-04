@@ -69,6 +69,31 @@ public class KeyboardLayoutResourceTest {
         assertNoSubLabelsOnShiftedSymbolKeys(context, R.xml.lime_dayi_sym_shift);
     }
 
+    @Test
+    public void array10AutoCommitRowHasTitleAndSummary() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        assertLayoutContainsTextResource(context, R.layout.fragment_im_detail, R.string.auto_commit);
+        assertLayoutContainsTextResource(context, R.layout.fragment_im_detail, R.string.auto_commit_summary);
+    }
+
+    private void assertLayoutContainsTextResource(Context context, int layoutId, int textResId) throws Exception {
+        XmlPullParser parser = context.getResources().getLayout(layoutId);
+        while (parser.next() != XmlPullParser.END_DOCUMENT) {
+            if (parser.getEventType() != XmlPullParser.START_TAG) {
+                continue;
+            }
+            AttributeSet attrs = Xml.asAttributeSet(parser);
+            int value = attrs.getAttributeResourceValue(ANDROID_ATTR_NS, "text", 0);
+            if (value == textResId) {
+                return;
+            }
+        }
+        fail("Layout " + context.getResources().getResourceEntryName(layoutId)
+                + " should contain text resource "
+                + context.getResources().getResourceEntryName(textResId));
+    }
+
     private void assertLetterKeyCodes(Context context, int layoutId, boolean shouldBeUppercase) {
         List<KeyDefinition> letterKeys = readLetterKeys(context, layoutId);
         assertFalse("HS layout should contain Latin letter keys", letterKeys.isEmpty());

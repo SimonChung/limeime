@@ -142,29 +142,80 @@ public class LIMEServiceTest {
     }
 
     @Test
-    public void endkeyCommitKeyRequiresOptInComposingCandidates() {
+    public void endkeyCommitKeyRequiresOptInAndComposing() {
         assertTrue(LIMEService.isEndkeyCommitKey(';', ";/", false, 2, true));
         assertTrue(LIMEService.isEndkeyCommitKey('/', ";/", false, 2, true));
+        assertTrue(LIMEService.isEndkeyCommitKey(';', ";/", false, 2, false));
 
         assertFalse(LIMEService.isEndkeyCommitKey(';', "", false, 2, true));
         assertFalse(LIMEService.isEndkeyCommitKey(';', null, false, 2, true));
         assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", true, 2, true));
-        assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", false, 0, true));
-        assertFalse(LIMEService.isEndkeyCommitKey(';', ";/", false, 2, false));
+        assertTrue(LIMEService.isEndkeyCommitKey(';', ";/", false, 0, true));
         assertFalse(LIMEService.isEndkeyCommitKey(',', ";/", false, 2, true));
     }
 
     @Test
-    public void endkeyCommitConsumesOptedInKeyThroughHighlightedCandidate() throws Exception {
-        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        DBServer.getInstance(appContext).setImConfig("custom", "limeendkey", ";/");
+    public void defaultSelectedCandidatePrefersChinesePunctuationOverRawComposingCode() {
+        Mapping composing = createPlainCandidate(".", ".");
+        composing.setComposingCodeRecord();
+        Mapping punctuation = createPlainCandidate(".", "。");
+        punctuation.setChinesePunctuationSymbolRecord();
+        List<Mapping> candidates = new ArrayList<>();
+        candidates.add(composing);
+        candidates.add(punctuation);
 
-        LIMEService service = new LIMEService();
-        setPrivateField(service, "SearchSrv", new SearchServer(appContext));
+        assertEquals(1, LIMEService.defaultSelectedCandidateIndex(candidates, false));
+        assertSame(punctuation, LIMEService.defaultSelectedCandidateForSuggestions(candidates, false));
+    }
+
+    @Test
+    public void defaultSelectedCandidateDoesNotPromoteArbitrarySecondCandidate() {
+        Mapping composing = createPlainCandidate(".", ".");
+        composing.setComposingCodeRecord();
+        Mapping arbitrary = createPlainCandidate(".", "not-default");
+        List<Mapping> candidates = new ArrayList<>();
+        candidates.add(composing);
+        candidates.add(arbitrary);
+
+        assertEquals(0, LIMEService.defaultSelectedCandidateIndex(candidates, false));
+        assertSame(composing, LIMEService.defaultSelectedCandidateForSuggestions(candidates, false));
+    }
+
+    @Test
+    public void endkeyCommitAppendsOptedInImkeyBeforeCommitting() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        Mapping composing = createCandidate("aa;", "aa;");
+        composing.setComposingCodeRecord();
+        Mapping candidate = createCandidate("aa;", "日");
+        LinkedList<Mapping> candidates = new LinkedList<>();
+        candidates.add(composing);
+        candidates.add(candidate);
+
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfig("custom", LIME.IM_LIME_ENDKEY)).thenReturn(";/");
+        when(searchServer.getImConfig("custom", "imkeys")).thenReturn("abcdefghijklmnopqrstuvwxyz;");
+        when(searchServer.getMappingByCode("aa;", true, false)).thenReturn(candidates);
+        when(searchServer.getRealCodeLength(candidate, "aa;")).thenReturn(3);
+        when(searchServer.getRelatedByWord("日", false)).thenReturn(new LinkedList<>());
+
+        TestableLIMEService service = new TestableLIMEService();
+        setPrivateField(service, "SearchSrv", searchServer);
         setPrivateField(service, "activeIM", "custom");
         setPrivateField(service, "mEnglishOnly", false);
         setPrivateField(service, "mComposing", new StringBuilder("aa"));
         setPrivateField(service, "hasCandidatesShown", true);
+        setPrivateField(service, "currentSoftKeyboard", "custom");
+        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(true);
@@ -174,13 +225,15 @@ public class LIMEServiceTest {
         handleEndkeyCommit.setAccessible(true);
 
         assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ';'));
-        verify(candidateView).takeSelectedSuggestion();
+        verify(searchServer).getMappingByCode("aa;", true, false);
+        verify(candidateView, never()).takeSelectedSuggestion();
+        verify(inputConnection).commitText("日", 1);
 
         assertFalse((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
     }
 
     @Test
-    public void endkeyCommitFallsBackToSelectedCandidateWhenHighlightedViewSelectionFails() throws Exception {
+    public void endkeyOutsideImkeysCommitsCurrentThenRawTriggerWhenNoTriggerMapping() throws Exception {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         InputConnection inputConnection = mock(InputConnection.class);
         when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
@@ -195,6 +248,7 @@ public class LIMEServiceTest {
         Mapping candidate = createCandidate("aa", "日");
         SearchServer searchServer = mock(SearchServer.class);
         when(searchServer.getImConfig("cj4", LIME.IM_LIME_ENDKEY)).thenReturn(",.");
+        when(searchServer.getImConfig("cj4", "imkeys")).thenReturn("abcdefghijklmnopqrstuvwxyz");
         when(searchServer.getRealCodeLength(candidate, "aa")).thenReturn(2);
         when(searchServer.getRelatedByWord("日", false)).thenReturn(new LinkedList<>());
 
@@ -219,6 +273,168 @@ public class LIMEServiceTest {
         assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
         verify(candidateView).takeSelectedSuggestion();
         verify(inputConnection).commitText("日", 1);
+        verify(inputConnection).commitText(",", 1);
+    }
+
+    @Test
+    public void endkeyOutsideImkeysCommitsCurrentThenFreshTriggerCandidate() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        Mapping composing = createCandidate("aa", "aa");
+        composing.setComposingCodeRecord();
+        Mapping candidate = createCandidate("aa", "昌");
+        LinkedList<Mapping> candidates = new LinkedList<>();
+        candidates.add(composing);
+        candidates.add(candidate);
+        Mapping commaComposing = createCandidate(",", ",");
+        commaComposing.setComposingCodeRecord();
+        Mapping commaCandidate = createCandidate(",", "，");
+        LinkedList<Mapping> commaCandidates = new LinkedList<>();
+        commaCandidates.add(commaComposing);
+        commaCandidates.add(commaCandidate);
+
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfig("cj", LIME.IM_LIME_ENDKEY)).thenReturn(",.");
+        when(searchServer.getImConfig("cj", "imkeys")).thenReturn("abcdefghijklmnopqrstuvwxyz");
+        when(searchServer.getMappingByCode("aa", true, false)).thenReturn(candidates);
+        when(searchServer.getMappingByCode(",", true, false)).thenReturn(commaCandidates);
+        when(searchServer.getRealCodeLength(candidate, "aa")).thenReturn(2);
+        when(searchServer.getRealCodeLength(commaCandidate, ",")).thenReturn(1);
+        when(searchServer.getRelatedByWord("昌", false)).thenReturn(new LinkedList<>());
+        when(searchServer.getRelatedByWord("，", false)).thenReturn(new LinkedList<>());
+
+        TestableLIMEService service = new TestableLIMEService();
+        setPrivateField(service, "SearchSrv", searchServer);
+        setPrivateField(service, "activeIM", "cj");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", false);
+        setPrivateField(service, "currentSoftKeyboard", "cj");
+        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(false);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
+        verify(searchServer).getMappingByCode("aa", true, false);
+        verify(searchServer).getMappingByCode(",", true, false);
+        org.mockito.InOrder inOrder = inOrder(inputConnection);
+        inOrder.verify(inputConnection).commitText("昌", 1);
+        inOrder.verify(inputConnection).commitText("，", 1);
+    }
+
+    @Test
+    public void endkeyCommitIgnoresStalePrefixCandidateAndResolvesCurrentComposing() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        Mapping staleCandidate = createCandidate("a", "日");
+        Mapping composing = createCandidate("aa", "aa");
+        composing.setComposingCodeRecord();
+        Mapping currentCandidate = createCandidate("aa", "昌");
+        LinkedList<Mapping> candidates = new LinkedList<>();
+        candidates.add(composing);
+        candidates.add(currentCandidate);
+
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfig("cj", LIME.IM_LIME_ENDKEY)).thenReturn(",.");
+        when(searchServer.getMappingByCode("aa", true, false)).thenReturn(candidates);
+        when(searchServer.getRealCodeLength(currentCandidate, "aa")).thenReturn(2);
+        when(searchServer.getRelatedByWord("昌", false)).thenReturn(new LinkedList<>());
+
+        TestableLIMEService service = new TestableLIMEService();
+        setPrivateField(service, "SearchSrv", searchServer);
+        setPrivateField(service, "activeIM", "cj");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", true);
+        setPrivateField(service, "hasMappingList", true);
+        setPrivateField(service, "selectedCandidate", staleCandidate);
+        setPrivateField(service, "currentSoftKeyboard", "cj");
+        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(false);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
+        verify(searchServer).getMappingByCode("aa", true, false);
+        verify(inputConnection).commitText("昌", 1);
+    }
+
+    @Test
+    public void endkeyCommitDoesNotPickHighlightedStalePrefixCandidate() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        InputConnection inputConnection = mock(InputConnection.class);
+        when(inputConnection.commitText(any(), anyInt())).thenReturn(true);
+
+        class TestableLIMEService extends LIMEService {
+            @Override
+            public InputConnection getCurrentInputConnection() {
+                return inputConnection;
+            }
+        }
+
+        Mapping staleCandidate = createCandidate("a", "日");
+        Mapping composing = createCandidate("aa", "aa");
+        composing.setComposingCodeRecord();
+        Mapping currentCandidate = createCandidate("aa", "昌");
+        LinkedList<Mapping> candidates = new LinkedList<>();
+        candidates.add(composing);
+        candidates.add(currentCandidate);
+
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfig("cj", LIME.IM_LIME_ENDKEY)).thenReturn(",.");
+        when(searchServer.getMappingByCode("aa", true, false)).thenReturn(candidates);
+        when(searchServer.getRealCodeLength(currentCandidate, "aa")).thenReturn(2);
+        when(searchServer.getRelatedByWord("昌", false)).thenReturn(new LinkedList<>());
+
+        TestableLIMEService service = new TestableLIMEService();
+        setPrivateField(service, "SearchSrv", searchServer);
+        setPrivateField(service, "activeIM", "cj");
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder("aa"));
+        setPrivateField(service, "hasCandidatesShown", true);
+        setPrivateField(service, "hasMappingList", true);
+        setPrivateField(service, "selectedCandidate", staleCandidate);
+        setPrivateField(service, "currentSoftKeyboard", "cj");
+        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+
+        CandidateView candidateView = mock(CandidateView.class);
+        when(candidateView.takeSelectedSuggestion()).thenReturn(true);
+        setPrivateField(service, "mCandidateView", candidateView);
+
+        Method handleEndkeyCommit = LIMEService.class.getDeclaredMethod("handleEndkeyCommit", int.class);
+        handleEndkeyCommit.setAccessible(true);
+
+        assertTrue((Boolean) handleEndkeyCommit.invoke(service, (int) ','));
+        verify(candidateView, never()).takeSelectedSuggestion();
+        verify(searchServer).getMappingByCode("aa", true, false);
+        verify(inputConnection).commitText("昌", 1);
     }
 
     @Test
@@ -511,6 +727,13 @@ public class LIMEServiceTest {
         mapping.setCode(code);
         mapping.setWord(word);
         mapping.setExactMatchToCodeRecord();
+        return mapping;
+    }
+
+    private static Mapping createPlainCandidate(String code, String word) {
+        Mapping mapping = new Mapping();
+        mapping.setCode(code);
+        mapping.setWord(word);
         return mapping;
     }
 
