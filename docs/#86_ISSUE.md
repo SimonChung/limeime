@@ -4,12 +4,14 @@ Live issue: https://github.com/lime-ime/limeime/issues/86
 
 ## Status
 
-- State: open
+- State: closed as completed on 2026-06-04
 - Label: `bug`
 - Assignee: `jrywu`
 - Source: maintainer-created bug report from Jeremy
 - Platform: iOS
-- Public reporter follow-up: none needed; this is maintainer-created.
+- Fix commit: `90b8fbc51ea137ceeb0646221cda763d40d72d13` (`#86 iOS fix keyboard: reopen DB after restore; align default-DB to Android`)
+- Closing comment: https://github.com/lime-ime/limeime/issues/86#issuecomment-4625047817
+- Public reporter follow-up: none needed; this is maintainer-created. Remaining delivery validation belongs to normal iOS/TestFlight/App Store release QA, not an active issue watch.
 
 ## Symptom
 
@@ -33,14 +35,17 @@ Possible failure modes to verify:
 - `keyboard_list` points to an IM not present/enabled after restore and is not reset.
 - The timestamp reload path does not fully invalidate extension runtime state when iOS keeps the keyboard extension process alive.
 
-## Follow-up direction
+## Fix summary
 
-- On successful iOS restore, validate/regenerate app-group IM state (`keyboard_state`, `keyboard_list`) against the restored `im` table.
-- Ensure the keyboard extension fully reopens/rebuilds runtime DB/search state after `lime_db_restored_at` changes.
-- If saved state is invalid, fall back to restored enabled IMs rather than leaving `activatedIMs` empty.
-- Add targeted logging for restore timestamp, all IM count, enabled IM count, saved `keyboard_state`, resolved active IM count, and active IM.
+Commit `90b8fbc51ea137ceeb0646221cda763d40d72d13` closed the implementation gap by:
 
-## Verification
+- reopening the keyboard runtime database after the restore timestamp changes;
+- rebuilding activated IMs from restored enabled IMs instead of trusting stale index-based `keyboard_state` data;
+- aligning iOS default-DB behavior with Android so restored/default IM state is rebuilt consistently.
+
+## Verification / release QA
+
+Implementation is closed on `master`. Remaining validation is normal iOS/TestFlight/App Store release QA:
 
 - Restore an iOS backup with IM tables.
 - Confirm LIME Settings shows the restored IM tables.
