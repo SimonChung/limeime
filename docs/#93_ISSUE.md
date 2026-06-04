@@ -8,19 +8,21 @@ Follow-up maintainer context added an Android scope: Android could import a `.li
 
 ## Current classification
 
+- State: closed as completed on 2026-06-04
 - Type: bug / usability
 - Platform: iOS and Android
 - Reporter/source: maintainer-created (`limeimetw`)
 - Live labels: `bug`, `Usability`
 - Live assignee: `jrywu`
 - Public maintainer context: https://github.com/lime-ime/limeime/issues/93#issuecomment-4556745511 recorded the Android metadata parsing scope.
+- Fix merge commit: `43aa6c887d9eebf162891549d0ef04fca9b6fe50` (`android ios fix #90 #91 #93 #94 #96 #99 #100: merge next release updates`)
 - Closure: #93 was closed as completed on 2026-06-04. Maintainer closure comment: https://github.com/lime-ime/limeime/issues/93#issuecomment-4625074355.
 
 ## Implementation and closure status
 
-Fixed on `master` by PR #101 merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50` (`android ios fix #90 #91 #93 #94 #96 #99 #100: merge next release updates`).
+Fixed on `master` by PR #101 merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50`.
 
-- Android `.lime` delimiter detection now ignores blank/comment lines so leading Array10-style `#` comments do not skew parsing.
+- Android `.lime` delimiter detection ignores blank/comment lines so leading Array10-style `#` comments do not skew parsing.
 - Android `.lime` parsing skips `#` comment lines and persists `@cname@` / `@version@` metadata.
 - Android regression coverage imports an Array10-style `.lime` fixture with comments and verifies metadata persistence.
 - iOS imported `.lime` tables without cname metadata now remain visible in the installed IM list by using a safe IM full-name fallback.
