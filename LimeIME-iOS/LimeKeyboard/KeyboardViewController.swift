@@ -257,8 +257,11 @@ final class KeyboardViewController: UIInputViewController {
             .double(forKey: "lime_db_restored_at") ?? 0
         if restoredAt > lastKnownRestoreTimestamp {
             lastKnownRestoreTimestamp = restoredAt
+            // Settings restored the shared lime.db in its own process; our
+            // DBServer.shared still holds a GRDB queue bound to the old inode.
+            // Force a reopen so the keyboard sees the restored IMs (#86).
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.setupDatabase()
+                self?.setupDatabase(forceReopen: true)
             }
         }
         sharedDefaults?.set(true, forKey: "keyboard_extension_loaded")
@@ -496,8 +499,11 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Database Setup
 
-    private func setupDatabase() {
-        guard let context = try? DBServer.shared.prepareKeyboardRuntimeDatabase() else { return }
+    /// - Parameter forceReopen: passed through to `prepareKeyboardRuntimeDatabase`
+    ///   so a Settings-app restore (#86) rebuilds the stale DB connection before
+    ///   resolving the activated IM list. First load (viewDidLoad) passes false.
+    private func setupDatabase(forceReopen: Bool = false) {
+        guard let context = try? DBServer.shared.prepareKeyboardRuntimeDatabase(forceReopen: forceReopen) else { return }
         let ss = context.searchServer
         let resolved = context.activatedIMs
         let resolvedIM = context.initialIM

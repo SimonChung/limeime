@@ -767,7 +767,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 48AD57F172DCC0C2BD747A7B /* Build configuration list for PBXNativeTarget "LimeKeyboard" */;
 			buildPhases = (
-				1E20D112A5828C5602A96551 /* Copy phonetic.db to bundle */,
 				7773AA62913279E155050F6F /* Copy emoji.db to bundle */,
 				B1DDA941604063AA655294A3 /* Sources */,
 				F3F12614B80FA93D90347100 /* Resources */,
@@ -975,25 +974,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		1E20D112A5828C5602A96551 /* Copy phonetic.db to bundle */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Copy phonetic.db to bundle";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/phonetic.db",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "SRC=\"${SRCROOT}/../Database/phonetic.db\"\nDST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/phonetic.db\"\nif [ -f \"$SRC\" ]; then\n  cp -f \"$SRC\" \"$DST\"\nfi\n";
-		};
 		7773AA62913279E155050F6F /* Copy emoji.db to bundle */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

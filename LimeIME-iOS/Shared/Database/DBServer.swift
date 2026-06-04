@@ -109,6 +109,24 @@ final class DBServer {
         }
     }
 
+    /// Discards the current `datasource` and rebuilds a fresh `LimeDB` against the
+    /// on-disk `lime.db`. Required in the keyboard extension after a Settings-app
+    /// restore (#86): the restore happens in the Settings process, replacing the
+    /// shared `lime.db` file on disk, but the keyboard extension's own
+    /// `DBServer.shared.datasource` still holds a GRDB `DatabaseQueue` bound to the
+    /// old (now-swapped/deleted) inode, so every read returns zero rows → zero IMs.
+    /// Closing + reopening rebinds the queue to the restored file. Mirrors the
+    /// inline rebuild already used inside `backupDatabase` / `restoreDatabase`.
+    func reopenDatabaseFromDisk() {
+        closeDatabase()
+        let dbURL = dataDirURL.appendingPathComponent(DBServer.databaseName)
+        datasource = nil
+        datasource = try? LimeDB(path: dbURL.path)
+        if let bundledURL = Bundle.main.url(forResource: "lime", withExtension: "db") {
+            datasource?.repairKeyboardCatalogIfNeeded(from: bundledURL)
+        }
+    }
+
     // MARK: - 1. isDatabaseOnHold
     func isDatabaseOnHold() -> Bool {
         return datasource?.isDatabaseOnHold() ?? false
@@ -863,6 +881,10 @@ final class DBServer {
         datasource?.getImConfig(imCode, field) ?? ""
     }
 
+    func getImConfigList(_ code: String?, _ configEntry: String?) -> [LimeImConfigRow] {
+        datasource?.getImConfigList(code, configEntry) ?? []
+    }
+
     func setImConfig(_ imCode: String, _ field: String, _ value: String) {
         datasource?.setImConfig(imCode, field, value)
     }
@@ -926,19 +948,32 @@ final class DBServer {
 
     // MARK: - Keyboard Runtime Bootstrap
 
-    func prepareKeyboardRuntimeDatabase() throws -> KeyboardRuntimeContext {
+    /// - Parameter forceReopen: When true, discards the cached `datasource` and
+    ///   rebuilds it against the on-disk `lime.db` before reading IM configs. The
+    ///   keyboard extension passes `true` after a Settings-app restore (#86) so the
+    ///   stale GRDB queue bound to the pre-restore inode is replaced and IM reads
+    ///   see the restored data instead of returning zero IMs.
+    func prepareKeyboardRuntimeDatabase(forceReopen: Bool = false) throws -> KeyboardRuntimeContext {
         let dbURL = dataDirURL.appendingPathComponent(DBServer.databaseName)
         if !FileManager.default.fileExists(atPath: dbURL.path) {
             try copyBundledDatabase(to: dbURL)
         }
 
+        if forceReopen { reopenDatabaseFromDisk() }
+
         guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
-        try importPhoneticIfNeeded(containerURL: dataDirURL)
+        // No phonetic auto-seed: aligning with Android, the bundled default DB ships
+        // empty IM tables and no phonetic side-file. Restore-to-default => empty IM list.
         importRelatedIfNeeded()
 
         let allIMs = (try? ds.getAllImConfigs()) ?? []
-        let keyboardState = UserDefaults(suiteName: DBServer.appGroupID)?
-            .string(forKey: "keyboard_state") ?? ""
+        // After a restore (#86), `keyboard_state` holds row offsets captured against
+        // the PRE-restore im-table ordering; applying them to the restored table can
+        // resolve the wrong (or zero) IMs. Ignore the saved index map on forceReopen
+        // and rebuild the activated list from the restored `enabled` flags instead.
+        let keyboardState = forceReopen
+            ? ""
+            : (UserDefaults(suiteName: DBServer.appGroupID)?.string(forKey: "keyboard_state") ?? "")
         var activated: [ImConfig]
         if keyboardState.isEmpty {
             activated = allIMs.filter { $0.enabled }
@@ -948,9 +983,15 @@ final class DBServer {
                 .filter { enabledIndices.contains(String($0.offset)) }
                 .map { $0.element }
         }
+        // Align with Android buildActivatedIMList(): the activated IM list is built
+        // ONLY from enabled DB rows. When the DB has no enabled IMs (e.g. after
+        // restore-to-default), the list stays empty and the keyboard runs English-only
+        // (initOnStartInput uses the English layout when activatedIMs.isEmpty).
+        // No fabricated fallback IM list — that is what resurrected phonetic on iOS.
         if activated.isEmpty { activated = allIMs.filter { $0.enabled } }
-        if activated.isEmpty { activated = buildFallbackIMList() }
 
+        // `initialIM` only seeds the SearchServer's internal table pointer; when
+        // `activated` is empty it is never surfaced (keyboard is English-only).
         let firstNick = activated.first?.tableNick
             ?? allIMs.first(where: { $0.enabled })?.tableNick
             ?? "phonetic"
@@ -975,48 +1016,11 @@ final class DBServer {
         try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
     }
 
-    private func importPhoneticIfNeeded(containerURL: URL) throws {
-        guard !tableHasData("phonetic") else { return }
-        guard let sourceURL = Bundle.main.url(forResource: "phonetic", withExtension: "db") else { return }
-        try importFromAttachedDB(sourcePath: sourceURL.path, tableName: "phonetic")
-        datasource?.resetCache()
-    }
-
     private func importRelatedIfNeeded() {
         guard !tableHasData("related") else { return }
         guard let sourceURL = Bundle.main.url(forResource: "lime", withExtension: "db") else { return }
         importDbRelated(sourcedb: sourceURL)
         datasource?.resetCache()
-    }
-
-    private func buildFallbackIMList() -> [ImConfig] {
-        let candidates: [(nick: String, label: String, keyboard: String)] = [
-            ("phonetic", "注音",     "lime_phonetic"),
-            ("dayi",     "大易",     "lime_dayi"),
-            ("cj",       "倉頡",     "lime_cj"),
-            ("cj5",      "倉頡五代", "lime_cj"),
-            ("array",    "行列",     "lime_array"),
-            ("array10",  "行列十",   "phone_simple"),
-            ("wb",       "筆順五碼", "lime_wb"),
-            ("hs",       "許氏",     "lime_hs"),
-            ("ez",       "輕鬆",     "lime_ez"),
-            ("scj",      "速成",     "lime_cj"),
-            ("ecj",      "易倉頡",   "lime_cj"),
-        ]
-        var idx: Int64 = 0
-        return candidates.compactMap { candidate in
-            guard tableHasData(candidate.nick) else { return nil }
-            defer { idx += 1 }
-            return ImConfig(id: idx,
-                            imName: candidate.nick,
-                            tableNick: candidate.nick,
-                            label: candidate.label,
-                            fullName: "",
-                            keyboardId: candidate.keyboard,
-                            keyboardLandscapeId: candidate.keyboard,
-                            enabled: true,
-                            sortOrder: Int(idx))
-        }
     }
 
     // MARK: - Related Proxies
