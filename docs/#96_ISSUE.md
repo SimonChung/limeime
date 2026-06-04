@@ -15,7 +15,7 @@ Implement generic, opt-in Lime end-key behavior for table IMs without changing c
 
 - Android keeps conventional `.cin %endkey` / `.lime @endkey@` as compatibility metadata only.
 - LimeIME runtime commit behavior uses Lime-specific metadata: `.cin %limeendkey ...` and `.lime @limeendkey@ |...`.
-- Configured Lime end-key characters should finish the current composition and commit through the same candidate-confirm semantics as existing confirmation keys.
+- Configured Lime end-key characters should finish the current composition and commit through the same candidate-confirm semantics as existing confirmation keys, even if the asynchronous candidate strip has not yet marked candidates as shown.
 - Tables without Lime end-key metadata remain unchanged. Keys such as `,` and `.` may still be ordinary roots/composing codes.
 - Search/candidate construction must not special-case Chinese punctuation for this feature.
 
@@ -28,7 +28,7 @@ Feature scope:
 - Android imports and persists `.cin %endkey` / `.lime @endkey@` as conventional compatibility metadata.
 - Android imports and persists `.cin %limeendkey` / `.lime @limeendkey@` as Lime runtime commit metadata.
 - LIME Settings IM detail shows an editable `limeendkey` metadata row labeled `結束鍵`.
-- Android runtime treats the active table's configured Lime end-key characters as opt-in commit triggers.
+- Android runtime treats the active table's configured Lime end-key characters as opt-in commit triggers and resolves the current composing candidates when needed before committing.
 - Tables without Lime end-key metadata remain unchanged; roots are not globally converted or reordered.
 
 Official table-data scope:
@@ -91,6 +91,7 @@ Relevant code area on current `master`:
   - Verify pressing configured end-key characters commits according to table metadata without requiring extra Space/Enter.
 - Regression:
   - Confirm existing custom `,` / `.` root/short-phrase mappings still work when Lime endkey is not configured.
+  - Confirm endkey resolves candidates for the exact current composing buffer and does not consume a stale prefix candidate from an older candidate strip update.
 
 ## Platform impact analysis
 

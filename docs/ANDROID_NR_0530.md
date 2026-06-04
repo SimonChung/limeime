@@ -376,7 +376,7 @@ public void updateIMMetadataFieldAllowsLimeEndkey() {
 
 ## Task 8: Implement Android end-key runtime behavior
 
-**Objective:** Implement `limeendkey` as a general per-table commit trigger. When the user presses **any key in the active table's end-key list** while composing, LIME should end composition immediately and commit the currently highlighted candidate item, matching the existing confirm behavior for Space and Enter. This is not a comma/period-only feature.
+**Objective:** Implement `limeendkey` as a general per-table commit trigger. When the user presses **any key in the active table's end-key list** while composing, LIME should end composition immediately and commit the current candidate selection, resolving the current composing candidates first if the asynchronous candidate strip has not yet marked candidates as shown. This is not a comma/period-only feature.
 
 **Files:**
 - Modify: `LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java` around key input / composing dispatch / Space/Enter candidate-confirm behavior / `commitTyped(...)`
@@ -390,10 +390,10 @@ public void updateIMMetadataFieldAllowsLimeEndkey() {
 2. If currently composing and the pressed key is in the active table's `limeendkey` set:
    - do **not** append the end-key character to the composing code;
    - do **not** query for a special direct punctuation mapping unless the existing Space/Enter confirm path already does so;
-   - immediately commit the currently highlighted candidate item using the same selected-candidate path as Space/Enter;
+   - immediately commit the current selected/resolved candidate item using the same selected-candidate path as Space/Enter;
    - clear composing state;
    - consume the key event so the raw end-key character is not emitted afterward.
-3. If there is no highlighted candidate but the normal Space/Enter path has an established fallback, reuse that fallback exactly. Do not invent a separate end-key-specific fallback.
+3. Resolve candidates for the exact current composing code before committing when the candidate strip has not yet shown current candidates or the stored selected candidate belongs to an older prefix. Do not append the end-key character to composing while waiting for the async strip update.
 4. If no Lime end-key metadata exists, preserve current behavior exactly.
 5. If the active table uses any potential end-key character as a normal root but does not opt into end keys, preserve root input.
 6. Do not change candidate-list ordering; the first candidate remains composing-code fallback. Endkey changes commit behavior only.
@@ -403,17 +403,18 @@ public void updateIMMetadataFieldAllowsLimeEndkey() {
 
 - Regression test with a table whose end-key list contains more than comma/period, e.g. `%limeendkey ;/` or `@limeendkey@ |;/`:
   - type a composing code that shows candidates;
-  - move/highlight a non-first candidate if the test seam allows;
+  - move/highlight a non-first candidate if the test seam allows, and separately cover the case where the candidate strip has not yet marked candidates shown;
   - press `;` or `/`;
   - assert the highlighted candidate is committed and composing is cleared;
   - assert the raw `;` or `/` is not committed.
+- Regression test stale candidate strip timing: after the composing buffer advances from `a` to `aa`, pressing a Lime end key must ignore any stale `a` selected/highlighted candidate, resolve `aa`, commit that candidate, and clear composing.
 - Compatibility test for comma/period as normal roots with no Lime end-key metadata: they remain input roots and are not treated as commit triggers.
 - Test that Space/Enter behavior remains unchanged after refactoring shared confirm logic.
 
 **Manual acceptance examples:**
 
-- Required visual verification: run `android-visual-verify` with Computer Use and inspect the composing/candidate strip before and after the end-key press, confirming the highlighted candidate commits and composing clears.
-- Table with `%limeendkey ;/`: after typing a code and highlighting a candidate, pressing `;` or `/` commits that highlighted candidate immediately, just like pressing Space/Enter would.
+- Required visual verification: run `android-visual-verify` with Computer Use and inspect the composing/candidate strip before and after the end-key press, confirming the current candidate commits and composing clears.
+- Table with `%limeendkey ;/`: after typing a code, pressing `;` or `/` commits the current selected/resolved candidate immediately, just like pressing Space/Enter would.
 - `.lime` with `@limeendkey@ |,.`: comma/period are only examples of keys in the list; they should use the same general end-key path.
 - 行列30/大易 style table without endkey metadata: comma/period or any other punctuation roots remain usable roots.
 

@@ -45,7 +45,7 @@ Last reviewed: 2026-06-03
 
 - #96 — Android + iOS/table-format — support end-key punctuation behavior for table IMs
   - Status: Android engine/settings support implemented on `android-next-release-all-fixes`; iOS and official table-data coordination remain pending.
-  - Current state: Android parses and persists conventional `.cin %endkey` / `.lime @endkey@` metadata for compatibility, parses Lime-specific `.cin %limeendkey` / `.lime @limeendkey@` for runtime commit behavior, exposes editable per-IM `limeendkey` metadata in LIME Settings, and commits the highlighted candidate only when an active table opts into a Lime end key. Tables without Lime end-key metadata still keep `,`/`.` roots usable.
+  - Current state: Android parses and persists conventional `.cin %endkey` / `.lime @endkey@` metadata for compatibility, parses Lime-specific `.cin %limeendkey` / `.lime @limeendkey@` for runtime commit behavior, exposes editable per-IM `limeendkey` metadata in LIME Settings, and commits the exact current selected/resolved candidate when an active table opts into a Lime end key. The end-key path rejects stale prefix candidates from an older composing buffer, so pressing the configured key ends the current composition instead of partially committing. Tables without Lime end-key metadata still keep `,`/`.` roots usable.
   - Next action: Include Android support in the review APK. iOS should be addressed later and aligned with the Android implementation. Official table metadata/mapping updates, such as adding opt-in 行列10 punctuation rows, are deferred to separate table-data release coordination.
 
 - #99 — Android — shifted keyboard layouts should hide non-alphabet IM root labels
