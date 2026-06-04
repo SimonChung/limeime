@@ -21,7 +21,7 @@ Implement generic, opt-in Lime end-key behavior for table IMs without changing c
 
 ## Android implementation status
 
-Implemented in Android source on branch `android-next-release-all-fixes`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.15.apk` in `LimeStudio/app/release/`.
 
 Feature scope:
 
@@ -107,4 +107,5 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 
 - Public clarification posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179
 - Current classification: enhancement/product work for generic table IM end-key behavior.
-- Next action: include Android support in review APK; address iOS/table-data coordination later.
+- Android retest request posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
+- Current next action: wait for Android feedback on the opt-in Lime end-key behavior in the current test APK; address iOS/table-data coordination later.

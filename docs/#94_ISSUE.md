@@ -68,13 +68,13 @@ This does **not** mean the entire backup implementation is generally broken. Exi
 
 ## Android implementation status
 
-Implemented in Android source on branch `android-next-release-all-fixes`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.15.apk` in `LimeStudio/app/release/`.
 
-- This branch supersedes/recreates the relevant PR #97 behavior instead of depending on a separate PR merge.
+- PR #101 supersedes/recreates the relevant PR #97 behavior instead of depending on a separate PR merge.
 - `lime.db-journal` is included only when it exists, because it is a transient SQLite rollback journal.
 - Backup failures propagate to callers instead of allowing UI success status after ZIP/copy failure.
 - Regression coverage verifies backup succeeds without `lime.db-journal` and propagates output-write failure.
-- Status after source implementation: awaiting full branch verification, review APK build, and reporter retest for non-empty ZIP creation/restoration.
+- Current follow-up: reporter retest requested in https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896 for non-empty ZIP creation and restore using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.15.apk
 
 ## Code paths to fix
 
@@ -147,4 +147,4 @@ Developer-side checks for the fix:
 
 A concise public reply was posted after the logcat attachment to confirm that the log identified the likely failure path and that no more logs are needed before a fix.
 
-Do not ask the reporter for another generic APK retest until a newer APK contains this targeted #94 backup fix.
+A scoped retest request was posted after PR #101 merged the targeted #94 backup fix into the current test APK. Do not post another generic retest request unless a newer/different build contains additional relevant changes or the reporter replies with new evidence.

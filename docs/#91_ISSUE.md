@@ -23,11 +23,12 @@ This is distinct from a product request for learning-based sorting: the reporter
 
 ## Android implementation status
 
-Implemented in Android source on branch `android-next-release-all-fixes`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.15.apk` in `LimeStudio/app/release/`.
 
 - Added regression coverage for duplicate-code `.cin` source order when selection sorting is disabled.
 - Updated Android candidate query ordering so score/base-score priority applies only when sorting is enabled; sorting-disabled same-code exact matches fall back to `_id ASC` / source insertion order.
-- Status after source implementation: awaiting full branch verification, review APK build, and reporter retest with 哈哈倉頡 `vmi`.
+- GitHub auto-closed the community issue during the PR merge, but reporter confirmation is still needed. The issue was reopened and a scoped retest request was posted: https://github.com/lime-ime/limeime/issues/91#issuecomment-4624477607
+- Current follow-up: wait for reporter retest with 哈哈倉頡 `vmi` using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.15.apk
 
 ## Relevant code observed
 
@@ -77,4 +78,4 @@ Current report was sufficient for the Android source fix. If reporter retest sti
 - Android unit/instrumentation test for `.cin` import source order with duplicate-code candidates and sorting disabled.
 - Manual verification with the reporter's `vmi` / `狀 绒 戕` case.
 - Confirm that enabling selection sorting still allows score/base-score/user-learning behavior where intended.
-- Ask for reporter retest only after a newer APK contains a targeted fix for this ordering path.
+- Reporter retest requested for the current `LIMEHD2026-6.1.15.apk` after PR #101 merged the targeted ordering fix.
