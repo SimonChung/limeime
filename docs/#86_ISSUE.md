@@ -9,53 +9,44 @@ Live issue: https://github.com/lime-ime/limeime/issues/86
 - Assignee: `jrywu`
 - Source: maintainer-created bug report from Jeremy
 - Platform: iOS
-- Fix commit: `90b8fbc51ea137ceeb0646221cda763d40d72d13` (`#86 iOS fix keyboard: reopen DB after restore; align default-DB to Android`)
+- Public reporter follow-up: none needed; this is maintainer-created.
+- Fix commit: [`90b8fbc51ea137ceeb0646221cda763d40d72d13`](https://github.com/lime-ime/limeime/commit/90b8fbc51ea137ceeb0646221cda763d40d72d13)
 - Closing comment: https://github.com/lime-ime/limeime/issues/86#issuecomment-4625047817
-- Public reporter follow-up: none needed; this is maintainer-created. Remaining delivery validation belongs to normal iOS/TestFlight/App Store release QA, not an active issue watch.
+- Remaining scope: normal iOS/TestFlight/App Store release QA; this is not Android APK-testable.
 
 ## Symptom
 
 After iOS database restore succeeds, LIME Settings shows the restored IM tables again, but the keyboard extension still behaves as if there are zero available IMs. Removing LIME from iOS system keyboard settings and adding it again makes the keyboard return to normal.
 
-## Analysis
+## Root cause / fixed behavior
 
-The restored data is likely present because LIME Settings can see the IM tables after restore. The workaround also points to stale keyboard-extension state or stale app-group preference state rather than a missing backup payload.
+The fix confirmed the likely runtime-refresh failure path: after Settings restored the database file, the keyboard extension could continue using a database/search runtime bound to the pre-restore state. If the saved app-group IM state no longer matched the restored database, the keyboard could resolve zero active IMs even though Settings could see the restored tables.
 
-Likely path:
+Per the GitHub-visible commit message, commit `90b8fbc51ea137ceeb0646221cda763d40d72d13` fixes the maintainer-created tracking issue by:
 
-1. `LimeIME-iOS/LimeSettings/Controllers/SetupImController.swift` `restoreDB(from:)` restores the database, re-registers known IMs, then writes app-group key `lime_db_restored_at`.
-2. `LimeIME-iOS/LimeKeyboard/KeyboardViewController.swift` `viewWillAppear(_:)` checks `lime_db_restored_at` and calls `setupDatabase()` when it changes.
-3. `setupDatabase()` updates `searchServer`, `activatedIMs`, `activeIM`, and layout state asynchronously.
-4. `LimeIME-iOS/Shared/Database/DBServer.swift` `prepareKeyboardRuntimeDatabase()` reads `keyboard_state` and filters `getAllImConfigs()` by saved index strings before falling back to enabled IMs/fallback IMs.
+- reopening the keyboard extension DB runtime after a Settings-app restore (`reopenDatabaseFromDisk` / `prepareKeyboardRuntimeDatabase(forceReopen:)`);
+- ignoring stale index-based `keyboard_state` on restore-driven reopen;
+- rebuilding activated IMs from restored enabled IMs instead of leaving the keyboard with an empty list;
+- updating iOS default-DB behavior so the bundled phonetic table is not silently resurrected after default restore/factory-reset paths, matching the intended Android parity described in the commit.
 
-Possible failure modes to verify:
+## Follow-up status
 
-- The extension retains stale `DBServer.shared`/`LimeDB`/`DatabaseQueue` state across restore.
-- `keyboard_state` stores pre-restore IM indices that no longer match the restored `im` table ordering, producing zero/wrong active IMs.
-- `keyboard_list` points to an IM not present/enabled after restore and is not reset.
-- The timestamp reload path does not fully invalidate extension runtime state when iOS keeps the keyboard extension process alive.
+The issue is closed as completed after the GitHub-visible fix commit and maintainer closing comment. The remaining work is release QA in the normal iOS/TestFlight/App Store delivery path, especially restore-from-backup and restore-to-default coverage.
 
-## Fix summary
+## Verification
 
-Commit `90b8fbc51ea137ceeb0646221cda763d40d72d13` closed the implementation gap by:
+For iOS release QA:
 
-- reopening the keyboard runtime database after the restore timestamp changes;
-- rebuilding activated IMs from restored enabled IMs instead of trusting stale index-based `keyboard_state` data;
-- aligning iOS default-DB behavior with Android so restored/default IM state is rebuilt consistently.
-
-## Verification / release QA
-
-Implementation is closed on `master`. Remaining validation is normal iOS/TestFlight/App Store release QA:
-
-- Restore an iOS backup with IM tables.
+- Restore an iOS backup with enabled IM tables.
 - Confirm LIME Settings shows the restored IM tables.
 - Without removing/re-adding the system keyboard, open the LIME keyboard in another app.
 - Confirm the keyboard sees/restores the IM list and can switch/input with restored IMs.
-- Repeat with a backup whose IM order/enabled state differs from the current install.
+- Repeat with a backup whose IM order/enabled state differs from the current install, confirming stale `keyboard_state` indices do not produce zero active IMs.
+- Test restore-to-default/factory-reset behavior and confirm iOS now matches Android: the default empty IM list / English-only state is preserved and the bundled phonetic table is not silently resurrected.
 
 ## Relationship to #85
 
-#85 tracks restore failure/success reporting and cloud/on-demand backup handling. This issue tracks a separate post-success iOS state sync problem where Settings has restored tables but the keyboard extension remains stale/empty.
+#85 tracks restore failure/success reporting and cloud/on-demand backup handling. This issue tracks a separate post-success iOS state sync problem where Settings has restored tables but the keyboard extension remains stale/empty until the system keyboard is removed and re-added.
 
 ---
 
@@ -126,4 +117,3 @@ Possible causes to verify:
 ## Notes
 
 This is separate from cloud/on-demand backup file restore reliability tracked in #85. This issue is about a restore that appears to succeed and restores tables in Settings, while the keyboard extension remains stale until the system keyboard is removed and re-added.
-
