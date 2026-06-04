@@ -225,7 +225,7 @@ final class ManageImController: BaseController {
         guard !tableNick.isEmpty else {
             return .failure(ControllerError.validation("輸入法代碼不能為空"))
         }
-        guard field == "name" || field == "version" else {
+        guard field == "name" || field == "version" || field == "limeendkey" else {
             return .failure(ControllerError.validation("欄位不正確"))
         }
         guard field != "name" || !trimmedValue.isEmpty else {

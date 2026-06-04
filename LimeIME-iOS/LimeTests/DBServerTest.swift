@@ -424,6 +424,43 @@ final class DBServerTest: XCTestCase {
         }
     }
 
+    func testDBServerBackupDatabaseSkipsMissingRollbackJournal() throws {
+        let db = try makeLimeDB()
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, "backup_no_journal", "無journal", 0)
+        let journalURL = tempURL.deletingLastPathComponent()
+            .appendingPathComponent(DBServer.databaseJournal)
+        try? FileManager.default.removeItem(at: journalURL)
+
+        let server = DBServer(_testDatasource: db)
+        let backupURL = tempFile(".zip")
+        defer { try? FileManager.default.removeItem(at: backupURL) }
+
+        try server.backupDatabase(uri: backupURL)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.path))
+        XCTAssertGreaterThan(backupURL.fileSizeBytes, 0)
+
+        let archive = try XCTUnwrap(Archive(url: backupURL, accessMode: .read))
+        let entryNames = Set(archive.map(\.path))
+        XCTAssertTrue(entryNames.contains(DBServer.databaseName),
+                      "Backup must include the live lime.db")
+        XCTAssertTrue(entryNames.contains(DBServer.preferenceManifestPath),
+                      "Backup must include the preference compatibility manifest")
+        XCTAssertFalse(entryNames.contains(DBServer.databaseJournal),
+                       "Missing rollback journal is optional and must not be required in the archive")
+    }
+
+    func testDBServerBackupDatabasePropagatesOutputWriteFailure() throws {
+        let db = try makeLimeDB()
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, "backup_bad_uri", "壞路徑", 0)
+        let server = DBServer(_testDatasource: db)
+        let bogusURL = URL(fileURLWithPath: "/dev/null/\(UUID()).zip")
+
+        XCTAssertThrowsError(try server.backupDatabase(uri: bogusURL))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: bogusURL.path),
+                       "Failed backup destination must not be reported as a created backup")
+    }
+
     func testDBServerBackupDatabaseWithNullUri() {
         // Use a URL that cannot be written to.
         let bogusURL = URL(fileURLWithPath: "/dev/null/\(UUID()).zip")

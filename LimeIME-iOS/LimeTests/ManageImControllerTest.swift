@@ -158,6 +158,30 @@ final class ManageImControllerTest: XCTestCase {
         XCTAssertEqual(db.getImConfig(testTable, "version"), "Independent Version")
     }
 
+    func testUpdateIMMetadataFieldAllowsBlankLimeEndkey() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = await LimeIME.ManageImController(dbServer: LimeIME.DBServer(_testDatasource: db))
+
+        let setResult = await controller.updateIMMetadataField(tableNick: testTable,
+                                                               field: "limeendkey",
+                                                               value: " ., ")
+        guard case .success = setResult else {
+            XCTFail("Expected limeendkey update to succeed, got \(setResult)")
+            return
+        }
+        XCTAssertEqual(db.getImConfig(testTable, "limeendkey"), ".,")
+
+        let clearResult = await controller.updateIMMetadataField(tableNick: testTable,
+                                                                 field: "limeendkey",
+                                                                 value: " ")
+        guard case .success = clearResult else {
+            XCTFail("Expected blank limeendkey update to succeed, got \(clearResult)")
+            return
+        }
+        XCTAssertEqual(db.getImConfig(testTable, "limeendkey"), "")
+    }
+
     // MARK: - updateRecord
 
     func testUpdateRecordAfterAdd() async throws {

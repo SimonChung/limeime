@@ -233,7 +233,7 @@
                         android:layout_weight="1"
                         android:gravity="end"
                         android:text="版權聲明"
-                        android:textColor="@color/material_blue"
+                        android:textColor="?attr/colorPrimary"
                         android:clickable="true"
                         android:focusable="true" />
 
@@ -265,7 +265,7 @@
                         android:layout_weight="1"
                         android:gravity="end"
                         android:text="@string/url_github_limeime"
-                        android:textColor="@color/material_blue"
+                        android:textColor="?attr/colorPrimary"
                         android:clickable="true"
                         android:focusable="true" />
 

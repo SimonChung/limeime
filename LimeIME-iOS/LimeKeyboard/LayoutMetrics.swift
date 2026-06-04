@@ -320,6 +320,10 @@ enum LayoutMetrics {
         // T9-style multi-tap window — same key within this window cycles
         // through `codes[]` instead of starting a new selection.
         static let multiTapTimeout: TimeInterval = 0.8
+
+        // Shift Lock gesture window. Single taps only toggle one-shot shift;
+        // a second tap inside this window enters Shift Lock.
+        static let shiftDoubleTapTimeout: TimeInterval = 0.3
     }
 
     // MARK: - Long-press popup keyboard (mini keyboard above a key)

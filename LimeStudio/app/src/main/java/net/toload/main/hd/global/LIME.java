@@ -248,6 +248,7 @@ public class LIME {
 	public static final String IM_KEYBOARD = "keyboard";
 	public static final String IM_SELKEY = "selkey";
 	public static final String IM_ENDKEY = "endkey";
+	public static final String IM_LIME_ENDKEY = "limeendkey";
 	public static final String IM_SPACESTYLE = "spacestyle";
 	
 	// Database and IM Status

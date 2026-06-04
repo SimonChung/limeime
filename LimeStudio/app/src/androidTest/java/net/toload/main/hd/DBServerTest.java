@@ -1051,6 +1051,68 @@ public class DBServerTest {
         }
     }
 
+    @Test(timeout = 30000)
+    public void backupDatabaseSkipsMissingRollbackJournal() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DBServer dbServer = DBServer.getInstance(appContext);
+
+        if (!ensureDatabaseReady(dbServer)) {
+            fail("ERROR: Database is still on hold after waiting 10 seconds.");
+        }
+
+        File journalFile = appContext.getDatabasePath(LIME.DATABASE_JOURNAL);
+        if (journalFile.exists() && !journalFile.delete()) {
+            fail("Could not delete transient rollback journal before backup test");
+        }
+
+        File backupFile = new File(appContext.getCacheDir(),
+                "test_backup_without_journal_" + System.currentTimeMillis() + ".zip");
+        try {
+            dbServer.backupDatabase(android.net.Uri.fromFile(backupFile));
+
+            assertTrue("Backup file should be created", backupFile.exists());
+            assertTrue("Backup file should not be empty", backupFile.length() > 0);
+
+            List<String> entries = new ArrayList<>();
+            try (ZipFile zipFile = new ZipFile(backupFile)) {
+                Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
+                while (zipEntries.hasMoreElements()) {
+                    entries.add(zipEntries.nextElement().getName());
+                }
+            }
+
+            assertTrue("Backup zip should contain lime.db",
+                    entries.contains("databases/" + LIME.DATABASE_NAME));
+            assertTrue("Backup zip should contain shared preferences backup",
+                    entries.contains(LIME.SHARED_PREFS_BACKUP_NAME));
+            assertTrue("Backup zip should contain preference manifest",
+                    entries.contains(net.toload.main.hd.global.PreferenceBackupAdapter.MANIFEST_PATH));
+            assertFalse("Backup zip should not require missing rollback journal",
+                    entries.contains("databases/" + LIME.DATABASE_JOURNAL));
+        } finally {
+            if (backupFile.exists() && !backupFile.delete()) {
+                Log.w(TAG, "Failed to delete backup test file");
+            }
+        }
+    }
+
+    @Test(timeout = 30000)
+    public void backupDatabasePropagatesOutputWriteFailure() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        DBServer dbServer = DBServer.getInstance(appContext);
+
+        if (!ensureDatabaseReady(dbServer)) {
+            fail("ERROR: Database is still on hold after waiting 10 seconds.");
+        }
+
+        try {
+            dbServer.backupDatabase(null);
+            fail("backupDatabase should throw RemoteException when output Uri cannot be opened");
+        } catch (RemoteException expected) {
+            assertNotNull("backupDatabase should propagate a RemoteException", expected);
+        }
+    }
+
 
     @Test
     public void testDBServerResetMappingEdgeCases() {

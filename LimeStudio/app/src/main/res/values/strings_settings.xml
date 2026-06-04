@@ -709,7 +709,7 @@
     <string name="auto_chinese_symbol_summary">無候選字詞時顯示中文標點選項</string>
 
     <!-- 自動上屏設定 -->
-    <string name="auto_commit">電話鍵盤自動上屏</string>
+    <string name="auto_commit">自動上屏</string>
     <string name="auto_commit_summary">當輸入字根符合設定數則自動送出組字</string>
     <string-array name="auto_commit_labels">
         <item>無</item>
@@ -815,9 +815,11 @@
     <string name="im_detail_manage_related">瀏覽 / 編輯關聯字庫</string>
     <string name="im_detail_keyboard_picker_title">選擇鍵盤佈局</string>
     <string name="im_detail_label_version">版本</string>
+    <string name="im_detail_label_endkey">結束鍵</string>
     <string name="im_detail_edit_metadata_title">編輯輸入法資訊</string>
     <string name="im_detail_edit_name_title">編輯名稱</string>
     <string name="im_detail_edit_version_title">編輯版本</string>
+    <string name="im_detail_edit_endkey_title">編輯結束鍵</string>
     <string name="im_detail_edit_metadata_empty_name">名稱不能為空</string>
     <string name="im_detail_edit_metadata_failed">無法儲存輸入法資訊</string>
     <string name="im_list_header_installed">已安裝的輸入法</string>

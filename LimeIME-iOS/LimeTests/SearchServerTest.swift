@@ -898,6 +898,13 @@ final class SearchServerTest: XCTestCase {
         XCTAssertTrue(result.count >= list.count)
     }
 
+    func test_3_6_4_5_emojiInsertionPositionZeroDisablesCandidateInjection() throws {
+        XCTAssertFalse(SearchServer.shouldInjectEmojiCandidates(insertAt: 0))
+        XCTAssertFalse(SearchServer.shouldInjectEmojiCandidates(insertAt: -1))
+        XCTAssertTrue(SearchServer.shouldInjectEmojiCandidates(insertAt: 1))
+        XCTAssertTrue(SearchServer.shouldInjectEmojiCandidates(insertAt: 5))
+    }
+
     func test_3_6_4_5_emojiInsertionSkipsChinesePunctuationAtRequestedSlot() throws {
         let ss = try makeSearchServer()
         let list = [

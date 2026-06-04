@@ -13,11 +13,29 @@ struct IMDetailView: View {
     private enum MetadataField: String, Identifiable {
         case name
         case version
+        case endkey
 
         var id: String { rawValue }
-        var label: String { self == .name ? "名稱" : "版本" }
-        var title: String { self == .name ? "編輯名稱" : "編輯版本" }
-        var dbField: String { rawValue }
+        var label: String {
+            switch self {
+            case .name: return "名稱"
+            case .version: return "版本"
+            case .endkey: return "結束鍵"
+            }
+        }
+        var title: String {
+            switch self {
+            case .name: return "編輯名稱"
+            case .version: return "編輯版本"
+            case .endkey: return "編輯結束鍵"
+            }
+        }
+        var dbField: String {
+            switch self {
+            case .name, .version: return rawValue
+            case .endkey: return "limeendkey"
+            }
+        }
     }
 
     let im: IMRow
@@ -61,6 +79,7 @@ struct IMDetailView: View {
     @State private var showShareSheet = false
     @State private var displayName: String
     @State private var displayVersion: String = "—"
+    @State private var displayEndkey: String = "-"
     @State private var editMetadataValue: String = ""
     @State private var editingMetadataField: MetadataField?
     @State private var metadataError: String?
@@ -117,6 +136,13 @@ struct IMDetailView: View {
                         beginMetadataEdit(.version)
                     } label: {
                         editableMetadataRow(label: "版本", value: displayVersion)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        beginMetadataEdit(.endkey)
+                    } label: {
+                        editableMetadataRow(label: "結束鍵", value: displayEndkey)
                     }
                     .buttonStyle(.plain)
                 }
@@ -356,6 +382,8 @@ struct IMDetailView: View {
         let version = mappingVersion
         displayName = im.label
         displayVersion = version
+        let endkey = DBServer.shared.getImConfig(im.tableNick, "limeendkey")
+        displayEndkey = endkey.isEmpty ? "-" : endkey
         editMetadataValue = ""
     }
 
@@ -377,7 +405,14 @@ struct IMDetailView: View {
 
     private func beginMetadataEdit(_ field: MetadataField) {
         metadataError = nil
-        editMetadataValue = field == .name ? displayName : (displayVersion == "—" ? "" : displayVersion)
+        switch field {
+        case .name:
+            editMetadataValue = displayName
+        case .version:
+            editMetadataValue = displayVersion == "—" ? "" : displayVersion
+        case .endkey:
+            editMetadataValue = displayEndkey == "-" ? "" : displayEndkey
+        }
         editingMetadataField = field
     }
 
@@ -395,8 +430,10 @@ struct IMDetailView: View {
                     let trimmedValue = editMetadataValue.trimmingCharacters(in: .whitespacesAndNewlines)
                     if field == .name {
                         displayName = trimmedValue
-                    } else {
+                    } else if field == .version {
                         displayVersion = trimmedValue.isEmpty ? "—" : trimmedValue
+                    } else {
+                        displayEndkey = trimmedValue.isEmpty ? "-" : trimmedValue
                     }
                     editingMetadataField = nil
                     onRefresh?()

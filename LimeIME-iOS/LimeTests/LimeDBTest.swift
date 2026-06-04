@@ -318,6 +318,57 @@ final class LimeDBTest: XCTestCase {
                                  "Partial matches should not exceed similarCodeCandidatesCap")
     }
 
+    func testLimeDBGetMappingByCodePreservesDuplicateCodeInsertionOrderWhenSortingDisabled() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.sortSuggestions = false
+        db.similarCodeCandidatesCap = 0
+
+        let code = "vmi"
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "狀", 0)
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "绒", 20)
+        db.addOrUpdateMappingRecord(LIME.DB_TABLE_CUSTOM, code, "戕", 0)
+
+        let results = try XCTUnwrap(db.getMappingByCode(code, softKeyboard: true, getAllRecords: true))
+        let exactWords = results
+            .filter { $0.code == code && $0.isExactMatchToCodeRecord }
+            .map(\.word)
+
+        XCTAssertGreaterThanOrEqual(exactWords.count, 3)
+        XCTAssertEqual(Array(exactWords.prefix(3)), ["狀", "绒", "戕"],
+                       "When suggestion sorting is disabled, exact duplicate-code records must follow source/_id order even if one row has a learned score")
+    }
+
+    func testCinImportPreservesDuplicateCodeOrderWhenSelectionSortDisabled() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.sortSuggestions = false
+        db.similarCodeCandidatesCap = 0
+        let importURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".cin")
+        defer { try? FileManager.default.removeItem(at: importURL) }
+
+        let content = """
+        %ename issue91
+        %cname Issue91
+        %chardef begin
+        vmi 狀
+        vmi 绒
+        vmi 戕
+        %chardef end
+        """
+        try content.write(to: importURL, atomically: true, encoding: .utf8)
+
+        try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
+
+        let results = try XCTUnwrap(db.getMappingByCode("vmi", softKeyboard: true, getAllRecords: true))
+        let exactWords = results
+            .filter { $0.code == "vmi" && $0.isExactMatchToCodeRecord }
+            .map(\.word)
+
+        XCTAssertEqual(Array(exactWords.prefix(3)), ["狀", "绒", "戕"])
+    }
+
     func testLimeDBGetMappingByCodeWithAllRecords() throws {
         let db = try makeLimeDB()
         db.setTableName(LIME.DB_TABLE_CUSTOM)
@@ -624,8 +675,11 @@ final class LimeDBTest: XCTestCase {
         try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
 
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "version"), "My Custom Table 2026.05")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "自建輸入法")
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "selkey"), "123456789")
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "2")
+        let custom = try db.getAllImConfigs().first { $0.tableNick == LIME.DB_TABLE_CUSTOM }
+        XCTAssertEqual(custom?.label, "自建輸入法")
     }
 
     func testImportTxtFileStoresCnameMetadataFromLimeHeader() throws {
@@ -695,6 +749,9 @@ final class LimeDBTest: XCTestCase {
         try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
 
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "amount"), "2")
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "name"), "自建輸入法")
+        let custom = try db.getAllImConfigs().first { $0.tableNick == LIME.DB_TABLE_CUSTOM }
+        XCTAssertEqual(custom?.label, "自建輸入法")
         XCTAssertEqual(db.countRecords(LIME.DB_TABLE_CUSTOM, "code = ?", ["#"]), 0)
         XCTAssertEqual(db.countRecords(LIME.DB_TABLE_CUSTOM, "word IN (?, ?)", ["Begin", "End"]), 0)
     }
@@ -809,6 +866,7 @@ final class LimeDBTest: XCTestCase {
 
         let content = """
         @format@|lime-text-v2
+        @limeendkey@|.,
         @imkeys@|ab
         @imkeynames@|ㄅ\\|ㄆ
         %chardef begin
@@ -819,6 +877,7 @@ final class LimeDBTest: XCTestCase {
 
         try db.importTxtFile(at: importURL.path, tableName: LIME.DB_TABLE_CUSTOM)
 
+        XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "limeendkey"), ".,")
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "imkeys"), "ab")
         XCTAssertEqual(db.getImConfig(LIME.DB_TABLE_CUSTOM, "imkeynames"), "ㄅ|ㄆ")
     }
@@ -878,6 +937,37 @@ final class LimeDBTest: XCTestCase {
         let output = try String(contentsOf: exportURL, encoding: .utf8)
 
         XCTAssertTrue(output.contains("@format@|lime-text-v2"))
+        XCTAssertTrue(output.contains("@imkeys@|ab"))
+        XCTAssertTrue(output.contains("@imkeynames@|ㄅ\\|ㄆ"))
+    }
+
+    func testExportTxtTableLoadsImMetadataWhenConfigListIsNil() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord("aa", "測")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "name", "Friendly Name")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "version", "Version 2.0")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "selkey", "123456789")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "endkey", " ")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "limeendkey", ".,")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "spacestyle", "auto")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "imkeys", "ab")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "imkeynames", "ㄅ|ㄆ")
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL, imConfig: nil))
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+
+        XCTAssertTrue(output.contains("@format@|lime-text-v2"))
+        XCTAssertTrue(output.contains("@version@|Version 2.0"))
+        XCTAssertTrue(output.contains("@cname@|Friendly Name"))
+        XCTAssertTrue(output.contains("@selkey@|123456789"))
+        XCTAssertTrue(output.contains("@endkey@| "))
+        XCTAssertTrue(output.contains("@limeendkey@|.,"))
+        XCTAssertTrue(output.contains("@spacestyle@|auto"))
         XCTAssertTrue(output.contains("@imkeys@|ab"))
         XCTAssertTrue(output.contains("@imkeynames@|ㄅ\\|ㄆ"))
     }
@@ -2468,6 +2558,27 @@ final class LimeDBTest: XCTestCase {
         XCTAssertEqual(custom?.label, "Friendly Custom")
         XCTAssertEqual(custom?.id, Int64(sourceRow?.id ?? -1))
         XCTAssertNotEqual(custom?.id, Int64(versionRow?.id ?? -1))
+    }
+
+    func testGetAllImConfigsFallsBackToBuiltInFullNameWhenNameDescIsEmpty() throws {
+        let db = try makeLimeDB()
+        db.setImConfig("array10", "source", "array10a-v2023-1.0-20260517.lime")
+        db.setImConfig("array10", "name", "")
+
+        let array10 = try db.getAllImConfigs().first { $0.tableNick == "array10" }
+
+        XCTAssertEqual(array10?.label, "行列10輸入法")
+        XCTAssertEqual(array10?.fullName, "行列10輸入法")
+    }
+
+    func testGetAllImConfigsExcludesEmojiMetadataRows() throws {
+        let db = try makeLimeDB()
+        db.setImConfig("emoji", "version", "17.0")
+        db.setImConfig("emoji", "name", "Emoji 17.0 Dataset")
+
+        let configs = try db.getAllImConfigs()
+
+        XCTAssertFalse(configs.contains { $0.tableNick == "emoji" })
     }
 
     // MARK: - 36. DB 104 integrated seed / upgrade / restore paths

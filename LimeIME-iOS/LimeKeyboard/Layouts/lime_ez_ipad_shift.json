@@ -164,7 +164,7 @@
         {
           "code": 61,
           "label": "=",
-          "sublabel": "母",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -338,7 +338,7 @@
         {
           "code": 91,
           "label": "[",
-          "sublabel": "匚",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -364,7 +364,7 @@
         {
           "code": 92,
           "label": "\\",
-          "sublabel": "ㄏ",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -512,7 +512,7 @@
         {
           "code": 59,
           "label": ";",
-          "sublabel": "寸",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,
@@ -686,7 +686,7 @@
         {
           "code": 47,
           "label": "/",
-          "sublabel": "ㄥ",
+          "sublabel": "",
           "widthPercent": 7.0,
           "icon": "",
           "isModifier": false,

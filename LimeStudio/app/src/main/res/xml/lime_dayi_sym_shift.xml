@@ -30,17 +30,17 @@
 
 
 	<Row>
-		<Key limehd:codes="33" limehd:keyLabel="!\n言" 
+		<Key limehd:codes="33" limehd:keyLabel="!" 
 			 limehd:keyEdgeFlags="left" />
-		<Key limehd:codes="64" limehd:keyLabel="\@\n牛" />
-		<Key limehd:codes="35" limehd:keyLabel="\#\n目" />
-		<Key limehd:codes="36" limehd:keyLabel="$\n四" />
-		<Key limehd:codes="37" limehd:keyLabel="%\n王" />
-		<Key limehd:codes="94" limehd:keyLabel="^\n門" />
-		<Key limehd:codes="38" limehd:keyLabel="&amp;\n田" />
-		<Key limehd:codes="42" limehd:keyLabel="*\n米" />
-		<Key limehd:codes="40" limehd:keyLabel="(\n足" />
-		<Key limehd:codes="41" limehd:keyLabel=")\n金" limehd:keyEdgeFlags="right" />
+		<Key limehd:codes="64" limehd:keyLabel="\@" />
+		<Key limehd:codes="35" limehd:keyLabel="\#" />
+		<Key limehd:codes="36" limehd:keyLabel="$" />
+		<Key limehd:codes="37" limehd:keyLabel="%" />
+		<Key limehd:codes="94" limehd:keyLabel="^" />
+		<Key limehd:codes="38" limehd:keyLabel="&amp;" />
+		<Key limehd:codes="42" limehd:keyLabel="*" />
+		<Key limehd:codes="40" limehd:keyLabel="(" />
+		<Key limehd:codes="41" limehd:keyLabel=")" limehd:keyEdgeFlags="right" />
 	</Row>
 	
 	<Row>
@@ -66,7 +66,7 @@
 		<Key limehd:codes="74" limehd:keyLabel="J\n月" />
 		<Key limehd:codes="75" limehd:keyLabel="K\n立" />
 		<Key limehd:codes="76" limehd:keyLabel="L\n女" />
-		<Key limehd:codes="58" limehd:keyLabel=":\n虫" limehd:keyEdgeFlags="right" />
+		<Key limehd:codes="58" limehd:keyLabel=":" limehd:keyEdgeFlags="right" />
 	</Row>
 
 	<Row>
@@ -77,10 +77,10 @@
 		<Key limehd:codes="66" limehd:keyLabel="B\n馬" />
 		<Key limehd:codes="78" limehd:keyLabel="N\n魚" />
 		<Key limehd:codes="77" limehd:keyLabel="M\n雨" />
-		<Key limehd:codes="60" limehd:keyLabel="&lt;\n力" />
-		<Key limehd:codes="62" limehd:keyLabel="&gt;\n舟"
+		<Key limehd:codes="60" limehd:keyLabel="&lt;" />
+		<Key limehd:codes="62" limehd:keyLabel="&gt;"
 			limehd:popupKeyboard="@xml/popup_punctuation" />
-		<Key limehd:codes="63" limehd:keyLabel="\?\n竹" limehd:keyEdgeFlags="right" />
+		<Key limehd:codes="63" limehd:keyLabel="\?" limehd:keyEdgeFlags="right" />
 	</Row>
 	<Row limehd:rowEdgeFlags="bottom">
 		<Key limehd:codes="-3"  limehd:keyIcon="@drawable/sym_keyboard_done_light" limehd:isModifier="true"

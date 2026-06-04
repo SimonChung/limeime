@@ -39,6 +39,7 @@ final class KeyboardViewController: UIInputViewController {
     private var isShiftOn:    Bool = false
     private var isShiftKeyHeld: Bool = false
     private var shiftHoldModifiedCharacter: Bool = false
+    private var lastShiftTapTime: TimeInterval = 0
     private var activeIM:     String = "phonetic"
     /// Cached `imkeys` for the active IM (refreshed on every setTableName).
     /// On iPad layouts, characters whose code is NOT in this string are routed to
@@ -1087,6 +1088,10 @@ final class KeyboardViewController: UIInputViewController {
         case LimeKeyCode.arrowDown.rawValue:
             moveByLine(forward: true)
         default:
+            if handleLimeEndkeyCommit(code) {
+                consumeShiftAfterCharacter()
+                return
+            }
             handleCharacter(code)
             // Auto-commit check: array10 phone-numpad keyboard only.
             // Android uses currentSoftKeyboard.contains("phone") which accidentally also
@@ -1296,6 +1301,106 @@ final class KeyboardViewController: UIInputViewController {
         consumeShiftAfterCharacter()
     }
 
+    // MARK: - LIME Endkey Commit
+
+    private func activeImkeysForEndkey() -> String {
+        let configured = searchServer?.getImConfig(activeIM, "imkeys") ?? ""
+        return configured.isEmpty ? currentImKeys : configured
+    }
+
+    private func handleLimeEndkeyCommit(_ primaryCode: Int) -> Bool {
+        let limeendkey = searchServer?.getImConfig(activeIM, "limeendkey") ?? ""
+        guard LimeEndkeyPolicy.isCommitKey(primaryCode: primaryCode,
+                                           endkey: limeendkey,
+                                           englishOnly: mEnglishOnly) else {
+            return false
+        }
+
+        if LimeEndkeyPolicy.isKeyInImkeys(primaryCode: primaryCode, imkeys: activeImkeysForEndkey()) {
+            return commitComposingWithAppendedEndkey(primaryCode)
+        }
+
+        if !mComposing.isEmpty && !commitCurrentEndkeyComposing() {
+            return false
+        }
+        return commitFreshEndkeyOrRaw(primaryCode)
+    }
+
+    private func commitComposingWithAppendedEndkey(_ primaryCode: Int) -> Bool {
+        guard appendEndkeyToComposing(primaryCode) else { return false }
+        return commitResolvedEndkeyComposing()
+    }
+
+    private func commitCurrentEndkeyComposing() -> Bool {
+        if hasCurrentEndkeySelectedCandidate() {
+            commitSelectedEndkeyCandidate()
+            return true
+        }
+        return commitResolvedEndkeyComposing()
+    }
+
+    private func commitFreshEndkeyOrRaw(_ primaryCode: Int) -> Bool {
+        guard appendEndkeyToComposing(primaryCode) else { return false }
+        if commitResolvedEndkeyComposing() {
+            return true
+        }
+        clearComposing(force: false)
+        return true
+    }
+
+    private func appendEndkeyToComposing(_ primaryCode: Int) -> Bool {
+        guard primaryCode > 0, let scalar = UnicodeScalar(primaryCode) else { return false }
+        let char = String(Character(scalar))
+        let insertChar = (isShiftOn && primaryCode != LimeKeyCode.space.rawValue) ? char.uppercased() : char
+        mComposing += insertChar
+        isSelfUpdate = true
+        textDocumentProxy.insertText(insertChar)
+        isSelfUpdate = false
+        composingLength += 1
+        candidateBar.setIdleToolsSuppressed(true)
+        showComposingPopup()
+        return true
+    }
+
+    private func commitResolvedEndkeyComposing() -> Bool {
+        guard resolveEndkeySelectedCandidate() != nil else { return false }
+        commitSelectedEndkeyCandidate()
+        return true
+    }
+
+    private func commitSelectedEndkeyCandidate() {
+        commitTyped()
+        clearSuggestions()
+    }
+
+    private func resolveEndkeySelectedCandidate() -> Mapping? {
+        if hasCurrentEndkeySelectedCandidate() {
+            return selectedCandidate
+        }
+        guard !mComposing.isEmpty,
+              let ss = searchServer else { return nil }
+
+        currentSearchID &+= 1
+        let candidates = ss.getMappingByCode(mComposing, isSoftKeyboard: true)
+        guard !candidates.isEmpty else { return nil }
+
+        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)
+        guard idx >= 0, idx < candidates.count else { return nil }
+        mCandidateList = candidates
+        selectedCandidate = candidates[idx]
+        hasCandidatesShown = true
+        isShowingRelatedPhrases = false
+        hasChineseSymbolCandidatesShown = false
+        return selectedCandidate
+    }
+
+    private func hasCurrentEndkeySelectedCandidate() -> Bool {
+        guard let candidate = selectedCandidate else { return false }
+        return !candidate.isComposingCodeRecord
+            && !candidate.code.isEmpty
+            && mComposing == candidate.code
+    }
+
     // MARK: - English Character Handling (spec §5 English Mode)
 
     private func handleEnglishCharacter(code: Int, char: Character) {
@@ -1375,25 +1480,22 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     // MARK: - Shift / CapsLock (spec §4 handleShift)
-    // Three states matching Android: off → one-shot (on) → caps lock → off
+    // Single tap toggles one-shot shift; double tap enters Shift Lock.
     // Layout switching: normal ↔ _shift variant (mirrors Android toggleShift())
 
     private func handleShift() {
-        if mCapsLock {
-            // Caps lock → off
-            mCapsLock = false
-            isShiftOn = false
-            applyShiftState()
-        } else if isShiftOn {
-            // One-shot → caps lock
-            mCapsLock = true
-            isShiftOn = true
-            applyShiftState()
-        } else {
-            // Off → one-shot
-            isShiftOn = true
-            applyShiftState()
-        }
+        let next = ShiftTapPolicy.nextState(shifted: isShiftOn,
+                                            capsLock: mCapsLock,
+                                            doubleTap: isShiftDoubleTap())
+        isShiftOn = next.shifted
+        mCapsLock = next.capsLock
+        applyShiftState()
+    }
+
+    private func isShiftDoubleTap(now: TimeInterval = Date().timeIntervalSinceReferenceDate) -> Bool {
+        defer { lastShiftTapTime = now }
+        guard lastShiftTapTime > 0 else { return false }
+        return now - lastShiftTapTime <= LayoutMetrics.Gesture.shiftDoubleTapTimeout
     }
 
     /// Apply the current shift/capsLock state to the keyboard view (icon) and layout.
@@ -1456,6 +1558,7 @@ final class KeyboardViewController: UIInputViewController {
         mCapsLock = false
         isShiftKeyHeld = false
         shiftHoldModifiedCharacter = false
+        lastShiftTapTime = 0
         applyShiftState()
     }
 
@@ -1689,15 +1792,7 @@ final class KeyboardViewController: UIInputViewController {
               !full.isEmpty else { return }
         mCandidateList = full
         hasCandidatesShown = true
-        let idx: Int
-        if full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord) {
-            idx = 1
-        } else if let first = full.first,
-                  first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
-            idx = 0
-        } else {
-            idx = -1
-        }
+        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)
         selectedCandidate = (idx >= 0) ? full[idx] : nil
         candidateBar.appendCandidates(full, selectedIndex: idx)
         // If the expanded grid is currently visible for normal candidates,
@@ -1722,15 +1817,7 @@ final class KeyboardViewController: UIInputViewController {
         // Normal-candidate selection seed (mirrors Android CandidateView.setSuggestions,
         // CandidateView.java:1182–1196). Associated lists (related phrases, punctuation,
         // English) bypass this method entirely and stay at selectedIndex = -1.
-        let selectedIdx: Int
-        if list.count > 1 && (list[1].isExactMatchToCodeRecord || list[1].isPartialMatchToCodeRecord) {
-            selectedIdx = 1
-        } else if let first = list.first,
-                  first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
-            selectedIdx = 0
-        } else {
-            selectedIdx = -1
-        }
+        let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)
         selectedCandidate = (selectedIdx >= 0) ? list[selectedIdx] : nil
         candidateBar.setIdleToolsSuppressed(false)
 
@@ -3293,7 +3380,7 @@ extension KeyboardViewController: KeyboardViewDelegate {
         guard !activatedIMs.isEmpty else { return }
         var items: [(title: String, action: () -> Void)] = []
         for (i, im) in activatedIMs.enumerated() {
-            let label = im.label.isEmpty ? im.tableNick : im.label
+            let label = im.label
             let display = (i == activeIMIndex) ? "✓ \(label)" : label
             items.append((display, { [weak self] in self?.switchIM(toIndex: i) }))
         }

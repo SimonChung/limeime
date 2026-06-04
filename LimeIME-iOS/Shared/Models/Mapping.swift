@@ -78,3 +78,36 @@ struct Mapping {
     mutating func setHasMoreRecordsMarkRecord() { recordType = RecordType.hasMoreMark }
     mutating func setPartialMatchToCodeRecord() { recordType = RecordType.partialMatchToCode }
 }
+
+enum LimeEndkeyPolicy {
+    static func isCommitKey(primaryCode: Int, endkey: String?, englishOnly: Bool) -> Bool {
+        guard !englishOnly,
+              let endkey,
+              !endkey.isEmpty,
+              let scalar = UnicodeScalar(primaryCode) else { return false }
+        return endkey.contains(String(Character(scalar)))
+    }
+
+    static func isKeyInImkeys(primaryCode: Int, imkeys: String?) -> Bool {
+        guard let imkeys,
+              !imkeys.isEmpty,
+              let scalar = UnicodeScalar(primaryCode) else { return false }
+        let key = String(Character(scalar))
+        return imkeys.contains(key) || imkeys.contains(key.lowercased())
+    }
+
+    static func defaultCommitCandidateIndex(_ suggestions: [Mapping]) -> Int {
+        guard !suggestions.isEmpty else { return -1 }
+        if let index = suggestions.firstIndex(where: isDefaultCommitCandidate) {
+            return index
+        }
+        return 0
+    }
+
+    private static func isDefaultCommitCandidate(_ candidate: Mapping) -> Bool {
+        !candidate.isComposingCodeRecord
+            && (candidate.isExactMatchToCodeRecord
+                || candidate.isPartialMatchToCodeRecord
+                || candidate.isChinesePunctuationRecord)
+    }
+}

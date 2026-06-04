@@ -348,6 +348,29 @@ public class CandidateView extends View implements View.OnClickListener {
 
     }
 
+    public void applyFollowSystemAccentColor(int accentColor, boolean darkTheme) {
+        if ((accentColor >>> 24) == 0) return;
+
+        mDrawableSuggestHighlight = createFollowSystemSuggestHighlight(accentColor, darkTheme);
+        mColorComposingCode = accentColor;
+        mColorSelKeyShifted = accentColor;
+        mColorNormalTextHighlight = darkTheme ? 0xFFFFFFFF : 0xFF000000;
+        invalidate();
+    }
+
+    private Drawable createFollowSystemSuggestHighlight(int accentColor, boolean darkTheme) {
+        final float density = getResources().getDisplayMetrics().density;
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadius(4f * density);
+        drawable.setColor(withAlpha(accentColor, darkTheme ? 0x66 : 0x44));
+        return drawable;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    }
+
     /*
     * New embedded composing view inside candidate container for floating candidate mode. Jeremy '15,6,14
     * (android 5.1 does not allow popup composing go over candidate area).
@@ -1541,21 +1564,7 @@ public class CandidateView extends View implements View.OnClickListener {
                     Log.i(TAG, "setSuggestions():mSuggestions.size():" + mSuggestions.size()
                             + " mCount=" + mCount);
 
-                if (mCount > 1 && (mSuggestions.get(1).isExactMatchToCodeRecord() || mSuggestions.get(1).isPartialMatchToCodeRecord())) {
-                    mSelectedIndex = 1;
-                } else if (mCount > 0 && (mSuggestions.get(0).isComposingCodeRecord() || mSuggestions.get(0).isRuntimeBuiltPhraseRecord())) {
-/*
-                    int seloption = mLIMEPref.getSelkeyOption();
-                    if(seloption > 0 && suggestions.size() > seloption){
-                        mSelectedIndex = seloption;
-                    }else{*/
-                    mSelectedIndex = 0;
-                    //}
-
-                } else {
-                    // no default selection for related phrase, chinese punctuation symbols1 and English suggestions  Jeremy '15,6,4
-                    mSelectedIndex = -1;
-                }
+                mSelectedIndex = LIMEService.defaultSelectedCandidateIndex(mSuggestions, false);
             } else {
                 if (DEBUG)
                     Log.i(TAG, "setSuggestions():mSuggestions=null");
@@ -1830,7 +1839,7 @@ public class CandidateView extends View implements View.OnClickListener {
         }
 
 
-        if (mSuggestions != null && index >= 0 && index <= mSuggestions.size()) {
+        if (mSuggestions != null && index >= 0 && index < mSuggestions.size()) {
             mService.pickCandidateManually(index);
             return true;  // Selection picked
         } else

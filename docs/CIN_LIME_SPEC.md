@@ -15,6 +15,7 @@ This file is the format contract only. Implementation tasks and test coverage ar
 %cname My IM Display Name
 %selkey 123456789
 %endkey abcdefghijklmnopqrstuvwxyz
+%limeendkey ;/
 %spacestyle 0
 %keyname begin
 a A
@@ -39,6 +40,7 @@ Supported CIN metadata:
 %cname My IM Display Name
 %selkey 123456789
 %endkey ...
+%limeendkey ...
 %spacestyle ...
 ```
 
@@ -46,8 +48,22 @@ Behavior:
 
 - `%version` stores the IM version metadata.
 - `%cname` stores the display name and is also used as version fallback when `%version` is absent.
-- `%selkey`, `%endkey`, and `%spacestyle` store IM selection/end/space behavior metadata.
+- When `%cname` is absent, importers store the built-in full name for the target IM table as the display name. Unknown target tables fall back to the import filename.
+- `%selkey`, `%endkey`, and `%spacestyle` store conventional CIN selection/end/space behavior metadata.
+- `%limeendkey` stores LimeIME's runtime end-key commit triggers. Empty or absent Lime end-key metadata means no Lime runtime end-key commit triggers for the table.
+- `%endkey` remains import/export compatibility metadata and does not by itself enable LimeIME's runtime end-key commit path.
 - Metadata values may contain spaces after the metadata key.
+
+### 1.3.1 Lime Runtime End-Key Behavior
+
+`%limeendkey` is a LimeIME runtime extension. It is intentionally separate from conventional CIN `%endkey`.
+
+When a pressed key is listed in `%limeendkey`, LimeIME uses the table's `imkeys` metadata to decide how to finish composition:
+
+- If the key is also present in `imkeys`, LimeIME appends the key to the active composing buffer, resolves candidates for the full composing code, commits the highlighted candidate, and consumes the trigger key.
+- If the key is not present in `imkeys`, LimeIME first commits the highlighted candidate for the active composing buffer, then processes the trigger key as a fresh composing key. If that fresh key resolves to table candidates, LimeIME commits the highlighted candidate for that key as well. If it has no table candidate, normal raw-key fallback applies.
+
+This rule is generic. It must not depend on Chinese punctuation-specific handling.
 
 ### 1.4 `%keyname` Block
 
@@ -113,6 +129,7 @@ For the phonetic table, `code3r` is derived by removing tone characters `[3467 ]
 @cname@|My IM Display Name
 @selkey@|123456789
 @endkey@|abcdefghijklmnopqrstuvwxyz
+@limeendkey@|;/
 @spacestyle@|0
 %chardef begin
 code|word|score|basescore
@@ -122,6 +139,8 @@ ab|試|0|456
 ```
 
 Importers accept `.lime` mapping lines with or without `%chardef begin/end`. Exporters include the block for readability and compatibility.
+
+Lines beginning with `#` are skipped as comments and are ignored during delimiter detection.
 
 ### 2.2 Encoding
 
@@ -148,6 +167,7 @@ LIME-style metadata uses the active delimiter. With pipe delimiter:
 @cname@|My IM Display Name
 @selkey@|123456789
 @endkey@|...
+@limeendkey@|...
 @spacestyle@|...
 ```
 
@@ -157,6 +177,7 @@ An import line is metadata when the parsed `code` field starts with `@`. Support
 - `@cname@`
 - `@selkey@`
 - `@endkey@`
+- `@limeendkey@`
 - `@spacestyle@`
 - `@imkeys@`
 - `@imkeynames@`
@@ -169,12 +190,18 @@ Metadata meaning:
 - `@format@|lime-text-v2` enables escaped field parsing for the rest of the file.
 - `@version@` stores the IM version metadata.
 - `@cname@` stores the IM display name, equivalent to CIN `%cname`.
-- `@selkey@`, `@endkey@`, and `@spacestyle@` store IM selection/end/space behavior metadata.
+- `@selkey@`, `@endkey@`, and `@spacestyle@` store conventional IM selection/end/space behavior metadata.
+- `@limeendkey@` stores LimeIME's runtime end-key commit triggers.
 - `@imkeys@` and `@imkeynames@` store the same key mapping metadata as the `imkeys` and `imkeynames` rows in the `im` table.
+- `@endkey@` remains import/export compatibility metadata and does not by itself enable LimeIME's runtime end-key commit path.
+- Empty or absent `@limeendkey@` metadata means no Lime runtime end-key commit triggers for the table.
+- When `@cname@` is absent, importers store the built-in full name for the target IM table as the display name. Unknown target tables fall back to the import filename.
 
 When both `@version@` and `@cname@` are present, `@version@` remains the version value and `@cname@` is the display name value.
 
 `@imkeynames@` often contains literal `|` separators inside the value. When exporting such values, use `@format@|lime-text-v2` and escape those literal pipes as `\|`.
+
+`@limeendkey@` uses the same runtime behavior as CIN `%limeendkey`: keys also present in `@imkeys@` are appended before committing; keys absent from `@imkeys@` first finish the active composing buffer and are then processed as a fresh key.
 
 ### 2.4.1 Escaped v2 Fields
 
@@ -258,6 +285,7 @@ Regular table export writes:
 @cname@|...
 @selkey@|...
 @endkey@|...
+@limeendkey@|...
 @spacestyle@|...
 @imkeys@|...
 @imkeynames@|...
@@ -292,7 +320,7 @@ Important consequences:
 - In tab-delimited `.lime`, literal tab cannot safely appear inside fields.
 - In space-delimited `.cin` or `.lime`, literal spaces cannot safely appear inside mapping fields.
 - A `.lime` mapping whose `code` begins with `@` is treated as LIME metadata and skipped.
-- A CIN mapping whose `code` begins with `%version`, `%cname`, `%selkey`, `%endkey`, or `%spacestyle` is treated as metadata and skipped.
+- A CIN mapping whose `code` begins with `%version`, `%cname`, `%selkey`, `%endkey`, `%limeendkey`, or `%spacestyle` is treated as metadata and skipped.
 
 Literal `@` is safe in a `.lime` `word` field today, but not as the first character of the parsed `code` field.
 

@@ -58,6 +58,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.KeyCharacterMap;
@@ -66,6 +67,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.CompletionInfo;
@@ -86,6 +88,7 @@ import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.global.LIMEUtilities;
+import net.toload.main.hd.global.SystemAccentColor;
 import net.toload.main.hd.keyboard.LIMEBaseKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboard;
 import net.toload.main.hd.keyboard.LIMEKeyboardBaseView;
@@ -102,6 +105,8 @@ import net.toload.main.hd.voice.VoiceInputMode;
 import net.toload.main.hd.voice.VoiceInputRoute;
 import net.toload.main.hd.voice.VoicePermissionHelper;
 import net.toload.main.hd.voice.VoicePermissionState;
+
+import com.google.android.material.color.DynamicColors;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -120,6 +125,7 @@ public class LIMEService extends InputMethodService
 
     private static final boolean DEBUG = false;
     private static final String TAG = "LIMEService";
+    private static final String IMKEYS_CONFIG = "imkeys";
 
     private static Thread queryThread; // queryThread for no-blocking I/O  Jeremy '15,6,1
 
@@ -163,6 +169,7 @@ public class LIMEService extends InputMethodService
     private boolean mPredictionOn;
     private boolean mCompletionOn;
     private boolean mCapsLock;
+    private long mLastShiftTime = -1;
     private boolean mAutoCap;
     private boolean mHasShift;
 
@@ -2082,6 +2089,8 @@ public class LIMEService extends InputMethodService
             // Jeremy '11,5,31 Rewrite softkeybaord enter/space and english separator processing.
         } else if (primaryCode == KEYCODE_SWITCH_TO_IM_MODE && mInputView != null) { //eng -> chi
             switchKeyboard(primaryCode);
+        } else if (handleEndkeyCommit(primaryCode)) {
+            // End-key commit is opt-in per IM table metadata and consumes the trigger key.
         } else if ( //Jeremy '12,7,1 bug fixed on enter not functioning in english mode
                 ((primaryCode == MY_KEYCODE_SPACE && !mEnglishOnly && !activeIM.equals(LIME.IM_PHONETIC))
                         || (primaryCode == MY_KEYCODE_SPACE && !mEnglishOnly &&
@@ -2115,6 +2124,171 @@ public class LIMEService extends InputMethodService
                 }
             }
         }
+    }
+
+    static boolean isEndkeyCommitKey(int primaryCode, String endkey, boolean englishOnly,
+                                     int composingLength, boolean candidatesShown) {
+        return !englishOnly
+                && endkey != null
+                && endkey.indexOf((char) primaryCode) >= 0;
+    }
+
+    private boolean handleEndkeyCommit(int primaryCode) {
+        String endkey = "";
+        String imkeys = "";
+        if (SearchSrv != null && activeIM != null) {
+            endkey = SearchSrv.getImConfig(activeIM, LIME.IM_LIME_ENDKEY);
+            imkeys = SearchSrv.getImConfig(activeIM, IMKEYS_CONFIG);
+        }
+        if (!isEndkeyCommitKey(primaryCode, endkey, mEnglishOnly, mComposing.length(), hasCandidatesShown)) {
+            return false;
+        }
+
+        if (isKeyInImkeys(primaryCode, imkeys)) {
+            return commitComposingWithAppendedEndkey(primaryCode);
+        }
+
+        if (mComposing.length() > 0 && !commitCurrentEndkeyComposing()) {
+            return false;
+        }
+
+        return commitFreshEndkeyOrRaw(primaryCode);
+    }
+
+    private boolean commitCurrentEndkeyComposing() {
+        if (hasCurrentEndkeySelectedCandidate() && pickHighlightedCandidate()) {
+            if (mComposing.length() > 0) {
+                clearComposing(false);
+            }
+            hideCandidateView();
+            return true;
+        }
+
+        if (resolveEndkeySelectedCandidate() != null) {
+            commitTyped(getCurrentInputConnection());
+            if (mComposing.length() > 0) {
+                clearComposing(false);
+            }
+            hideCandidateView();
+            return true;
+        }
+
+        if (mComposing.length() == 0) {
+            hideCandidateView();
+        }
+        return false;
+    }
+
+    private boolean commitComposingWithAppendedEndkey(int primaryCode) {
+        String code = String.valueOf((char) primaryCode);
+        mComposing.append(code);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null && mPredictionOn) {
+            ic.setComposingText(mComposing, 1);
+        }
+        return commitResolvedEndkeyComposing();
+    }
+
+    private boolean commitFreshEndkeyOrRaw(int primaryCode) {
+        String code = String.valueOf((char) primaryCode);
+        mComposing.append(code);
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null && mPredictionOn) {
+            ic.setComposingText(mComposing, 1);
+        }
+        if (commitResolvedEndkeyComposing()) {
+            return true;
+        }
+        clearComposing(false);
+        if (ic != null) {
+            ic.commitText(code, 1);
+        }
+        finishComposing();
+        return true;
+    }
+
+    private boolean commitResolvedEndkeyComposing() {
+        if (resolveEndkeySelectedCandidate() == null) {
+            return false;
+        }
+        commitTyped(getCurrentInputConnection());
+        if (mComposing.length() > 0) {
+            clearComposing(false);
+        }
+        hideCandidateView();
+        return true;
+    }
+
+    private Mapping resolveEndkeySelectedCandidate() {
+        if (hasCurrentEndkeySelectedCandidate()) {
+            return selectedCandidate;
+        }
+        if (SearchSrv == null || mComposing.length() == 0) {
+            return null;
+        }
+        if (queryThread != null && queryThread.isAlive()) {
+            queryThread.interrupt();
+        }
+        try {
+            List<Mapping> candidates = SearchSrv.getMappingByCode(mComposing.toString(),
+                    !hasPhysicalKeyPressed, false);
+            if (candidates == null || candidates.isEmpty()) {
+                return null;
+            }
+            mCandidateList = new LinkedList<>(candidates);
+            selectedCandidate = defaultSelectedCandidateForSuggestions(mCandidateList, hasPhysicalKeyPressed);
+            hasMappingList = selectedCandidate != null;
+            hasCandidatesShown = selectedCandidate != null;
+            return selectedCandidate;
+        } catch (RemoteException e) {
+            Log.e(TAG, "Error resolving end-key candidate", e);
+            return null;
+        }
+    }
+
+    private static boolean isKeyInImkeys(int primaryCode, String imkeys) {
+        if (imkeys == null || imkeys.isEmpty()) {
+            return false;
+        }
+        String key = String.valueOf((char) primaryCode);
+        return imkeys.contains(key) || imkeys.contains(key.toLowerCase(Locale.US));
+    }
+
+    private boolean hasCurrentEndkeySelectedCandidate() {
+        return selectedCandidate != null
+                && !selectedCandidate.isComposingCodeRecord()
+                && selectedCandidate.getCode() != null
+                && mComposing.toString().equals(selectedCandidate.getCode());
+    }
+
+    public static Mapping defaultSelectedCandidateForSuggestions(List<Mapping> suggestions,
+                                                                 boolean physicalKeyPressed) {
+        int selectedIndex = defaultSelectedCandidateIndex(suggestions, physicalKeyPressed);
+        if (selectedIndex < 0) {
+            return null;
+        }
+        return suggestions.get(selectedIndex);
+    }
+
+    public static int defaultSelectedCandidateIndex(List<Mapping> suggestions,
+                                                    boolean physicalKeyPressed) {
+        if (suggestions == null || suggestions.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < suggestions.size(); i++) {
+            if (isDefaultCommitCandidate(suggestions.get(i))) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean isDefaultCommitCandidate(Mapping candidate) {
+        return candidate != null
+                && !candidate.isComposingCodeRecord()
+                && (candidate.isExactMatchToCodeRecord()
+                || candidate.isPartialMatchToCodeRecord()
+                || candidate.isChinesePunctuationSymbolRecord());
     }
 
     private void showEmojiKeyboard() {
@@ -3404,7 +3578,7 @@ public class LIMEService extends InputMethodService
                 if (index < 0) continue;
                 if (activeState.length() > 0) activeState.append(";");
                 activeState.append(index);
-                activatedIMFullNameList.add(fullNames[index]);
+                activatedIMFullNameList.add(im.getDesc());
                 activatedIMShortNameList.add(shortNames[index]);
                 activatedIMList.add(IMs[index]);
             }
@@ -4339,13 +4513,7 @@ public class LIMEService extends InputMethodService
                 mCandidateList = (LinkedList<Mapping>) suggestions;
                 try {
 
-                    if (suggestions.size() > 1 && ( !hasPhysicalKeyPressed || suggestions.get(1).isExactMatchToCodeRecord() || suggestions.get(1).isPartialMatchToCodeRecord())) {
-                        selectedCandidate = suggestions.get(1);
-                        // this is for no exact match condition with code.  //do not set default suggestion for other record type like chinese punctuation symbols1 or related phrases. Jeremy '15,6,4
-                    } else if (!suggestions.isEmpty()) {
-                        selectedCandidate = suggestions.get(0);
-
-                    }
+                    selectedCandidate = defaultSelectedCandidateForSuggestions(suggestions, hasPhysicalKeyPressed);
                 } catch (Exception e) {
                     Log.e(TAG, "Error in suggestion processing", e);
                 }
@@ -4525,29 +4693,77 @@ public class LIMEService extends InputMethodService
             return;
         }
 
+        boolean doubleTap = isShiftDoubleTap();
         if (mKeyboardSwitcher.isAlphabetMode()) {
-            // Alphabet keyboard
-            checkToggleCapsLock();
-            mInputView.setShifted(mCapsLock || !mInputView.isShifted());
-            mHasShift = mCapsLock || !mInputView.isShifted();
-            if (mHasShift) {
-                mKeyboardSwitcher.toggleShift();
-            }
+            ShiftTapState nextState = nextShiftTapState(mInputView.isShifted(), mCapsLock, doubleTap);
+            applyAlphabetShiftState(nextState);
         } else {
-            if (mCapsLock) {
-                toggleCapsLock();
-                mHasShift = false;
-            } else if (mHasShift) {
-                toggleCapsLock();
-                mHasShift = true;
-            } else {
-                mKeyboardSwitcher.toggleShift();
-                mHasShift = mKeyboardSwitcher.isShifted();
-
-            }
+            ShiftTapState nextState = nextShiftTapState(mHasShift, mCapsLock, doubleTap);
+            applyImShiftState(nextState);
         }
     }
 
+    private boolean isShiftDoubleTap() {
+        long now = SystemClock.uptimeMillis();
+        boolean doubleTap = mLastShiftTime > 0
+                && now - mLastShiftTime <= ViewConfiguration.getDoubleTapTimeout();
+        mLastShiftTime = now;
+        return doubleTap;
+    }
+
+    static ShiftTapState nextShiftTapState(boolean shifted, boolean capsLock, boolean doubleTap) {
+        if (capsLock) {
+            return new ShiftTapState(false, false);
+        }
+        if (doubleTap) {
+            return new ShiftTapState(true, true);
+        }
+        return new ShiftTapState(!shifted, false);
+    }
+
+    static final class ShiftTapState {
+        final boolean shifted;
+        final boolean capsLock;
+
+        ShiftTapState(boolean shifted, boolean capsLock) {
+            this.shifted = shifted;
+            this.capsLock = capsLock;
+        }
+    }
+
+    private void applyAlphabetShiftState(ShiftTapState state) {
+        setCapsLockState(state.capsLock);
+        mInputView.setShifted(state.shifted);
+        mHasShift = state.shifted;
+        if (state.shifted && !mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        } else if (!state.shifted && mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        }
+    }
+
+    private void applyImShiftState(ShiftTapState state) {
+        setCapsLockState(state.capsLock);
+        if (state.shifted && !mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        } else if (!state.shifted && mKeyboardSwitcher.isShifted()) {
+            mKeyboardSwitcher.toggleShift();
+        }
+        mHasShift = state.shifted;
+    }
+
+    private void setCapsLockState(boolean capsLock) {
+        if (mCapsLock == capsLock) {
+            if (mInputView != null && mInputView.getKeyboard() instanceof LIMEKeyboard) {
+                ((LIMEKeyboard) mInputView.getKeyboard()).setShiftLocked(capsLock);
+            }
+            return;
+        }
+        mCapsLock = capsLock;
+        if (mInputView != null && mInputView.getKeyboard() instanceof LIMEKeyboard) {
+            ((LIMEKeyboard) mInputView.getKeyboard()).setShiftLocked(mCapsLock);
+        }
+    }
 
     /**
      * Integrated all soft keyboards switching in this function.
@@ -4684,6 +4900,7 @@ public class LIMEService extends InputMethodService
         }
         if (mCandidateView != mCandidateViewInInputView)
             mCandidateView = mCandidateViewInInputView;
+        applyFollowSystemAccentColors();
 
 
         // Check if mKeyboardSwitcher == null
@@ -6120,7 +6337,12 @@ public class LIMEService extends InputMethodService
     }
 
     static EmojiPanelColors emojiPanelColorsForTheme(int themeIndex, boolean systemDark) {
+        return emojiPanelColorsForTheme(themeIndex, systemDark, 0);
+    }
+
+    static EmojiPanelColors emojiPanelColorsForTheme(int themeIndex, boolean systemDark, int systemAccent) {
         int resolvedTheme = themeIndex == 6 ? (systemDark ? 1 : 0) : themeIndex;
+        int accentOverlay = isUsableAccentColor(systemAccent) ? withAlpha(systemAccent, 0x33) : 0;
         switch (resolvedTheme) {
             case 1:
                 return new EmojiPanelColors(
@@ -6129,7 +6351,7 @@ public class LIMEService extends InputMethodService
                         0xFFCFD8DC,
                         0xFFCFD8DC,
                         0xFFCFD8DC,
-                        0x33FFFFFF);
+                        themeIndex == 6 && accentOverlay != 0 ? accentOverlay : 0x33FFFFFF);
             case 2:
                 return new EmojiPanelColors(
                         0xFFFEF3F7,
@@ -6170,12 +6392,90 @@ public class LIMEService extends InputMethodService
                         0xFF000000,
                         0xFF000000,
                         0xFF000000,
-                        0x22000000);
+                        themeIndex == 6 && accentOverlay != 0 ? accentOverlay : 0x22000000);
         }
     }
 
     private EmojiPanelColors currentEmojiPanelColors() {
-        return emojiPanelColorsForTheme(mKeyboardThemeIndex, isEffectiveDarkTheme());
+        int fallbackAccent = isEffectiveDarkTheme() ? 0x33FFFFFF : 0x22000000;
+        int accent = isFollowSystemTheme() ? resolveSystemAccentColor(fallbackAccent) : 0;
+        return emojiPanelColorsForTheme(mKeyboardThemeIndex, isEffectiveDarkTheme(), accent);
+    }
+
+    private boolean isFollowSystemTheme() {
+        return mKeyboardThemeIndex == 6;
+    }
+
+    private void applyFollowSystemAccentColors() {
+        if (!isFollowSystemTheme()) return;
+
+        int accent = resolveSystemAccentColor(0);
+        if (!isUsableAccentColor(accent)) return;
+
+        boolean darkTheme = isEffectiveDarkTheme();
+        if (mInputView != null) {
+            mInputView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+        if (mCandidateViewInInputView != null) {
+            mCandidateViewInInputView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+        if (mCandidateView != null && mCandidateView != mCandidateViewInInputView) {
+            mCandidateView.applyFollowSystemAccentColor(accent, darkTheme);
+        }
+    }
+
+    private int resolveSystemAccentColor(int fallbackColor) {
+        int systemSeed = SystemAccentColor.resolveSeedColor(this, 0);
+        if (isUsableAccentColor(systemSeed)) {
+            return systemSeed;
+        }
+
+        Context dynamicColorContext = DynamicColors.wrapContextIfAvailable(
+                this,
+                SystemAccentColor.dynamicColorOptions(this));
+        int resolved = resolveThemeColor(dynamicColorContext, com.google.android.material.R.attr.colorPrimary, 0);
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(dynamicColorContext, com.google.android.material.R.attr.colorSecondary, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(dynamicColorContext, android.R.attr.colorAccent, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(com.google.android.material.R.attr.colorPrimary, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(com.google.android.material.R.attr.colorSecondary, 0);
+        }
+        if (!isUsableAccentColor(resolved)) {
+            resolved = resolveThemeColor(android.R.attr.colorAccent, 0);
+        }
+        return isUsableAccentColor(resolved) ? resolved : fallbackColor;
+    }
+
+    private int resolveThemeColor(int attr, int fallbackColor) {
+        return resolveThemeColor(this, attr, fallbackColor);
+    }
+
+    private int resolveThemeColor(Context context, int attr, int fallbackColor) {
+        TypedValue value = new TypedValue();
+        if (context.getTheme().resolveAttribute(attr, value, true)) {
+            if (value.resourceId != 0) {
+                return ContextCompat.getColor(context, value.resourceId);
+            }
+            if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT
+                    && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                return value.data;
+            }
+        }
+        return fallbackColor;
+    }
+
+    private static boolean isUsableAccentColor(int color) {
+        return Color.alpha(color) != 0;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     private int getKeyboardTheme() {

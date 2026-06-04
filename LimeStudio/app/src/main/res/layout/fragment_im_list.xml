@@ -34,7 +34,7 @@
         android:layout_margin="16dp"
         android:contentDescription="@string/im_list_action_install"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/material_blue"
+        app:backgroundTint="?attr/colorPrimary"
         app:tint="@android:color/white" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>

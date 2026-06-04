@@ -268,8 +268,9 @@ final class DBServer {
         }
 
         do {
-            let dbURL     = URL(fileURLWithPath: livePath)
-            let journalURL = dataDir.appendingPathComponent(DBServer.databaseJournal)
+            let dbURL = URL(fileURLWithPath: livePath)
+            let journalURL = dbURL.deletingLastPathComponent()
+                .appendingPathComponent(DBServer.databaseJournal)
 
             // Build file list
             var filesToZip: [(URL, String)] = []
@@ -284,6 +285,9 @@ final class DBServer {
             }
             if FileManager.default.fileExists(atPath: filePreferenceManifest.path) {
                 filesToZip.append((filePreferenceManifest, DBServer.preferenceManifestPath))
+            }
+            guard filesToZip.contains(where: { $0.1 == DBServer.databaseName }) else {
+                throw DBServerError.fileNotFound(DBServer.databaseName)
             }
 
             // Create zip archive
@@ -303,6 +307,9 @@ final class DBServer {
                     try archive.addEntry(with: entryName, fileURL: fileURL)
                 }
             }
+            guard DBServer.fileSizeBytes(at: tempZip) > 0 else {
+                throw DBServerError.archiveCreationFailed
+            }
 
             // Mark the temp zip with complete file protection (contains user dictionary data).
             try? FileManager.default.setAttributes(
@@ -312,6 +319,10 @@ final class DBServer {
             // (copyItem throws on collision — that would silently drop the backup).
             try? FileManager.default.removeItem(at: uri)
             try FileManager.default.copyItem(at: tempZip, to: uri)
+            guard FileManager.default.fileExists(atPath: uri.path),
+                  DBServer.fileSizeBytes(at: uri) > 0 else {
+                throw DBServerError.archiveCreationFailed
+            }
             // Apply protection on the destination too.
             try? FileManager.default.setAttributes(
                 [.protectionKey: FileProtectionType.complete], ofItemAtPath: uri.path)
@@ -1055,6 +1066,14 @@ final class DBServer {
     func seedCustomIM() throws {
         guard let ds = datasource else { throw DBServerError.datasourceUnavailable }
         try ds.seedCustomIM()
+    }
+
+    private static func fileSizeBytes(at url: URL) -> Int64 {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attrs[.size] as? NSNumber else {
+            return 0
+        }
+        return size.int64Value
     }
 }
 

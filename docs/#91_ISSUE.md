@@ -17,9 +17,17 @@ Evidence: the issue includes a screenshot showing the `vmi` duplicate-code candi
 
 ## Current classification
 
-Plausible Android bug in `.cin` import / candidate ordering.
+Android bug in `.cin` import / candidate ordering.
 
 This is distinct from a product request for learning-based sorting: the reporter explicitly says the selection sorting preference is disabled, so same-code candidates should remain stable in source-file order unless another enabled feature intentionally reorders them.
+
+## Android implementation status
+
+Implemented in Android source on branch `android-next-release-all-fixes`.
+
+- Added regression coverage for duplicate-code `.cin` source order when selection sorting is disabled.
+- Updated Android candidate query ordering so score/base-score priority applies only when sorting is enabled; sorting-disabled same-code exact matches fall back to `_id ASC` / source insertion order.
+- Status after source implementation: awaiting full branch verification, review APK build, and reporter retest with 哈哈倉頡 `vmi`.
 
 ## Relevant code observed
 
@@ -58,7 +66,7 @@ A second area to confirm is whether 哈哈倉頡 is being imported into `custom`
 
 ## Follow-up questions
 
-Current report is probably sufficient to start investigation. If a first fix cannot reproduce with a minimal fixture, ask the reporter for:
+Current report was sufficient for the Android source fix. If reporter retest still fails in a review APK, ask for:
 
 - the exact 哈哈倉頡 `.cin` source file/version they imported;
 - whether the table was imported into a clean custom IM or over an existing table with learned records;

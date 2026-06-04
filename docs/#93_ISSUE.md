@@ -15,6 +15,15 @@ Follow-up maintainer context also adds an Android scope: Android can import a `.
 - Live assignee: `jrywu`
 - Public acknowledgement: maintainer follow-up posted in https://github.com/lime-ime/limeime/issues/93#issuecomment-4556745511 to record Android metadata parsing scope.
 
+## Android implementation status
+
+Implemented in Android source on branch `android-next-release-all-fixes`.
+
+- Android `.lime` delimiter detection now ignores blank/comment lines so leading Array10-style `#` comments do not skew parsing.
+- Android `.lime` parsing skips `#` comment lines and persists `@cname@` / `@version@`.
+- Regression coverage imports an Array10-style `.lime` fixture with comments and verifies metadata persistence.
+- iOS installed-list registration remains a separate pending #93 fix. Keep iOS behavior aligned with Android metadata/comment semantics where applicable, but do not mark iOS complete from this Android branch.
+
 ## Code paths inspected
 
 - `LimeIME-iOS/Shared/Database/LimeDB.swift`
@@ -41,7 +50,7 @@ The iOS text-import path writes mappings and metadata for the imported table wit
 
 ### Android metadata parsing / persistence
 
-The Android failure path is still pending code inspection. The current suspected failure is separate from the iOS installed-list registration path: successful `.lime` import may not correctly parse or persist `@version@` / `@cname@`, potentially related to whether `#`-prefixed lines are skipped like `.cin` comments. The intended `.lime` behavior for `#` lines should be documented before tests lock in the expected parser behavior.
+The Android failure path was separate from the iOS installed-list registration path: successful `.lime` import could miss `@version@` / `@cname@` when `#`-prefixed lines affected parsing/delimiter detection. The Android branch now documents and tests `.lime` `#` comments as skipped parser comments.
 
 ## Proposed fix / investigation plan
 
@@ -60,7 +69,7 @@ The Android failure path is still pending code inspection. The current suspected
 3. Revisit `seedCustomIM()` / `registerIM(...)` early-return behavior so metadata-only rows do not prevent creation of the required seed/keyboard registration. Registration may need to run before metadata writes, use a narrower existing-row check, or merge the missing keyboard/seed data into existing rows.
 4. Consider updating `getAllImConfigs()` so metadata keys such as `source`, `amount`, and `import` are not mistaken for seed rows, while still supporting legacy/imported rows.
 5. After registration changes, rebuild/sync keyboard state as needed so the keyboard extension can see the imported IM.
-6. For Android, add/verify regression coverage using an Array10-style `.lime` file that includes several `#` comment lines before/around `@version@` and `@cname@`; document whether the `.lime` parser is expected to treat `#` as a comment marker, then confirm import success, cname/version persistence, and exported/displayed metadata.
+6. Android source implementation is complete in `android-next-release-all-fixes`; remaining #93 work is iOS installed-list registration plus final Android APK verification.
 
 ## Verification plan
 

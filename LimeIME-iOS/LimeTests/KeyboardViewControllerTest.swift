@@ -50,6 +50,15 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertFalse(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue))
     }
 
+    func testContextualEnterKeyRestoreUsesSameBackgroundPolicyAsInitialRender() throws {
+        let source = try String(contentsOf: projectFileURL("LimeKeyboard/KeyboardView.swift"),
+                                encoding: .utf8)
+
+        XCTAssertTrue(source.contains("private func restoredKeyBackgroundColor(for keyDef: KeyDef) -> UIColor"))
+        XCTAssertTrue(source.contains("btn.backgroundColor = restoredKeyBackgroundColor(for: keyDef)"))
+        XCTAssertFalse(source.contains("btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor"))
+    }
+
     func testIPhoneEnglishJsonLayoutsHaveChineseSwitchOnBottomRow() throws {
         for layoutID in ["lime_english", "lime_english_number"] {
             let layout = try loadKeyboardLayoutFixture(layoutID)
@@ -208,21 +217,24 @@ final class KeyboardViewControllerTest: XCTestCase {
                                                                     keyDef: dualGlyphKey))
     }
 
-    func testDayiSymbolIPadShiftKeepsShiftedRootPunctuation() throws {
-        let layout = try loadKeyboardLayoutFixture("lime_dayi_sym_ipad_shift")
-        let keys = layout.rows.flatMap(\.keys)
-        let expectedPunctuationByRoot: [String: (code: Int, label: String)] = [
-            "虫": (58, ":"),
-            "力": (60, "<"),
-            "舟": (62, ">"),
-            "竹": (63, "?")
+    func testShiftedSymbolKeysDoNotShowChineseRootSubLabels() throws {
+        let layoutIDs = [
+            "lime_phonetic_shift",
+            "lime_phonetic_ipad_shift",
+            "lime_ez_shift",
+            "lime_ez_ipad_shift",
+            "lime_et_41_shift",
+            "lime_et_41_ipad_shift",
+            "lime_dayi_sym_shift",
+            "lime_dayi_sym_ipad_shift",
         ]
 
-        for (root, expected) in expectedPunctuationByRoot {
-            let key = try XCTUnwrap(keys.first { $0.sublabel == root },
-                                    "Dayi symbol iPad shift layout should keep shifted punctuation for \(root)")
-            XCTAssertEqual(key.code, expected.code)
-            XCTAssertEqual(key.label, expected.label)
+        for layoutID in layoutIDs {
+            let layout = try loadKeyboardLayoutFixture(layoutID)
+            for key in layout.rows.flatMap(\.keys)
+                where isPunctuationOrSymbolCode(key.code) && containsChineseRootSublabel(key.sublabel) {
+                XCTFail("\(layoutID): shifted symbol key \(key.label) should not show root sublabel \(key.sublabel)")
+            }
         }
     }
 
@@ -358,6 +370,34 @@ final class KeyboardViewControllerTest: XCTestCase {
     func testShiftPressPolicyIgnoresRepeatedPressDuringSamePhysicalHold() {
         XCTAssertTrue(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: false))
         XCTAssertFalse(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: true))
+    }
+
+    func testSingleShiftTapTogglesBetweenShiftedAndUnshiftedOnly() {
+        var state = ShiftTapPolicy.nextState(shifted: false, capsLock: false, doubleTap: false)
+        XCTAssertTrue(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertFalse(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertTrue(state.shifted)
+        XCTAssertFalse(state.capsLock)
+    }
+
+    func testDoubleShiftTapEntersShiftLockAndSingleTapUnlocks() {
+        var state = ShiftTapPolicy.nextState(shifted: false, capsLock: false, doubleTap: true)
+        XCTAssertTrue(state.shifted)
+        XCTAssertTrue(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertFalse(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: true, capsLock: false, doubleTap: true)
+        XCTAssertTrue(state.shifted)
+        XCTAssertTrue(state.capsLock)
     }
 
     func testShiftHoldTouchPolicyRequiresAnotherActiveTouch() {
@@ -671,6 +711,86 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertTrue(layoutSource.contains(".frame(height: titleSectionHeight)"))
     }
 
+    func testIMDetailViewShowsEditableLimeEndkeyField() throws {
+        let sourceURL = projectFileURL("LimeSettings/Views/IMDetailView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("case endkey"))
+        XCTAssertTrue(source.contains("case .endkey: return \"結束鍵\""))
+        XCTAssertTrue(source.contains("case .endkey: return \"編輯結束鍵\""))
+        XCTAssertTrue(source.contains("case .endkey: return \"limeendkey\""))
+        XCTAssertTrue(source.contains("DBServer.shared.getImConfig(im.tableNick, \"limeendkey\")"))
+        XCTAssertTrue(source.contains("beginMetadataEdit(.endkey)"))
+        XCTAssertTrue(source.contains("editableMetadataRow(label: \"結束鍵\", value: displayEndkey)"))
+    }
+
+    func testLimeEndkeyPolicyMatchesAndroidTriggerRules() {
+        XCTAssertTrue(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: ".,",
+            englishOnly: false
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: ".,",
+            englishOnly: true
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isCommitKey(
+            primaryCode: Int(UnicodeScalar(",").value),
+            endkey: "",
+            englishOnly: false
+        ))
+
+        XCTAssertTrue(LimeEndkeyPolicy.isKeyInImkeys(
+            primaryCode: Int(UnicodeScalar("A").value),
+            imkeys: "abc"
+        ))
+        XCTAssertFalse(LimeEndkeyPolicy.isKeyInImkeys(
+            primaryCode: Int(UnicodeScalar(",").value),
+            imkeys: "abc"
+        ))
+    }
+
+    func testLimeEndkeyDefaultCandidatePrefersRealCommitCandidate() {
+        let composing = Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.composingCode)
+        let exact = Mapping(id: 1, code: ",", word: "，", score: 0, baseScore: 0,
+                            recordType: Mapping.RecordType.exactMatchToCode)
+        let punctuation = Mapping(id: 2, code: ".", word: "。", score: 0, baseScore: 0,
+                                  recordType: Mapping.RecordType.chinesePunctuation)
+
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, exact]), 1)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, punctuation]), 1)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing]), 0)
+        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([]), -1)
+    }
+
+    func testKeyboardControllerRoutesLimeEndkeyBeforeNormalCharacterHandling() throws {
+        let source = try String(
+            contentsOf: projectFileURL("LimeKeyboard/KeyboardViewController.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("if handleLimeEndkeyCommit(code)"))
+        XCTAssertTrue(source.contains("searchServer?.getImConfig(activeIM, \"limeendkey\")"))
+        XCTAssertTrue(source.contains("commitComposingWithAppendedEndkey(primaryCode)"))
+        XCTAssertTrue(source.contains("commitFreshEndkeyOrRaw(primaryCode)"))
+        XCTAssertTrue(source.contains("LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)"))
+        XCTAssertTrue(source.contains("currentSearchID &+= 1"))
+    }
+
+    func testNormalCandidateSelectionUsesSameDefaultPolicyAsLimeEndkey() throws {
+        let source = try String(
+            contentsOf: projectFileURL("LimeKeyboard/KeyboardViewController.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)"))
+        XCTAssertTrue(source.contains("let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)"))
+        XCTAssertFalse(source.contains("full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord)"))
+        XCTAssertFalse(source.contains("list.count > 1 && (list[1].isExactMatchToCodeRecord || list[1].isPartialMatchToCodeRecord)"))
+    }
+
     func testSettingsGroupedSurfacesMatchSetupTabColors() throws {
         let settingsSource = try String(
             contentsOf: projectFileURL("LimeSettings/LimeSettingsView.swift"),
@@ -800,6 +920,21 @@ final class KeyboardViewControllerTest: XCTestCase {
                 XCTAssertEqual(key.label.lowercased(), key.label,
                                "\(layoutID): \(key.label) should show lowercase label")
             }
+        }
+    }
+
+    private func isPunctuationOrSymbolCode(_ code: Int) -> Bool {
+        (33...47).contains(code)
+            || (58...64).contains(code)
+            || (91...96).contains(code)
+            || (123...126).contains(code)
+    }
+
+    private func containsChineseRootSublabel(_ sublabel: String) -> Bool {
+        sublabel.unicodeScalars.contains { scalar in
+            (0x3100...0x312F).contains(Int(scalar.value))
+                || (0x31A0...0x31BF).contains(Int(scalar.value))
+                || (0x4E00...0x9FFF).contains(Int(scalar.value))
         }
     }
 
