@@ -476,6 +476,25 @@ enum ShiftPressPolicy {
     }
 }
 
+struct ShiftTapState {
+    let shifted: Bool
+    let capsLock: Bool
+}
+
+enum ShiftTapPolicy {
+    static func nextState(shifted: Bool,
+                          capsLock: Bool,
+                          doubleTap: Bool) -> ShiftTapState {
+        if capsLock {
+            return ShiftTapState(shifted: false, capsLock: false)
+        }
+        if doubleTap {
+            return ShiftTapState(shifted: true, capsLock: true)
+        }
+        return ShiftTapState(shifted: !shifted, capsLock: false)
+    }
+}
+
 enum ShiftHoldTouchPolicy {
     static func isShiftStillHeld(activeTouchCount: Int) -> Bool {
         activeTouchCount > 1

@@ -50,6 +50,15 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertFalse(bottomCodes.contains(LimeKeyCode.emojiPanel.rawValue))
     }
 
+    func testContextualEnterKeyRestoreUsesSameBackgroundPolicyAsInitialRender() throws {
+        let source = try String(contentsOf: projectFileURL("LimeKeyboard/KeyboardView.swift"),
+                                encoding: .utf8)
+
+        XCTAssertTrue(source.contains("private func restoredKeyBackgroundColor(for keyDef: KeyDef) -> UIColor"))
+        XCTAssertTrue(source.contains("btn.backgroundColor = restoredKeyBackgroundColor(for: keyDef)"))
+        XCTAssertFalse(source.contains("btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor"))
+    }
+
     func testIPhoneEnglishJsonLayoutsHaveChineseSwitchOnBottomRow() throws {
         for layoutID in ["lime_english", "lime_english_number"] {
             let layout = try loadKeyboardLayoutFixture(layoutID)
@@ -208,21 +217,24 @@ final class KeyboardViewControllerTest: XCTestCase {
                                                                     keyDef: dualGlyphKey))
     }
 
-    func testDayiSymbolIPadShiftKeepsShiftedRootPunctuation() throws {
-        let layout = try loadKeyboardLayoutFixture("lime_dayi_sym_ipad_shift")
-        let keys = layout.rows.flatMap(\.keys)
-        let expectedPunctuationByRoot: [String: (code: Int, label: String)] = [
-            "虫": (58, ":"),
-            "力": (60, "<"),
-            "舟": (62, ">"),
-            "竹": (63, "?")
+    func testShiftedSymbolKeysDoNotShowChineseRootSubLabels() throws {
+        let layoutIDs = [
+            "lime_phonetic_shift",
+            "lime_phonetic_ipad_shift",
+            "lime_ez_shift",
+            "lime_ez_ipad_shift",
+            "lime_et_41_shift",
+            "lime_et_41_ipad_shift",
+            "lime_dayi_sym_shift",
+            "lime_dayi_sym_ipad_shift",
         ]
 
-        for (root, expected) in expectedPunctuationByRoot {
-            let key = try XCTUnwrap(keys.first { $0.sublabel == root },
-                                    "Dayi symbol iPad shift layout should keep shifted punctuation for \(root)")
-            XCTAssertEqual(key.code, expected.code)
-            XCTAssertEqual(key.label, expected.label)
+        for layoutID in layoutIDs {
+            let layout = try loadKeyboardLayoutFixture(layoutID)
+            for key in layout.rows.flatMap(\.keys)
+                where isPunctuationOrSymbolCode(key.code) && containsChineseRootSublabel(key.sublabel) {
+                XCTFail("\(layoutID): shifted symbol key \(key.label) should not show root sublabel \(key.sublabel)")
+            }
         }
     }
 
@@ -358,6 +370,34 @@ final class KeyboardViewControllerTest: XCTestCase {
     func testShiftPressPolicyIgnoresRepeatedPressDuringSamePhysicalHold() {
         XCTAssertTrue(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: false))
         XCTAssertFalse(ShiftPressPolicy.shouldHandleShiftPress(wasShiftKeyHeld: true))
+    }
+
+    func testSingleShiftTapTogglesBetweenShiftedAndUnshiftedOnly() {
+        var state = ShiftTapPolicy.nextState(shifted: false, capsLock: false, doubleTap: false)
+        XCTAssertTrue(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertFalse(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertTrue(state.shifted)
+        XCTAssertFalse(state.capsLock)
+    }
+
+    func testDoubleShiftTapEntersShiftLockAndSingleTapUnlocks() {
+        var state = ShiftTapPolicy.nextState(shifted: false, capsLock: false, doubleTap: true)
+        XCTAssertTrue(state.shifted)
+        XCTAssertTrue(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: state.shifted, capsLock: state.capsLock, doubleTap: false)
+        XCTAssertFalse(state.shifted)
+        XCTAssertFalse(state.capsLock)
+
+        state = ShiftTapPolicy.nextState(shifted: true, capsLock: false, doubleTap: true)
+        XCTAssertTrue(state.shifted)
+        XCTAssertTrue(state.capsLock)
     }
 
     func testShiftHoldTouchPolicyRequiresAnotherActiveTouch() {
@@ -880,6 +920,21 @@ final class KeyboardViewControllerTest: XCTestCase {
                 XCTAssertEqual(key.label.lowercased(), key.label,
                                "\(layoutID): \(key.label) should show lowercase label")
             }
+        }
+    }
+
+    private func isPunctuationOrSymbolCode(_ code: Int) -> Bool {
+        (33...47).contains(code)
+            || (58...64).contains(code)
+            || (91...96).contains(code)
+            || (123...126).contains(code)
+    }
+
+    private func containsChineseRootSublabel(_ sublabel: String) -> Bool {
+        sublabel.unicodeScalars.contains { scalar in
+            (0x3100...0x312F).contains(Int(scalar.value))
+                || (0x31A0...0x31BF).contains(Int(scalar.value))
+                || (0x4E00...0x9FFF).contains(Int(scalar.value))
         }
     }
 

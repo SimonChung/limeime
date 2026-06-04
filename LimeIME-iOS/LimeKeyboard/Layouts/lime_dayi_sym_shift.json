@@ -8,7 +8,7 @@
         {
           "code": 33,
           "label": "!",
-          "sublabel": "言",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -20,7 +20,7 @@
         {
           "code": 64,
           "label": "@",
-          "sublabel": "牛",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -32,7 +32,7 @@
         {
           "code": 35,
           "label": "#",
-          "sublabel": "目",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -44,7 +44,7 @@
         {
           "code": 36,
           "label": "$",
-          "sublabel": "四",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -56,7 +56,7 @@
         {
           "code": 37,
           "label": "%",
-          "sublabel": "王",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -68,7 +68,7 @@
         {
           "code": 94,
           "label": "^",
-          "sublabel": "門",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -80,7 +80,7 @@
         {
           "code": 38,
           "label": "&",
-          "sublabel": "田",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -92,7 +92,7 @@
         {
           "code": 42,
           "label": "*",
-          "sublabel": "米",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -104,7 +104,7 @@
         {
           "code": 40,
           "label": "(",
-          "sublabel": "足",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -116,7 +116,7 @@
         {
           "code": 41,
           "label": ")",
-          "sublabel": "金",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -366,7 +366,7 @@
         {
           "code": 58,
           "label": ":",
-          "sublabel": "虫",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -467,7 +467,7 @@
         {
           "code": 60,
           "label": "<",
-          "sublabel": "力",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -479,7 +479,7 @@
         {
           "code": 62,
           "label": ">",
-          "sublabel": "舟",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,
@@ -491,7 +491,7 @@
         {
           "code": 63,
           "label": "?",
-          "sublabel": "竹",
+          "sublabel": "",
           "widthPercent": 10.0,
           "icon": "",
           "isModifier": false,

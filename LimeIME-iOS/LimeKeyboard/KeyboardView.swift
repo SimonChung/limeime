@@ -839,16 +839,7 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
     /// Apply background color, corner radius and shadow to any key button.
     private func applyButtonStyle(_ btn: UIButton, keyDef: KeyDef,
                                   rowHeight: CGFloat, totalPercent: CGFloat) {
-        // Apple-style accent: when the Enter key represents a non-default
-        // primary action (.search / .go / .send / .next / .join / .done /
-        // .route / .continue), render the key with the system-blue tint to
-        // signal it submits the field. Default-return (.default) keeps the
-        // standard modifier-key background.
-        if enterKeyOverride(for: keyDef) != nil {
-            btn.backgroundColor = .systemBlue
-        } else {
-            btn.backgroundColor = keyDef.isModifier ? modifierKeyColor : normalKeyColor
-        }
+        btn.backgroundColor = restoredKeyBackgroundColor(for: keyDef)
         btn.layer.cornerRadius = keyCornerRadius
         btn.layer.masksToBounds = false
         btn.layer.shadowColor = LayoutMetrics.Shadow.color
@@ -856,6 +847,17 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         btn.layer.shadowOpacity = keyShadowOpacity
         btn.layer.shadowRadius = 0
         styleKeyContent(btn: btn, keyDef: keyDef, rowHeight: rowHeight, totalPercent: totalPercent)
+    }
+
+    private func restoredKeyBackgroundColor(for keyDef: KeyDef) -> UIColor {
+        // Apple-style accent: when the Enter key represents a non-default
+        // primary action (.search / .go / .send / .next / .join / .done /
+        // .route / .continue), render and restore the key with the system-blue
+        // tint so its white icon/label remains readable after touch release.
+        if enterKeyOverride(for: keyDef) != nil {
+            return .systemBlue
+        }
+        return keyDef.isModifier ? modifierKeyColor : normalKeyColor
     }
 
     /// Apple-style Enter-key adaptation: if `keyDef` is the Enter key (code 10) and the host's
@@ -1176,18 +1178,17 @@ final class KeyboardView: UIView, UIInputViewAudioFeedback {
         if keyBtn.keyDef.code == LimeKeyCode.shift.rawValue {
             shiftHoldTrackingActive = false
         }
-        let isModifier = keyBtn.keyDef.isModifier
-        btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor
+        let keyDef = keyBtn.keyDef
+        btn.backgroundColor = restoredKeyBackgroundColor(for: keyDef)
         delegate?.keyboardViewDismissPreview(self)
-        delegate?.keyboardView(self, didRelease: keyBtn.keyDef)
+        delegate?.keyboardView(self, didRelease: keyDef)
         stopRepeating()
         keyBtn.wasSlideDown = false
     }
 
     @objc private func keyCancel(_ btn: UIButton) {
         guard let keyBtn = btn as? KeyButton else { return }
-        let isModifier = keyBtn.keyDef.isModifier
-        btn.backgroundColor = isModifier ? modifierKeyColor : normalKeyColor
+        btn.backgroundColor = restoredKeyBackgroundColor(for: keyBtn.keyDef)
         delegate?.keyboardViewDismissPreview(self)
         stopRepeating()
         keyBtn.wasSlideDown = false

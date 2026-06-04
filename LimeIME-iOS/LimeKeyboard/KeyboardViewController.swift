@@ -39,6 +39,7 @@ final class KeyboardViewController: UIInputViewController {
     private var isShiftOn:    Bool = false
     private var isShiftKeyHeld: Bool = false
     private var shiftHoldModifiedCharacter: Bool = false
+    private var lastShiftTapTime: TimeInterval = 0
     private var activeIM:     String = "phonetic"
     /// Cached `imkeys` for the active IM (refreshed on every setTableName).
     /// On iPad layouts, characters whose code is NOT in this string are routed to
@@ -1479,25 +1480,22 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     // MARK: - Shift / CapsLock (spec §4 handleShift)
-    // Three states matching Android: off → one-shot (on) → caps lock → off
+    // Single tap toggles one-shot shift; double tap enters Shift Lock.
     // Layout switching: normal ↔ _shift variant (mirrors Android toggleShift())
 
     private func handleShift() {
-        if mCapsLock {
-            // Caps lock → off
-            mCapsLock = false
-            isShiftOn = false
-            applyShiftState()
-        } else if isShiftOn {
-            // One-shot → caps lock
-            mCapsLock = true
-            isShiftOn = true
-            applyShiftState()
-        } else {
-            // Off → one-shot
-            isShiftOn = true
-            applyShiftState()
-        }
+        let next = ShiftTapPolicy.nextState(shifted: isShiftOn,
+                                            capsLock: mCapsLock,
+                                            doubleTap: isShiftDoubleTap())
+        isShiftOn = next.shifted
+        mCapsLock = next.capsLock
+        applyShiftState()
+    }
+
+    private func isShiftDoubleTap(now: TimeInterval = Date().timeIntervalSinceReferenceDate) -> Bool {
+        defer { lastShiftTapTime = now }
+        guard lastShiftTapTime > 0 else { return false }
+        return now - lastShiftTapTime <= LayoutMetrics.Gesture.shiftDoubleTapTimeout
     }
 
     /// Apply the current shift/capsLock state to the keyboard view (icon) and layout.
@@ -1560,6 +1558,7 @@ final class KeyboardViewController: UIInputViewController {
         mCapsLock = false
         isShiftKeyHeld = false
         shiftHoldModifiedCharacter = false
+        lastShiftTapTime = 0
         applyShiftState()
     }
 
