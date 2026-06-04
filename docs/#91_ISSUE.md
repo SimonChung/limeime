@@ -23,7 +23,7 @@ This is distinct from a product request for learning-based sorting: the reporter
 
 ## Android implementation status
 
-Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`). The latest Android test APK is now `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
 
 - Added regression coverage for duplicate-code `.cin` source order when selection sorting is disabled.
 - Updated Android candidate query ordering so score/base-score priority applies only when sorting is enabled; sorting-disabled same-code exact matches fall back to `_id ASC` / source insertion order.
@@ -78,4 +78,4 @@ Current report was sufficient for the Android source fix. If reporter retest sti
 - Android unit/instrumentation test for `.cin` import source order with duplicate-code candidates and sorting disabled.
 - Manual verification with the reporter's `vmi` / `狀 绒 戕` case.
 - Confirm that enabling selection sorting still allows score/base-score/user-learning behavior where intended.
-- Reporter retest requested for the current `LIMEHD2026-6.1.16.apk` after PR #101 merged the targeted ordering fix; verified APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
+- Reporter retest requested for the current `LIMEHD2026-6.1.16.apk` after PR #101 merged the targeted ordering fix; the live retest comment was edited to the v6.1.16 APK link, and the verified APK blob SHA is `eb99705bc3f6a2668889e89c05f7d9914c574639` (size 11983378 bytes).

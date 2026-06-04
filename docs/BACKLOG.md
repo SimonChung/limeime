@@ -14,7 +14,7 @@ Last reviewed: 2026-06-05
 - #91 — Android — `.cin` import should preserve duplicate-code candidate order from the source file
   - Status: Completed and verified in the Android next-release work.
   - Current state: Android import/search ordering now preserves source insertion order for same-code candidates when selection sorting is disabled.
-  - Follow-up: Ship in the next Android APK and ask the reporter to retest if needed.
+  - Follow-up: Android test APK `LIMEHD2026-6.1.16.apk` is available; reporter retest is pending in #91 with the scoped `vmi` / 哈哈倉頡 order check.
 
 - #94 / PR #97 — Android — backup must not create a 0 B `limeBackup.zip` while reporting success
   - Status: Completed and verified in the Android next-release work; PR #97 is superseded by the newer batched PR/work.
