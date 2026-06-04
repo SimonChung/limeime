@@ -223,6 +223,39 @@ final class SetupImControllerTest: XCTestCase {
         XCTAssertEqual(customRecordSnapshot(db, prefix: prefix), before)
     }
 
+    func testExportIMAsTextIncludesImMetadataFromDatabase() async throws {
+        let (url, db) = try makeDB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        db.setTableName("custom")
+        db.addOrUpdateMappingRecord("custom", "aa", "測", 0)
+        db.setImConfig("custom", "name", "Friendly Name")
+        db.setImConfig("custom", "version", "Version 2.0")
+        db.setImConfig("custom", "limeendkey", ",.")
+        db.setImConfig("custom", "imkeys", "ab")
+        db.setImConfig("custom", "imkeynames", "ㄅ|ㄆ")
+        let controller = await LimeIME.SetupImController(
+            dbServer: LimeIME.DBServer(_testDatasource: db), prefs: makePrefs(),
+            progress: LimeIME.ProgressManager()
+        )
+
+        let exportURL = await controller.exportIMAsText(tableNick: "custom")
+        defer {
+            if let exportURL { try? FileManager.default.removeItem(at: exportURL) }
+        }
+        guard let exportURL else {
+            XCTFail("Expected .lime export URL")
+            return
+        }
+
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertTrue(output.contains("@format@|lime-text-v2"))
+        XCTAssertTrue(output.contains("@version@|Version 2.0"))
+        XCTAssertTrue(output.contains("@cname@|Friendly Name"))
+        XCTAssertTrue(output.contains("@limeendkey@|,."))
+        XCTAssertTrue(output.contains("@imkeys@|ab"))
+        XCTAssertTrue(output.contains("@imkeynames@|ㄅ\\|ㄆ"))
+    }
+
     // MARK: - importTxtFile
 
     func testImportTxtFileNonExistentPathReportsError() async throws {

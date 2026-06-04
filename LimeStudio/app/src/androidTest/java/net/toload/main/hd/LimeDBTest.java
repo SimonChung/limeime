@@ -5664,6 +5664,34 @@ public class LimeDBTest {
         }
     }
 
+    @Test(timeout = 10000)
+    public void testExportTxtTableWritesLimeEndkeyMetadataFromEndkeyConfig() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+        if (!initializeDatabase(limeDB)) {
+            fail("ERROR: Cannot initialize database connection.");
+        }
+
+        limeDB.setTableName(LIME.DB_TABLE_CUSTOM);
+        limeDB.addOrUpdateMappingRecord("custom", "endkey_test", "測", 10);
+        limeDB.setImConfig(LIME.DB_TABLE_CUSTOM, LIME.IM_LIME_ENDKEY, ",.");
+
+        List<ImConfig> imConfigInfo = limeDB.getImConfigList(LIME.DB_TABLE_CUSTOM, null);
+        File exportFile = new File(appContext.getCacheDir(), "test_export_limeendkey_" + System.currentTimeMillis() + ".lime");
+
+        try {
+            boolean success = limeDB.exportTxtTable(LIME.DB_TABLE_CUSTOM, exportFile, imConfigInfo);
+            assertTrue("exportTxtTable should succeed", success);
+            String output = readUtf8(exportFile);
+            assertTrue("Export file should contain LIME-specific endkey header",
+                    output.contains("@limeendkey@|,."));
+        } finally {
+            if (exportFile.exists() && !exportFile.delete()) {
+                Log.e(TAG, "Failed to delete export file");
+            }
+        }
+    }
+
     @Test(timeout = 15000)
     public void testImportTxtTableSupportsLimeTextV2EscapedFields() throws Exception {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();

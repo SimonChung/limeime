@@ -814,6 +814,23 @@ final class LimeDBTest: XCTestCase {
         XCTAssertTrue(output.contains("@cname@|Friendly Name"))
     }
 
+    func testExportTxtTableWritesLimeEndkeyMetadataFromEndkeyConfig() throws {
+        let db = try makeLimeDB()
+        db.setTableName(LIME.DB_TABLE_CUSTOM)
+        db.addOrUpdateMappingRecord("aa", "測")
+        db.setImConfig(LIME.DB_TABLE_CUSTOM, "limeendkey", ",.")
+
+        let exportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".lime")
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+
+        let configs = db.getImConfigList(LIME.DB_TABLE_CUSTOM, nil)
+        XCTAssertTrue(db.exportTxtTable(LIME.DB_TABLE_CUSTOM, targetFile: exportURL, imConfig: configs))
+
+        let output = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertTrue(output.contains("@limeendkey@|,."))
+    }
+
     func testExportTxtTableUsesEditedNameAndVersionMetadata() throws {
         let db = try makeLimeDB()
         db.setTableName(LIME.DB_TABLE_CUSTOM)

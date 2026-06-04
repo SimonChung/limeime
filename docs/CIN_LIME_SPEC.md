@@ -129,7 +129,7 @@ For the phonetic table, `code3r` is derived by removing tone characters `[3467 ]
 @cname@|My IM Display Name
 @selkey@|123456789
 @endkey@|abcdefghijklmnopqrstuvwxyz
-@limeendkey@|;/
+@limeendkey@|abcdefghijklmnopqrstuvwxyz
 @spacestyle@|0
 %chardef begin
 code|word|score|basescore
@@ -193,9 +193,9 @@ Metadata meaning:
 - `@selkey@`, `@endkey@`, and `@spacestyle@` store conventional IM selection/end/space behavior metadata.
 - `@limeendkey@` stores LimeIME's runtime end-key commit triggers.
 - `@imkeys@` and `@imkeynames@` store the same key mapping metadata as the `imkeys` and `imkeynames` rows in the `im` table.
-- `@endkey@` remains import/export compatibility metadata and does not by itself enable LimeIME's runtime end-key commit path.
-- Empty or absent `@limeendkey@` metadata means no Lime runtime end-key commit triggers for the table.
-- When `@cname@` is absent, importers store the built-in full name for the target IM table as the display name. Unknown target tables fall back to the import filename.
+
+`@endkey@` remains import/export compatibility metadata and does not by itself enable LimeIME's runtime end-key commit path. Empty or absent `@limeendkey@` metadata means no Lime runtime end-key commit triggers for the table.
+When `@cname@` is absent, importers store the built-in full name for the target IM table as the display name. Unknown target tables fall back to the import filename.
 
 When both `@version@` and `@cname@` are present, `@version@` remains the version value and `@cname@` is the display name value.
 

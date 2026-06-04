@@ -259,7 +259,8 @@ final class SetupImController: BaseController {
         return await Task.detached(priority: .userInitiated) {
             let dest = FileManager.default.temporaryDirectory
                 .appendingPathComponent("\(tableNick).lime")
-            let ok = server.exportTxtTable(table: tableNick, targetFile: dest, imConfigList: nil)
+            let imConfigList = server.getImConfigList(tableNick, nil)
+            let ok = server.exportTxtTable(table: tableNick, targetFile: dest, imConfigList: imConfigList)
             return ok ? dest : nil
         }.value
     }
