@@ -2,7 +2,7 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-06-03
+Last reviewed: 2026-06-05
 
 ## Pending fixes
 
@@ -21,10 +21,6 @@ Last reviewed: 2026-06-03
   - Current state: LIME Settings sees restored IM tables, but the iOS keyboard extension can still behave as if there are zero IMs until the user removes and re-adds the keyboard in iOS Settings.
   - Next action: Fix restore-to-keyboard handoff / app-group runtime database state sync, then verify in iOS app + keyboard extension.
 
-- #100 — iOS — contextual Enter/Send key should not become light-on-light in light theme
-  - Status: Open maintainer-created bug, assigned to `jrywu`.
-  - Current state: Programmatic return-key overrides such as Send/Search/Go use white foreground on the correct blue highlighted/accent background, but after the user hits Enter, touch release/cancel can restore the unhighlighted gray modifier background without updating the foreground.
-  - Next action: Centralize contextual Enter-key background restoration so initial render, release, and cancel keep a readable foreground/background pair; verify Send/Search/Go/Next/Done in light and dark themes.
 
 - #93 — iOS — imported `.lime` tables without cname metadata should appear in the installed IM list
   - Status: Open maintainer-created bug, assigned to `jrywu`.
@@ -74,5 +70,5 @@ Last reviewed: 2026-06-03
 - #90 — Android keyboard UI customization / old-style layout / button visibility / theme options
   - Reason: Only the system accent/dynamic color theme scope is confirmed above. Other #90 UI customization requests, such as hiding/repositioning 中英／123, Emoji, and voice buttons or making selected layouts retain active IM labels, remain product-evaluation scope until Jeremy or a maintainer confirms the exact feature direction.
 
-- Closed/source-fixed items such as #92
-  - Reason: Do not list as pending backlog unless Jeremy wants a separate iOS TestFlight/release-QA tracking item.
+- Closed/source-fixed items such as #92 and #100
+  - Reason: Do not list as pending backlog unless Jeremy wants a separate iOS TestFlight/release-QA tracking item. #100 is closed, and the iOS fix commit `2541fc2880c344e5e2a43378635d8d0170d2f124` is in the `master` history through merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50`; any remaining confirmation belongs to a future iOS release/TestFlight build that includes the fix, not an active backlog item.

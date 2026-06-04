@@ -10,7 +10,8 @@ Maintainer-created tracking issue #100 records an iOS keyboard visual/interactio
 - Platform: iOS
 - Reporter/source: maintainer-created (`limeimetw`) from Jeremy's report
 - Live labels: `bug`, `Usability`
-- Live assignee: `jrywu`
+- Live assignee at closure: `jrywu`
+- Live state: closed by `jrywu` on 2026-06-04. Fix commit `2541fc2880c344e5e2a43378635d8d0170d2f124` (`ios fix #100 #99 feat: align keyboard visual states`) is in the `master` history through merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50`.
 - Public acknowledgement: none needed; maintainer-created tracking issue.
 
 ## Code paths inspected
@@ -47,6 +48,12 @@ The inspected code strongly supports the reported visual regression. The Enter-k
    - default return key behavior still uses the normal JSON icon/modifier styling.
 5. Manually verify several `UIReturnKeyType` values (`Send`, `Search`, `Go`, `Next`, `Done`) in light and dark themes.
 
+## Resolution / closure status
+
+Closed by maintainer `jrywu` on 2026-06-04. Live GitHub events reference fix commit `2541fc2880c344e5e2a43378635d8d0170d2f124` (`ios fix #100 #99 feat: align keyboard visual states`), and `master` now contains that fix through merge commit `43aa6c887d9eebf162891549d0ef04fca9b6fe50` (`android ios fix #90 #91 #93 #94 #96 #99 #100: merge next release updates`).
+
+The issue is closed as a maintainer-created tracking bug. Remaining user-facing validation belongs to the next iOS release/TestFlight build that includes the fix, while the maintainer-side verification plan below remains useful before that build is cut.
+
 ## Platform impact analysis
 
 ### Confirmed reporter platform behavior
@@ -64,7 +71,7 @@ The inspected code strongly supports the reported visual regression. The Enter-k
 - iOS impact is direct and plausible for any input field that requests a contextual return key and any layout/theme where the overridden Enter key starts as an accent/primary-action key.
 - Light theme is the highest-risk visual case because `modifierKeyColor` is a light system gray while the override text/icon remains white.
 
-## Verification plan
+## Pre-release verification plan
 
 - In an iOS host field with `returnKeyType = .send`, show the LIME keyboard in light theme.
 - Confirm the `Send` key is readable on initial render.
@@ -77,4 +84,4 @@ The inspected code strongly supports the reported visual regression. The Enter-k
 
 ## Follow-up / retest condition
 
-No community retest request is needed because #100 is maintainer-created. Close the issue after the iOS keyboard styling fix is implemented and verified locally or through the next iOS TestFlight/App Store QA path.
+Closed as a maintainer-created tracking issue after the iOS styling fix landed on `master`. Do not treat #100 as an active public watch unless it is reopened or new evidence appears; any remaining user-facing confirmation belongs to the next iOS release/TestFlight build that includes the fix.
