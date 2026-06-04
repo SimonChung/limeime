@@ -21,7 +21,7 @@ Implement generic, opt-in Lime end-key behavior for table IMs without changing c
 
 ## Android implementation status
 
-Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`) with the current Android test APK file `LIMEHD2026-6.1.15.apk` in `LimeStudio/app/release/`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`), with follow-up commit `c2ec5b77394f2decd2bd900c63d8d8fadc68af20` preserving Lime end-key metadata during export/re-import. The current Android test APK file is `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/`.
 
 Feature scope:
 
@@ -107,5 +107,7 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 
 - Public clarification posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179
 - Current classification: enhancement/product work for generic table IM end-key behavior.
-- Android retest request posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
-- Current next action: wait for Android feedback on the opt-in Lime end-key behavior in the current test APK; address iOS/table-data coordination later.
+- Android 6.1.15 retest request posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
+- Android 6.1.16 retest request posted after the metadata export/re-import preservation fix: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624974083
+- Current test APK: `LIMEHD2026-6.1.16.apk` (`https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk`), blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
+- Current next action: wait for Android feedback that opt-in Lime end-key behavior works, export/re-import preserves `%limeendkey` / `@limeendkey@`, and tables without Lime end-key metadata keep their existing root/short-phrase behavior; address remaining iOS/table-data coordination later.
