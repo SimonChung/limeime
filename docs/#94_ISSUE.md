@@ -2,7 +2,7 @@
 
 ## Current status
 
-Resolved/closed. Reporter `ejmoog` confirmed in https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872 that APK `6.1.16` makes both backup and restore usable, then closed the issue on 2026-06-05. `limeimetw` added a `+1` reaction and posted closing acknowledgement https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498.
+Resolved/closed. Reporter `ejmoog` confirmed in https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872 that APK `6.1.16` makes both backup and restore usable, then closed the issue on 2026-06-05. `limeimetw` posted closing acknowledgement https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498.
 
 Verified scope: Android APK `LIMEHD2026-6.1.16.apk` on the reporter's Samsung A52 / Android 15 path; this confirms fresh non-zero backup creation and restore for the reported Android scenario. iOS backup/restore parity is outside this Android report.
 
@@ -30,15 +30,12 @@ Live GitHub state checked after reporter validation on 2026-06-05:
 - Initial public acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544340087
 - Diagnostic clarification/request by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545079892
 - Scoped follow-up asking for stale-file confirmation and logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059
-- Scoped APK `6.1.16` retest request: https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896
-- Reporter confirmation and issue closure: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
-- Closing acknowledgement: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 - Reporter confirmed old backup files were deleted and attached logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4549686546
 - Scoped retest request for Android test APK `LIMEHD2026-6.1.16.apk`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896
 - Reporter confirmed `6.1.16` backup and restore are usable: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
 - Closing acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 
-Reporter diagnostics now answer the earlier questions:
+Reporter diagnostics answered the earlier questions:
 
 1. Phone storage is not close to full; screenshot says there is enough storage.
 2. Saving to another local destination (`document/tmp`) still produced a 0 B backup file.
