@@ -3,7 +3,7 @@
 ## Live issue state
 
 - Issue: https://github.com/lime-ime/limeime/issues/103
-- Status: open
+- Status: closed by `jrywu` via source-fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` on 2026-06-05.
 - Current labels: `enhancement`, `Usability`
 - Reporter: `SmithCCho`
 - Initial maintainer acknowledgement: https://github.com/lime-ime/limeime/issues/103#issuecomment-4629503196
@@ -134,4 +134,6 @@ dictionary(
 
 ## Public follow-up status
 
-No retest APK has been requested yet. Future public wording should say this is an English composing/candidate-display usability fix, not that exact-match filtering itself was a bug.
+Issue #103 is closed by maintainer/source-fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` (`Fix #103 English keyword completion and emoji FTS restore`). No retest APK has been requested yet because the current Android APK metadata still points to `LIMEHD2026-6.1.16.apk`, which predates this commit.
+
+When a newer Android APK includes commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029`, the appropriate public follow-up is a scoped English composing/candidate-display retest request. Future public wording should say this is an English composing/candidate-display usability fix, not that exact-match filtering itself was a bug.
