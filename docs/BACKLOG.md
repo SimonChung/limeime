@@ -36,6 +36,11 @@ Last reviewed: 2026-06-05
   - Current state: iOS contextual return-key states such as Send/Search/Go/Next/Done restore the correct readable foreground/background pairing after touch release/cancel.
   - Follow-up: Keep `docs/keyboard-type-field-test.html` available for visual checks of contextual return-key fields.
 
+- #103 — Android — English prediction should keep the typed word visible when no dictionary alternatives remain
+  - Status: Source fix completed by maintainer in `794f741e6102cdf1c0db82f5cc6ea6280d2d5029`.
+  - Current state: Android English prediction now keeps the composing/self candidate visible for exact-only words such as `salt`, uses a no-default-highlight candidate display path for English prediction, and orders dictionary suggestions by existing row/rank order instead of plain alphabetical order.
+  - Follow-up: Not included in the current Android APK `LIMEHD2026-6.1.16.apk`; ask reporter `SmithCCho` for a scoped retest only after a newer APK contains this commit.
+
 - #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
   - Status: Completed and visually verified in the Android next-release work.
   - Current state: Android follow-system keyboard/settings UI now applies the system accent/dynamic color where appropriate while preserving fixed theme behavior.
