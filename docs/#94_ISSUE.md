@@ -85,8 +85,6 @@ Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04f
 - Backup failures propagate to callers instead of allowing UI success status after ZIP/copy failure.
 - Regression tests were added to cover backup without `lime.db-journal` and output-write failure propagation.
 - Android test APK `LIMEHD2026-6.1.16.apk` contains the fix: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk (verified APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes)
-- Reporter `ejmoog` confirmed on 2026-06-05 that `6.1.16` backup and restore are usable: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
-- Issue #94 is closed/completed with acknowledgement: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 
 ## Fixed code paths
 
@@ -104,11 +102,11 @@ Code state before PR #101:
 - It called `LIMEUtilities.zip(...)` at about line 438.
 - It caught broad exceptions at about lines 450-452, logged `Error backing up database`, showed an error notification, and did not rethrow.
 
-Implemented fix requirements:
+Implemented behavior:
 
-- Treat `lime.db-journal` as optional, or make the ZIP helper skip explicitly optional missing files.
-- Preserve required-file failures for `lime.db` and preference/manifest files unless separately determined safe.
-- Ensure backup failures propagate to `DbManagerFragment.performBackup(...)` so the UI shows failure rather than `db_status_backup_ok`.
+- The backup path treats the transient `lime.db-journal` file as optional instead of letting its absence fail the whole archive.
+- Required backup files such as `lime.db` and preference/manifest files still fail loudly if unavailable.
+- Backup failures propagate to `DbManagerFragment.performBackup(...)`, so the UI can show `db_status_backup_fail` instead of `db_status_backup_ok` after a failed backup.
 - Future hardening, if needed: log temp ZIP size and copied byte count, and fail visibly if copied bytes are zero.
 
 ### ZIP helper
@@ -123,10 +121,9 @@ Code state before PR #101:
 //if( item==null || !item.exists()) return; //skip if the file is not exist
 ```
 
-Implemented fix requirements:
+Implemented behavior:
 
-- Do not blindly skip every missing file if that would hide required backup corruption.
-- Prefer an explicit optional-file handling path for `lime.db-journal`, or pass structured backup entries with required/optional metadata.
+- The ZIP flow does not blindly ignore every missing file; the optional handling is scoped to the transient SQLite rollback journal.
 
 ### UI flow
 
@@ -136,20 +133,18 @@ Code state before PR #101:
 
 - `performBackup(Uri)` called `setupImController.performBackup(uri)` and then set `db_status_backup_ok` if no exception was thrown.
 
-Implemented fix requirements:
+Implemented behavior:
 
-- With DBServer rethrowing failures, this UI catch path displays `db_status_backup_fail`.
-- Add/adjust tests so a backup failure does not report success.
+- With DBServer rethrowing failures, the existing UI catch path displays `db_status_backup_fail` instead of success.
+- Regression coverage protects the failure-reporting path.
 
 ## Verification status
 
 Developer-side checks for the fix:
 
-1. Add or update a backup test where `lime.db-journal` is absent and verify backup still creates a non-empty ZIP containing the required DB/preferences/manifest.
-2. Add or update a failure-propagation test showing a genuine backup/ZIP/copy failure reaches the UI/controller instead of reporting success.
-3. Run Android compile checks:
-   - `cd LimeStudio && ./gradlew :app:compileDebugJavaWithJavac`
-   - `cd LimeStudio && ./gradlew :app:compileDebugAndroidTestJavaWithJavac`
+1. Regression coverage verifies backup succeeds when `lime.db-journal` is absent and still creates a non-empty ZIP containing the required DB/preferences/manifest.
+2. Regression coverage verifies genuine backup/ZIP/copy failures reach the UI/controller instead of reporting success.
+3. Android compile checks passed during PR #101 review.
 4. Reporter retested Android APK `LIMEHD2026-6.1.16.apk` and confirmed backup and restore are usable. The verified community scope is Android/Samsung A52/Android 15 backup creation plus restore using 6.1.16.
 
 ## Public follow-up status
