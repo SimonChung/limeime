@@ -1,8 +1,14 @@
-# Issue #94: Android backup file shown as 0 B — log-confirmed missing journal failure
+# Issue #94: Android backup file shown as 0 B — reporter-confirmed fixed in 6.1.16
+
+## Current status
+
+Resolved/closed. Reporter `ejmoog` confirmed in https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872 that APK `6.1.16` makes both backup and restore usable, then closed the issue on 2026-06-05. `limeimetw` added a `+1` reaction and posted closing acknowledgement https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498.
+
+Verified scope: Android APK `LIMEHD2026-6.1.16.apk` on the reporter's Samsung A52 / Android 15 path; this confirms fresh non-zero backup creation and restore for the reported Android scenario. iOS backup/restore parity is outside this Android report.
 
 ## Current confirmed facts
 
-Reporter `ejmoog` says every Android backup produces an empty file and cannot be restored.
+Reporter `ejmoog` originally said every Android backup produced an empty file and could not be restored.
 
 Known environment from the reporter's first follow-up comment:
 
@@ -15,16 +21,22 @@ Original issue evidence:
 - Symptom: `limeBackup.zip` exists and is displayed as `0 B` in screenshots
 - Reporter says, in hedged wording, that the problem appears to have existed for a long time
 
-Live GitHub state checked during the 2026-05-27 comment follow-up:
+Live GitHub state checked after reporter validation on 2026-06-05:
 
 - Issue: https://github.com/lime-ime/limeime/issues/94
-- State: open
+- State: closed/completed
 - Labels: `bug`, `Usability`
 - Assignee: `jrywu`
 - Initial public acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4544340087
 - Diagnostic clarification/request by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545079892
 - Scoped follow-up asking for stale-file confirmation and logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4545450059
+- Scoped APK `6.1.16` retest request: https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896
+- Reporter confirmation and issue closure: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
+- Closing acknowledgement: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 - Reporter confirmed old backup files were deleted and attached logcat: https://github.com/lime-ime/limeime/issues/94#issuecomment-4549686546
+- Scoped retest request for Android test APK `LIMEHD2026-6.1.16.apk`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896
+- Reporter confirmed `6.1.16` backup and restore are usable: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
+- Closing acknowledgement by `limeimetw`: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 
 Reporter diagnostics now answer the earlier questions:
 
@@ -74,9 +86,11 @@ Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04f
 - `lime.db-journal` is included only when it exists, because it is a transient SQLite rollback journal.
 - Backup failures propagate to callers instead of allowing UI success status after ZIP/copy failure.
 - Regression coverage verifies backup succeeds without `lime.db-journal` and propagates output-write failure.
-- Current follow-up: reporter retest requested in https://github.com/lime-ime/limeime/issues/94#issuecomment-4624477896 for non-empty ZIP creation and restore using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk (verified APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes)
+- Android test APK `LIMEHD2026-6.1.16.apk` contains the fix: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk (verified APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes)
+- Reporter `ejmoog` confirmed on 2026-06-05 that `6.1.16` backup and restore are usable: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633066872
+- Issue #94 is closed/completed with acknowledgement: https://github.com/lime-ime/limeime/issues/94#issuecomment-4633078498
 
-## Code paths to fix
+## Fixed code paths
 
 ### Backup implementation
 
@@ -92,7 +106,7 @@ Relevant current code:
 - It calls `LIMEUtilities.zip(...)` at about line 438.
 - It catches broad exceptions at about lines 450-452, logs `Error backing up database`, shows an error notification, and currently does not rethrow.
 
-Fix requirements:
+Implemented fix requirements:
 
 - Treat `lime.db-journal` as optional, or make the ZIP helper skip explicitly optional missing files.
 - Preserve required-file failures for `lime.db` and preference/manifest files unless separately determined safe.
@@ -111,7 +125,7 @@ Relevant current code:
 //if( item==null || !item.exists()) return; //skip if the file is not exist
 ```
 
-Fix requirements:
+Implemented fix requirements:
 
 - Do not blindly skip every missing file if that would hide required backup corruption.
 - Prefer an explicit optional-file handling path for `lime.db-journal`, or pass structured backup entries with required/optional metadata.
@@ -124,12 +138,12 @@ Relevant current code:
 
 - `performBackup(Uri)` calls `setupImController.performBackup(uri)` and then sets `db_status_backup_ok` if no exception is thrown.
 
-Fix requirements:
+Implemented fix requirements:
 
 - With DBServer rethrowing failures, this existing UI catch path can display `db_status_backup_fail`.
 - Add/adjust tests so a backup failure does not report success.
 
-## Verification plan
+## Verification status
 
 Developer-side checks for the fix:
 
@@ -138,13 +152,10 @@ Developer-side checks for the fix:
 3. Run Android compile checks:
    - `cd LimeStudio && ./gradlew :app:compileDebugJavaWithJavac`
    - `cd LimeStudio && ./gradlew :app:compileDebugAndroidTestJavaWithJavac`
-4. After a fixed APK is built, ask the reporter to retest only that scoped behavior:
-   - delete old `limeBackup*.zip`
-   - create a new backup
-   - confirm the file is non-zero and can restore
+4. Reporter retested Android APK `LIMEHD2026-6.1.16.apk` and confirmed backup and restore are usable. The verified community scope is Android/Samsung A52/Android 15 backup creation plus restore using 6.1.16.
 
 ## Public follow-up status
 
 A concise public reply was posted after the logcat attachment to confirm that the log identified the likely failure path and that no more logs are needed before a fix.
 
-A scoped retest request was posted and then edited after the targeted #94 backup fix reached the current `LIMEHD2026-6.1.16.apk` test APK. Do not post another generic retest request unless a newer/different build contains additional relevant changes or the reporter replies with new evidence.
+A scoped retest request was posted and then edited after the targeted #94 backup fix reached the current `LIMEHD2026-6.1.16.apk` test APK. Reporter `ejmoog` confirmed `6.1.16` makes backup and restore usable, `limeimetw` posted one closing acknowledgement, and the issue is closed/completed. No active retest watch remains unless the issue is reopened or new backup/restore evidence appears.
