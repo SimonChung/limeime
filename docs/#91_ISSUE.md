@@ -17,18 +17,20 @@ Evidence: the issue includes a screenshot showing the `vmi` duplicate-code candi
 
 ## Current classification
 
-Android bug in `.cin` import / candidate ordering.
+Confirmed Android `.cin` import / candidate-ordering bug — fixed in APK `6.1.16` and closed after reporter confirmation.
 
-This is distinct from a product request for learning-based sorting: the reporter explicitly says the selection sorting preference is disabled, so same-code candidates should remain stable in source-file order unless another enabled feature intentionally reorders them.
+This was distinct from a product request for learning-based sorting: the reporter explicitly said the selection sorting preference was disabled, so same-code candidates should remain stable in source-file order unless another enabled feature intentionally reorders them.
 
 ## Android implementation status
 
-Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`). The latest Android test APK is now `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
+Resolved / reporter-confirmed fixed. Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`). The Android test APK used for reporter confirmation was `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
 
 - Added regression coverage for duplicate-code `.cin` source order when selection sorting is disabled.
 - Updated Android candidate query ordering so score/base-score priority applies only when sorting is enabled; sorting-disabled same-code exact matches fall back to `_id ASC` / source insertion order.
-- GitHub auto-closed the community issue during the PR merge, but reporter confirmation is still needed. The issue was reopened and a scoped retest request was posted: https://github.com/lime-ime/limeime/issues/91#issuecomment-4624477607
-- Current follow-up: wait for reporter retest with 哈哈倉頡 `vmi` using the current test APK: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk
+- GitHub auto-closed the community issue during the PR merge; Hermes reopened it and posted a scoped retest request: https://github.com/lime-ime/limeime/issues/91#issuecomment-4624477607
+- Reporter `ejmoog` tested APK `6.1.16` and confirmed that the 哈哈倉頡 `vmi` ordering is now correct: https://github.com/lime-ime/limeime/issues/91#issuecomment-4633080682
+- Reporter `ejmoog` closed the issue after the `6.1.16` confirmation; Hermes added a `+1` reaction and posted the kept closing acknowledgement: https://github.com/lime-ime/limeime/issues/91#issuecomment-4633087289
+- Current follow-up: none. Treat #91 as closed/resolved for the Android `.cin` same-code ordering scope unless it is reopened or new ordering evidence appears.
 
 ## Relevant code observed
 
@@ -47,35 +49,29 @@ Android candidate query path:
 - For the reported `vmi` same-code / single-character candidates, most fixed terms should tie, so the exact-match/single-character score condition is the main observed clause that could differentiate candidates before `_id ASC`.
 - When `sort` is true, `score DESC, basescore DESC` are also added before `_id ASC`.
 
-## Suspected root cause / investigation notes
+## Root cause / implementation notes
 
-The import operation likely preserves source order at insertion time through SQLite row order / `_id ASC`, but candidate retrieval may still reorder some same-code candidates before `_id ASC` because imported rows receive a `basescore` value from `getBaseScore(word)` whose zero/non-zero result depends on the character, and the exact-match/single-character score-priority condition is always present, even when user-facing selection sorting is off.
+PR #101 resolved the Android ordering path by ensuring score/base-score priority is applied only when candidate sorting is enabled. With sorting disabled, same-code exact matches now fall back to `_id ASC` / source insertion order, preserving the `.cin` file order for the reported case.
 
-If `绒` and `戕` differ in `basescore` presence/value or related query flags, the current query can make the displayed order diverge from the `.cin` file order despite the disabled sorting preference.
+The fix added focused regression coverage for duplicate-code `.cin` import order using the reported `vmi` / `狀`, `绒`, `戕` pattern. Learned/user score behavior remains intended only when sorting or explicit selection/learning paths apply.
 
-A second area to confirm is whether 哈哈倉頡 is being imported into `custom` or another table that already contains existing rows/user scores. Existing learned `score > 0` rows could also affect ordering, but the report says the issue occurs after importing the `.cin` file and with sorting disabled.
+## Platform scope
 
-## Proposed solution / implementation plan
-
-1. Add a focused regression test for same-code `.cin` import order:
-   - import a small `.cin` fixture containing `vmi 狀`, `vmi 绒`, `vmi 戕` in that order;
-   - query `getMappingByCode("vmi", true, true)` with selection sorting disabled;
-   - assert that exact-match candidates preserve source-file order.
-2. Inspect whether imported `.cin` rows without explicit score/base score should keep `basescore = 0` when sorting is disabled, or whether the `ORDER BY` clause should skip all score/base-score priority before `_id ASC` when the relevant sorting preference is disabled.
-3. Keep learned/user score behavior intact when the user explicitly enables sorting or after a candidate is intentionally selected/learned.
-4. Check iOS parity if the same `.cin` import/query logic exists there.
+- Verified: Android `.cin` import/candidate ordering for the reporter's 哈哈倉頡 `vmi` same-code case on APK `6.1.16`.
+- Not separately verified by this issue: unrelated `.cin` files, existing tables with learned records, or iOS import/query behavior.
 
 ## Follow-up questions
 
-Current report was sufficient for the Android source fix. If reporter retest still fails in a review APK, ask for:
+No routine follow-up is needed after the reporter-confirmed APK `6.1.16` fix. If the issue is reopened or a new ordering failure is reported, ask for:
 
 - the exact 哈哈倉頡 `.cin` source file/version they imported;
 - whether the table was imported into a clean custom IM or over an existing table with learned records;
-- the Android APK version used for the screenshot.
+- the Android APK version used for the new screenshot/evidence.
 
-## Verification plan
+## Verification result
 
-- Android unit/instrumentation test for `.cin` import source order with duplicate-code candidates and sorting disabled.
-- Manual verification with the reporter's `vmi` / `狀 绒 戕` case.
-- Confirm that enabling selection sorting still allows score/base-score/user-learning behavior where intended.
-- Reporter retest requested for the current `LIMEHD2026-6.1.16.apk` after PR #101 merged the targeted ordering fix; the live retest comment was edited to the v6.1.16 APK link, and the verified APK blob SHA is `eb99705bc3f6a2668889e89c05f7d9914c574639` (size 11983378 bytes).
+- Issue state on GitHub: closed by reporter `ejmoog` after the APK `6.1.16` confirmation.
+- Android regression coverage was added for `.cin` import source order with duplicate-code candidates and sorting disabled.
+- Reporter manually verified the 哈哈倉頡 `vmi` / `狀 绒 戕` case on APK `6.1.16` and confirmed the ordering is correct.
+- Verified scope: Android `.cin` import/candidate ordering for the reported same-code case with sorting disabled. This does not separately verify unrelated `.cin` files, existing tables with learned records, or iOS behavior.
+- The confirming APK was `LIMEHD2026-6.1.16.apk`; verified blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
