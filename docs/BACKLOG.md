@@ -53,10 +53,10 @@ Last reviewed: 2026-06-05
 
 ## Pending fixes
 
-- #104 — Android — Enter should pass through when only post-commit related candidates remain visible
-  - Status: Newly triaged plausible regression from Android APK 6.1.16.
-  - Current state: Reporter says pressing Enter after committing a word now selects the first related candidate instead of performing newline/search when related candidates remain visible. `LIMEService` currently lets `MY_KEYCODE_ENTER` call `pickHighlightedCandidate()` whenever `hasCandidatesShown` is true, which plausibly includes post-commit related candidates with no active composing code.
-  - Follow-up: Add a focused Android regression test and adjust Enter handling so related/association candidates shown after composition ends do not consume Enter. Retest only after a newer Android APK contains the targeted fix.
+- #104 — Android — related/association candidates after commit should not be highlighted or consumed by Enter
+  - Status: Root cause identified; source fix pending.
+  - Current state: Android 6.1.16 can highlight the first related candidate after committing a word, so Enter selects that related candidate instead of reaching the target editor for newline/search. Causal commit: `35abf08da89ddec0b221fab5612a44cbd2ea03d4`, whose default-candidate-selection helper falls back to index `0` for related-only suggestion lists.
+  - Follow-up: Restore no-default-highlight behavior for related-only/post-commit candidate strips, add Android regression coverage, then ship in a newer APK before asking reporter `Limeroshenko` to retest.
 
 ## Confirmed feature / product work
 
