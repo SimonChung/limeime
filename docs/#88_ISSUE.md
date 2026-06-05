@@ -231,3 +231,5 @@ Local follow-up fix branch `fix/android-restore-emoji-fts-existing` makes emoji 
 
 Verification in WSL: `./gradlew :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac` passes; `git diff --check` passes. Runtime `connectedDebugAndroidTest` is blocked in WSL because no Android device/emulator is connected, so the PR still needs device/emulator restore validation, preferably on the old Android 10 tablet or a platform SQLite build without FTS5.
 
+Public tracking update: Hermes reopened #88 and posted follow-up comment https://github.com/lime-ime/limeime/issues/88#issuecomment-4627623573 explaining the v6.1.16 / Android 10 / 6.0.x backup restore failure family, PR #102, and the remaining device/emulator validation need. Current #88 state is open until the fix reaches a new APK and the restore path is verified.
+
