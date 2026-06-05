@@ -21,7 +21,7 @@ Confirmed Android `.cin` import / candidate-ordering bug — fixed in APK `6.1.1
 
 This was distinct from a product request for learning-based sorting: the reporter explicitly said the selection sorting preference was disabled, so same-code candidates should remain stable in source-file order unless another enabled feature intentionally reorders them.
 
-## Android implementation status
+## Resolution status
 
 Resolved / reporter-confirmed fixed. Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`). The Android test APK used for reporter confirmation was `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
 

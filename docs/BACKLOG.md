@@ -12,9 +12,9 @@ Last reviewed: 2026-06-05
   - Follow-up: Ship in the next iOS build; on-device retest of restore-from-backup and restore-to-default per `docs/#86_ISSUE.md` verification steps.
 
 - #91 — Android — `.cin` import should preserve duplicate-code candidate order from the source file
-  - Status: Completed and verified in the Android next-release work.
-  - Current state: Android import/search ordering now preserves source insertion order for same-code candidates when selection sorting is disabled.
-  - Follow-up: Android test APK `LIMEHD2026-6.1.16.apk` is available; reporter retest is pending in #91 with the scoped `vmi` / 哈哈倉頡 order check.
+  - Status: Completed and reporter-confirmed fixed on Android APK `LIMEHD2026-6.1.16.apk`.
+  - Current state: Android import/search ordering now preserves source insertion order for same-code candidates when selection sorting is disabled; reporter `ejmoog` confirmed the 哈哈倉頡 `vmi` order is correct in `6.1.16`.
+  - Follow-up: Closed as completed; remove from active reporter watch unless reopened or new `.cin` ordering evidence appears.
 
 - #94 / PR #101 — Android — backup must not create a 0 B `limeBackup.zip` while reporting success
   - Status: Completed, shipped in Android test APK `LIMEHD2026-6.1.16.apk`, and reporter-confirmed fixed; PR #97 is superseded by the newer batched PR/work.
