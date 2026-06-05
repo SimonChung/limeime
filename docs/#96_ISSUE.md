@@ -3,7 +3,7 @@
 ## Live issue state
 
 - Issue: https://github.com/lime-ime/limeime/issues/96
-- Status: open
+- Status: closed as completed after original reporter confirmation
 - Current labels: `bug`, `enhancement`, `question`, `Usability`
 - Assignee: `jrywu`
 - Reporter: `SmithCCho`
@@ -21,7 +21,7 @@ Implement generic, opt-in Lime end-key behavior for table IMs without changing c
 
 ## Android implementation status
 
-Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`), with follow-up commit `c2ec5b77394f2decd2bd900c63d8d8fadc68af20` preserving Lime end-key metadata during export/re-import. The current Android test APK file is `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/`.
+Implemented and merged to `master` via PR #101 (`43aa6c887d9eebf162891549d0ef04fca9b6fe50`), with follow-up commit `c2ec5b77394f2decd2bd900c63d8d8fadc68af20` preserving Lime end-key metadata during export/re-import. The current Android test APK file is `LIMEHD2026-6.1.16.apk` in `LimeStudio/app/release/`, and the original reporter confirmed the scoped 行列10 comma/period + Space full-width punctuation behavior on that build in https://github.com/lime-ime/limeime/issues/96#issuecomment-4629301853.
 
 Feature scope:
 
@@ -46,6 +46,7 @@ Official table-data scope:
   - 行列30 and 大易 use `,` / `.` as roots, so they should not directly output punctuation.
   - 行列10, 嘸蝦米, and 倉頡 are closer to direct punctuation output expectations.
   - A practical distinction is whether `,` / `.` are defined as roots in the table.
+- After the 6.1.16 retest request, original reporter `SmithCCho` replied in https://github.com/lime-ime/limeime/issues/96#issuecomment-4629301853 that on 行列10, Chinese-keyboard `,` / `.` plus Space directly outputs full-width punctuation, and thanked the team.
 - Android now separates conventional `%endkey` / `@endkey@` metadata from the Lime-specific `%limeendkey` / `@limeendkey@` runtime feature mechanism to avoid conflict with historical CIN semantics.
 
 ## Source evidence inspected
@@ -98,7 +99,7 @@ Relevant code area on current `master`:
 
 ### Android
 
-Confirmed relevant platform for #96. Android runtime/settings/import support is implemented for Lime-specific end-key metadata without SearchServer candidate-order changes.
+Confirmed relevant platform for #96. Android runtime/settings/import support is implemented for Lime-specific end-key metadata without SearchServer candidate-order changes. Reporter confirmation is scoped to Android APK 6.1.16 行列10 Chinese-keyboard `,` / `.` plus Space outputting full-width punctuation; it does not separately verify every custom table or hardware-keyboard path.
 
 ### iOS / table format
 
@@ -107,8 +108,10 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 ## Follow-up status
 
 - Public clarification posted: https://github.com/lime-ime/limeime/issues/96#issuecomment-4556916179
-- Current classification: enhancement/product work for generic table IM end-key behavior.
+- Classification used during implementation: enhancement/product work for generic table IM end-key behavior, with Android runtime support completed.
 - Android 6.1.16 retest request posted/edited after the metadata export/re-import preservation fix: https://github.com/lime-ime/limeime/issues/96#issuecomment-4624478044
-- Current test APK: `LIMEHD2026-6.1.16.apk` (`https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk`), blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
+- Test APK: `LIMEHD2026-6.1.16.apk` (`https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.16.apk`), blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes.
 - Community retest feedback: `Limeroshenko` reported in https://github.com/lime-ime/limeime/issues/96#issuecomment-4625176200 that Android 6.1.16 is close to the requested behavior for their tested paths: official table comma-plus-Space outputs full-width punctuation, opt-in Lime end-key `,.` allows direct comma output, and personal-table `,` prefix symbol behavior remains normal when end-key is disabled.
-- Current next action: keep the issue open and await original reporter `SmithCCho`'s response to the 6.1.16 retest request before treating the Android scope as reporter-resolved; separately handle any remaining iOS/table-data coordination in the release/backlog flow.
+- Reporter-confirmed result: original reporter `SmithCCho` reported in https://github.com/lime-ime/limeime/issues/96#issuecomment-4629301853 that 行列10 Chinese-keyboard `,` / `.` plus Space directly outputs full-width punctuation on the retest build.
+- Closure action: `limeimetw` added a `+1` reaction, posted closing acknowledgement https://github.com/lime-ime/limeime/issues/96#issuecomment-4629315546, and closed #96 as completed on 2026-06-05.
+- Remaining scope: no active reporter watch for #96. iOS parity and official table-data coordination remain separate release/backlog considerations and should not be treated as a reason to reopen this Android reporter issue unless new evidence appears.
