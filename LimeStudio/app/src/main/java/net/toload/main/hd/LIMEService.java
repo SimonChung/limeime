@@ -2236,7 +2236,7 @@ public class LIMEService extends InputMethodService
                 return null;
             }
             mCandidateList = new LinkedList<>(candidates);
-            selectedCandidate = defaultSelectedCandidateForSuggestions(mCandidateList, hasPhysicalKeyPressed);
+            selectedCandidate = endkeyCommitCandidateForSuggestions(mCandidateList);
             hasMappingList = selectedCandidate != null;
             hasCandidatesShown = selectedCandidate != null;
             return selectedCandidate;
@@ -2261,34 +2261,63 @@ public class LIMEService extends InputMethodService
                 && mComposing.toString().equals(selectedCandidate.getCode());
     }
 
-    public static Mapping defaultSelectedCandidateForSuggestions(List<Mapping> suggestions,
-                                                                 boolean physicalKeyPressed) {
-        int selectedIndex = defaultSelectedCandidateIndex(suggestions, physicalKeyPressed);
+    static Mapping endkeyCommitCandidateForSuggestions(List<Mapping> suggestions) {
+        int selectedIndex = endkeyCommitCandidateIndex(suggestions);
         if (selectedIndex < 0) {
             return null;
         }
         return suggestions.get(selectedIndex);
     }
 
-    public static int defaultSelectedCandidateIndex(List<Mapping> suggestions,
-                                                    boolean physicalKeyPressed) {
+    private static int endkeyCommitCandidateIndex(List<Mapping> suggestions) {
         if (suggestions == null || suggestions.isEmpty()) {
             return -1;
         }
         for (int i = 0; i < suggestions.size(); i++) {
-            if (isDefaultCommitCandidate(suggestions.get(i))) {
+            if (isEndkeyCommitCandidate(suggestions.get(i))) {
                 return i;
             }
         }
-        return 0;
+        return -1;
     }
 
-    private static boolean isDefaultCommitCandidate(Mapping candidate) {
+    private static boolean isEndkeyCommitCandidate(Mapping candidate) {
         return candidate != null
                 && !candidate.isComposingCodeRecord()
                 && (candidate.isExactMatchToCodeRecord()
                 || candidate.isPartialMatchToCodeRecord()
                 || candidate.isChinesePunctuationSymbolRecord());
+    }
+
+    public static int defaultHighlightedCandidateIndex(List<Mapping> suggestions,
+                                                       boolean physicalKeyPressed) {
+        if (suggestions == null || suggestions.isEmpty()) {
+            return -1;
+        }
+        if (suggestions.size() > 1
+                && (suggestions.get(1).isExactMatchToCodeRecord()
+                || suggestions.get(1).isPartialMatchToCodeRecord())) {
+            return 1;
+        }
+        Mapping first = suggestions.get(0);
+        if (first.isComposingCodeRecord() || first.isRuntimeBuiltPhraseRecord()) {
+            return 0;
+        }
+        return -1;
+    }
+
+    private static Mapping defaultServiceSelectedCandidate(List<Mapping> suggestions,
+                                                           boolean physicalKeyPressed) {
+        if (suggestions == null || suggestions.isEmpty()) {
+            return null;
+        }
+        if (suggestions.size() > 1
+                && (!physicalKeyPressed
+                || suggestions.get(1).isExactMatchToCodeRecord()
+                || suggestions.get(1).isPartialMatchToCodeRecord())) {
+            return suggestions.get(1);
+        }
+        return suggestions.get(0);
     }
 
     public static LinkedList<Mapping> buildEnglishPredictionCandidates(String word,
@@ -4526,7 +4555,7 @@ public class LIMEService extends InputMethodService
                 mCandidateList = (LinkedList<Mapping>) suggestions;
                 try {
 
-                    selectedCandidate = defaultSelectedCandidateForSuggestions(suggestions, hasPhysicalKeyPressed);
+                    selectedCandidate = defaultServiceSelectedCandidate(suggestions, hasPhysicalKeyPressed);
                 } catch (Exception e) {
                     Log.e(TAG, "Error in suggestion processing", e);
                 }

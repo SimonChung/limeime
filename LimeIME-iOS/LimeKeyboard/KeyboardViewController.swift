@@ -1390,7 +1390,7 @@ final class KeyboardViewController: UIInputViewController {
         let candidates = ss.getMappingByCode(mComposing, isSoftKeyboard: true)
         guard !candidates.isEmpty else { return nil }
 
-        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)
+        let idx = LimeEndkeyPolicy.commitCandidateIndex(candidates)
         guard idx >= 0, idx < candidates.count else { return nil }
         mCandidateList = candidates
         selectedCandidate = candidates[idx]
@@ -1798,7 +1798,7 @@ final class KeyboardViewController: UIInputViewController {
               !full.isEmpty else { return }
         mCandidateList = full
         hasCandidatesShown = true
-        let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)
+        let idx = CandidateSelectionPolicy.defaultHighlightedCandidateIndex(full)
         selectedCandidate = (idx >= 0) ? full[idx] : nil
         candidateBar.appendCandidates(full, selectedIndex: idx)
         // If the expanded grid is currently visible for normal candidates,
@@ -1823,7 +1823,7 @@ final class KeyboardViewController: UIInputViewController {
         // Normal-candidate selection seed (mirrors Android CandidateView.setSuggestions,
         // CandidateView.java:1182–1196). Associated lists (related phrases, punctuation,
         // English) bypass this method entirely and stay at selectedIndex = -1.
-        let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)
+        let selectedIdx = CandidateSelectionPolicy.defaultHighlightedCandidateIndex(list)
         selectedCandidate = (selectedIdx >= 0) ? list[selectedIdx] : nil
         candidateBar.setIdleToolsSuppressed(false)
 

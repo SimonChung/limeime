@@ -1574,7 +1574,7 @@ public class CandidateView extends View implements View.OnClickListener {
                             + " mCount=" + mCount);
 
                 if (seedDefaultSelection) {
-                    mSelectedIndex = LIMEService.defaultSelectedCandidateIndex(mSuggestions, false);
+                    mSelectedIndex = LIMEService.defaultHighlightedCandidateIndex(mSuggestions, false);
                 }
             } else {
                 if (DEBUG)

@@ -96,18 +96,33 @@ enum LimeEndkeyPolicy {
         return imkeys.contains(key) || imkeys.contains(key.lowercased())
     }
 
-    static func defaultCommitCandidateIndex(_ suggestions: [Mapping]) -> Int {
+    static func commitCandidateIndex(_ suggestions: [Mapping]) -> Int {
         guard !suggestions.isEmpty else { return -1 }
-        if let index = suggestions.firstIndex(where: isDefaultCommitCandidate) {
+        if let index = suggestions.firstIndex(where: isEndkeyCommitCandidate) {
             return index
         }
-        return 0
+        return -1
     }
 
-    private static func isDefaultCommitCandidate(_ candidate: Mapping) -> Bool {
+    private static func isEndkeyCommitCandidate(_ candidate: Mapping) -> Bool {
         !candidate.isComposingCodeRecord
             && (candidate.isExactMatchToCodeRecord
                 || candidate.isPartialMatchToCodeRecord
                 || candidate.isChinesePunctuationRecord)
+    }
+}
+
+enum CandidateSelectionPolicy {
+    static func defaultHighlightedCandidateIndex(_ suggestions: [Mapping]) -> Int {
+        guard !suggestions.isEmpty else { return -1 }
+        if suggestions.count > 1,
+           suggestions[1].isExactMatchToCodeRecord || suggestions[1].isPartialMatchToCodeRecord {
+            return 1
+        }
+        let first = suggestions[0]
+        if first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
+            return 0
+        }
+        return -1
     }
 }

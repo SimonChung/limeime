@@ -155,7 +155,7 @@ public class LIMEServiceTest {
     }
 
     @Test
-    public void defaultSelectedCandidatePrefersChinesePunctuationOverRawComposingCode() {
+    public void defaultHighlightedCandidateKeepsComposingEchoBeforeChinesePunctuation() {
         Mapping composing = createPlainCandidate(".", ".");
         composing.setComposingCodeRecord();
         Mapping punctuation = createPlainCandidate(".", "。");
@@ -164,12 +164,11 @@ public class LIMEServiceTest {
         candidates.add(composing);
         candidates.add(punctuation);
 
-        assertEquals(1, LIMEService.defaultSelectedCandidateIndex(candidates, false));
-        assertSame(punctuation, LIMEService.defaultSelectedCandidateForSuggestions(candidates, false));
+        assertEquals(0, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
     }
 
     @Test
-    public void defaultSelectedCandidateDoesNotPromoteArbitrarySecondCandidate() {
+    public void defaultHighlightedCandidateDoesNotPromoteArbitrarySecondCandidate() {
         Mapping composing = createPlainCandidate(".", ".");
         composing.setComposingCodeRecord();
         Mapping arbitrary = createPlainCandidate(".", "not-default");
@@ -177,8 +176,37 @@ public class LIMEServiceTest {
         candidates.add(composing);
         candidates.add(arbitrary);
 
-        assertEquals(0, LIMEService.defaultSelectedCandidateIndex(candidates, false));
-        assertSame(composing, LIMEService.defaultSelectedCandidateForSuggestions(candidates, false));
+        assertEquals(0, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
+    }
+
+    @Test
+    public void defaultHighlightedCandidateDoesNotSelectRelatedOrEnglishLists() {
+        Mapping related = createPlainCandidate("", "明天");
+        related.setRelatedPhraseRecord();
+        Mapping english = createPlainCandidate("", "tomorrow");
+        english.setEnglishSuggestionRecord();
+
+        List<Mapping> relatedCandidates = new ArrayList<>();
+        relatedCandidates.add(related);
+        List<Mapping> englishCandidates = new ArrayList<>();
+        englishCandidates.add(english);
+
+        assertEquals(-1, LIMEService.defaultHighlightedCandidateIndex(relatedCandidates, false));
+        assertEquals(-1, LIMEService.defaultHighlightedCandidateIndex(englishCandidates, false));
+    }
+
+    @Test
+    public void endkeyCommitCandidateResolutionIsSeparateFromDefaultHighlighting() {
+        Mapping composing = createPlainCandidate(".", ".");
+        composing.setComposingCodeRecord();
+        Mapping punctuation = createPlainCandidate(".", "。");
+        punctuation.setChinesePunctuationSymbolRecord();
+        List<Mapping> candidates = new ArrayList<>();
+        candidates.add(composing);
+        candidates.add(punctuation);
+
+        assertEquals(0, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
+        assertSame(punctuation, LIMEService.endkeyCommitCandidateForSuggestions(candidates));
     }
 
     @Test

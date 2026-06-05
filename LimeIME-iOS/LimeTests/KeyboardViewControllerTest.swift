@@ -751,18 +751,42 @@ final class KeyboardViewControllerTest: XCTestCase {
         ))
     }
 
-    func testLimeEndkeyDefaultCandidatePrefersRealCommitCandidate() {
-        let composing = Mapping(id: 0, code: ",", word: ",", score: 0, baseScore: 0,
+    func testDefaultHighlightedCandidateKeepsComposingEchoBeforeChinesePunctuation() {
+        let composing = Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
                                 recordType: Mapping.RecordType.composingCode)
-        let exact = Mapping(id: 1, code: ",", word: "，", score: 0, baseScore: 0,
-                            recordType: Mapping.RecordType.exactMatchToCode)
-        let punctuation = Mapping(id: 2, code: ".", word: "。", score: 0, baseScore: 0,
+        let punctuation = Mapping(id: 1, code: ".", word: "。", score: 0, baseScore: 0,
                                   recordType: Mapping.RecordType.chinesePunctuation)
 
-        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, exact]), 1)
-        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing, punctuation]), 1)
-        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([composing]), 0)
-        XCTAssertEqual(LimeEndkeyPolicy.defaultCommitCandidateIndex([]), -1)
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 0)
+    }
+
+    func testDefaultHighlightedCandidateDoesNotPromoteArbitrarySecondCandidate() {
+        let composing = Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.composingCode)
+        let arbitrary = Mapping(id: 1, code: ".", word: "not-default", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.exactMatchToWord)
+
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, arbitrary]), 0)
+    }
+
+    func testDefaultHighlightedCandidateDoesNotSelectRelatedOrEnglishLists() {
+        let related = Mapping(id: 0, code: "", word: "明天", score: 0, baseScore: 0,
+                              recordType: Mapping.RecordType.relatedPhrase)
+        let english = Mapping(id: 1, code: "", word: "tomorrow", score: 0, baseScore: 0,
+                              recordType: Mapping.RecordType.englishSuggestion)
+
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([related]), -1)
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([english]), -1)
+    }
+
+    func testEndkeyCommitCandidateResolutionIsSeparateFromDefaultHighlighting() {
+        let composing = Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.composingCode)
+        let punctuation = Mapping(id: 1, code: ".", word: "。", score: 0, baseScore: 0,
+                                  recordType: Mapping.RecordType.chinesePunctuation)
+
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 0)
+        XCTAssertEqual(LimeEndkeyPolicy.commitCandidateIndex([composing, punctuation]), 1)
     }
 
     func testKeyboardControllerRoutesLimeEndkeyBeforeNormalCharacterHandling() throws {
@@ -775,20 +799,20 @@ final class KeyboardViewControllerTest: XCTestCase {
         XCTAssertTrue(source.contains("searchServer?.getImConfig(activeIM, \"limeendkey\")"))
         XCTAssertTrue(source.contains("commitComposingWithAppendedEndkey(primaryCode)"))
         XCTAssertTrue(source.contains("commitFreshEndkeyOrRaw(primaryCode)"))
-        XCTAssertTrue(source.contains("LimeEndkeyPolicy.defaultCommitCandidateIndex(candidates)"))
+        XCTAssertTrue(source.contains("LimeEndkeyPolicy.commitCandidateIndex(candidates)"))
         XCTAssertTrue(source.contains("currentSearchID &+= 1"))
     }
 
-    func testNormalCandidateSelectionUsesSameDefaultPolicyAsLimeEndkey() throws {
+    func testNormalCandidateSelectionDoesNotUseLimeEndkeyPolicy() throws {
         let source = try String(
             contentsOf: projectFileURL("LimeKeyboard/KeyboardViewController.swift"),
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)"))
-        XCTAssertTrue(source.contains("let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)"))
-        XCTAssertFalse(source.contains("full.count > 1 && (full[1].isExactMatchToCodeRecord || full[1].isPartialMatchToCodeRecord)"))
-        XCTAssertFalse(source.contains("list.count > 1 && (list[1].isExactMatchToCodeRecord || list[1].isPartialMatchToCodeRecord)"))
+        XCTAssertTrue(source.contains("let idx = CandidateSelectionPolicy.defaultHighlightedCandidateIndex(full)"))
+        XCTAssertTrue(source.contains("let selectedIdx = CandidateSelectionPolicy.defaultHighlightedCandidateIndex(list)"))
+        XCTAssertFalse(source.contains("let idx = LimeEndkeyPolicy.defaultCommitCandidateIndex(full)"))
+        XCTAssertFalse(source.contains("let selectedIdx = LimeEndkeyPolicy.defaultCommitCandidateIndex(list)"))
     }
 
     func testSettingsGroupedSurfacesMatchSetupTabColors() throws {
