@@ -28,7 +28,7 @@ Last reviewed: 2026-06-05
 
 - #96 — Android + iOS/table-format — direct punctuation matches and LIME end-key behavior for table IMs
   - Status: Completed and verified/aligned.
-  - Current state: Direct `,` / `.` mappings highlight/select the direct full-width punctuation match before the composing-code fallback. LIME-specific end-key metadata uses `limeendkey` instead of conflicting with conventional `.cin` `%endkey`, with Android and iOS runtime behavior aligned.
+  - Current state: Direct `,` / `.` mappings highlight/select the direct full-width punctuation match before the composing-code fallback. LIME-specific end-key metadata uses `limeendkey` instead of conflicting with conventional `.cin` `%endkey`; the distinction is behavioral (`%endkey` ends composition/shows candidates without committing, while `%limeendkey` ends composition and commits the highlighted candidate). Android and iOS runtime behavior is aligned.
   - Follow-up: Table-data changes for official tables, if any, should be coordinated separately from the engine feature.
 
 - #100 — iOS — contextual Enter/Send key should not become light-on-light in light theme
@@ -53,7 +53,10 @@ Last reviewed: 2026-06-05
 
 ## Pending fixes
 
-No confirmed pending source fixes remain.
+- #104 — Android — related/association candidates after commit should not be highlighted or consumed by Enter
+  - Status: Root cause identified; source fix pending.
+  - Current state: Android 6.1.16 can highlight the first related candidate after committing a word, so Enter selects that related candidate instead of reaching the target editor for newline/search. Causal commit: `35abf08da89ddec0b221fab5612a44cbd2ea03d4`, whose default-candidate-selection helper falls back to index `0` for related-only suggestion lists.
+  - Follow-up: Restore no-default-highlight behavior for related-only/post-commit candidate strips, add Android regression coverage, then ship in a newer APK before asking reporter `Limeroshenko` to retest.
 
 ## Confirmed feature / product work
 
