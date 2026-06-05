@@ -32,17 +32,17 @@ Relevant Android code inspected in `LimeStudio/app/src/main/java/net/toload/main
 - `updateRelatedPhrase(...)` builds the post-commit related-candidate strip by calling `SearchSrv.getRelatedByWord(...)`; those records are created with `setRelatedPhraseRecord()` and `code = ""`, then passed through `setSuggestions(...)`.
 - `CandidateView.takeSelectedSuggestion()` only returns true if `mSelectedIndex >= 0`; before the regression, related-candidate-only strips deliberately used `mSelectedIndex = -1`, so Enter fell through to the editor action.
 
-This makes the reported symptom plausible when related candidates remain visible after a normal commit: if the related strip now has a selected/highlighted item, the existing Enter branch treats it as a normal candidate selection even though there is no active composing code.
+This explains the reported symptom when related candidates remain visible after a normal commit: if the related strip has a selected/highlighted item, the existing Enter branch treats it as a normal candidate selection even though there is no active composing code.
 
-## Existing coverage / gap
+## Pre-fix coverage gap
 
-Relevant tests exist for Enter key constants, broad `onKey`/`onKeyDown` branches, `pickHighlightedCandidate()`, candidate lists, and related-phrase/search-server behavior, but the inspected tests do not appear to assert the user-facing path:
+Before commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`, tests existed for Enter key constants, broad `onKey`/`onKeyDown` branches, `pickHighlightedCandidate()`, candidate lists, and related-phrase/search-server behavior, but the inspected tests did not appear to assert the user-facing path:
 
 - after a committed word,
 - with only related/association candidates visible,
 - pressing Enter should pass through to the target editor action rather than commit a related candidate.
 
-This missing regression case likely allowed the 6.1.16 behavior to ship without a guard.
+That missing regression case likely allowed the 6.1.16 behavior to ship without a guard. Commit `1cb8dae` added focused selection-policy coverage for the source fix.
 
 ## Root cause and causal commit
 
@@ -74,21 +74,20 @@ Before `35abf08d`, `CandidateView.setSuggestions(...)` explicitly kept related p
 
 So the fix should restore the old no-default-highlight rule for post-commit related/association candidates while preserving the intended #96 behavior for active composition and Lime end-key resolution.
 
-## Proposed fix / investigation plan
+## Implemented source fix
 
-1. Reproduce with Android `6.1.16` using a table/setting path that leaves related candidates visible after committing a word.
-2. Add focused regression coverage that a related-only candidate list returns no default selected index / no highlighted item, and that Enter with `mComposing.length() == 0` plus related candidates visible passes through rather than committing candidate 0.
-3. Adjust default candidate selection so related/association candidate lists keep `mSelectedIndex = -1`; do not rely only on special-casing Enter after the fact.
-4. Keep existing expected behavior for:
-   - active composing candidate selection,
-   - Space candidate commit behavior,
-   - opt-in end-key behavior from `%limeendkey` / `@limeendkey@`,
-   - physical-keyboard Enter if it shares the same state path.
-5. Verify with normal text/newline fields and browser/search fields because the reporter specifically mentions newline/search actions.
+Maintainer commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` (`fix #104 android ios candidate highlight drift`, 2026-06-05) landed on `master` and closed the GitHub issue. It separates visible candidate-strip highlighting from `%limeendkey` commit resolution:
+
+1. Android now uses `defaultHighlightedCandidateIndex(...)` for normal candidate-strip selection. It preserves the legacy active-composition rules but returns `-1` for related-only and English-suggestion lists, so browse-only strips are not highlighted by default.
+2. Android `%limeendkey` handling now uses a dedicated `endkeyCommitCandidateForSuggestions(...)` resolver for exact/partial/punctuation commit targets instead of broadening normal strip selection.
+3. Android regression coverage was added for related/English lists with no default highlight and for keeping end-key commit resolution separate from candidate-strip highlighting.
+4. iOS parity was audited and aligned by splitting `CandidateSelectionPolicy.defaultHighlightedCandidateIndex(...)` from `LimeEndkeyPolicy.commitCandidateIndex(...)`, and by keeping related/English candidate lists unselected. Swift tests cover the selection-policy split and no-default behavior.
+
+The fix is source-complete, but it is **not included** in the current Android APK `LIMEHD2026-6.1.16.apk` (verified current APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes). Do not ask the reporter to retest until a newer APK contains `1cb8dae`.
 
 ## Follow-up questions
 
-Current report is sufficient to classify this as a plausible Android regression. If reproduction is inconsistent, ask the reporter for:
+The report plus root-cause attribution are sufficient to classify this as an Android regression. If a future retest on a fixed APK is inconsistent, ask the reporter for:
 
 - input table/IM used,
 - whether related-phrase/association candidate settings are enabled,
@@ -100,15 +99,15 @@ Do not ask for retest until a newer APK/build contains a targeted fix.
 
 ### Android
 
-Confirmed reporter platform. The inspected Android `LIMEService` candidate/Enter handling plausibly matches the symptom in `6.1.16`. Android needs a source fix plus an APK retest.
+Confirmed reporter platform. Android source fix `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` restores no-default-highlight behavior for related-only/post-commit candidate strips and keeps `%limeendkey` commit resolution separate. Android still needs a newer APK than `6.1.16` before reporter retest.
 
 ### iOS
 
-Not reported. iOS has a separate Swift keyboard implementation, so Android `LIMEService.java` state handling does not directly apply. Still, iOS should receive a light parity audit for return-key behavior when related candidates remain visible after commit, especially if the intended product rule is that Enter/Search/Return should pass through once composition has ended.
+Not reported by the community reporter. iOS has a separate Swift keyboard implementation, so the Android regression did not directly prove user impact. Commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` nevertheless completed the parity audit/alignment by separating normal highlighted-candidate selection from Lime end-key commit resolution and keeping browse-only related/English lists unselected.
 
 ## Verification plan
 
-- Android unit/instrumentation coverage: construct a related-only candidate list and verify `defaultSelectedCandidateIndex(...) == -1` / `CandidateView` has no highlighted item; simulate post-commit related candidates visible with no composing code, press Enter, and verify no related candidate is committed and the editor action/newline path is allowed.
+- Android unit/instrumentation coverage: construct a related-only candidate list and verify `defaultHighlightedCandidateIndex(...) == -1` / `CandidateView` has no highlighted item; simulate post-commit related candidates visible with no composing code, press Enter, and verify no related candidate is committed and the editor action/newline path is allowed.
 - Android manual: in a normal multiline text field, press Enter after committing a word with related candidates visible and confirm a newline occurs.
 - Android manual: in a browser/search field, press Enter/Search after committing a word with related candidates visible and confirm search/action runs.
 - Regression: active composing candidate selection with Space and valid selection keys still works; `%limeendkey`/`@limeendkey@` behavior from #96 remains unchanged.
@@ -116,7 +115,8 @@ Not reported. iOS has a separate Swift keyboard implementation, so Android `LIME
 
 ## Current follow-up status
 
-- Classification: plausible Android bug / regression.
-- Public issue: open, pending source fix.
-- Root-cause attribution: `35abf08da89ddec0b221fab5612a44cbd2ea03d4` introduced default-selection fallback `return 0`, which accidentally highlights related-only candidates.
-- Retest condition: wait for a newer Android APK than `6.1.16` containing a targeted Enter/related-candidate fix before asking the reporter to retest.
+- Classification: Android bug / regression with iOS parity audit.
+- Public issue: closed by maintainer/fix commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`; not yet reporter-verified on a delivered Android APK.
+- Root-cause attribution: `35abf08da89ddec0b221fab5612a44cbd2ea03d4` introduced default-selection fallback `return 0`, which accidentally highlighted related-only candidates.
+- Fix status: source fix completed on `master`; current APK metadata still points to `LIMEHD2026-6.1.16.apk`, which predates this fix.
+- Retest condition: when a newer Android APK containing `1cb8dae` is available, reopen or comment as needed and ask reporter `Limeroshenko` to verify that Enter/Search/Return passes through after committing a word while related candidates remain visible.
