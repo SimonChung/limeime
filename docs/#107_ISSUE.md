@@ -2,12 +2,12 @@
 
 GitHub issue: https://github.com/lime-ime/limeime/issues/107
 Reporter: `ejmoog`
-Status: Open / self-triaged in this doc as a plausible Android startup-performance bug
-Last updated: 2026-06-05T23:57:10+08:00
+Status: Open / plausible Android IME startup-performance bug
+Last updated: 2026-06-06T00:12:37+08:00
 
 ## Problem statement
 
-The reporter says switching the active input method to Trime or gcin shows the keyboard immediately, but switching to LIME takes about seven seconds before the keyboard appears.
+The reporter says switching the active input method to Trime or gcin shows the keyboard immediately, but switching to LIME 2026 takes about seven seconds before the keyboard appears.
 
 Verbatim report excerpt:
 
@@ -15,14 +15,14 @@ Verbatim report excerpt:
 >
 > 三星A52，版本6.1.16。
 
-Reported environment:
+Known environment:
 
 - Device: Samsung A52
 - LIME version: 6.1.16
-- Android version: not yet provided
-- Scope: Android IME activation/switching latency, not an app crash report
+- Android / One UI version: not yet provided
+- Symptom scope: Android IME activation / first visible keyboard after switching input methods
 
-This is a plausible Android performance bug because the user compares the same device and switching action against other IMEs and reports a large visible delay. There is not yet evidence that this is a regression versus an earlier LIME version.
+This should be treated as a real Android performance bug report, not a vague UX complaint: the reporter compares the same device and same IME-switch action against Trime/gcin and reports a multi-second visible delay. It is not yet proven to be a regression versus an earlier LIME build because the report does not include an older-LIME baseline.
 
 ## Reproduction details from report
 
@@ -31,115 +31,122 @@ This is a plausible Android performance bug because the user compares the same d
 3. Switch the active input method to LIME version 6.1.16.
 4. LIME appears after about seven seconds.
 
-Unknowns to confirm:
+Still needed from reporter or local device reproduction:
 
-- Android OS version and Samsung One UI version.
-- Whether the delay happens every time or only on first activation after install/reboot/process kill.
-- Whether it happens in all apps/fields or only specific text fields.
-- Active LIME table and enabled-table count.
-- Whether this is a clean install, upgrade from older LIME, or after restoring/importing a database.
-- Logcat timing around `net.toload.main.hd2026` while switching IMEs.
+- Android OS / One UI version.
+- Whether the delay happens every switch or only after cold process start, reboot, install/update, or process kill.
+- Whether the delay happens in all apps/text fields or only specific host apps / field types.
+- Active input table and enabled-table count.
+- Clean install vs upgrade vs old database restore/import.
+- Logcat timestamps around `net.toload.main.hd2026` from IME selection to first keyboard display.
 
-## Initial code-path assessment
+## Root-cause hypothesis to test first
 
-The Android IME service is declared as `.LIMEService` in `LimeStudio/app/src/main/AndroidManifest.xml:113-125`. The current Android build uses `applicationId "net.toload.main.hd2026"` and namespace `net.toload.main.hd`, with `versionName '6.1.16'` and `targetSdkVersion 36` in `LimeStudio/app/build.gradle:28-40`.
+The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation.
 
-Likely startup path to inspect before attempting a fix:
+The most suspicious concrete path is:
 
-- `LIMEService.onCreate()` (`LIMEService.java:362-420`) constructs `SearchServer`, initializes preferences, creates `LIMEPreferenceManager`, initializes vibration/audio services, and calls `buildActivatedIMList()`.
-- `SearchServer(Context)` (`SearchServer.java:162-184`) creates or opens the shared `LimeDB`, resets in-memory caches via `initialCache()`, then starts emoji-category preload on a background thread.
-- `SearchServer.initialCache()` (`SearchServer.java:1282-1299`) clears and recreates the mapping/English/emoji/key-name/remap caches.
-- `LIMEService.onInitializeInterface()` (`LIMEService.java:428-437`) calls `initialViewAndSwitcher(false)`, `initCandidateView()`, and `mKeyboardSwitcher.resetKeyboards(true)`.
-- `LIMEService.onCreateInputView()` (`LIMEService.java:503-545`) calls `initialViewAndSwitcher(true)` and returns the embedded candidate/input container. The actual inflation/setup work is inside `initialViewAndSwitcher()`.
-- `LIMEService.initialViewAndSwitcher()` (`LIMEService.java:4905-4965`) may inflate `R.layout.inputcandidate`, set up keyboard/candidate/emoji views, apply dynamic/accent colors, create/update `LIMEKeyboardSwitcher`, call `buildActivatedIMList()`, and load keyboard/IM config lists from `SearchServer`/`LimeDB` when needed.
-- `LIMEService.onStartInput()` / `onStartInputView()` (`LIMEService.java:734-813`) both enter `initOnStartInput()`.
-- `LIMEService.initOnStartInput()` (`LIMEService.java:820-900+`) reads database-backed keyboard/IM config lists, resets keyboards, loads settings, rebuilds activated IM state, and applies input-type-specific mode selection.
-- `buildActivatedIMList()` (`LIMEService.java:3577-3651`) queries `SearchSrv.getImConfigList(...)` and rewrites the activated IM lists from database-backed IM configuration when `SearchSrv` is available.
+1. `LIMEService.onCreate()` constructs `SearchServer` synchronously before any keyboard view can be shown.
+   - `LIMEService.java:362-420`
+   - `SearchServer(Context)` opens or reopens `LimeDB`, clears/recreates caches, then starts emoji-category preload.
+   - `SearchServer.java:162-184`, `initialCache()` at `SearchServer.java:1282-1299`.
+   - `onCreate()` then initializes default preferences and calls `buildActivatedIMList()`.
 
-Potentially expensive or device-sensitive areas:
+2. `buildActivatedIMList()` is database-backed when `SearchSrv` exists.
+   - `LIMEService.java:3577-3651`
+   - It calls `SearchSrv.getImConfigList(null, LIME.IM_FULL_NAME)` every time it rebuilds the active-IM list.
+   - This is invoked from at least `onCreate()`, `initialViewAndSwitcher()`, and `initOnStartInput()`.
 
-- Repeated database queries for activated IM and keyboard configuration during `buildActivatedIMList()` / `initOnStartInput()`.
-- Input view inflation and keyboard-switcher rebuild on first display or theme/dynamic-color changes.
-- Initial DB open/upgrade/bootstrap and emoji-category preload contention on slower devices or restored databases.
-- Samsung-specific IME lifecycle behavior around switching input methods, especially if the LIME process is cold-started.
+3. `initialViewAndSwitcher(true)` is heavy and runs on the first input-view creation path.
+   - `LIMEService.java:4905-4965`
+   - It inflates `R.layout.inputcandidate`, wires keyboard/candidate views, calls `setupEmojiKeyboardView()`, applies follow-system accent colors, constructs/updates `LIMEKeyboardSwitcher`, rebuilds the activated IM list, and may query both keyboard and IM-keyboard config lists from the database.
 
-These are hypotheses only. A logcat trace with timestamps is needed to identify whether the delay is before service creation, during DB/cache/bootstrap, during view inflation/keyboard reset, or during first `onStartInputView()`.
+4. `initOnStartInput()` repeats more database/config and keyboard reset work.
+   - `LIMEService.java:820-990`
+   - It calls `SearchSrv.getAllImKeyboardConfigList()` (`LIMEService.java:866-871`), `mKeyboardSwitcher.resetKeyboards(...)`, `loadSettings()`, and `buildActivatedIMList()` again before selecting the field-specific keyboard mode.
+
+5. `onStartInput()` appears to call the wrong superclass method.
+   - Current code: `super.onStartInputView(attribute, restarting);` in `onStartInput()` (`LIMEService.java:734-738`).
+   - Expected pattern for `onStartInput()` is `super.onStartInput(attribute, restarting)`.
+   - `onStartInputView()` later calls `super.onStartInputView(attribute, restarting)` and calls `initOnStartInput(attribute)` again (`LIMEService.java:745-762`).
+   - This means a normal activation can run the input-view superclass path and LIME's `initOnStartInput()` work twice: once from `onStartInput()` and once from `onStartInputView()`.
+
+This duplicate initialization is a concrete root-cause candidate: even if individual DB/config queries are normally small, doubling them and combining them with view inflation, keyboard reset, theme/accent work, and DB open/upgrade checks can produce a visible delay on a midrange Samsung device, especially on cold start or after database restore/import.
+
+## Recent-change context
+
+The slow path is partly legacy, but several 6.x-era changes increased the amount of work tied to first keyboard display:
+
+- Embedded candidate view / always-fixed candidate UI changed `initialViewAndSwitcher()` to inflate and manage a larger combined `inputcandidate` container.
+- Emoji keyboard UI setup is now part of first input-view wiring via `setupEmojiKeyboardView()`.
+- Follow-system theme/accent support calls `applyFollowSystemAccentColors()` during `initialViewAndSwitcher()`.
+- Recent config/list correctness fixes made the service rely more heavily on DB-backed IM/keyboard config reads instead of stale preference-only state.
+
+These changes are not individually blamed yet. The first fix should target the lifecycle duplication and repeated synchronous work before adding broad startup refactors.
+
+## What the next debugging run should measure
+
+Add temporary timing logs with elapsed milliseconds around these exact segments:
+
+- `onCreate()` total.
+- `new SearchServer(this)` and `new LimeDB(...)` / `openDBConnection(false)`.
+- `PreferenceManager.setDefaultValues(...)`.
+- `buildActivatedIMList()` and its `SearchSrv.getImConfigList(...)` query.
+- `onInitializeInterface()` total.
+- `onCreateInputView()` total.
+- `initialViewAndSwitcher(true)`, split into layout inflation, `setupEmojiKeyboardView()`, `applyFollowSystemAccentColors()`, `buildActivatedIMList()`, `getKeyboardConfigList()`, and `getAllImKeyboardConfigList()`.
+- `onStartInput()` total and whether it invokes the input-view superclass path.
+- `onStartInputView()` total.
+- `initOnStartInput()` total, split around `getAllImKeyboardConfigList()`, `resetKeyboards(...)`, `loadSettings()`, `buildActivatedIMList()`, and `initialIMKeyboard()`.
+
+The reporter's seven seconds should be mapped to one of these stages before implementation. Without that timing split, a fix can easily move work between callbacks without reducing first-visible-keyboard latency.
+
+## Proposed fix direction after timing confirmation
+
+Likely focused fixes, in priority order:
+
+1. Correct `onStartInput()` to call `super.onStartInput(attribute, restarting)` instead of `super.onStartInputView(attribute, restarting)`, then verify that initialization still happens exactly once through the correct Android IME lifecycle.
+2. Avoid calling `initOnStartInput(attribute)` twice for one visible session. Keep field-specific mode setup in the callback that Android actually uses for the visible input view.
+3. Cache active IM / keyboard config snapshots for the duration of a switch and invalidate them only when table settings change, instead of querying IM config in `onCreate()`, `initialViewAndSwitcher()`, and `initOnStartInput()` for the same activation.
+4. Keep first keyboard display minimal: show the base keyboard first, then defer nonessential emoji/category preload, dynamic accent refresh, and full config refresh until after the keyboard is visible.
+5. If logs show DB open/upgrade as the bottleneck, add a targeted DB-open/upgrade mitigation rather than UI refactoring.
 
 ## Existing test coverage assessment
 
-Relevant current coverage exists, but it does not directly gate the reported perceived IME switch latency:
+Current tests do not directly protect this bug:
 
-- `PerformanceTest` benchmarks database/search/import/export style operations with production-size data, but it is not a cold IME-switch startup benchmark and likely does not measure Android framework IME activation to first visible keyboard.
-- `LIMEServiceTest` covers many service logic paths and candidate/keyboard behavior, but the inspected section is not a latency regression test for `onCreate()` -> `onCreateInputView()` -> `onStartInputView()` under cold-start conditions.
-- There is no confirmed device/emulator timing gate for "switch to LIME and keyboard becomes visible within N ms".
+- `PerformanceTest` benchmarks database/search/import/export operations with real data, but it does not measure IME switch latency from Android framework activation to first visible keyboard.
+- `LIMEServiceTest` covers service logic and candidate/keyboard behavior, but it does not assert callback ordering or that `initOnStartInput()` runs once per visible session.
+- There is no current device/emulator timing gate for “switch to LIME and first keyboard frame visible within N ms”.
 
-## Code fragility assessment
+Useful regression coverage after the first fix:
 
-The startup path is moderately fragile because a single user-visible switch can touch Android IME lifecycle callbacks, preference reads, database-backed IM/keyboard config queries, input-view inflation, keyboard rebuild, dynamic-color/theme setup, and candidate/emoji UI initialization. Some of these steps are repeated across `onCreate()`, `onInitializeInterface()`, `onCreateInputView()`, and `initOnStartInput()`.
-
-The current report is strong enough to track as a bug, but not enough to choose a code fix without timing evidence. A premature fix risks moving work between lifecycle callbacks without reducing the actual blocking interval.
-
-## Likely root cause / hypotheses
-
-Root cause is not confirmed yet. Leading hypotheses:
-
-1. Cold-start database/cache initialization or IM-config queries block the IME lifecycle long enough to delay the first visible keyboard.
-2. First input-view inflation plus keyboard-switcher rebuild is doing too much synchronously during `onCreateInputView()` / `onStartInputView()`.
-3. A 6.1.x change such as always-embedded candidate view, dynamic/accent color setup, emoji keyboard setup, or repeated activated-IM rebuilds increased first-show work on some Samsung devices.
-4. Device-local state such as restored/imported databases, many enabled tables, or stale/large DB content amplifies startup cost.
-
-## Proposed investigation plan
-
-1. Ask the reporter for Android/One UI version, whether the delay is first activation only or every switch, active table/enabled table count, clean install vs upgrade/restore, and a logcat capture around the switch.
-2. Add temporary timing logs around:
-   - `LIMEService.onCreate()`
-   - `SearchServer` constructor / `LimeDB` open
-   - `buildActivatedIMList()`
-   - `onInitializeInterface()`
-   - `onCreateInputView()` / `initialViewAndSwitcher()`
-   - `onStartInputView()` / `initOnStartInput()`
-3. Reproduce on a Samsung device or emulator matching the reporter's Android/One UI version once provided, comparing cold process start and warm switching.
-4. Only after timing isolates the blocking segment, consider a focused fix such as caching activated IM config between calls, deferring nonessential preload/UI work, avoiding redundant keyboard resets, or moving long DB work off the first visible path.
-
-## Follow-up questions for reporter
-
-Public follow-up should request:
-
-- Android version / One UI version.
-- Whether the seven-second delay happens every time or only the first time after reboot/install.
-- Whether it happens in every app/text field.
-- Active input table and whether many tables are enabled.
-- Whether version 6.1.16 was a clean install, upgrade, or after database restore/import.
-- If possible, a logcat capture filtered around `net.toload.main.hd2026` while switching to LIME.
-
-## Verification plan
-
-Before a fix:
-
-- Collect logcat timing evidence from reporter or local reproduction.
-- Identify which lifecycle stage consumes the delay.
-- Add or update instrumentation/manual performance checks that measure cold IME startup / first visible input view latency.
-
-After a fix:
-
-- Run Android compile checks and relevant instrumentation tests.
-- On a device/emulator, compare cold and warm switch-to-LIME timing before/after the fix.
-- Ask reporter to retest only after a newer APK contains the targeted startup-performance change.
+- A lifecycle/unit-style test or source guard that `onStartInput()` calls `super.onStartInput(...)`, not `super.onStartInputView(...)`.
+- A service test using a fake/stub `SearchServer` or instrumentation hooks to count `buildActivatedIMList()` / config-list calls during one activation.
+- A manual/device performance checklist recording cold and warm IME switch timings before/after the fix.
 
 ## Platform impact analysis
 
 ### Android
 
-Confirmed reporter platform. The issue is specific to Android IME activation and the LIME Android service/input-view startup path. Samsung A52 behavior may be device/vendor-sensitive, so Android investigation should avoid assuming all devices are affected until reproduced.
+Confirmed reporter platform. The Android service lifecycle is the relevant surface: `LIMEService`, `SearchServer`, `LimeDB`, keyboard-view inflation, keyboard-switcher reset, and DB-backed IM/keyboard config reads. Samsung A52/One UI may amplify the delay, but the duplicated initialization path is Android-wide unless later testing shows it is harmless on non-Samsung devices.
 
 ### iOS
 
-N/A for the reported platform. iOS has a separate keyboard extension lifecycle and codebase, so this Android IME switching delay does not directly imply an iOS bug. No iOS action is needed unless a separate iOS startup-latency report appears.
+No direct iOS impact from this report. iOS uses a separate keyboard-extension lifecycle and different codebase. Do not infer an iOS startup bug unless a separate iOS report or measurement shows similar first-show latency.
 
 ## Backlog status
 
-Do not add to `docs/BACKLOG.md` yet. The issue is triaged as a plausible bug, but the intended fix direction is not confirmed until timing evidence identifies the blocking path.
+Keep out of `docs/BACKLOG.md` until a maintainer/Jeremy confirms the fix direction. The likely first work item is Android-only lifecycle/startup performance, but the exact fix should wait for timing logs or local reproduction.
+
+## Public follow-up status
+
+A public follow-up already asked for Android/One UI version, cold-vs-warm behavior, app/field scope, active/enabled tables, upgrade/restore history, and logcat:
+
+- https://github.com/lime-ime/limeime/issues/107#issuecomment-4633328574
+
+Do not post another public comment unless Jeremy/maintainer wants to engage further or new evidence arrives.
 
 ## Retest condition
 
-Do not ask the reporter to retest version 6.1.16. Request retest only after a newer APK/build includes a clearly relevant startup-performance fix.
+Do not ask the reporter to retest version 6.1.16. Request retest only after a newer APK/build includes a targeted startup-performance fix.
