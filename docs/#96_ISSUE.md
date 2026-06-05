@@ -48,6 +48,7 @@ Official table-data scope:
   - A practical distinction is whether `,` / `.` are defined as roots in the table.
 - After the 6.1.16 retest request, original reporter `SmithCCho` replied in https://github.com/lime-ime/limeime/issues/96#issuecomment-4629301853 that on 行列10, Chinese-keyboard `,` / `.` plus Space directly outputs full-width punctuation, and thanked the team.
 - Android now separates conventional `%endkey` / `@endkey@` metadata from the Lime-specific `%limeendkey` / `@limeendkey@` runtime feature mechanism to avoid conflict with historical CIN semantics.
+- Maintainer clarification in https://github.com/lime-ime/limeime/issues/96#issuecomment-4630088298 states the semantic split explicitly: conventional `%endkey` should finish composition and show candidates but not send the highlighted candidate, while `%limeendkey` / `@limeendkey@` is the LIME soft-keyboard opt-in behavior that finishes composition and sends the currently highlighted candidate. Conventional `%endkey` is preserved for future physical-keyboard-style CIN behavior.
 
 ## Source evidence inspected
 
@@ -79,7 +80,7 @@ Relevant code area on current `master`:
 1. Added Android metadata parsing/runtime support for explicit Lime end-key behavior:
    - `.cin`: `%limeendkey ...`
    - `.lime`: `@limeendkey@` equivalent.
-2. Preserved conventional `%endkey` / `@endkey@` as imported/exported compatibility metadata without making those conventional fields the LIME runtime commit trigger.
+2. Preserved conventional `%endkey` / `@endkey@` as imported/exported compatibility metadata without making those conventional fields the LIME runtime commit trigger. This avoids changing the historical CIN-style meaning, where an end key ends composition / displays candidates but does not commit the highlighted candidate.
 3. Kept candidate-list ordering unchanged. The composing-code fallback remains item 0.
 4. Required table opt-in for any potential end-key character that might also be a root; tables should not put that character in Lime end-key metadata unless they intentionally want end-key behavior.
 
@@ -112,5 +113,6 @@ The Lime-specific table-format feature request (`%limeendkey ...` and `.lime @li
 - Community retest feedback: `Limeroshenko` reported in https://github.com/lime-ime/limeime/issues/96#issuecomment-4625176200 that Android 6.1.16 is close to the requested behavior for their tested paths: official table comma-plus-Space outputs full-width punctuation, opt-in Lime end-key `,.` allows direct comma output, and personal-table `,` prefix symbol behavior remains normal when end-key is disabled.
 - Original reporter confirmation: `SmithCCho` reported in https://github.com/lime-ime/limeime/issues/96#issuecomment-4629301853 that the 行列10 Chinese-keyboard `,` / `.` keys plus Space now directly output full-width punctuation, and thanked the team for the continued optimization.
 - Closing acknowledgement posted by `limeimetw`: https://github.com/lime-ime/limeime/issues/96#issuecomment-4629315546
+- Post-closure maintainer clarification posted/edited by `limeimetw`: https://github.com/lime-ime/limeime/issues/96#issuecomment-4630088298 explains why the implementation uses `%limeendkey` instead of conventional `%endkey`.
 - Closure: issue #96 was closed as completed on 2026-06-05 after the original reporter confirmed the Android 6.1.16 行列10 punctuation-plus-Space behavior. No active public retest watch remains unless the issue is reopened or new evidence is added.
 - Remaining scope: iOS/table-format parity and official table-data coordination, if any, should stay in the normal release/backlog flow and should not be treated as an open #96 reporter-watch item.

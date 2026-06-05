@@ -28,7 +28,7 @@ Last reviewed: 2026-06-05
 
 - #96 — Android + iOS/table-format — direct punctuation matches and LIME end-key behavior for table IMs
   - Status: Completed and verified/aligned.
-  - Current state: Direct `,` / `.` mappings highlight/select the direct full-width punctuation match before the composing-code fallback. LIME-specific end-key metadata uses `limeendkey` instead of conflicting with conventional `.cin` `%endkey`, with Android and iOS runtime behavior aligned.
+  - Current state: Direct `,` / `.` mappings highlight/select the direct full-width punctuation match before the composing-code fallback. LIME-specific end-key metadata uses `limeendkey` instead of conflicting with conventional `.cin` `%endkey`; the distinction is behavioral (`%endkey` ends composition/shows candidates without committing, while `%limeendkey` ends composition and commits the highlighted candidate). Android and iOS runtime behavior is aligned.
   - Follow-up: Table-data changes for official tables, if any, should be coordinated separately from the engine feature.
 
 - #100 — iOS — contextual Enter/Send key should not become light-on-light in light theme
