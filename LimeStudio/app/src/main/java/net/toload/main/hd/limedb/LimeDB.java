@@ -4906,7 +4906,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             //String value = "";
             int similarSize = mLIMEPref.getSimilarCodeCandidates();
 
-            String selectString = "SELECT word FROM dictionary WHERE word MATCH '" + word + "*' AND word <> '"+ word +"'ORDER BY word ASC LIMIT " + similarSize + ";";
+            String selectString = "SELECT word FROM dictionary WHERE word MATCH '" + word + "*' AND word <> '"+ word +"'ORDER BY rowid ASC LIMIT " + similarSize + ";";
             //SQLiteDatabase db = this.getSqliteDb(true);
 
             Cursor cursor = db.rawQuery(selectString, null);
@@ -5164,7 +5164,11 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     }
 
     private boolean hasEmojiDataRows() {
-        try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + EMOJI_TABLE_DATA, null)) {
+        return hasEmojiDataRows(db);
+    }
+
+    private static boolean hasEmojiDataRows(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery("SELECT COUNT(*) FROM " + EMOJI_TABLE_DATA, null)) {
             return cursor != null && cursor.moveToFirst() && cursor.getInt(0) > 0;
         } catch (Exception e) {
             Log.e(TAG, "Error checking emoji data row count", e);
@@ -5201,7 +5205,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
 
     private static void createEmojiTables(SQLiteDatabase targetDb, boolean forceRecreate) {
         if (forceRecreate) {
-            targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_FTS);
+            dropEmojiFtsTable(targetDb);
             targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_USER);
             targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_DATA);
         }
@@ -5217,14 +5221,19 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 "tags_tw TEXT, " +
                 "version REAL NOT NULL)");
         targetDb.execSQL("CREATE INDEX IF NOT EXISTS idx_emoji_group ON " + EMOJI_TABLE_DATA + "(group_name, sort_order)");
+        boolean recreatedEmojiFts = false;
         if (!tableExists(targetDb, EMOJI_TABLE_FTS) || !isEmojiFtsTableUsable(targetDb)) {
-            dropEmojiFtsSchemaRows(targetDb);
+            dropEmojiFtsTable(targetDb);
             createEmojiFtsTable(targetDb);
+            recreatedEmojiFts = true;
         }
         targetDb.execSQL("CREATE TABLE IF NOT EXISTS " + EMOJI_TABLE_USER + " (" +
                 "value TEXT PRIMARY KEY REFERENCES " + EMOJI_TABLE_DATA + "(value), " +
                 "last_used INTEGER, " +
                 "use_count INTEGER NOT NULL DEFAULT 0)");
+        if (recreatedEmojiFts && hasEmojiDataRows(targetDb)) {
+            rebuildEmojiFts(targetDb);
+        }
     }
 
     private static void ensureCj4Schema(SQLiteDatabase targetDb) {
@@ -5273,16 +5282,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     }
 
     private static void createEmojiFtsTable(SQLiteDatabase targetDb) {
-        try {
-            targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts5(" +
-                    "name_en, name_tw, tags_en, tags_tw, " +
-                    "content='" + EMOJI_TABLE_DATA + "', content_rowid='rowid', " +
-                    "tokenize='unicode61 remove_diacritics 1')");
-        } catch (SQLiteException fts5Error) {
-            Log.w(TAG, "FTS5 unavailable for emoji search; falling back to FTS4", fts5Error);
-            dropEmojiFtsTableAfterFailedCreate(targetDb);
-            createEmojiFts4Table(targetDb);
-        }
+        createEmojiFts4Table(targetDb);
     }
 
     private static void createEmojiFts4Table(SQLiteDatabase targetDb) {
@@ -5305,13 +5305,13 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         }
     }
 
-    private static void dropEmojiFtsTableAfterFailedCreate(SQLiteDatabase targetDb) {
+    private static void dropEmojiFtsTable(SQLiteDatabase targetDb) {
         SQLiteException dropError = null;
         try {
             targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_FTS);
         } catch (SQLiteException e) {
             dropError = e;
-            Log.w(TAG, "DROP TABLE failed while cleaning failed emoji FTS5 create", e);
+            Log.w(TAG, "DROP TABLE failed while cleaning emoji FTS", e);
         }
         if (!emojiFtsSchemaRowsExist(targetDb)) {
             if (dropError != null) {
@@ -5319,7 +5319,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             }
             return;
         }
-        Log.w(TAG, "Removing residual emoji FTS schema before FTS4 fallback");
+        Log.w(TAG, "Removing residual emoji FTS schema before recreating FTS4 table");
         dropEmojiFtsSchemaRows(targetDb);
     }
 
@@ -5337,9 +5337,20 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             targetDb.delete("sqlite_master",
                     "name = ? OR tbl_name = ? OR name LIKE ?",
                     new String[]{EMOJI_TABLE_FTS, EMOJI_TABLE_FTS, EMOJI_TABLE_FTS + "_%"});
+            bumpSchemaVersion(targetDb);
         } finally {
             targetDb.execSQL("PRAGMA writable_schema=OFF");
         }
+    }
+
+    private static void bumpSchemaVersion(SQLiteDatabase targetDb) {
+        int schemaVersion = 0;
+        try (Cursor cursor = targetDb.rawQuery("PRAGMA schema_version", null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                schemaVersion = cursor.getInt(0);
+            }
+        }
+        targetDb.execSQL("PRAGMA schema_version = " + (schemaVersion + 1));
     }
 
     private static void clearEmojiBaseData(SQLiteDatabase targetDb) {

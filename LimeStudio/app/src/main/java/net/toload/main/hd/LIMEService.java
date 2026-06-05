@@ -2291,6 +2291,24 @@ public class LIMEService extends InputMethodService
                 || candidate.isChinesePunctuationSymbolRecord());
     }
 
+    public static LinkedList<Mapping> buildEnglishPredictionCandidates(String word,
+                                                                       List<Mapping> suggestions) {
+        LinkedList<Mapping> result = new LinkedList<>();
+        if (word == null || word.isEmpty()) {
+            return result;
+        }
+
+        Mapping self = new Mapping();
+        self.setWord(word);
+        self.setComposingCodeRecord();
+        result.add(self);
+
+        if (suggestions != null) {
+            result.addAll(suggestions);
+        }
+        return result;
+    }
+
     private void showEmojiKeyboard() {
         mEmojiSourceWasEnglish = mEnglishOnly;
         mEmojiKeyboardShown = true;
@@ -4160,10 +4178,6 @@ public class LIMEService extends InputMethodService
                         if (queryThread != null && queryThread.isAlive()) queryThread.interrupt();
                         queryThread = new Thread() {
                             public void run() {
-                                final Mapping self = new Mapping();
-                                self.setWord(tempEnglishWord.toString());
-                                self.setComposingCodeRecord();
-
                                 List<Mapping> suggestions = null;
                                 try {
                                     suggestions = SearchSrv.getEnglishSuggestions(tempEnglishWord.toString());
@@ -4177,10 +4191,9 @@ public class LIMEService extends InputMethodService
                                     return;   // terminate thread here, since it is interrupted and more recent getMappingByCode will update the suggestions.
                                 }
 
-                                if ((suggestions != null ? suggestions.size() : 0) > 0) {
-                                    list.add(self);
-                                    list.addAll(suggestions);
+                                list.addAll(buildEnglishPredictionCandidates(tempEnglishWord.toString(), suggestions));
 
+                                if (!list.isEmpty()) {
                                     // Setup sel key display if
                                     String selkey = "1234567890";
                                     if (disable_physical_selection && finalHasPhysicalKeyPressed) {
@@ -4228,7 +4241,7 @@ public class LIMEService extends InputMethodService
 
                                     //Log.i("EMOJIbefore:", tempEnglishList.size() + "");
                                     tempEnglishList.addAll(list);
-                                    setSuggestions(list, finalHasPhysicalKeyPressed, selkey);
+                                    setEnglishPredictionSuggestions(list, finalHasPhysicalKeyPressed, selkey);
 
                                     //Log.i("EMOJIafter:", tempEnglishList.size() + "");
 
@@ -4533,6 +4546,34 @@ public class LIMEService extends InputMethodService
             clearSuggestions();
 
 
+        }
+
+    }
+
+    private synchronized void setEnglishPredictionSuggestions(List<Mapping> suggestions,
+                                                              boolean showNumber,
+                                                              String diplaySelkey) {
+
+        if (suggestions != null && !suggestions.isEmpty()) {
+            setInputCandidateStripVisibility(View.VISIBLE);
+            hasCandidatesShown = true;
+            hasMappingList = true;
+            selectedCandidate = null;
+
+            if (mCandidateView != null) {
+                mCandidateList = (LinkedList<Mapping>) suggestions;
+                mCandidateView.setSuggestionsWithoutHighlight(suggestions, showNumber, diplaySelkey);
+                if (DEBUG)
+                    Log.i(TAG, "setEnglishPredictionSuggestions(): mCandidateList.size: "
+                            + mCandidateList.size() + ", tempEnglishWord = " + tempEnglishWord);
+            }
+            if (mCandidateInInputView != null) {
+                mCandidateInInputView.updateCandidateViewWidthConstraint();
+            }
+        } else {
+            if (DEBUG) Log.i(TAG, "setEnglishPredictionSuggestions() with list=null");
+            hasMappingList = false;
+            clearSuggestions();
         }
 
     }

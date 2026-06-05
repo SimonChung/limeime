@@ -7,8 +7,13 @@ import static org.junit.Assert.assertTrue;
 import android.graphics.Color;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
+import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.voice.DictationState;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,5 +52,20 @@ public class CandidateViewTest {
         assertEquals("辨識完成中", CandidateView.dictationDisplayText(DictationState.FINALIZING, null));
         assertEquals("語音輸入錯誤", CandidateView.dictationDisplayText(DictationState.ERROR, null));
         assertEquals("", CandidateView.dictationDisplayText(DictationState.IDLE, null));
+    }
+
+    @Test
+    public void setSuggestionsWithoutHighlightLeavesNoSelectedCandidate() {
+        CandidateView candidateView = new CandidateView(
+                InstrumentationRegistry.getInstrumentation().getTargetContext(), null);
+        Mapping composing = new Mapping();
+        composing.setWord("salt");
+        composing.setComposingCodeRecord();
+        List<Mapping> suggestions = new ArrayList<>();
+        suggestions.add(composing);
+
+        candidateView.setSuggestionsWithoutHighlight(suggestions, false, "1234567890");
+
+        assertEquals(-1, candidateView.mSelectedIndex);
     }
 }

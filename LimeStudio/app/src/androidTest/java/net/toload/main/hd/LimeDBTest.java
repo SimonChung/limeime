@@ -1064,6 +1064,18 @@ public class LimeDBTest {
         }
     }
 
+    @Test
+    public void englishSuggestionsUseDictionaryRankInsteadOfAlphabeticalOnly() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LimeDB limeDB = new LimeDB(appContext);
+
+        List<String> suggestions = limeDB.getEnglishSuggestions("sal");
+
+        assertNotNull("Suggestions should be available", suggestions);
+        assertFalse("sal should return bundled dictionary suggestions", suggestions.isEmpty());
+        assertEquals("salt", suggestions.get(0));
+    }
+
     @Test(timeout = 10000)
     public void testLimeDBEmojiConvert() {
         // Test emojiConvert operation

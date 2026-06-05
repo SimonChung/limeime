@@ -182,6 +182,30 @@ public class LIMEServiceTest {
     }
 
     @Test
+    public void englishPredictionCandidatesKeepComposingWordWhenSuggestionsAreEmpty() {
+        List<Mapping> candidates = LIMEService.buildEnglishPredictionCandidates("salt", new ArrayList<Mapping>());
+
+        assertEquals(1, candidates.size());
+        assertEquals("salt", candidates.get(0).getWord());
+        assertTrue(candidates.get(0).isComposingCodeRecord());
+    }
+
+    @Test
+    public void englishPredictionCandidatesKeepSuggestionsAfterComposingWord() {
+        Mapping suggestion = createPlainCandidate("", "salty");
+        suggestion.setEnglishSuggestionRecord();
+        List<Mapping> suggestions = new ArrayList<>();
+        suggestions.add(suggestion);
+
+        List<Mapping> candidates = LIMEService.buildEnglishPredictionCandidates("salt", suggestions);
+
+        assertEquals(2, candidates.size());
+        assertEquals("salt", candidates.get(0).getWord());
+        assertTrue(candidates.get(0).isComposingCodeRecord());
+        assertSame(suggestion, candidates.get(1));
+    }
+
+    @Test
     public void endkeyCommitAppendsOptedInImkeyBeforeCommitting() throws Exception {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         InputConnection inputConnection = mock(InputConnection.class);

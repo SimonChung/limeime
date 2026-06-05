@@ -1522,7 +1522,16 @@ public class CandidateView extends View implements View.OnClickListener {
 
     }
 
+    public void setSuggestionsWithoutHighlight(List<Mapping> suggestions, boolean showNumber, String displaySelkey) {
+        mDisplaySelkey = displaySelkey;
+        setSuggestions(suggestions, showNumber, false);
+    }
+
     public synchronized void setSuggestions(List<Mapping> suggestions, boolean showNumber) {
+        setSuggestions(suggestions, showNumber, true);
+    }
+
+    private synchronized void setSuggestions(List<Mapping> suggestions, boolean showNumber, boolean seedDefaultSelection) {
         //clear();
         //Jeremy '11,8,14 moved from clear();
         if (DEBUG)
@@ -1564,7 +1573,9 @@ public class CandidateView extends View implements View.OnClickListener {
                     Log.i(TAG, "setSuggestions():mSuggestions.size():" + mSuggestions.size()
                             + " mCount=" + mCount);
 
-                mSelectedIndex = LIMEService.defaultSelectedCandidateIndex(mSuggestions, false);
+                if (seedDefaultSelection) {
+                    mSelectedIndex = LIMEService.defaultSelectedCandidateIndex(mSuggestions, false);
+                }
             } else {
                 if (DEBUG)
                     Log.i(TAG, "setSuggestions():mSuggestions=null");

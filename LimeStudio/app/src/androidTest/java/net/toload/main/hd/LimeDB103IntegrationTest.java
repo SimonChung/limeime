@@ -191,8 +191,7 @@ public class LimeDB103IntegrationTest {
 
     @Test
     public void restoreOldBackupWithStaleEmojiFtsSchemaRecreatesEmojiFts() throws Exception {
-        File oldDb = createSeedVariant("lime_restore_102_stale_emoji_fts.db", 102, true, false);
-        insertStaleEmojiFtsSchema(oldDb);
+        File oldDb = createLegacyDbWithStaleEmojiFtsSchema("lime_restore_102_stale_emoji_fts.db", 102);
         File restoreZip = new File(appContext.getCacheDir(), "lime_restore_102_stale_emoji_fts.zip");
         createDatabaseRestoreZip(oldDb, restoreZip);
 
@@ -203,8 +202,8 @@ public class LimeDB103IntegrationTest {
         assertEmojiSchemaExists();
         assertEmojiDataLoaded();
         String emojiFtsSql = queryString("SELECT sql FROM sqlite_master WHERE name = ?", "emoji_fts").toLowerCase();
-        assertTrue("emoji_fts should be recreated as a usable FTS table",
-                emojiFtsSql.contains("using fts4") || emojiFtsSql.contains("using fts5"));
+        assertTrue("emoji_fts should be recreated as Android platform FTS4",
+                emojiFtsSql.contains("using fts4"));
     }
 
     @Test
@@ -272,13 +271,13 @@ public class LimeDB103IntegrationTest {
 
     private File createSeedVariant(String name, int userVersion, boolean dropEmojiSchema, boolean forceOldEmojiVersion)
             throws Exception {
-        File dbFile = new File(appContext.getCacheDir(), name);
+        File dbFile = new File(appContext.getFilesDir(), name);
         copyRawResourceToFile(R.raw.lime, dbFile);
 
         SQLiteDatabase db = SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READWRITE);
         try {
             if (dropEmojiSchema) {
-                db.execSQL("DROP TABLE IF EXISTS emoji_fts");
+                dropEmojiFtsSchemaRowsForFixture(db);
                 db.execSQL("DROP TABLE IF EXISTS emoji_user");
                 db.execSQL("DROP TABLE IF EXISTS emoji_data");
                 db.execSQL("DELETE FROM im WHERE code = ?", new Object[]{"emoji"});
@@ -293,10 +292,54 @@ public class LimeDB103IntegrationTest {
         return dbFile;
     }
 
-    private void insertStaleEmojiFtsSchema(File dbFile) {
-        SQLiteDatabase db = SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READWRITE);
+    private File createLegacyDbWithStaleEmojiFtsSchema(String name, int userVersion) {
+        File dbFile = new File(appContext.getFilesDir(), name);
+        if (dbFile.exists()) {
+            dbFile.delete();
+        }
+        SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, null);
         try {
-            db.execSQL("PRAGMA writable_schema=ON");
+            db.execSQL("CREATE TABLE im (" +
+                    "_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "code TEXT, title TEXT, desc TEXT, keyboard TEXT, disable TEXT, " +
+                    "selkey TEXT, endkey TEXT, spacestyle TEXT)");
+            db.execSQL("CREATE TABLE keyboard (" +
+                    "_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "code TEXT, name TEXT, desc TEXT, type TEXT, image TEXT, " +
+                    "imkb TEXT, imshiftkb TEXT, engkb TEXT, engshiftkb TEXT, " +
+                    "symbolkb TEXT, symbolshiftkb TEXT, defaultkb TEXT, defaultshiftkb TEXT, " +
+                    "extendedkb TEXT, extendedshiftkb TEXT, disable TEXT)");
+            db.execSQL("INSERT INTO keyboard " +
+                    "(code, name, desc, type, image, imkb, imshiftkb, engkb, engshiftkb, " +
+                    "symbolkb, symbolshiftkb, defaultkb, defaultshiftkb, extendedkb, extendedshiftkb, disable) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    new Object[]{
+                            LIME.DB_TABLE_CJ, "倉頡", "倉頡建盤", "phone", "cj_keyboard_preview",
+                            "lime_cj", "lime_cj_shift", "lime_abc", "lime_abc_shift",
+                            "symbols", "symbols_shift", "lime", "lime_shift", "lime", "lime_shift", ""
+                    });
+            insertStaleEmojiFtsSchema(db);
+            db.setVersion(userVersion);
+        } finally {
+            db.close();
+        }
+        return dbFile;
+    }
+
+    private void dropEmojiFtsSchemaRowsForFixture(SQLiteDatabase db) {
+        db.execSQL("PRAGMA writable_schema=ON");
+        try {
+            db.delete("sqlite_master",
+                    "name = ? OR tbl_name = ? OR name LIKE ?",
+                    new String[]{"emoji_fts", "emoji_fts", "emoji_fts_%"});
+        } finally {
+            db.execSQL("PRAGMA writable_schema=OFF");
+        }
+    }
+
+    private void insertStaleEmojiFtsSchema(SQLiteDatabase db) {
+        db.execSQL("PRAGMA writable_schema=ON");
+        try {
             db.execSQL("INSERT INTO sqlite_master(type, name, tbl_name, rootpage, sql) " +
                     "VALUES('table', 'emoji_fts', 'emoji_fts', 0, " +
                     "'CREATE VIRTUAL TABLE emoji_fts USING fts5(" +
@@ -304,11 +347,7 @@ public class LimeDB103IntegrationTest {
                     "content=''emoji_data'', content_rowid=''rowid'', " +
                     "tokenize=''unicode61 remove_diacritics 1'')')");
         } finally {
-            try {
-                db.execSQL("PRAGMA writable_schema=OFF");
-            } finally {
-                db.close();
-            }
+            db.execSQL("PRAGMA writable_schema=OFF");
         }
     }
 

@@ -25,7 +25,7 @@ This document plans the rebuild plus the cross-platform upgrade path. The keyboa
 - Regenerate the emoji dataset from authoritative sources (Unicode 17.0 / Emoji 17.0).
 - **emoji.db becomes a build-time data source only** — at runtime, the emoji tables live inside the existing user-writable **lime.db** alongside the IM tables. This reuses the existing schema-upgrade pattern (`LimeDB.onUpgrade`) and the existing user-data backup/restore pattern, no new file lifecycle invented.
 - Add **category** (`group_name`, `subgroup`) and **multilingual names** (`name_en`, `name_tw`) so future UI can group and label.
-- Add an **FTS5 index** over name + tag columns so keyword search is fast and broad (tokenized prefix matching with diacritic folding). On old Android devices whose system SQLite lacks FTS5, fall back to an FTS4 table with the same indexed columns and query contract.
+- Add an **FTS index** over name + tag columns so keyword search is fast and broad (tokenized prefix matching with diacritic folding). iOS can use FTS5 through its SQLite stack; Android platform SQLite should create FTS4 directly unless the project later bundles its own SQLite.
 - **User score / recents** (the per-emoji `last_used`, `use_count` columns) are written back into a sibling `emoji_user` table in lime.db. This deliberately follows the existing IM user-record convention (`<table>_user`) so emoji recents survive emoji-data replacement the same way IM user records survive table reloads.
 - Rewire candidate-bar emoji injection on **both platforms** to use the new FTS-backed `findEmojiForCandidate` API. Issue #29's reporter platform (Android Array IM) gets the broader matching in this release.
 
@@ -33,7 +33,7 @@ This document plans the rebuild plus the cross-platform upgrade path. The keyboa
 
 This DB plan is an **independent, self-contained PR** — it solves issue #29 on both platforms by itself, no UI changes required. The keyboard-UI work in [docs/EMOJI_KEYBOARD.md](EMOJI_KEYBOARD.md) is a follow-up PR built on top.
 
-1. **PR 1 (this plan)**: build script + new `emoji.db` + FTS5-primary schema with FTS4 fallback on old Android devices + `findEmojiForCandidate` APIs on both platforms + candidate-bar rewiring + Android cache-wipe hook.
+1. **PR 1 (this plan)**: build script + new `emoji.db` + FTS-backed schema (FTS5 on iOS, FTS4 on Android platform SQLite) + `findEmojiForCandidate` APIs on both platforms + candidate-bar rewiring + Android cache-wipe hook.
 2. **PR 2 ([EMOJI_KEYBOARD.md](EMOJI_KEYBOARD.md))**: iOS + Android emoji keyboard UI — candidate-bar launcher, emoji panel, emoji search mode, recent category, category bookmarks, and backspace.
 
 Splitting this way:
@@ -79,7 +79,7 @@ CREATE TABLE emoji_data (
 );
 CREATE INDEX idx_emoji_group ON emoji_data(group_name, sort_order);
 
--- Preferred FTS5 index.
+-- iOS preferred FTS5 index.
 CREATE VIRTUAL TABLE emoji_fts USING fts5(
     name_en, name_tw,
     tags_en, tags_tw,
@@ -88,13 +88,14 @@ CREATE VIRTUAL TABLE emoji_fts USING fts5(
     tokenize='unicode61 remove_diacritics 1'
 );
 
--- Android fallback only, when runtime FTS5 capability detection fails:
--- CREATE VIRTUAL TABLE emoji_fts USING fts4(
---     name_en, name_tw,
---     tags_en, tags_tw,
---     tokenize=unicode61 "remove_diacritics=1",
---     content=emoji_data, content_rowid=rowid
--- );
+-- Android platform SQLite index. This is created directly on Android because
+-- FTS4 is available in AOSP platform SQLite while FTS5 is not guaranteed.
+CREATE VIRTUAL TABLE emoji_fts USING fts4(
+    name_en, name_tw,
+    tags_en, tags_tw,
+    tokenize=unicode61 "remove_diacritics=1",
+    content=emoji_data
+);
 
 -- User-writable score table. Mirrors the IM backup table convention:
 -- logical IM code/table name `emoji`, user-record table `emoji_user`.
@@ -134,14 +135,14 @@ Steps:
 
 1. Download or vendor pinned source inputs into `.Codex/txt/`: `emoji-test-17.0.txt`, `emojibase-en-17.0.json`, and `emojibase-zh-hant-17.0.json`. Use `emojibase-data@17.0.0` for the two locale JSON files and `https://unicode.org/Public/emoji/17.0/emoji-test.txt` for canonical order.
 2. Join by `hexcode` / codepoint sequence; resolve missing TW translations via CLDR `zh_Hant.xml` fallback.
-3. Expand Traditional Chinese search keywords before writing `tags_tw`: keep the full CLDR/emojibase keywords (`國旗`, `日本`, `美國`) and add unique single-Han-character tokens from those keywords (`國`, `旗`, `日`, `本`, `美`). This makes one-character candidate-bar searches work with both FTS5 and the Android FTS4 fallback, because SQLite `unicode61` prefix matching does not find characters in the middle of a multi-character CJK token unless that character is indexed as its own token.
+3. Expand Traditional Chinese search keywords before writing `tags_tw`: keep the full CLDR/emojibase keywords (`國旗`, `日本`, `美國`) and add unique single-Han-character tokens from those keywords (`國`, `旗`, `日`, `本`, `美`). This makes one-character candidate-bar searches work with both iOS FTS5 and Android FTS4, because SQLite `unicode61` prefix matching does not find characters in the middle of a multi-character CJK token unless that character is indexed as its own token.
 4. Write `Database/emoji.db` containing one table named `emoji_data` with the same columns as `emoji_data` above (no FTS, no views, no user table — those all live in lime.db at runtime). The shipped emoji.db is purely a data source for the runtime import.
 5. Bump `LimeDB.DATABASE_VERSION` and the new `EMOJI_DATA_VERSION` constant (see "Upgrade path" below) so the next app launch triggers schema/data migration.
 6. Run once per emoji-version bump; commit the resulting `Database/emoji.db` plus the corresponding `LimeStudio/app/src/main/res/raw/emoji.db`. If an iOS bundle copy is later added as a standalone file, pass another `--copy-to <path>` for that destination.
 
 ## Keyword matching
 
-Both query paths use the same FTS index inside lime.db. iOS and modern Android create `emoji_fts` as FTS5; old Android devices create `emoji_fts` as FTS4 after runtime capability detection. Callers always query the same logical table name.
+Both query paths use the same logical FTS index inside lime.db. iOS creates `emoji_fts` as FTS5; Android platform SQLite creates `emoji_fts` as FTS4. Callers always query the same logical table name.
 
 The current `EmojiConverter.convert(tag, EMOJI_TW)` does `WHERE tag = ?` — exact match only. Issue #29's reporter typed an Array sequence yielding `國旗` and got only `🎏` because no other rows had `tag = '國旗'` exactly. Even after the data rebuild lights up the right tags, exact-match still misses partials (`旗` ≠ `國旗`, `笑` ≠ `笑容`).
 
@@ -204,13 +205,13 @@ Concrete behavior change after v1:
 
 The legacy `EmojiConverter.convert(tag, emoji)` stays in place for any other callers; it's reimplemented as a thin wrapper over a `WHERE tag IN (...)` style join against `emoji_data` so legacy semantics are preserved.
 
-### FTS5 primary, FTS4 Android fallback
+### FTS backend by platform
 
-FTS5 is the primary backend because it is the modern SQLite full-text engine and is available on iOS and current Android system SQLite builds. Ranking still does not depend on BM25 — order comes from `emoji_user.last_used` (recents) and `emoji_data.sort_order` (canonical Unicode) — but FTS5 is the default implementation target.
+FTS5 is preferred on iOS because it is available through the system SQLite stack. Ranking still does not depend on BM25 — order comes from `emoji_user.last_used` (recents) and `emoji_data.sort_order` (canonical Unicode).
 
-Android keeps an FTS4 fallback for old devices whose system SQLite does not support FTS5. At schema-upgrade time, Android should probe FTS5 support by attempting to create/drop a temporary FTS5 table inside the same database connection. If that fails, create `emoji_fts` as FTS4 instead. The public API and SQL query shape stay the same; only the virtual table module differs.
+Android platform SQLite should create `emoji_fts` as FTS4 directly. FTS4 is available in AOSP platform SQLite; FTS5 is compile-option dependent and is not guaranteed by Android API level. The public API and SQL query shape stay the same; only the virtual table module differs by platform.
 
-No `androidx.sqlite:sqlite-bundled` dependency is required for v1. If fallback complexity later proves worse than the dependency cost, that can be reconsidered as a separate decision.
+No `androidx.sqlite:sqlite-bundled` dependency is required for v1. If the project later wants Android FTS5 specifically, bundled SQLite should be considered as a separate decision.
 
 ## Upgrade path
 
@@ -226,7 +227,7 @@ if (oldVersion < 103) {
     // (CREATE TABLE statements from the "New schema" section above.)
     db.execSQL("CREATE TABLE emoji_data (...);");
     db.execSQL("CREATE INDEX idx_emoji_group ON emoji_data(group_name, sort_order);");
-    db.execSQL("CREATE VIRTUAL TABLE emoji_fts USING fts5(...);"); // or fts4 on old Android fallback
+    db.execSQL("CREATE VIRTUAL TABLE emoji_fts USING fts4(...);"); // Android platform SQLite
     db.execSQL("CREATE TABLE emoji_user (...);");
     // Tables are empty after schema creation. Path 2 (next) populates them.
     // Version is tracked via the existing `im` table (no separate emoji_meta needed).
@@ -263,7 +264,7 @@ DELETE FROM im WHERE code = 'emoji';
 -- 3. Re-import via importDb() pattern: ATTACH emoji.db, copy emoji_data + im rows.
 ATTACH DATABASE '<path-to-bundled-emoji.db>' AS src;
 INSERT INTO emoji_data SELECT * FROM src.emoji_data;
-INSERT INTO emoji_fts(emoji_fts) VALUES('rebuild');   -- FTS5 primary and FTS4 fallback both support rebuild
+INSERT INTO emoji_fts(emoji_fts) VALUES('rebuild');   -- iOS FTS5 and Android FTS4 both support rebuild
 INSERT INTO im (code, title, desc, keyboard, disable, selkey, endkey, spacestyle)
     SELECT code, title, desc, keyboard, disable, selkey, endkey, spacestyle
     FROM src.im;                   -- copies version/name/source/amount/import rows
@@ -292,8 +293,8 @@ The emoji.db file is never written to and never used as a runtime DB.
 - **CN drop impact on existing candidate-bar emoji**: existing `LimeDB.emojiConvert(EMOJI_CN)` calls return empty after v2 ships. Audit `SearchServer.injectEmoji` ([SearchServer.swift:722-754](LimeIME-iOS/Shared/Search/SearchServer.swift#L722-L754)) to confirm the EN+TW path remains correct when CN returns nothing — likely fine since the existing logic chains EN → TW → CN as a fallback.
 - **Path 2 timing**: the emoji-data version check / import must run early — before any `findEmojiForCandidate` or candidate-bar injection — otherwise the first call after an upgrade hits empty/stale tables. Ideally in `LIMEService.onCreate` (Android) and the LimeDB initializer (iOS), gated behind a dispatch-once-per-process flag.
 - **Path 2 atomicity**: the entire preserve-user-records → clear base data → re-import → reconcile sequence is wrapped in a single SQL transaction. If the app crashes mid-import, the previous data version remains intact and path 2 retries on next launch.
-- **lime.db growth**: adding `emoji_data` (~1500 rows × ~10 columns), `emoji_fts` (FTS5 or FTS4 index over those rows), and `emoji_user` adds maybe 1–2 MB to lime.db. Acceptable; lime.db already varies in size across IM types.
-- **Android FTS capability detection**: Android must choose FTS5 when available and FTS4 only as a fallback. Keep this choice encapsulated behind helper methods that create, rebuild, and query `emoji_fts` by logical table name so callers do not branch on the backend.
+- **lime.db growth**: adding `emoji_data` (~1500 rows × ~10 columns), `emoji_fts` (iOS FTS5 or Android FTS4 index over those rows), and `emoji_user` adds maybe 1–2 MB to lime.db. Acceptable; lime.db already varies in size across IM types.
+- **Android FTS implementation**: Android platform SQLite uses FTS4 directly. Keep this encapsulated behind helper methods that create, rebuild, and query `emoji_fts` by logical table name so callers do not branch on the backend.
 - **ATTACH on iOS GRDB**: confirm GRDB's `DatabaseQueue` allows `ATTACH DATABASE` mid-session. Standard SQLite supports it; verify GRDB doesn't restrict it.
 - **`R.raw.emoji` extraction on Android**: Android raw resources aren't files SQLite can open directly. Path 2 must extract `R.raw.emoji` to a temporary file (e.g. `cacheDir`) before `ATTACH`, then delete the temp on completion. `LIMEUtilities.copyRAWFile` is already used elsewhere for this.
 
@@ -338,9 +339,9 @@ End-to-end manual test on **both** platforms (iOS bundles new build, Android ins
 1. **Runtime DB location**: emoji tables live inside the existing **lime.db**. Standalone `emoji.db` is a build-time data source only.
 2. **Locales**: `en` + `zh-Hant` (TW). Simplified Chinese (`cn`) dropped, no `tags_pinyin`, no `tags_bopomofo`.
 3. **Target Emoji version**: 17.0. iOS 18 / Android pre-15 show `▢` for 17.0-only glyphs — accepted.
-4. **Search backend**: FTS5 primary. FTS4 is only the old-Android fallback after runtime capability detection fails. No bundled-SQLite dep for v1.
+4. **Search backend**: iOS FTS5, Android platform SQLite FTS4. No bundled-SQLite dep for v1.
 5. **Ordering**: `(emoji_user.last_used IS NULL), emoji_user.last_used DESC, emoji_data.sort_order ASC`. Recents first, then canonical Unicode order.
-6. **Candidate-bar broadening — both platforms**: rewired to `findEmojiForCandidate` (FTS-backed; FTS5 primary, FTS4 fallback on old Android) on iOS (`SearchServer.injectEmoji`) and Android (`LIMEService` injection sites L2471-2530 + L2665-2720).
+6. **Candidate-bar broadening — both platforms**: rewired to `findEmojiForCandidate` (FTS-backed; iOS FTS5, Android FTS4) on iOS (`SearchServer.injectEmoji`) and Android (`LIMEService` injection sites L2471-2530 + L2665-2720).
 7. **Recents writeback**: `emoji_user` table inside lime.db, written on every emoji insertion. Reuses LimeIME's existing IM-table user-record lifecycle and `<table>_user` convention.
 8. **English matching thresholds**: inline candidate-bar emoji injection starts English prefix matching at two characters (`cr*`, `cry*`) and deliberately ignores bare one-character English (`c`). The emoji keyboard search box starts at one character (`c*`, `cr*`, `cry*`) because the user is explicitly searching.
 9. **Chinese candidate matching**: Chinese inline candidate injection keeps one-character CJK matching and also queries the first Chinese character of longer candidates (`國旗* OR 國*`, `日本* OR 日*`).
@@ -357,7 +358,7 @@ End-to-end manual test on **both** platforms (iOS bundles new build, Android ins
 | iOS: data version refresh | [LimeIME-iOS/Shared/Database/LimeDB.swift](LimeIME-iOS/Shared/Database/LimeDB.swift) | At init, query `im` table (`code='emoji', title='version'`) vs `EMOJI_DATA_VERSION` constant; if different, ATTACH bundled emoji.db and run preserve-user-records / clear / import / reconcile transaction (copies `im` rows + `emoji_data`, preserves `emoji_user`). Path 2. |
 | iOS: new search API | [LimeIME-iOS/Shared/Database/LimeDB.swift](LimeIME-iOS/Shared/Database/LimeDB.swift) | Add `findEmojiForCandidate(_:locale:limit:)`, `searchEmoji(_:locale:)`, `loadAllEmoji()`, `recordEmojiUsage(_:)` (writes to `emoji_user`) |
 | iOS: candidate-bar caller | [LimeIME-iOS/Shared/Search/SearchServer.swift:722-754](LimeIME-iOS/Shared/Search/SearchServer.swift#L722-L754) | Rewire `injectEmoji` to call `findEmojiForCandidate` instead of `emojiConvert` |
-| Android: schema migration | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java:609](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java#L609) | Bump `DATABASE_VERSION` from 102 → 103; add `if (oldVersion < 103)` branch creating the three emoji tables (`emoji_data`, `emoji_fts`, `emoji_user`). `emoji_fts` uses FTS5 when available, FTS4 only as the old-device fallback. Path 1. |
+| Android: schema migration | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java:609](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java#L609) | Bump `DATABASE_VERSION` from 102 → 103; add `if (oldVersion < 103)` branch creating the three emoji tables (`emoji_data`, `emoji_fts`, `emoji_user`). `emoji_fts` uses Android platform FTS4 directly. Path 1. |
 | Android: data version refresh | `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` (new method, called from `LIMEService.onCreate`) | Query `im` table (`code='emoji', title='version'`) vs `BuildConfig.EMOJI_DATA_VERSION`; if different, run an emoji-specific ATTACH/copy refresh that preserves `emoji_user` and prunes only orphaned rows after import. Path 2. |
 | Android: new search API | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/EmojiConverter.java](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/EmojiConverter.java) | Refactor: stop being a separate `SQLiteOpenHelper`; become a thin façade that runs queries against lime.db's emoji tables. Adds `findEmojiForCandidate`, `search`, `loadAll`, `recordUsage`. Legacy `convert(tag, emoji)` stays as a wrapper. |
 | Android: candidate-bar caller | [LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java](LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java) (around L2471-2530 + L2665-2720) | Rewire candidate-bar emoji injection to call `findEmojiForCandidate` instead of `EmojiConverter.convert` |

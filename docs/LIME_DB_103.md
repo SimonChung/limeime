@@ -347,4 +347,4 @@ When a new emoji release ships:
 
 - Android Java source files in this repo may contain BOMs that `javac` rejects; verify before adding source edits.
 - iOS restore must avoid reopening stale GRDB queues against replaced files; keep the current close/reopen sequencing.
-- If `emoji_fts` uses FTS5 on one platform and FTS4 fallback on another, tests should assert behavior, not virtual table implementation details.
+- Android platform SQLite creates `emoji_fts` as FTS4 directly; iOS may use FTS5. Cross-platform tests should assert behavior, while Android legacy-restore tests may assert FTS4 to prevent reintroducing the FTS5-first crash path.
