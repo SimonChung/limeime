@@ -190,6 +190,24 @@ public class LimeDB103IntegrationTest {
     }
 
     @Test
+    public void restoreOldBackupWithStaleEmojiFtsSchemaRecreatesEmojiFts() throws Exception {
+        File oldDb = createSeedVariant("lime_restore_102_stale_emoji_fts.db", 102, true, false);
+        insertStaleEmojiFtsSchema(oldDb);
+        File restoreZip = new File(appContext.getCacheDir(), "lime_restore_102_stale_emoji_fts.zip");
+        createDatabaseRestoreZip(oldDb, restoreZip);
+
+        DBServer.getInstance(appContext).restoreDatabase(restoreZip.getPath());
+
+        assertEquals(104, queryUserVersion());
+        assertCj4SchemaExists();
+        assertEmojiSchemaExists();
+        assertEmojiDataLoaded();
+        String emojiFtsSql = queryString("SELECT sql FROM sqlite_master WHERE name = ?", "emoji_fts").toLowerCase();
+        assertTrue("emoji_fts should be recreated as a usable FTS table",
+                emojiFtsSql.contains("using fts4") || emojiFtsSql.contains("using fts5"));
+    }
+
+    @Test
     public void restoreBareLimeDbBackupMovesDatabaseIntoAndroidDatabaseFolder() throws Exception {
         File oldDb = createSeedVariant("lime_restore_bare_102_no_emoji.db", 102, true, false);
         File restoreZip = new File(appContext.getCacheDir(), "lime_restore_bare_102_no_emoji.zip");
@@ -273,6 +291,25 @@ public class LimeDB103IntegrationTest {
             db.close();
         }
         return dbFile;
+    }
+
+    private void insertStaleEmojiFtsSchema(File dbFile) {
+        SQLiteDatabase db = SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READWRITE);
+        try {
+            db.execSQL("PRAGMA writable_schema=ON");
+            db.execSQL("INSERT INTO sqlite_master(type, name, tbl_name, rootpage, sql) " +
+                    "VALUES('table', 'emoji_fts', 'emoji_fts', 0, " +
+                    "'CREATE VIRTUAL TABLE emoji_fts USING fts5(" +
+                    "name_en, name_tw, tags_en, tags_tw, " +
+                    "content=''emoji_data'', content_rowid=''rowid'', " +
+                    "tokenize=''unicode61 remove_diacritics 1'')')");
+        } finally {
+            try {
+                db.execSQL("PRAGMA writable_schema=OFF");
+            } finally {
+                db.close();
+            }
+        }
     }
 
     private void replaceAppDatabaseWith(File source) throws Exception {

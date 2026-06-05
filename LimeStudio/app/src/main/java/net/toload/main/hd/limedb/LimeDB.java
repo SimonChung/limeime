@@ -5217,7 +5217,8 @@ public class LimeDB extends LimeSQLiteOpenHelper {
                 "tags_tw TEXT, " +
                 "version REAL NOT NULL)");
         targetDb.execSQL("CREATE INDEX IF NOT EXISTS idx_emoji_group ON " + EMOJI_TABLE_DATA + "(group_name, sort_order)");
-        if (!tableExists(targetDb, EMOJI_TABLE_FTS)) {
+        if (!tableExists(targetDb, EMOJI_TABLE_FTS) || !isEmojiFtsTableUsable(targetDb)) {
+            dropEmojiFtsSchemaRows(targetDb);
             createEmojiFtsTable(targetDb);
         }
         targetDb.execSQL("CREATE TABLE IF NOT EXISTS " + EMOJI_TABLE_USER + " (" +
@@ -5262,6 +5263,15 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         }
     }
 
+    private static boolean isEmojiFtsTableUsable(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery("SELECT rowid FROM " + EMOJI_TABLE_FTS + " LIMIT 0", null)) {
+            return cursor != null;
+        } catch (SQLiteException e) {
+            Log.w(TAG, "Existing emoji FTS table is unusable; recreating", e);
+            return false;
+        }
+    }
+
     private static void createEmojiFtsTable(SQLiteDatabase targetDb) {
         try {
             targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts5(" +
@@ -5271,6 +5281,23 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         } catch (SQLiteException fts5Error) {
             Log.w(TAG, "FTS5 unavailable for emoji search; falling back to FTS4", fts5Error);
             dropEmojiFtsTableAfterFailedCreate(targetDb);
+            createEmojiFts4Table(targetDb);
+        }
+    }
+
+    private static void createEmojiFts4Table(SQLiteDatabase targetDb) {
+        try {
+            targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts4(" +
+                    "name_en, name_tw, tags_en, tags_tw, " +
+                    "tokenize=unicode61 \"remove_diacritics=1\", " +
+                    "content=" + EMOJI_TABLE_DATA + ")");
+        } catch (SQLiteException fts4Error) {
+            String message = fts4Error.getMessage();
+            if (message == null || !message.contains("already exists")) {
+                throw fts4Error;
+            }
+            Log.w(TAG, "Removing residual emoji FTS schema before retrying FTS4 fallback", fts4Error);
+            dropEmojiFtsSchemaRows(targetDb);
             targetDb.execSQL("CREATE VIRTUAL TABLE " + EMOJI_TABLE_FTS + " USING fts4(" +
                     "name_en, name_tw, tags_en, tags_tw, " +
                     "tokenize=unicode61 \"remove_diacritics=1\", " +
@@ -5279,17 +5306,32 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     }
 
     private static void dropEmojiFtsTableAfterFailedCreate(SQLiteDatabase targetDb) {
+        SQLiteException dropError = null;
         try {
             targetDb.execSQL("DROP TABLE IF EXISTS " + EMOJI_TABLE_FTS);
-            return;
-        } catch (SQLiteException dropError) {
-            String message = dropError.getMessage();
-            if (message == null || !message.contains("no such module: fts5")) {
+        } catch (SQLiteException e) {
+            dropError = e;
+            Log.w(TAG, "DROP TABLE failed while cleaning failed emoji FTS5 create", e);
+        }
+        if (!emojiFtsSchemaRowsExist(targetDb)) {
+            if (dropError != null) {
                 throw dropError;
             }
-            Log.w(TAG, "Removing partial FTS5 emoji table schema before FTS4 fallback", dropError);
+            return;
         }
+        Log.w(TAG, "Removing residual emoji FTS schema before FTS4 fallback");
+        dropEmojiFtsSchemaRows(targetDb);
+    }
 
+    private static boolean emojiFtsSchemaRowsExist(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery(
+                "SELECT 1 FROM sqlite_master WHERE name = ? OR tbl_name = ? OR name LIKE ? LIMIT 1",
+                new String[]{EMOJI_TABLE_FTS, EMOJI_TABLE_FTS, EMOJI_TABLE_FTS + "_%"})) {
+            return cursor != null && cursor.moveToFirst();
+        }
+    }
+
+    private static void dropEmojiFtsSchemaRows(SQLiteDatabase targetDb) {
         targetDb.execSQL("PRAGMA writable_schema=ON");
         try {
             targetDb.delete("sqlite_master",
