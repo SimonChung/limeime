@@ -277,7 +277,7 @@ Implemented short-term behavior without new dictionary data:
 2. Keep richer frequency/user-score ranking for the scored-dictionary design
    (see "Scored Dictionary (Android)" below).
 
-Long-term target:
+Target (now implemented by the scored dictionary — replaces the #103 `rowid ASC`):
 
 ```text
 ORDER BY (score + basescore) DESC, word ASC
@@ -285,8 +285,12 @@ ORDER BY (score + basescore) DESC, word ASC
 
 where:
 
-- `basescore` is bundled frequency/rank score.
-- `score` is local user-learned frequency.
+- `basescore` is bundled frequency/rank score (Google Books Ngrams).
+- `score` is local user-learned frequency (incremented +1 per pick — see "Learning").
+
+This is a deliberate ranking change from the #103 short-term `rowid ASC`: the #103
+verification cases (e.g. `sal` → `salt` before proper nouns) must be re-checked against the
+new frequency ordering, which should rank common words at least as well.
 
 ## Scored Dictionary (Android)
 
@@ -438,12 +442,14 @@ refreshDictionaryDataIfNeeded():
   #    preserve — it is a clean drop-and-rebuild. (Score preservation only applies
   #    to a future re-shape of an already-scored table; not to this legacy upgrade.)
   if isLegacyFts:
-      try: DROP TABLE IF EXISTS dictionary               # also clears fts3 shadow tables
-      except module-unavailable (no such module: fts3/4/5):   # #88 rule 2
+      try: DROP TABLE IF EXISTS dictionary       # if fts3 loads, this drops the shadows too
+      except module-unavailable (no such module: fts3/4/5):   # #88 rule 2 — DROP itself fails
           PRAGMA writable_schema = ON
           DELETE FROM sqlite_master
-            WHERE name='dictionary' OR name LIKE 'dictionary\_%' ESCAPE '\'   # + _content/_segments/_segdir
+            WHERE name='dictionary' OR name LIKE 'dictionary\_%' ESCAPE '\'   # dictionary + _content/_segments/_segdir
           PRAGMA writable_schema = OFF; bump schema_version
+      # Defensive: even on a successful DROP, verify no 'dictionary%' rows linger in
+      # sqlite_master before CREATE (a torn/partial fts3 can leave orphan shadows).
       isScoredShape = false
 
   # 2. Ensure the scored table exists.
@@ -483,6 +489,48 @@ Key invariants:
   (e.g. an Android→iOS→Android round-trip) is still fixed on the next Android open.
 - A missing/corrupt payload must never empty an existing `dictionary`.
 
+### Learning — `score` writeback (Android)
+
+When the user picks an English suggestion, increment that word's `score`, so frequently
+chosen words rank higher (the `ORDER BY (score + basescore) DESC` query). This mirrors the
+existing emoji-usage hook, which already lives at the same pick site.
+
+Where: `LIMEService` English suggestion pick (the non-emoji branch, ~line 5616) already
+calls `SearchSrv.recordEmojiUsage(word)` for emoji picks (line 5613). Add the parallel call
+for word picks:
+
+```java
+} else {
+    String picked = this.tempEnglishList.get(index).getWord();   // full word, not the suffix
+    if (ic != null) ic.commitText(picked.substring(tempEnglishWord.length()) + " ", 1);
+    if (SearchSrv != null) SearchSrv.recordEnglishUsage(picked);  // NEW — increment score
+}
+```
+
+`recordEnglishUsage(word)` → `LimeDB`:
+
+```sql
+-- Only learn words already in the dictionary (the word came from a suggestion, so it is).
+UPDATE dictionary SET score = score + 1 WHERE word = ?;
+```
+
+Rules:
+
+- **Increment by 1 per pick** (simple, matches the Chinese-IM `addScore` "+1" convention at
+  `LimeDB.addScore`). No decay in v1 — `score` only grows. (Decay is a possible future
+  refinement, like LatinIME's forgetting curve; out of scope now.)
+- **Only `UPDATE` existing rows** — never `INSERT`. A picked word is always already in
+  `dictionary` (it was surfaced from there), so a missing row means a stale pick; do
+  nothing rather than invent a `basescore`-less row.
+- **Off the UI commit path**: do the `UPDATE` async / non-blocking (like emoji usage), so
+  the keystroke commit is not slowed by a DB write. Guard with `checkDBConnection()` (skip
+  while restoring), as every other `LimeDB` write does.
+- **Preserved by backup/restore and payload refresh** — `score` lives in the user-writable
+  `dictionary` table and the import upsert never resets it (Key invariants above).
+
+Scope note: this is the v1 learning path (pick → +1). Tap-frequency only; no bigram/context
+learning (that is the parked "English IME v2" — see ENGLISH_KB.md §4).
+
 ### Dictionary source and license
 
 `basescore` is bundled and redistributed, so its source license matters. Do **not** use
@@ -509,17 +557,25 @@ is the user's private backup data.
 
 ## Code changes by file (Android)
 
+Decisions locked for the first PR: **data source = Google Books Ngrams 1-grams (CC BY
+3.0)**; **scope = mechanism + learning** (pick → `score += 1`); **ranking = `(score +
+basescore) DESC, word ASC`** (changes the #103 `rowid ASC` ordering — re-verify the #103
+cases against the new frequency rank).
+
 | Concern | File | Change |
 | --- | --- | --- |
-| Build + seed script (new) | `.claude/scripts/build_dictionary_db.py` | Generate `dictionary.db` (`dictionary_data` table + `version`) from the chosen source; **also** rewrite the seed: drop fts3 `dictionary` + shadows, create the empty scored `dictionary` table + indexes, leave `user_version = 104`, no `im` version row. Writes `R.raw.dictionary`, and patches both `R.raw.lime` and `Database/lime.db` (byte-identical). |
+| Build + seed script (new) | `.claude/scripts/build_dictionary_db.py` | Build `dictionary.db` (`dictionary_data` + `version`) from **Google Books Ngrams 1-grams (CC BY 3.0)**: aggregate counts, lowercase to `[a-z']`, take top ~100k, normalize counts → `basescore`. **Also** rewrite the seed: drop fts3 `dictionary` + shadows, create the empty scored table + indexes, leave `user_version = 104`, no `im` version row. Writes `R.raw.dictionary`, patches `R.raw.lime` + `Database/lime.db` (byte-identical). Pin the Ngrams snapshot in the script header + payload `version`. |
+| License disclosure | `LICENSE.md` | Add the Google Books Ngrams (CC BY 3.0) attribution line. |
 | Payload asset (new) | `LimeStudio/app/src/main/res/raw/dictionary.db` | The bundled scored payload. |
 | Refresh + schema | `LimeDB.java` | Add `DICTIONARY_DATA_VERSION` constant + `refreshDictionaryDataIfNeeded()` / `ensureDictionarySchema()` / `importDictionaryData(File)`, modeled on the emoji equivalents (`refreshEmojiDataIfNeeded` / `createEmojiTables` / `importEmojiData`, including the `cacheDir` temp-file + `ATTACH` pattern via `LIMEUtilities.copyRAWFile`). |
 | Open-path wiring | `LimeDB.java` `ensureCurrentDatabase()` | Call `refreshDictionaryDataIfNeeded()` right after `refreshEmojiDataIfNeeded()` (line ~885). |
-| Query rewrite | `LimeDB.java` `getEnglishSuggestions(String)` (line 4898) | Replace `word MATCH '<typed>*'` with the indexed prefix range query; keep the `word <> :prefix` #103 filter and the `getSimilarCodeCandidates()` limit. |
-| Lazy guard | `LimeDB.java` | Before `getEnglishSuggestions` queries, ensure the dictionary is current (mirror emoji's `checkEmojiDB()`), so a session that never opened settings still has a valid table. |
+| Query rewrite | `LimeDB.java` `getEnglishSuggestions(String)` (line 4898) | Replace `word MATCH '<typed>*'` with the indexed prefix range query; **ranking changes to `(score + basescore) DESC, word ASC`** (was `rowid ASC` from #103). Keep the `word <> :prefix` #103 exact-match filter and the `getSimilarCodeCandidates()` limit. Build `:prefixUpperBound` in code. |
+| Learning (new) | `LIMEService.java` (~5616) + `SearchServer` + `LimeDB.java` | On a non-emoji English pick, call `SearchSrv.recordEnglishUsage(word)` (parallel to `recordEmojiUsage` at 5613). `recordEnglishUsage` → `LimeDB` `UPDATE dictionary SET score = score + 1 WHERE word = ?` (async, `checkDBConnection()` guarded, UPDATE-only). See "Learning" above. |
+| Lazy guard | `LimeDB.java` | At the top of `getEnglishSuggestions`, ensure the dictionary is current (mirror emoji's `checkEmojiDB()`), so a session that never opened settings still has a valid table. |
 
-iOS: **no code change** (see "iOS impact of the seed change"). iOS shares only the seed
-file, which the build script patches.
+iOS: **no Android-dictionary code** (see "iOS impact of the seed change"). The shared seed
+file is patched by the build script; iOS imports no `dictionary.db` and writes no `score`.
+The iOS Chinese-IM-overflow fallback already routes through `UITextChecker` (done).
 
 ## Verification Plan
 
