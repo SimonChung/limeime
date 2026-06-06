@@ -38,6 +38,7 @@ import net.toload.main.hd.candidate.CandidateView;
 import net.toload.main.hd.global.LIME;
 import net.toload.main.hd.global.LIMEPreferenceManager;
 import net.toload.main.hd.global.LIMEUtilities;
+import net.toload.main.hd.data.ImConfig;
 import net.toload.main.hd.data.Mapping;
 import net.toload.main.hd.LIMEService;
 import net.toload.main.hd.SearchServer;
@@ -55,6 +56,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -80,6 +82,24 @@ public class LIMEServiceTest {
         }
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T getPrivateField(Object target, String fieldName) throws Exception {
+        Class<?> currentClass = target.getClass();
+        Field field = null;
+        while (currentClass != null && field == null) {
+            try {
+                field = currentClass.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                currentClass = currentClass.getSuperclass();
+            }
+        }
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        field.setAccessible(true);
+        return (T) field.get(target);
     }
 
     @Before
@@ -261,13 +281,7 @@ public class LIMEServiceTest {
         when(searchServer.getRelatedByWord("日", false)).thenReturn(new LinkedList<>());
 
         TestableLIMEService service = new TestableLIMEService();
-        setPrivateField(service, "SearchSrv", searchServer);
-        setPrivateField(service, "activeIM", "custom");
-        setPrivateField(service, "mEnglishOnly", false);
-        setPrivateField(service, "mComposing", new StringBuilder("aa"));
-        setPrivateField(service, "hasCandidatesShown", true);
-        setPrivateField(service, "currentSoftKeyboard", "custom");
-        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+        initializeEndkeyTestService(service, appContext, searchServer, "custom", "custom", "aa", true);
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(true);
@@ -305,15 +319,9 @@ public class LIMEServiceTest {
         when(searchServer.getRelatedByWord("日", false)).thenReturn(new LinkedList<>());
 
         TestableLIMEService service = new TestableLIMEService();
-        setPrivateField(service, "SearchSrv", searchServer);
-        setPrivateField(service, "activeIM", "cj4");
-        setPrivateField(service, "mEnglishOnly", false);
-        setPrivateField(service, "mComposing", new StringBuilder("aa"));
-        setPrivateField(service, "hasCandidatesShown", true);
+        initializeEndkeyTestService(service, appContext, searchServer, "cj4", "cj", "aa", true);
         setPrivateField(service, "hasMappingList", true);
         setPrivateField(service, "selectedCandidate", candidate);
-        setPrivateField(service, "currentSoftKeyboard", "cj");
-        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(false);
@@ -365,13 +373,7 @@ public class LIMEServiceTest {
         when(searchServer.getRelatedByWord("，", false)).thenReturn(new LinkedList<>());
 
         TestableLIMEService service = new TestableLIMEService();
-        setPrivateField(service, "SearchSrv", searchServer);
-        setPrivateField(service, "activeIM", "cj");
-        setPrivateField(service, "mEnglishOnly", false);
-        setPrivateField(service, "mComposing", new StringBuilder("aa"));
-        setPrivateField(service, "hasCandidatesShown", false);
-        setPrivateField(service, "currentSoftKeyboard", "cj");
-        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
+        initializeEndkeyTestService(service, appContext, searchServer, "cj", "cj", "aa", false);
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(false);
@@ -416,15 +418,9 @@ public class LIMEServiceTest {
         when(searchServer.getRelatedByWord("昌", false)).thenReturn(new LinkedList<>());
 
         TestableLIMEService service = new TestableLIMEService();
-        setPrivateField(service, "SearchSrv", searchServer);
-        setPrivateField(service, "activeIM", "cj");
-        setPrivateField(service, "mEnglishOnly", false);
-        setPrivateField(service, "mComposing", new StringBuilder("aa"));
-        setPrivateField(service, "hasCandidatesShown", true);
+        initializeEndkeyTestService(service, appContext, searchServer, "cj", "cj", "aa", true);
         setPrivateField(service, "hasMappingList", true);
         setPrivateField(service, "selectedCandidate", staleCandidate);
-        setPrivateField(service, "currentSoftKeyboard", "cj");
-        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(false);
@@ -466,15 +462,9 @@ public class LIMEServiceTest {
         when(searchServer.getRelatedByWord("昌", false)).thenReturn(new LinkedList<>());
 
         TestableLIMEService service = new TestableLIMEService();
-        setPrivateField(service, "SearchSrv", searchServer);
-        setPrivateField(service, "activeIM", "cj");
-        setPrivateField(service, "mEnglishOnly", false);
-        setPrivateField(service, "mComposing", new StringBuilder("aa"));
-        setPrivateField(service, "hasCandidatesShown", true);
+        initializeEndkeyTestService(service, appContext, searchServer, "cj", "cj", "aa", true);
         setPrivateField(service, "hasMappingList", true);
         setPrivateField(service, "selectedCandidate", staleCandidate);
-        setPrivateField(service, "currentSoftKeyboard", "cj");
-        setPrivateField(service, "mLIMEPref", new LIMEPreferenceManager(appContext));
 
         CandidateView candidateView = mock(CandidateView.class);
         when(candidateView.takeSelectedSuggestion()).thenReturn(true);
@@ -789,6 +779,54 @@ public class LIMEServiceTest {
         return mapping;
     }
 
+    private static ImConfig createImConfig(String code, String desc, String keyboard) {
+        ImConfig imConfig = new ImConfig();
+        imConfig.setCode(code);
+        imConfig.setDesc(desc);
+        imConfig.setKeyboard(keyboard);
+        imConfig.setDisable(false);
+        return imConfig;
+    }
+
+    private LIMEPreferenceManager initializeEndkeyTestService(
+            LIMEService service,
+            Context appContext,
+            SearchServer searchServer,
+            String activeIM,
+            String currentSoftKeyboard,
+            String composing,
+            boolean candidatesShown) throws Exception {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(appContext)
+                .edit()
+                .putString("han_convert_option", "0")
+                .putBoolean("english_dictionary_enable", false)
+                .putString("physical_keyboard_type", "normal_keyboard")
+                .putBoolean("disable_physical_selkey", false)
+                .putString("selkey_option", "0")
+                .putBoolean("persistent_language_mode", false)
+                .putString("keyboard_list", activeIM)
+                .putString("keyboard_state", "0;1;2;3;4;5;6")
+                .commit();
+
+        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
+        setPrivateField(service, "SearchSrv", searchServer);
+        setPrivateField(service, "activeIM", activeIM);
+        setPrivateField(service, "mEnglishOnly", false);
+        setPrivateField(service, "mComposing", new StringBuilder(composing));
+        setPrivateField(service, "hasCandidatesShown", candidatesShown);
+        setPrivateField(service, "hasMappingList", false);
+        setPrivateField(service, "selectedCandidate", null);
+        setPrivateField(service, "currentSoftKeyboard", currentSoftKeyboard);
+        setPrivateField(service, "mLIMEPref", prefManager);
+        setPrivateField(service, "mCandidateList", new LinkedList<Mapping>());
+        setPrivateField(service, "LDComposingBuffer", "");
+        setPrivateField(service, "mPredictionOn", false);
+        setPrivateField(service, "hasPhysicalKeyPressed", false);
+        setPrivateField(service, "hasNumberMapping", false);
+        setPrivateField(service, "hasSymbolMapping", false);
+        return prefManager;
+    }
+
     /**
      * Helper class for testing LIMEService with mock components.
      * 
@@ -1062,6 +1100,40 @@ public class LIMEServiceTest {
         } catch (Exception e) {
             // Reflection failed, continue anyway
         }
+    }
+
+    private void attachTargetContext(LIMEService limeService) {
+        try {
+            Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            Method attachBaseContext = android.content.ContextWrapper.class.getDeclaredMethod(
+                    "attachBaseContext", Context.class);
+            attachBaseContext.setAccessible(true);
+            attachBaseContext.invoke(limeService, appContext);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to attach target context to LIMEService", e);
+        }
+    }
+
+    private void runOnMainAndRethrow(ThrowingRunnable runnable) throws Exception {
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            try {
+                runnable.run();
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+            }
+        });
+        Throwable throwable = failure.get();
+        if (throwable instanceof Exception) {
+            throw (Exception) throwable;
+        }
+        if (throwable != null) {
+            throw new AssertionError(throwable);
+        }
+    }
+
+    private interface ThrowingRunnable {
+        void run() throws Exception;
     }
 
     /**
@@ -2996,6 +3068,68 @@ public class LIMEServiceTest {
         
         // Restore original value
         prefManager.setShowArrowKeys(originalValue);
+    }
+
+    @Test
+    public void startupConfigVersionBumpsWhenStartupRelevantPrefsChange() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
+        String originalActiveIm = prefManager.getActiveIM();
+        String originalActivatedState = prefManager.getIMActivatedState();
+        int originalShowArrowKeys = prefManager.getShowArrowKeys();
+        int originalSplitKeyboard = prefManager.getSplitKeyboard();
+
+        try {
+            prefManager.resetStartupConfigVersion();
+            assertEquals(0L, prefManager.getStartupConfigVersion());
+
+            long initializedVersion = prefManager.initializeStartupConfigVersion();
+            assertTrue(initializedVersion > 0L);
+
+            String newActiveIm = LIME.IM_DAYI.equals(prefManager.getActiveIM())
+                    ? LIME.IM_PHONETIC
+                    : LIME.IM_DAYI;
+            prefManager.setActiveIM(newActiveIm);
+            long afterActiveIm = prefManager.getStartupConfigVersion();
+            assertTrue(afterActiveIm > initializedVersion);
+
+            String newActivatedState = "5;6".equals(prefManager.getIMActivatedState())
+                    ? "6"
+                    : "5;6";
+            prefManager.setIMActivatedState(newActivatedState);
+            long afterActivatedState = prefManager.getStartupConfigVersion();
+            assertTrue(afterActivatedState > afterActiveIm);
+
+            prefManager.setShowArrowKeys(prefManager.getShowArrowKeys() == 0 ? 1 : 0);
+            long afterArrowKeys = prefManager.getStartupConfigVersion();
+            assertTrue(afterArrowKeys > afterActivatedState);
+
+            prefManager.setSplitKeyboard(prefManager.getSplitKeyboard() == 0 ? 1 : 0);
+            assertTrue(prefManager.getStartupConfigVersion() > afterArrowKeys);
+        } finally {
+            prefManager.setActiveIM(originalActiveIm);
+            prefManager.setIMActivatedState(originalActivatedState);
+            prefManager.setShowArrowKeys(originalShowArrowKeys);
+            prefManager.setSplitKeyboard(originalSplitKeyboard);
+        }
+    }
+
+    @Test
+    public void startupConfigVersionResetsOnlyForDirectStartupPreferenceChanges() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
+
+        long initializedVersion = prefManager.initializeStartupConfigVersion();
+        assertTrue(initializedVersion > 0L);
+
+        assertTrue(prefManager.resetStartupConfigVersionIfStartupPreferenceChanged("keyboard_theme"));
+        assertEquals(0L, prefManager.getStartupConfigVersion());
+
+        long reinitializedVersion = prefManager.initializeStartupConfigVersion();
+        assertTrue(reinitializedVersion > 0L);
+
+        assertFalse(prefManager.resetStartupConfigVersionIfStartupPreferenceChanged("restore_on_import_phonetic"));
+        assertEquals(reinitializedVersion, prefManager.getStartupConfigVersion());
     }
 
     /**
@@ -6853,6 +6987,210 @@ public class LIMEServiceTest {
         } catch (Exception e) {
             // Expected - code executed before exception
         }
+    }
+
+    @Test
+    public void emojiContentIsNotRenderedDuringInputViewStartup() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+        runOnMainAndRethrow(service::onCreate);
+
+        Method initialViewAndSwitcher = LIMEService.class.getDeclaredMethod("initialViewAndSwitcher", boolean.class);
+        initialViewAndSwitcher.setAccessible(true);
+        runOnMainAndRethrow(() -> initialViewAndSwitcher.invoke(service, true));
+
+        assertNotNull("Emoji shell should exist after input view setup",
+                service.getEmojiKeyboardViewForTesting());
+        assertFalse("Full emoji content should stay out of startup",
+                service.isEmojiContentRenderedForTesting());
+        assertEquals("Emoji pages should not be built before emoji is opened",
+                0, service.getEmojiPageViewCountForTesting());
+    }
+
+    @Test
+    public void emojiContentRendersWhenEmojiKeyboardIsOpened() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+        runOnMainAndRethrow(service::onCreate);
+
+        Method initialViewAndSwitcher = LIMEService.class.getDeclaredMethod("initialViewAndSwitcher", boolean.class);
+        initialViewAndSwitcher.setAccessible(true);
+        runOnMainAndRethrow(() -> initialViewAndSwitcher.invoke(service, true));
+
+        Method showEmojiKeyboard = LIMEService.class.getDeclaredMethod("showEmojiKeyboard");
+        showEmojiKeyboard.setAccessible(true);
+        runOnMainAndRethrow(() -> showEmojiKeyboard.invoke(service));
+
+        assertTrue("Emoji content should render on first emoji open",
+                service.isEmojiContentRenderedForTesting());
+        assertTrue("Emoji pages should be built on first emoji open",
+                service.getEmojiPageViewCountForTesting() > 0);
+        assertTrue("Emoji category tabs should be built on first emoji open",
+                service.getEmojiCategoryTabCountForTesting() > 0);
+    }
+
+    @Test
+    public void onStartInputOnlyKeepsPhysicalKeyboardStartupStateReady() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+        runOnMainAndRethrow(service::onCreate);
+
+        EditorInfo editorInfo = new EditorInfo();
+        editorInfo.inputType = EditorInfo.TYPE_CLASS_TEXT;
+
+        runOnMainAndRethrow(service::onInitializeInterface);
+        runOnMainAndRethrow(() -> service.onStartInput(editorInfo, false));
+
+        assertNotNull("SearchServer should be ready for physical-key lookup",
+                getPrivateField(service, "SearchSrv"));
+        assertNotNull("Active IM should be ready before onStartInputView",
+                getPrivateField(service, "activeIM"));
+        assertNotNull("Keyboard switcher should be initialized from onInitializeInterface",
+                getPrivateField(service, "mKeyboardSwitcher"));
+        assertNotNull("Embedded candidate host should be available for physical keyboard candidates",
+                getPrivateField(service, "mCandidateInInputView"));
+        assertNotNull("Composing buffer should be initialized for first physical key",
+                getPrivateField(service, "mComposing"));
+        assertTrue("Prediction state should be enabled for text fields",
+                (Boolean) getPrivateField(service, "mPredictionOn"));
+        assertFalse("Physical-key startup path should not render full emoji content",
+                service.isEmojiContentRenderedForTesting());
+    }
+
+    @Test
+    public void visibleStartupReturnsEmbeddedCandidateInputViewWithoutEagerEmojiContent() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+        runOnMainAndRethrow(service::onCreate);
+
+        EditorInfo editorInfo = new EditorInfo();
+        editorInfo.inputType = EditorInfo.TYPE_CLASS_TEXT;
+
+        runOnMainAndRethrow(service::onInitializeInterface);
+        runOnMainAndRethrow(() -> service.onStartInput(editorInfo, false));
+
+        AtomicReference<View> inputView = new AtomicReference<>();
+        runOnMainAndRethrow(() -> inputView.set(service.onCreateInputView()));
+        runOnMainAndRethrow(() -> service.onStartInputView(editorInfo, false));
+
+        assertSame("Visible startup should return the embedded candidate container",
+                getPrivateField(service, "mCandidateInInputView"), inputView.get());
+        assertNotNull("Keyboard view should be attached for visible startup",
+                getPrivateField(service, "mInputView"));
+        assertNotNull("Candidate strip view should be attached for visible startup",
+                getPrivateField(service, "mCandidateViewInInputView"));
+        assertFalse("Visible startup should not render full emoji content before emoji opens",
+                service.isEmojiContentRenderedForTesting());
+    }
+
+    @Test
+    public void startupConfigSnapshotAvoidsRepeatedKeyboardConfigQueriesWhenVersionUnchanged() throws Exception {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LIMEPreferenceManager prefManager = new LIMEPreferenceManager(appContext);
+        prefManager.resetStartupConfigVersion();
+        prefManager.setActiveIM(LIME.IM_PHONETIC);
+        prefManager.setIMActivatedState("6");
+        prefManager.initializeStartupConfigVersion();
+
+        LIMEService service = new LIMEService();
+        setPrivateField(service, "mLIMEPref", prefManager);
+        setPrivateField(service, "activeIM", LIME.IM_PHONETIC);
+        setPrivateField(service, "activatedIMFullNameList", new ArrayList<String>());
+        setPrivateField(service, "activatedIMList", new ArrayList<String>());
+        setPrivateField(service, "activatedIMShortNameList", new ArrayList<String>());
+        setPrivateField(service, "mKeyboardThemeIndex", prefManager.getKeyboardTheme());
+        setPrivateField(service, "mShowArrowKeys", prefManager.getShowArrowKeys());
+        setPrivateField(service, "mSplitKeyboard", prefManager.getSplitKeyboard());
+        setPrivateField(service, "mInputView", createMockInputView());
+
+        LIMEKeyboardSwitcher keyboardSwitcher = createMockKeyboardSwitcher();
+        when(keyboardSwitcher.getImConfigKeyboard(LIME.IM_PHONETIC)).thenReturn(LIME.IM_PHONETIC);
+        setPrivateField(service, "mKeyboardSwitcher", keyboardSwitcher);
+
+        ImConfig phonetic = createImConfig(LIME.IM_PHONETIC, "注音", LIME.IM_PHONETIC);
+        List<ImConfig> imConfigs = new ArrayList<>();
+        imConfigs.add(phonetic);
+
+        SearchServer searchServer = mock(SearchServer.class);
+        when(searchServer.getImConfigList(null, LIME.IM_FULL_NAME)).thenReturn(imConfigs);
+        when(searchServer.getKeyboardConfigList()).thenReturn(new ArrayList<>());
+        when(searchServer.getAllImKeyboardConfigList()).thenReturn(imConfigs);
+        setPrivateField(service, "SearchSrv", searchServer);
+
+        EditorInfo editorInfo = new EditorInfo();
+        editorInfo.inputType = EditorInfo.TYPE_CLASS_TEXT;
+
+        Method initOnStartInput = LIMEService.class.getDeclaredMethod("initOnStartInput", EditorInfo.class);
+        initOnStartInput.setAccessible(true);
+        initOnStartInput.invoke(service, editorInfo);
+        initOnStartInput.invoke(service, editorInfo);
+
+        verify(searchServer, times(1)).getImConfigList(null, LIME.IM_FULL_NAME);
+        verify(searchServer, times(1)).getKeyboardConfigList();
+        verify(searchServer, times(1)).getAllImKeyboardConfigList();
+    }
+
+    @Test
+    public void onCreateInputViewWithoutStartInputViewReturnsCandidateHostWithoutEagerEmojiContent() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+        runOnMainAndRethrow(service::onCreate);
+        runOnMainAndRethrow(service::onInitializeInterface);
+
+        AtomicReference<View> inputView = new AtomicReference<>();
+        runOnMainAndRethrow(() -> inputView.set(service.onCreateInputView()));
+
+        assertSame("onCreateInputView should return the embedded candidate host even before onStartInputView",
+                getPrivateField(service, "mCandidateInInputView"), inputView.get());
+        assertNotNull("Keyboard view should be ready when the input view is created",
+                getPrivateField(service, "mInputView"));
+        assertNotNull("Candidate strip should be ready when the input view is created",
+                getPrivateField(service, "mCandidateViewInInputView"));
+        assertFalse("Creating the input view should not render full emoji content",
+                service.isEmojiContentRenderedForTesting());
+    }
+
+    @Test
+    public void deferredStartupTaskRunsOnlyForCurrentInputViewGeneration() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+
+        int firstGeneration = service.getInputViewGenerationForTesting();
+        AtomicReference<Boolean> firstTaskRan = new AtomicReference<>(false);
+        service.runIfCurrentInputViewGenerationForTesting(firstGeneration, () -> firstTaskRan.set(true));
+        assertTrue("Task should run while the captured generation is current", firstTaskRan.get());
+
+        service.advanceInputViewGenerationForTesting();
+
+        AtomicReference<Boolean> staleTaskRan = new AtomicReference<>(false);
+        service.runIfCurrentInputViewGenerationForTesting(firstGeneration, () -> staleTaskRan.set(true));
+        assertFalse("Task should be skipped after the input view generation changes", staleTaskRan.get());
+    }
+
+    @Test
+    public void followSystemAccentApplyIsSkippedWhenStateAndViewsAreUnchanged() throws Exception {
+        LIMEService service = new LIMEService();
+        attachTargetContext(service);
+
+        LIMEKeyboardView inputView = createMockInputView();
+        CandidateView embeddedCandidateView = createMockCandidateView();
+        CandidateView floatingCandidateView = createMockCandidateView();
+        setPrivateField(service, "mInputView", inputView);
+        setPrivateField(service, "mCandidateViewInInputView", embeddedCandidateView);
+        setPrivateField(service, "mCandidateView", floatingCandidateView);
+
+        service.applyFollowSystemAccentColorsForTesting(0xFF336699, false);
+        service.applyFollowSystemAccentColorsForTesting(0xFF336699, false);
+
+        verify(inputView, times(1)).applyFollowSystemAccentColor(0xFF336699, false);
+        verify(embeddedCandidateView, times(1)).applyFollowSystemAccentColor(0xFF336699, false);
+        verify(floatingCandidateView, times(1)).applyFollowSystemAccentColor(0xFF336699, false);
+
+        service.applyFollowSystemAccentColorsForTesting(0xFF336699, true);
+
+        verify(inputView, times(1)).applyFollowSystemAccentColor(0xFF336699, true);
+        verify(embeddedCandidateView, times(1)).applyFollowSystemAccentColor(0xFF336699, true);
+        verify(floatingCandidateView, times(1)).applyFollowSystemAccentColor(0xFF336699, true);
     }
 
     /**

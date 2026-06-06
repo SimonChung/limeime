@@ -195,6 +195,7 @@ public class LIMEService extends InputMethodService
     private LinearLayout mEmojiCategoryBar = null;
     private TextView mEmojiSearchField = null;
     private TextView mEmojiAbcButton = null;
+    private boolean mEmojiContentRendered = false;
     private int mEmojiCategoryIndex = 0;
     private int mInputCandidateStripVisibilityBeforeEmoji = View.VISIBLE;
     private boolean mEmojiSearchMode = false;
@@ -361,6 +362,21 @@ public class LIMEService extends InputMethodService
     // might incorrectly include keyboard height when keyboard is restored
     private final int mLastKnownBottomPadding = -1;
     private int mLastUiNightMode = -1;
+    private long mAppliedStartupConfigVersion = -1L;
+    private boolean mStartupConfigSnapshotReady = false;
+    private List<net.toload.main.hd.data.Keyboard> mStartupKeyboardConfigList = null;
+    private List<ImConfig> mStartupImKeyboardConfigList = null;
+    private int mInputViewGeneration = 0;
+    private int mAppliedFollowSystemAccent = 0;
+    private boolean mAppliedFollowSystemDarkTheme = false;
+    private View mAppliedFollowSystemInputView = null;
+    private View mAppliedFollowSystemCandidateView = null;
+    private View mAppliedFollowSystemEmbeddedCandidateView = null;
+    private boolean mNavigationBarThemeApplied = false;
+    private android.view.Window mAppliedNavigationBarWindow = null;
+    private View mAppliedNavigationBarCandidateView = null;
+    private int mAppliedNavigationBarColor = 0;
+    private boolean mAppliedNavigationBarLightBackground = false;
 
 
     /**
@@ -495,6 +511,8 @@ public class LIMEService extends InputMethodService
         mLastUiNightMode = newUiMode;
         if (mKeyboardThemeIndex == 6 && newUiMode != oldUiMode) {
             mThemeContext = null;   // force theme rebuild
+            clearAppliedFollowSystemAccentState();
+            clearAppliedNavigationBarThemeState();
         }
 
         initialViewAndSwitcher(true);
@@ -873,21 +891,21 @@ public class LIMEService extends InputMethodService
             hasCandidatesShown = false;
         }
 
-        // Reset the IM soft keyboard settings. Jeremy '11,6,19
-        try {
-            mKeyboardSwitcher.setImConfigKeyboardList(SearchSrv.getAllImKeyboardConfigList());
-        } catch (RemoteException e) {
-            Log.e(TAG, "Error setting IM list on keyboard reset", e);
-        }
+        activeIM = mLIMEPref.getActiveIM();
+        boolean startupConfigRefreshed = refreshStartupConfigSnapshotIfNeeded();
+        applyStartupConfigSnapshotToKeyboardSwitcher();
 
         mKeyboardSwitcher.resetKeyboards(
-                mShowArrowKeys != mLIMEPref.getShowArrowKeys() //Jeremy '12,5,22 recreate keyboard if the setting altered.
+                startupConfigRefreshed
+                        || mShowArrowKeys != mLIMEPref.getShowArrowKeys() //Jeremy '12,5,22 recreate keyboard if the setting altered.
                         || mSplitKeyboard != mLIMEPref.getSplitKeyboard()); //Jeremy '12,5,26 recreate keyboard if the setting altered.
 
         loadSettings();
         mImeOptions = attribute.imeOptions;
 
-        buildActivatedIMList();  //Jeremy '12,4,29 only this is required here, instead of fully initialKeybaord
+        if (mKeyboardSwitcher != null) {
+            mKeyboardSwitcher.setActivatedIMList(activatedIMList, activatedIMShortNameList);
+        }
         mPredictionOn = true;
         mCompletionOn = false;
         mCompletions = null;
@@ -1017,6 +1035,90 @@ public class LIMEService extends InputMethodService
         currentSoftKeyboard = mKeyboardSwitcher.getImConfigKeyboard(activeIM);
 
 
+    }
+
+    private boolean isStartupConfigSnapshotDirty() {
+        if (mLIMEPref == null || !mStartupConfigSnapshotReady) return true;
+        long currentVersion = mLIMEPref.getStartupConfigVersion();
+        return currentVersion == 0L || currentVersion != mAppliedStartupConfigVersion;
+    }
+
+    private void invalidateStartupConfigSnapshot() {
+        mStartupConfigSnapshotReady = false;
+        mAppliedStartupConfigVersion = -1L;
+    }
+
+    private boolean refreshStartupConfigSnapshotIfNeeded() {
+        return refreshStartupConfigSnapshotIfNeeded(true);
+    }
+
+    private boolean refreshStartupConfigSnapshotIfNeeded(boolean rebuildActivatedIMList) {
+        if (!isStartupConfigSnapshotDirty()) return false;
+
+        if (rebuildActivatedIMList) {
+            buildActivatedIMList();
+        }
+
+        if (SearchSrv != null) {
+            try {
+                mStartupKeyboardConfigList = SearchSrv.getKeyboardConfigList();
+                mStartupImKeyboardConfigList = SearchSrv.getAllImKeyboardConfigList();
+            } catch (RemoteException e) {
+                Log.e(TAG, "Error refreshing startup keyboard config snapshot", e);
+            }
+        }
+
+        mStartupConfigSnapshotReady = true;
+        markStartupConfigSnapshotApplied();
+        return true;
+    }
+
+    private void markStartupConfigSnapshotApplied() {
+        if (mLIMEPref == null) return;
+        long currentVersion = mLIMEPref.getStartupConfigVersion();
+        if (currentVersion == 0L) {
+            currentVersion = mLIMEPref.initializeStartupConfigVersion();
+        }
+        mAppliedStartupConfigVersion = currentVersion;
+    }
+
+    private void applyStartupConfigSnapshotToKeyboardSwitcher() {
+        if (mKeyboardSwitcher == null) return;
+        if (mStartupKeyboardConfigList != null && !mStartupKeyboardConfigList.isEmpty()) {
+            mKeyboardSwitcher.setKeyboardConfigList(mStartupKeyboardConfigList);
+        }
+        if (mStartupImKeyboardConfigList != null && !mStartupImKeyboardConfigList.isEmpty()) {
+            mKeyboardSwitcher.setImConfigKeyboardList(mStartupImKeyboardConfigList);
+        }
+    }
+
+    private void advanceInputViewGeneration() {
+        mInputViewGeneration++;
+        clearAppliedFollowSystemAccentState();
+        clearAppliedNavigationBarThemeState();
+    }
+
+    private void postAfterFirstFrame(Runnable task) {
+        if (mCandidateInInputView == null || task == null) return;
+        final int generation = mInputViewGeneration;
+        mCandidateInInputView.post(() -> runIfCurrentInputViewGeneration(generation, task));
+    }
+
+    private void runIfCurrentInputViewGeneration(int generation, Runnable task) {
+        if (task == null || generation != mInputViewGeneration) return;
+        task.run();
+    }
+
+    int getInputViewGenerationForTesting() {
+        return mInputViewGeneration;
+    }
+
+    void advanceInputViewGenerationForTesting() {
+        advanceInputViewGeneration();
+    }
+
+    void runIfCurrentInputViewGenerationForTesting(int generation, Runnable task) {
+        runIfCurrentInputViewGeneration(generation, task);
     }
 
     /**
@@ -2409,6 +2511,14 @@ public class LIMEService extends InputMethodService
         FrameLayout container = (FrameLayout) mEmojiKeyboardView;
         container.removeAllViews();
         container.setBackgroundColor(Color.TRANSPARENT);
+        mEmojiRoot = null;
+        mEmojiScroll = null;
+        mEmojiPages = null;
+        mEmojiBottomBar = null;
+        mEmojiCategoryBar = null;
+        mEmojiSearchField = null;
+        mEmojiAbcButton = null;
+        mEmojiContentRendered = false;
 
         mEmojiRoot = new LinearLayout(mThemeContext);
         mEmojiRoot.setOrientation(LinearLayout.VERTICAL);
@@ -2501,7 +2611,6 @@ public class LIMEService extends InputMethodService
         mEmojiBottomBar.addView(backspace, new LinearLayout.LayoutParams(
                 emojiSideControlWidth, emojiCategoryTabHeight));
 
-        renderEmojiContent("");
         mEmojiKeyboardView.setVisibility(mEmojiKeyboardShown ? View.VISIBLE : View.GONE);
     }
 
@@ -2523,6 +2632,7 @@ public class LIMEService extends InputMethodService
 
     private void renderEmojiContent(String query) {
         if (mEmojiPages == null || mEmojiCategoryBar == null) return;
+        mEmojiContentRendered = true;
 
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         mEmojiSearchMode = mEmojiSearchFocused || normalizedQuery.length() > 0;
@@ -2595,6 +2705,22 @@ public class LIMEService extends InputMethodService
                 mEmojiScroll.post(() -> mEmojiScroll.scrollTo(offset, 0));
             }
         }
+    }
+
+    View getEmojiKeyboardViewForTesting() {
+        return mEmojiKeyboardView;
+    }
+
+    boolean isEmojiContentRenderedForTesting() {
+        return mEmojiContentRendered;
+    }
+
+    int getEmojiPageViewCountForTesting() {
+        return mEmojiPages == null ? 0 : mEmojiPages.getChildCount();
+    }
+
+    int getEmojiCategoryTabCountForTesting() {
+        return mEmojiCategoryBar == null ? 0 : mEmojiCategoryBar.getChildCount();
     }
 
     private void enterEmojiSearchMode() {
@@ -3475,6 +3601,7 @@ public class LIMEService extends InputMethodService
                             mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
                     }
 
+                    invalidateStartupConfigSnapshot();
                     handleClose();
                     mKeyboardSwitcher.resetKeyboards(true);
                     break;
@@ -3585,6 +3712,7 @@ public class LIMEService extends InputMethodService
             }
         }
         mLIMEPref.setActiveIM(activeIM);
+        invalidateStartupConfigSnapshot();
         //Jeremy '12,4,21 force clear when switch to next keyboard
         clearComposing(false);
         // cancel candidate view if it's shown
@@ -3595,15 +3723,8 @@ public class LIMEService extends InputMethodService
 
         showLimeToast(activeIMName);
 
-        try {
-            if (mKeyboardSwitcher != null) {
-                mKeyboardSwitcher.setKeyboardConfigList(SearchSrv.getKeyboardConfigList());
-                mKeyboardSwitcher.setImConfigKeyboardList(SearchSrv.getAllImKeyboardConfigList());
-                //mKeyboardSwitcher.clearKeyboards();
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "Error setting IM list during initialization", e);
-        }
+        refreshStartupConfigSnapshotIfNeeded(false);
+        applyStartupConfigSnapshotToKeyboardSwitcher();
 
         // Update keyboard xml information
         if (mKeyboardSwitcher != null) {
@@ -3820,6 +3941,7 @@ public class LIMEService extends InputMethodService
         CharSequence activeIMName = activatedIMFullNameList.get(position);
 
         mLIMEPref.setActiveIM(activeIM);
+        invalidateStartupConfigSnapshot();
         //spe.putString("keyboard_list", keyboardSelection);
         //spe.commit();
 
@@ -3830,17 +3952,10 @@ public class LIMEService extends InputMethodService
         mEnglishOnly = false;//Jeremy '12,5,24 force to switch to Chinese mode if it's choosing in english mode.
         initialIMKeyboard();
 
-        try {
-            if (mKeyboardSwitcher != null) {
-                mKeyboardSwitcher.setKeyboardConfigList(SearchSrv.getKeyboardConfigList());
-                mKeyboardSwitcher.setImConfigKeyboardList(SearchSrv.getAllImKeyboardConfigList());
-                //mKeyboardSwitcher.clearKeyboards();
-
-                // Update soft keybaord information
-                currentSoftKeyboard = mKeyboardSwitcher.getImConfigKeyboard(activeIM);
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "Error getting keyboard for active IM", e);
+        refreshStartupConfigSnapshotIfNeeded(false);
+        applyStartupConfigSnapshotToKeyboardSwitcher();
+        if (mKeyboardSwitcher != null) {
+            currentSoftKeyboard = mKeyboardSwitcher.getImConfigKeyboard(activeIM);
         }
 
         showLimeToast(activeIMName);
@@ -4948,6 +5063,8 @@ public class LIMEService extends InputMethodService
             mKeyboardThemeIndex = mLIMEPref.getKeyboardTheme();
             mForceRecreate = true;
             mThemeContext = null;
+            clearAppliedFollowSystemAccentState();
+            clearAppliedNavigationBarThemeState();
             if (mKeyboardSwitcher != null) mKeyboardSwitcher.resetKeyboards(true);
         }
 
@@ -4974,6 +5091,7 @@ public class LIMEService extends InputMethodService
             mCandidateInInputView.setService(this);
             mEmojiKeyboardView = mCandidateInInputView.findViewById(R.id.emoji_keyboard);
             setupEmojiKeyboardView();
+            advanceInputViewGeneration();
 
         }
         if (mCandidateView != mCandidateViewInInputView)
@@ -4986,18 +5104,12 @@ public class LIMEService extends InputMethodService
             mKeyboardSwitcher = new LIMEKeyboardSwitcher(this, mThemeContext);
         }
         mKeyboardSwitcher.setInputView(mInputView);
-        buildActivatedIMList();
+        refreshStartupConfigSnapshotIfNeeded();
         mKeyboardSwitcher.setActivatedIMList(activatedIMList, activatedIMShortNameList);
 
-        if (mKeyboardSwitcher.getKeyboardSize() == 0 && SearchSrv != null) {
-            try {
-                mKeyboardSwitcher.setKeyboardConfigList(SearchSrv.getKeyboardConfigList());
-                mKeyboardSwitcher.setImConfigKeyboardList(SearchSrv.getAllImKeyboardConfigList());
-            } catch (RemoteException e) {
-                Log.e(TAG, "Error setting keyboard/IM list", e);
-            }
+        if (mKeyboardSwitcher.getKeyboardSize() == 0) {
+            applyStartupConfigSnapshotToKeyboardSwitcher();
         }
-
 
     }
 
@@ -6553,7 +6665,12 @@ public class LIMEService extends InputMethodService
         int accent = resolveSystemAccentColor(0);
         if (!isUsableAccentColor(accent)) return;
 
-        boolean darkTheme = isEffectiveDarkTheme();
+        applyFollowSystemAccentColors(accent, isEffectiveDarkTheme());
+    }
+
+    private void applyFollowSystemAccentColors(int accent, boolean darkTheme) {
+        if (!isUsableAccentColor(accent) || isAppliedFollowSystemAccentCurrent(accent, darkTheme)) return;
+
         if (mInputView != null) {
             mInputView.applyFollowSystemAccentColor(accent, darkTheme);
         }
@@ -6563,6 +6680,30 @@ public class LIMEService extends InputMethodService
         if (mCandidateView != null && mCandidateView != mCandidateViewInInputView) {
             mCandidateView.applyFollowSystemAccentColor(accent, darkTheme);
         }
+        mAppliedFollowSystemAccent = accent;
+        mAppliedFollowSystemDarkTheme = darkTheme;
+        mAppliedFollowSystemInputView = mInputView;
+        mAppliedFollowSystemCandidateView = mCandidateView;
+        mAppliedFollowSystemEmbeddedCandidateView = mCandidateViewInInputView;
+    }
+
+    private boolean isAppliedFollowSystemAccentCurrent(int accent, boolean darkTheme) {
+        return mAppliedFollowSystemAccent == accent
+                && mAppliedFollowSystemDarkTheme == darkTheme
+                && mAppliedFollowSystemInputView == mInputView
+                && mAppliedFollowSystemCandidateView == mCandidateView
+                && mAppliedFollowSystemEmbeddedCandidateView == mCandidateViewInInputView;
+    }
+
+    private void clearAppliedFollowSystemAccentState() {
+        mAppliedFollowSystemAccent = 0;
+        mAppliedFollowSystemInputView = null;
+        mAppliedFollowSystemCandidateView = null;
+        mAppliedFollowSystemEmbeddedCandidateView = null;
+    }
+
+    void applyFollowSystemAccentColorsForTesting(int accent, boolean darkTheme) {
+        applyFollowSystemAccentColors(accent, darkTheme);
     }
 
     private int resolveSystemAccentColor(int fallbackColor) {
@@ -6643,6 +6784,12 @@ public class LIMEService extends InputMethodService
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
 
         int bgColor = getKeyboardBackgroundColorForCurrentTheme();
+        boolean lightBackground = isColorLight(bgColor);
+
+        if (isAppliedNavigationBarThemeCurrent(window, bgColor, lightBackground)) {
+            return;
+        }
+
         window.setNavigationBarColor(bgColor);
 
         // The IME container applies bottomInset padding to clear the gesture bar
@@ -6653,16 +6800,35 @@ public class LIMEService extends InputMethodService
             mCandidateInInputView.setBackgroundColor(bgColor);
         }
 
-        boolean lightBackground = isColorLight(bgColor);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             WindowInsetsControllerCompat controller =
                     WindowCompat.getInsetsController(window, window.getDecorView());
             // setAppearanceLightNavigationBars(true) => DARK icons on LIGHT bar
             controller.setAppearanceLightNavigationBars(lightBackground);
         }
+        mNavigationBarThemeApplied = true;
+        mAppliedNavigationBarWindow = window;
+        mAppliedNavigationBarCandidateView = mCandidateInInputView;
+        mAppliedNavigationBarColor = bgColor;
+        mAppliedNavigationBarLightBackground = lightBackground;
         // API 21-22 cannot toggle nav-bar icon brightness; the colored bar alone
         // still gives the user the matching look.
+    }
+
+    private boolean isAppliedNavigationBarThemeCurrent(android.view.Window window,
+                                                       int bgColor,
+                                                       boolean lightBackground) {
+        return mNavigationBarThemeApplied
+                && mAppliedNavigationBarWindow == window
+                && mAppliedNavigationBarCandidateView == mCandidateInInputView
+                && mAppliedNavigationBarColor == bgColor
+                && mAppliedNavigationBarLightBackground == lightBackground;
+    }
+
+    private void clearAppliedNavigationBarThemeState() {
+        mNavigationBarThemeApplied = false;
+        mAppliedNavigationBarWindow = null;
+        mAppliedNavigationBarCandidateView = null;
     }
 
     private int getKeyboardBackgroundColorForCurrentTheme() {

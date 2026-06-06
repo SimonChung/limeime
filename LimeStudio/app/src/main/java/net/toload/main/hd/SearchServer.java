@@ -251,6 +251,7 @@ public class SearchServer {
     }
 
     private static Thread prefetchThread;
+    private static Thread emojiPreloadThread;
 
     /**
      * Prefetches common mappings into the cache to improve initial response time.
@@ -848,14 +849,24 @@ public class SearchServer {
         return pages;
     }
 
+    public boolean hasEmojiCategoryPagesCache() {
+        return emojiCategoryPagesCache != null;
+    }
+
+    public boolean isEmojiCategoryPreloadRunning() {
+        return emojiPreloadThread != null && emojiPreloadThread.isAlive();
+    }
+
     public void preloadEmojiCategoryPages() {
-        new Thread(() -> {
+        if (isEmojiCategoryPreloadRunning()) return;
+        emojiPreloadThread = new Thread(() -> {
             try {
                 loadEmojiCategoryPages();
             } catch (Exception e) {
                 Log.e(TAG, "Error preloading emoji category pages", e);
             }
-        }, "emoji-category-preload").start();
+        }, "emoji-category-preload");
+        emojiPreloadThread.start();
     }
 
     private static List<String> mappingWords(List<Mapping> mappings) {

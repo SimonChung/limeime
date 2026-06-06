@@ -355,6 +355,10 @@ public class LIMEPreference extends AppCompatActivity {
 			if(DEBUG)
 				Log.i(TAG,"onSharedPreferenceChanged(), key:" + key);
 
+			if(mLIMEPref != null){
+				mLIMEPref.resetStartupConfigVersionIfStartupPreferenceChanged(key);
+			}
+
 			if("phonetic_keyboard_type".equals(key)){
 				String selectedPhoneticKeyboardType = mLIMEPref.getPhoneticKeyboardType();
 				//PreferenceManager.getDefaultSharedPreferences(ctx).getString("phonetic_keyboard_type", "");

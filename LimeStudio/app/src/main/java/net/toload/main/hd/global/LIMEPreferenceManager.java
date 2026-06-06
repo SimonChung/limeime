@@ -40,6 +40,8 @@ import java.util.Set;
 
 public class LIMEPreferenceManager {
 
+	private static final String STARTUP_CONFIG_VERSION = "startup_config_version";
+
 	public static class ReverseLookupOption {
 		public final String label;
 		public final String value;
@@ -156,7 +158,7 @@ public class LIMEPreferenceManager {
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
 		String loadingStatus = englishOnly?"yes":"no";
 		
-		sp.edit().putString("language_mode",loadingStatus).apply();
+		putStringAndBumpStartupConfigVersionIfChanged(sp, "language_mode", loadingStatus);
 		
 	}
 
@@ -479,7 +481,7 @@ public class LIMEPreferenceManager {
 	}
 	public void setIMActivatedState(String state){
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		sp.edit().putString( "keyboard_state", String.valueOf(state)).apply();	
+		putStringAndBumpStartupConfigVersionIfChanged(sp, "keyboard_state", String.valueOf(state));
 	}
 	
 	public String getActiveIM(){
@@ -490,7 +492,7 @@ public class LIMEPreferenceManager {
 	
 	public void setActiveIM(String activeIM){
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		sp.edit().putString( "keyboard_list", String.valueOf(activeIM)).apply();	
+		putStringAndBumpStartupConfigVersionIfChanged(sp, "keyboard_list", String.valueOf(activeIM));
 	}
 	
 	public boolean getThreerowRemapping(){
@@ -632,7 +634,7 @@ public class LIMEPreferenceManager {
 	
 	public void setShowArrowKeys(int mode){
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		sp.edit().putString("show_arrow_key", Integer.toString(mode)).apply();	
+		putStringAndBumpStartupConfigVersionIfChanged(sp, "show_arrow_key", Integer.toString(mode));
 		
 	}
 	
@@ -648,8 +650,72 @@ public class LIMEPreferenceManager {
 	
 	public void setSplitKeyboard(int mode){
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
-		sp.edit().putString("split_keyboard_mode", Integer.toString(mode)).apply();	
+		putStringAndBumpStartupConfigVersionIfChanged(sp, "split_keyboard_mode", Integer.toString(mode));
 		
+	}
+
+	public long getStartupConfigVersion(){
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
+		return sp.getLong(STARTUP_CONFIG_VERSION, 0L);
+	}
+
+	public long initializeStartupConfigVersion(){
+		long current = getStartupConfigVersion();
+		if(current > 0L) return current;
+		return bumpStartupConfigVersion();
+	}
+
+	public void resetStartupConfigVersion(){
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
+		sp.edit().putLong(STARTUP_CONFIG_VERSION, 0L).apply();
+	}
+
+	public boolean resetStartupConfigVersionIfStartupPreferenceChanged(String key){
+		if(!isStartupConfigPreferenceKey(key)) return false;
+		resetStartupConfigVersion();
+		return true;
+	}
+
+	private static boolean isStartupConfigPreferenceKey(String key){
+		if(key == null) return false;
+		switch(key){
+			case "keyboard_state":
+			case "keyboard_list":
+			case "show_arrow_key":
+			case "split_keyboard_mode":
+			case "keyboard_theme":
+			case "language_mode":
+			case "persistent_language_mode":
+			case "phonetic_keyboard_type":
+			case "number_row_in_english":
+				return true;
+			default:
+				return key.endsWith("_keyboard_type");
+		}
+	}
+
+	private void putStringAndBumpStartupConfigVersionIfChanged(SharedPreferences sp, String key, String value){
+		String current = sp.getString(key, null);
+		SharedPreferences.Editor editor = sp.edit().putString(key, value);
+		if(!value.equals(current)){
+			putNextStartupConfigVersion(sp, editor);
+		}
+		editor.apply();
+	}
+
+	private long bumpStartupConfigVersion(){
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(ctx);
+		SharedPreferences.Editor editor = sp.edit();
+		long next = putNextStartupConfigVersion(sp, editor);
+		editor.apply();
+		return next;
+	}
+
+	private long putNextStartupConfigVersion(SharedPreferences sp, SharedPreferences.Editor editor){
+		long current = sp.getLong(STARTUP_CONFIG_VERSION, 0L);
+		long next = Math.max(System.currentTimeMillis(), current + 1L);
+		editor.putLong(STARTUP_CONFIG_VERSION, next);
+		return next;
 	}
 	
 	public boolean getResetCacheFlag(boolean defaultvalue){
