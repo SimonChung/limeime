@@ -162,6 +162,16 @@ final class KeyboardViewController: UIInputViewController {
     // Set true around our own insertText/deleteBackward calls to suppress textDidChange checks
     private var isSelfUpdate = false
 
+    // MARK: - English Pick-Space Punctuation Swap (ENGLISH_KB.md #0 / §2a)
+    // After an English suggestion pick auto-appends a space (word ), typing punctuation
+    // should produce "word, " not "word ,". Replicates AOSP LatinIME. Character classes
+    // from donottranslate-config-spacing-and-punctuations.xml (en_US).
+    private static let engSwapFollowedBySpace: Set<Character> = [".", ",", ";", ":", "!", "?", ")", "]", "}"]
+    private static let engSwapPrecededBySpace: Set<Character> = ["(", "[", "{"]
+    private static let engSwapStrip: Set<Character> = ["-", "/", "@", "_", "'"]
+    // True only immediately after an English suggestion pick auto-appended a space.
+    private var pickedAutoSpace = false
+
     // MARK: - Key Preview
     private weak var keyPreviewView: UIView?
 
@@ -1413,10 +1423,22 @@ final class KeyboardViewController: UIInputViewController {
         let charStr    = String(char)
         let insertChar = isShiftOn ? charStr.uppercased() : charStr
 
+        // ENGLISH_KB.md #0 / §2a: read+clear the pick-auto-space flag up front so every
+        // path clears it; only the punctuation-swap branch below acts on it.
+        let wasPickedAutoSpace = pickedAutoSpace
+        pickedAutoSpace = false
+
         if char.isLetter {
             tempEnglishWord += insertChar
         } else {
             resetTempEnglishWord()
+            // Try the LatinIME-style space↔punctuation swap. If it handled the commit,
+            // we are done (skip the normal insert + prediction refresh).
+            if commitEnglishPunctuationWithSwap(insertChar, wasPickedAutoSpace) {
+                consumeShiftAfterCharacter()
+                updateShiftForAutoCap()
+                return
+            }
         }
         isSelfUpdate = true
         textDocumentProxy.insertText(insertChar)
@@ -1424,6 +1446,42 @@ final class KeyboardViewController: UIInputViewController {
         updateEnglishPrediction()
         consumeShiftAfterCharacter()
         updateShiftForAutoCap()
+    }
+
+    /// ENGLISH_KB.md #0 / §2a — replicate LatinIME's pick-space punctuation swap.
+    ///
+    /// When an English suggestion pick auto-appended a trailing space (`word `), typing
+    /// punctuation should produce `word, ` rather than `word ,`. Returns `true` if this
+    /// method fully handled the commit (caller must skip its own insert); `false` to let
+    /// the caller insert normally.
+    ///
+    /// Character classes mirror AOSP `donottranslate-config-spacing-and-punctuations.xml`:
+    /// followed-by-space (`. , ; : ! ? ) ] }`) → delete space, insert `punct + " "`;
+    /// preceded-by-space (`( [ {`) → keep space, insert the bracket normally (returns false);
+    /// strip (`- / @ _ '`) → delete space, insert the punctuation bare.
+    private func commitEnglishPunctuationWithSwap(_ insertChar: String,
+                                                  _ wasPickedAutoSpace: Bool) -> Bool {
+        guard wasPickedAutoSpace, let c = insertChar.first else { return false }
+
+        let followed = KeyboardViewController.engSwapFollowedBySpace.contains(c)
+        let strip    = KeyboardViewController.engSwapStrip.contains(c)
+        // Preceded-by-space brackets keep the existing space → let caller insert normally.
+        guard followed || strip else { return false }
+
+        // Cursor-move safety: only delete if the auto-space is actually still there.
+        guard textDocumentProxy.documentContextBeforeInput?.hasSuffix(" ") == true else {
+            return false
+        }
+
+        isSelfUpdate = true
+        textDocumentProxy.deleteBackward()
+        if followed {
+            textDocumentProxy.insertText(insertChar + " ") // word,  (space after punct)
+        } else {
+            textDocumentProxy.insertText(insertChar)       // word-  (no space)
+        }
+        isSelfUpdate = false
+        return true
     }
 
     // MARK: - Backspace Handling (spec §5 handleBackspace — 6 cases)
@@ -2452,6 +2510,8 @@ final class KeyboardViewController: UIInputViewController {
         let suffix = word.count > tempEnglishWord.count
             ? String(word.dropFirst(tempEnglishWord.count)) : ""
         textDocumentProxy.insertText(suffix + " ")
+        // ENGLISH_KB.md #0 / §2a: arm the punctuation swap — we just appended a space.
+        pickedAutoSpace = true
         resetTempEnglishWord()
         clearSuggestions()
     }

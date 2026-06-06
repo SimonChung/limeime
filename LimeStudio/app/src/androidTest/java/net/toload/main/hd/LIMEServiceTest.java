@@ -12115,4 +12115,98 @@ public class LIMEServiceTest {
         assertFalse(LIMEService.shouldInsertPeriodForEnglishDoubleSpace("http://lime-ime.github.io "));
     }
 
+    // ENGLISH_KB.md #0 / §2a — pick-space punctuation swap (replicate LatinIME).
+    // commitEnglishPunctuationWithSwap(ic, char, wasPickedAutoSpace) returns true when it
+    // fully handled the commit (caller skips its own commit), false to commit normally.
+
+    private Method englishSwapMethod() throws Exception {
+        Method m = LIMEService.class.getDeclaredMethod(
+                "commitEnglishPunctuationWithSwap",
+                InputConnection.class, char.class, boolean.class);
+        m.setAccessible(true);
+        return m;
+    }
+
+    /** Build a mock InputConnection whose single char before cursor is `before`. */
+    private InputConnection mockIcWithCharBefore(String before) {
+        InputConnection ic = mock(InputConnection.class);
+        when(ic.commitText(any(), anyInt())).thenReturn(true);
+        when(ic.deleteSurroundingText(anyInt(), anyInt())).thenReturn(true);
+        when(ic.getTextBeforeCursor(1, 0)).thenReturn(before);
+        return ic;
+    }
+
+    @Test
+    public void englishSwap_followedBySpacePunct_swapsSpaceToAfter() throws Exception {
+        Method swap = englishSwapMethod();
+        // "word " + "," -> delete the space, commit ", "  => "word, "
+        for (char c : new char[]{'.', ',', ';', ':', '!', '?', ')', ']', '}'}) {
+            InputConnection ic = mockIcWithCharBefore(" ");
+            boolean handled = (Boolean) swap.invoke(new LIMEService(), ic, c, true);
+            assertTrue("swap should handle '" + c + "'", handled);
+            org.mockito.InOrder order = inOrder(ic);
+            order.verify(ic).deleteSurroundingText(1, 0);
+            order.verify(ic).commitText(c + " ", 1);
+            verify(ic, never()).commitText(String.valueOf(c), 1);
+        }
+    }
+
+    @Test
+    public void englishSwap_precededBySpacePunct_keepsSpaceAndCommitsNormally() throws Exception {
+        Method swap = englishSwapMethod();
+        // "word " + "(" -> keep the space, let caller commit  => "word ("
+        for (char c : new char[]{'(', '[', '{'}) {
+            InputConnection ic = mockIcWithCharBefore(" ");
+            boolean handled = (Boolean) swap.invoke(new LIMEService(), ic, c, true);
+            assertFalse("bracket '" + c + "' must not be handled (no swap)", handled);
+            verify(ic, never()).deleteSurroundingText(anyInt(), anyInt());
+            verify(ic, never()).commitText(any(), anyInt());
+        }
+    }
+
+    @Test
+    public void englishSwap_stripPunct_deletesSpaceAndCommitsBare() throws Exception {
+        Method swap = englishSwapMethod();
+        // "word " + "-" -> delete the space, commit bare  => "word-"
+        for (char c : new char[]{'-', '/', '@', '_', '\''}) {
+            InputConnection ic = mockIcWithCharBefore(" ");
+            boolean handled = (Boolean) swap.invoke(new LIMEService(), ic, c, true);
+            assertTrue("strip '" + c + "' should be handled", handled);
+            org.mockito.InOrder order = inOrder(ic);
+            order.verify(ic).deleteSurroundingText(1, 0);
+            order.verify(ic).commitText(String.valueOf(c), 1);
+            verify(ic, never()).commitText(c + " ", 1);
+        }
+    }
+
+    @Test
+    public void englishSwap_notArmed_doesNothing() throws Exception {
+        Method swap = englishSwapMethod();
+        // wasPickedAutoSpace == false: never swap, regardless of char or buffer.
+        InputConnection ic = mockIcWithCharBefore(" ");
+        assertFalse((Boolean) swap.invoke(new LIMEService(), ic, ',', false));
+        verify(ic, never()).deleteSurroundingText(anyInt(), anyInt());
+        verify(ic, never()).commitText(any(), anyInt());
+    }
+
+    @Test
+    public void englishSwap_armedButNoTrailingSpace_commitsNormally() throws Exception {
+        Method swap = englishSwapMethod();
+        // Cursor-move safety: armed, but the char before cursor is not a space.
+        InputConnection ic = mockIcWithCharBefore("d");
+        assertFalse((Boolean) swap.invoke(new LIMEService(), ic, ',', true));
+        verify(ic, never()).deleteSurroundingText(anyInt(), anyInt());
+        verify(ic, never()).commitText(any(), anyInt());
+    }
+
+    @Test
+    public void englishSwap_nonPunctChar_notHandled() throws Exception {
+        Method swap = englishSwapMethod();
+        // A letter is not in any swap class -> not handled (caller inserts it, space stays).
+        InputConnection ic = mockIcWithCharBefore(" ");
+        assertFalse((Boolean) swap.invoke(new LIMEService(), ic, 'a', true));
+        verify(ic, never()).deleteSurroundingText(anyInt(), anyInt());
+        verify(ic, never()).commitText(any(), anyInt());
+    }
+
 }

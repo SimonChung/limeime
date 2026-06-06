@@ -156,6 +156,16 @@ public class LIMEService extends InputMethodService
     //Jeremy '16,7,22 To control delayed hiding candidate view and avoid hide and show candidate view in short time.
     private static final int DELAY_BEFORE_HIDE_CANDIDATE_VIEW = 200;
 
+    // ENGLISH_KB.md #0 / §2a — pick-space punctuation swap (replicate LatinIME).
+    // When the user picks an English suggestion we auto-append a space (word ).
+    // Typing punctuation next should produce "word, " not "word ,".
+    // Character classes from AOSP donottranslate-config-spacing-and-punctuations.xml (en_US).
+    private static final String ENG_SWAP_FOLLOWED_BY_SPACE = ".,;:!?)]}"; // delete space, commit punct + " "
+    private static final String ENG_SWAP_PRECEDED_BY_SPACE = "([{";       // keep space, commit bracket
+    private static final String ENG_SWAP_STRIP = "-/@_'";                 // delete space, commit punct bare
+    // True only immediately after an English suggestion pick auto-appended a space.
+    private boolean mPickedAutoSpace = false;
+
     public static final int THREAD_YIELD_DELAY_MS = 0;
     private LIMEKeyboardView mInputView = null;
     private CandidateInInputViewContainer mCandidateInInputView = null;//Jeremy'12,5,3
@@ -870,11 +880,9 @@ public class LIMEService extends InputMethodService
             Log.e(TAG, "Error setting IM list on keyboard reset", e);
         }
 
-
         mKeyboardSwitcher.resetKeyboards(
                 mShowArrowKeys != mLIMEPref.getShowArrowKeys() //Jeremy '12,5,22 recreate keyboard if the setting altered.
                         || mSplitKeyboard != mLIMEPref.getSplitKeyboard()); //Jeremy '12,5,26 recreate keyboard if the setting altered.
-
 
         loadSettings();
         mImeOptions = attribute.imeOptions;
@@ -5276,6 +5284,12 @@ public class LIMEService extends InputMethodService
             }
 
             InputConnection ic = getCurrentInputConnection();
+
+            // ENGLISH_KB.md #0 / §2a: read+clear the pick-auto-space flag up front so
+            // every path below clears it; only the punctuation-swap path acts on it.
+            final boolean wasPickedAutoSpace = mPickedAutoSpace;
+            mPickedAutoSpace = false;
+
             if (primaryCode == MY_KEYCODE_SPACE && mAutoCap && ic != null
                     && shouldInsertPeriodForEnglishDoubleSpace(ic.getTextBeforeCursor(64, 0))) {
                 resetTempEnglishWord();
@@ -5303,12 +5317,65 @@ public class LIMEService extends InputMethodService
             }
 
             if (ic != null) {
-                ic.commitText(String.valueOf((char) primaryCode), 1);
+                // ENGLISH_KB.md #0 / §2a: if the previous action auto-appended a space
+                // after a suggestion pick, swap it with the typed punctuation per the
+                // LatinIME character classes. Falls through to a normal commit otherwise.
+                if (!commitEnglishPunctuationWithSwap(ic, (char) primaryCode, wasPickedAutoSpace)) {
+                    ic.commitText(String.valueOf((char) primaryCode), 1);
+                }
             }
         }
 
         if (!(!hasPhysicalKeyPressed && hasDistinctMultitouch))
             updateShiftKeyState(getCurrentInputEditorInfo());
+    }
+
+    /**
+     * ENGLISH_KB.md #0 / §2a — replicate LatinIME's pick-space punctuation swap.
+     *
+     * <p>When an English suggestion pick auto-appended a trailing space ({@code word }),
+     * typing punctuation should produce {@code word, } rather than {@code word ,}.
+     * Returns {@code true} if this method fully handled committing the character (caller
+     * must skip its own commit); {@code false} to let the caller commit normally.
+     *
+     * <p>Character classes mirror AOSP {@code donottranslate-config-spacing-and-punctuations.xml}:
+     * <ul>
+     *   <li>followed-by-space ({@code . , ; : ! ? ) ] }}): delete the space, commit {@code punct + " "}.</li>
+     *   <li>preceded-by-space ({@code ( [ {{}}): keep the space, commit the bracket.</li>
+     *   <li>strip ({@code - / @ _ '}): delete the space, commit the punctuation bare.</li>
+     * </ul>
+     */
+    private boolean commitEnglishPunctuationWithSwap(InputConnection ic, char c,
+                                                     boolean wasPickedAutoSpace) {
+        if (!wasPickedAutoSpace) return false;
+
+        final boolean followed = ENG_SWAP_FOLLOWED_BY_SPACE.indexOf(c) >= 0;
+        final boolean preceded = ENG_SWAP_PRECEDED_BY_SPACE.indexOf(c) >= 0;
+        final boolean strip    = ENG_SWAP_STRIP.indexOf(c) >= 0;
+        if (!followed && !preceded && !strip) return false; // not a swap char (letters, &, etc.)
+
+        // Preceded-by-space brackets keep the existing space; nothing special to do.
+        if (preceded) return false;
+
+        // followed-by-space / strip both need to remove the auto-space first — but only
+        // if it is actually still there (cursor-move safety).
+        final CharSequence before = ic.getTextBeforeCursor(1, 0);
+        if (before == null || before.length() != 1 || before.charAt(0) != ' ') {
+            return false; // no trailing space (e.g. user moved cursor) — commit normally
+        }
+
+        ic.beginBatchEdit();
+        try {
+            ic.deleteSurroundingText(1, 0);
+            if (followed) {
+                ic.commitText(c + " ", 1); // word,  (space moves after the punctuation)
+            } else {
+                ic.commitText(String.valueOf(c), 1); // word-  (no space)
+            }
+        } finally {
+            ic.endBatchEdit();
+        }
+        return true;
     }
 
     private void handleClose() {
@@ -5440,6 +5507,10 @@ public class LIMEService extends InputMethodService
                                 .substring(tempEnglishWord.length())
                                 + " ", 1);
             }
+
+            // ENGLISH_KB.md #0 / §2a: both pick paths appended a trailing space.
+            // Arm the punctuation swap so the next "," produces "word," not "word ,".
+            mPickedAutoSpace = true;
 
             resetTempEnglishWord();
 
