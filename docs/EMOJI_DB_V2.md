@@ -61,7 +61,7 @@ Locales loaded: **`en` + `zh-hant`** only. `zh` (Simplified) is intentionally no
 
 ## New schema (added to lime.db)
 
-Three tables and one FTS virtual table, all created inside the existing user-writable **lime.db** during `onUpgrade` (path 1 below). No separate `emoji_meta` table is needed — version tracking reuses the existing `im` table (see path 2).
+Three tables and one FTS virtual table, all created inside the existing user-writable **lime.db** by the idempotent open-path check (path 1 below — `createEmojiTables` from `ensureCurrentDatabase()`, not `onUpgrade`). No separate `emoji_meta` table is needed — version tracking reuses the existing `im` table (see path 2).
 
 ```sql
 -- Immutable emoji dataset. Wholesale-replaced when emoji-data version advances (path 2).
@@ -217,26 +217,35 @@ No `androidx.sqlite:sqlite-bundled` dependency is required for v1. If the projec
 
 Two distinct mechanisms, both reusing existing LimeIME patterns. **emoji.db at runtime is gone** — emoji tables live inside lime.db and follow lime.db's lifecycle.
 
-### Path 1 — lime.db schema upgrade (`LimeDB.onUpgrade`)
+### Path 1 — emoji schema creation (open-path, NOT `onUpgrade`)
 
-Bump `LimeDB.DATABASE_VERSION` from 102 → 103 ([LimeDB.java:106](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java#L106)). Add a new branch in `onUpgrade` ([LimeDB.java:609](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java#L609)) following the existing pattern:
+> **Updated:** emoji schema creation is **state-gated on every open**, not version-gated in
+> `onUpgrade`. The original plan put a `if (oldVersion < 103) createEmojiTables(...)` line in
+> `onUpgrade`; that line has since been **removed** because it was insufficient (a restored
+> DB can claim a current `user_version` but carry stale/missing emoji schema, skipping
+> `onUpgrade` — the #88 crash family). See the shared rule in
+> [ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md) "Bundled-payload version principle".
+
+Emoji tables are created idempotently from the open-path funnel `ensureCurrentDatabase()`
+([LimeDB.java](../LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java)), which
+runs on **every open, restore, and factory reset**:
 
 ```java
-if (oldVersion < 103) {
-    // Create the emoji_data, emoji_fts, emoji_user tables.
-    // (CREATE TABLE statements from the "New schema" section above.)
-    db.execSQL("CREATE TABLE emoji_data (...);");
-    db.execSQL("CREATE INDEX idx_emoji_group ON emoji_data(group_name, sort_order);");
-    db.execSQL("CREATE VIRTUAL TABLE emoji_fts USING fts4(...);"); // Android platform SQLite
-    db.execSQL("CREATE TABLE emoji_user (...);");
-    // Tables are empty after schema creation. Path 2 (next) populates them.
-    // Version is tracked via the existing `im` table (no separate emoji_meta needed).
-}
+// ensureCurrentDatabase() -> refreshEmojiDataIfNeeded() -> ensureEmojiTables():
+createEmojiTables(db, /*forceRecreate=*/ false);   // CREATE TABLE IF NOT EXISTS — idempotent
 ```
 
-iOS GRDB has the equivalent migration registration mechanism; the same SQL applies.
+`createEmojiTables` creates `emoji_data`, `idx_emoji_group`, the `emoji_fts` virtual table
+(Android platform FTS4, iOS FTS5), and `emoji_user`, all with `IF NOT EXISTS` / usability
+probe so it is safe to run on every open. Because it is gated on **actual schema state**
+(missing/unusable tables are repaired) rather than `PRAGMA user_version`, a restored DB that
+lies about its version is still fixed. `LimeDB.DATABASE_VERSION` is currently 104; the emoji
+schema does **not** depend on that number.
 
-Android should also remove any stale standalone runtime copy at `context.getDatabasePath("emoji.db")` after the v103 schema exists and the emoji refresh path is wired. This is the "Android cache-wipe hook" in the ship-order list: the bundled `R.raw.emoji` remains as the read-only import source, but the old writable `emoji.db` copy is obsolete and should not continue serving queries.
+iOS GRDB runs the equivalent idempotent ensure in `ensureCurrentDatabase()`; the same SQL
+applies.
+
+Android should also remove any stale standalone runtime copy at `context.getDatabasePath("emoji.db")` after the schema exists and the emoji refresh path is wired. This is the "Android cache-wipe hook" in the ship-order list: the bundled `R.raw.emoji` remains as the read-only import source, but the old writable `emoji.db` copy is obsolete and should not continue serving queries.
 
 ### Path 2 — emoji-data version refresh (first-time and future Emoji 18, 19, …)
 
@@ -311,7 +320,7 @@ End-to-end manual test on **both** platforms (iOS bundles new build, Android ins
 
 ### Path 1 — lime.db schema upgrade
 
-5. **Android**: install an APK whose `LimeDB.DATABASE_VERSION = 103`. On first launch, `onUpgrade` fires; verify via `adb shell sqlite3 /data/data/.../databases/lime.db ".schema"` that `emoji_data`, `emoji_fts`, `emoji_user` tables now exist and are empty. Old IM tables (mappings, related, im, etc.) are unchanged.
+5. **Android**: install the APK. On first launch, the open-path `ensureCurrentDatabase()` → `refreshEmojiDataIfNeeded()` runs; verify via `adb shell sqlite3 /data/data/.../databases/lime.db ".schema"` that `emoji_data`, `emoji_fts`, `emoji_user` tables now exist. Old IM tables (mappings, related, im, etc.) are unchanged.
 6. **iOS**: equivalent — install a fresh build, open lime.db (the writable copy in App Group container), confirm the same three new tables exist with the existing IM tables untouched.
 
 ### Path 2 — emoji-data version refresh
@@ -345,7 +354,7 @@ End-to-end manual test on **both** platforms (iOS bundles new build, Android ins
 7. **Recents writeback**: `emoji_user` table inside lime.db, written on every emoji insertion. Reuses LimeIME's existing IM-table user-record lifecycle and `<table>_user` convention.
 8. **English matching thresholds**: inline candidate-bar emoji injection starts English prefix matching at two characters (`cr*`, `cry*`) and deliberately ignores bare one-character English (`c`). The emoji keyboard search box starts at one character (`c*`, `cr*`, `cry*`) because the user is explicitly searching.
 9. **Chinese candidate matching**: Chinese inline candidate injection keeps one-character CJK matching and also queries the first Chinese character of longer candidates (`國旗* OR 國*`, `日本* OR 日*`).
-10. **Upgrade path 1**: lime.db schema bump (102 → 103) handled in existing `LimeDB.onUpgrade`. Reuses the existing pattern — no new framework.
+10. **Upgrade path 1**: emoji schema is created idempotently in the open-path `ensureCurrentDatabase()` → `refreshEmojiDataIfNeeded()` → `createEmojiTables(db, false)`, gated on actual schema state (not `PRAGMA user_version`), so it runs on every open/restore/factory-reset. The original version-gated `onUpgrade(oldVersion<103)` emoji line was removed (insufficient for restores that lie about their version — the #88 family). See the shared rule in [ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md) "Bundled-payload version principle".
 11. **Upgrade path 2**: emoji-data version refresh detected via `im` table (`code='emoji', title='version'`), triggered by mismatch with build-time constant `EMOJI_DATA_VERSION`. emoji.db ships with its own `im` metadata rows; the emoji-specific refresh method uses the existing ATTACH/copy pattern to copy them alongside `emoji_data`. Reuses LimeIME's existing IM-table user-record preservation approach by keeping `emoji_user` intact and reconciling it after import.
 
 ## File map
@@ -358,7 +367,7 @@ End-to-end manual test on **both** platforms (iOS bundles new build, Android ins
 | iOS: data version refresh | [LimeIME-iOS/Shared/Database/LimeDB.swift](LimeIME-iOS/Shared/Database/LimeDB.swift) | At init, query `im` table (`code='emoji', title='version'`) vs `EMOJI_DATA_VERSION` constant; if different, ATTACH bundled emoji.db and run preserve-user-records / clear / import / reconcile transaction (copies `im` rows + `emoji_data`, preserves `emoji_user`). Path 2. |
 | iOS: new search API | [LimeIME-iOS/Shared/Database/LimeDB.swift](LimeIME-iOS/Shared/Database/LimeDB.swift) | Add `findEmojiForCandidate(_:locale:limit:)`, `searchEmoji(_:locale:)`, `loadAllEmoji()`, `recordEmojiUsage(_:)` (writes to `emoji_user`) |
 | iOS: candidate-bar caller | [LimeIME-iOS/Shared/Search/SearchServer.swift:722-754](LimeIME-iOS/Shared/Search/SearchServer.swift#L722-L754) | Rewire `injectEmoji` to call `findEmojiForCandidate` instead of `emojiConvert` |
-| Android: schema migration | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java:609](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java#L609) | Bump `DATABASE_VERSION` from 102 → 103; add `if (oldVersion < 103)` branch creating the three emoji tables (`emoji_data`, `emoji_fts`, `emoji_user`). `emoji_fts` uses Android platform FTS4 directly. Path 1. |
+| Android: schema creation | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java) (`ensureCurrentDatabase` → `refreshEmojiDataIfNeeded` → `createEmojiTables`) | Idempotent open-path create of the three emoji tables (`emoji_data`, `emoji_fts`, `emoji_user`), gated on schema state not `user_version`. `emoji_fts` uses Android platform FTS4 directly. No `onUpgrade` emoji line. Path 1. |
 | Android: data version refresh | `LimeStudio/app/src/main/java/net/toload/main/hd/limedb/LimeDB.java` (new method, called from `LIMEService.onCreate`) | Query `im` table (`code='emoji', title='version'`) vs `BuildConfig.EMOJI_DATA_VERSION`; if different, run an emoji-specific ATTACH/copy refresh that preserves `emoji_user` and prunes only orphaned rows after import. Path 2. |
 | Android: new search API | [LimeStudio/app/src/main/java/net/toload/main/hd/limedb/EmojiConverter.java](LimeStudio/app/src/main/java/net/toload/main/hd/limedb/EmojiConverter.java) | Refactor: stop being a separate `SQLiteOpenHelper`; become a thin façade that runs queries against lime.db's emoji tables. Adds `findEmojiForCandidate`, `search`, `loadAll`, `recordUsage`. Legacy `convert(tag, emoji)` stays as a wrapper. |
 | Android: candidate-bar caller | [LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java](LimeStudio/app/src/main/java/net/toload/main/hd/LIMEService.java) (around L2471-2530 + L2665-2720) | Rewire candidate-bar emoji injection to call `findEmojiForCandidate` instead of `EmojiConverter.convert` |

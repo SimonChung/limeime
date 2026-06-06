@@ -263,28 +263,31 @@ Out of scope for a §8.7 polish pass — these are multi-week changes
 proposal. The immediate auto-cap + double-space-period improvements deliver
 80% of the perceived gboard parity at <1% of the cost.
 
-### #6 vs. wordfreq / DB 105 — scope boundary
+### #6 vs. the scored dictionary — scope boundary
 
-`wordfreq` (the data source evaluated in
-[LIME_DB_105.md](LIME_DB_105.md)) is **not** an alternative to #6 — it is one
-ingredient of it. wordfreq is a static `word → frequency` list (the `basescore`
-column); #6 is the full prediction *system*. The four parts of #6 and where each
-comes from:
+`wordfreq` (a candidate data source for the Android scored dictionary — see
+[ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md) "Scored Dictionary (Android)")
+is **not** an alternative to #6 — it is one ingredient of it. wordfreq is a
+static `word → frequency` list (the `basescore` column); #6 is the full
+prediction *system*. The four parts of #6 and where each comes from:
 
 | #6 component | Provided by | Status |
 | --- | --- | --- |
-| 6.1 Main-dictionary frequency (base ranking) | **wordfreq → `basescore`** | DB 105 (Android) — planned |
-| 6.2 User-history learning (personal, decaying) | **`score` column + learning logic** | DB 105 (Android) — planned |
-| 6.3 N-gram context (bigram/trigram, "Happy→Birthday") | bigram table + prev-word lookup | **future — not in DB 105** |
-| 6.4 Auto-commit on separator (auto-correct top word on space/`.`) | input-logic change (LatinIME `mAutoCorrection` path) | **future — not in DB 105** |
+| 6.1 Main-dictionary frequency (base ranking) | **`basescore` from bundled payload** | Android scored dictionary — planned |
+| 6.2 User-history learning (personal, decaying) | **`score` column + learning logic** | Android scored dictionary — planned |
+| 6.3 N-gram context (bigram/trigram, "Happy→Birthday") | bigram table + prev-word lookup | **future — not planned** |
+| 6.4 Auto-commit on separator (auto-correct top word on space/`.`) | input-logic change (LatinIME `mAutoCorrection` path) | **future — not planned** |
 
-So the Android **DB 105** work already delivers **6.1 and 6.2** (static frequency
-plus user-learned score, manual-tap prefix completion). What remains genuinely
-"English IME v2 / weeks of work" is **6.3 n-gram context** and **6.4
-auto-commit-on-separator**. wordfreq feeds 6.1; it does not replace #6.
+So the Android scored-dictionary work (Android-only, **no `lime.db` version
+bump** — the dictionary is self-versioned via `DICTIONARY_DATA_VERSION`) already
+delivers **6.1 and 6.2** (static frequency plus user-learned score, manual-tap
+prefix completion). What remains genuinely "English IME v2 / weeks of work" is
+**6.3 n-gram context** and **6.4 auto-commit-on-separator**. wordfreq feeds 6.1;
+it does not replace #6.
 
-Note: iOS is excluded — it keeps `UITextChecker` per the
-[LIME_DB_105.md](LIME_DB_105.md) scope decision, so 6.1/6.2 land on Android only.
+Note: iOS is excluded — it keeps `UITextChecker` (see
+[ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md) scope decision), so 6.1/6.2 land
+on Android only.
 
 One-line summary: **wordfreq = the frequency *data* (one column); #6 = the full
 prediction *system* (frequency + personal learning + next-word context +

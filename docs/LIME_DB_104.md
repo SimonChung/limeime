@@ -191,6 +191,16 @@ if (oldVersion < 104) {
 }
 ```
 
+> **Superseded detail:** the emoji branch no longer lives in `onUpgrade`. Emoji schema
+> creation + data refresh now run **only** in the open-path `ensureCurrentDatabase()` →
+> `refreshEmojiDataIfNeeded()` (gated on actual schema state + the `im` version row, not on
+> `oldVersion`), so they fire on every open/restore/factory-reset including restores that
+> lie about their `user_version` (the #88 family). The `if (oldVersion < 103 || …)` emoji
+> line shown above has been removed from `onUpgrade`. The `cj4` branch (`oldVersion < 104`)
+> plus its damaged-DB repair stays as written. See
+> [EMOJI_DB_V2.md](EMOJI_DB_V2.md) / [ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md)
+> "Bundled-payload version principle".
+
 - [x] Also call `ensureCj4Schema(dbin)` when DB version is already `104` but either `cj4` or `cj4_idx_code` is missing. This handles restored or damaged databases.
 
 - [x] Implement `ensureCj4Schema(SQLiteDatabase db)`:

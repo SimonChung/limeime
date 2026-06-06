@@ -698,9 +698,15 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             long endTime = System.currentTimeMillis();
             Log.i(TAG, "OnUpgrade() upgrade database to verser 102.  Elapsed time = " + (endTime - startTime) + "ms.");
         }
-        if (oldVersion < 103) {
-            createEmojiTables(dbin, false);
-        }
+        // Emoji payload currency is NOT decided here. ensureCurrentDatabase() ->
+        // refreshEmojiDataIfNeeded() runs on every open/restore/factory-reset (right after
+        // getWritableDatabase() in the constructor), re-creates the emoji tables
+        // idempotently, and imports/refreshes data gated on the im-table version row
+        // (im.code='emoji', title='version'), not on the DB user_version. Gating emoji on
+        // an onUpgrade(oldVersion<103) line was insufficient and contributed to the #88
+        // restore-crash family (a restored DB can claim a current version but carry stale
+        // schema, skipping onUpgrade). Do NOT reintroduce a version-gated emoji line here;
+        // the same rule applies to the English dictionary payload.
         if (oldVersion < 104) {
             ensureCj4Schema(dbin);
         }

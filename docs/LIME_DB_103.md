@@ -1,5 +1,18 @@
 # LIME DB 103 Implementation Plan
 
+> **Historical record — shipped.** This plan was implemented and shipped (the #88
+> restore-crash fixes came out of it). It is kept for its DB-103 contract and the
+> Required Integrated Test Matrix, which the passing `LimeDB103IntegrationTest` cases
+> still map to. **One detail has since moved:** emoji schema creation / data refresh is
+> now triggered purely by the open-path `ensureCurrentDatabase()` check (gated on actual
+> schema state + the `im` version row), **not** by the version-gated
+> `onUpgrade(oldVersion < 103)` line — that emoji `onUpgrade` line has been removed
+> because it was insufficient for restores that lie about their `user_version` (the #88
+> family). Task 2's intent ("check for missing emoji tables, not only `PRAGMA
+> user_version`") is the direction that was completed. For the current, unified rule see
+> [EMOJI_DB_V2.md](EMOJI_DB_V2.md) and [ENG_AUTO_COMPLETION.md](ENG_AUTO_COMPLETION.md)
+> "Bundled-payload version principle". The DB version is now 104 (`cj4`), not 103.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make DB version 103 reliable for fresh installs, app upgrades, and user restores on Android and iOS without losing user-restored IM data or emoji data.
