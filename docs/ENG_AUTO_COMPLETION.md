@@ -30,7 +30,9 @@ Current behavior:
 
 - Completion source is iOS built-in English completion, not `lime.db`.
 - Returned completions are mapped to `Mapping.RecordType.englishSuggestion`.
-- Tapping a completion commits only the untyped suffix plus a space.
+- Tapping a completion commits only the untyped suffix plus a space. That
+  auto-appended space is then swapped with the next punctuation (`word, ` not
+  `word ,`) — see ENGLISH_KB.md §2a, implemented on both platforms.
 - `showCandidates(mappings)` is called without a selected index, so the candidate bar shows no default highlight.
 - iOS does not prepend an Android-style composing/self candidate in this path, so it does not have the same duplicate exact-match problem.
 
@@ -104,6 +106,10 @@ Current list assembly:
 ```text
 [typed composing/self candidate] + [dictionary suggestions]
 ```
+
+Picking a suggestion commits `word + " "` (emoji and suffix paths). The trailing
+space is swapped with the next punctuation (`word, ` not `word ,`), replicating
+LatinIME — see ENGLISH_KB.md §2a.
 
 Implemented #103 behavior:
 

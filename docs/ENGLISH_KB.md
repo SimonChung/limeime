@@ -111,8 +111,107 @@ or a new pref):
      (`.!?,:;`).
    - Compose well with the new auto-cap path above — `". "` then triggers
      sentence-cap on the next letter.
-2. **Defer** SWAP/WEAK/PHANTOM — those only matter once we have
-   English-suggestion picks (see §4 below). Re-evaluate after that lands.
+2. **Swap auto-space with punctuation** — see §2a below. This was previously
+   deferred, but LimeIME now auto-appends a space on English suggestion pick,
+   so the swap is the missing companion behavior.
+
+---
+
+## 2a. Auto-Space-On-Pick → Punctuation Swap (the missing piece)
+
+> **Status: implemented** (replicates LatinIME, both platforms, always-on in
+> English mode). See [design spec](superpowers/specs/2026-06-06-english-pick-space-punctuation-swap-design.md).
+> - Android: `LIMEService.commitEnglishPunctuationWithSwap(...)` + `mPickedAutoSpace`
+>   flag set at the suggestion-pick commit; swap invoked from the English-mode
+>   character handler.
+> - iOS: `KeyboardViewController.commitEnglishPunctuationWithSwap(...)` +
+>   `pickedAutoSpace` flag set in `commitEnglishSuggestion`; swap invoked from
+>   `handleEnglishCharacter`.
+
+### Current LimeIME behavior
+
+Both platforms commit a **literal trailing space** when the user picks an
+English suggestion:
+
+- iOS — `KeyboardViewController.swift:2454`: `textDocumentProxy.insertText(suffix + " ")`
+- Android — `LIMEService.java:5431` / `5438`: `ic.commitText(word + " ", 1)`
+  (emoji-pick path and normal-suffix path).
+
+So after a pick the buffer is `word␣` with the cursor after the space. If the
+user then types `,` `.` `?` etc., the result today is the wrong **`word ,`**
+instead of **`word,`**.
+
+### How LatinIME does it
+
+LatinIME does **not** insert a literal space on pick — it sets a deferred
+`PHANTOM` space flag (`InputLogic.onPickSuggestionManually` →
+`mSpaceState = PHANTOM`). The space materializes only before the *next*
+non-separator char. When the next char is sentence/closing punctuation
+(`isUsuallyFollowedBySpace`), the phantom is **suppressed** (no space before the
+punctuation) and stays pending so the space reappears before the following word.
+The literal **swap** (`trySwapSwapperAndSpace`: delete the trailing space, then
+commit `punct + " "`) is used only when a *real* space is already in the buffer
+(the `WEAK` state, after the user pressed the physical spacebar to commit).
+
+Character sets (AOSP `donottranslate-config-spacing-and-punctuations.xml`):
+
+| Set | Chars (en_US) | Space rule |
+| --- | --- | --- |
+| `symbols_followed_by_space` | `. , ; : ! ? ) ] }` | space goes **after** → swap to `punct␣` |
+| `symbols_preceded_by_space` | `( [ {` | space goes **before** → keep `word␣(` |
+| other strip punct | `- / @ _ '` | strip the space, no space added → `word-` |
+
+### Recommendation for LimeIME
+
+Because LimeIME already commits a **literal** space on pick, the simplest
+faithful port is LatinIME's literal **swap**, not the phantom-flag rewrite.
+
+1. **Set a flag on pick.** Right after the `word + " "` commits (both pick sites
+   above), set `mPickedAutoSpace = true` (Android) /
+   `pickedAutoSpace = true` (iOS). Clear it on any input that is not the
+   immediately-following punctuation keypress (next letter, cursor move,
+   backspace, mode switch, new compose).
+
+2. **On the next punctuation keypress, in English mode, while the flag is set,**
+   look at the char before the cursor:
+   - char before cursor is a space, **and** the typed punct ∈
+     `{ . , ; : ! ? ) ] } }` → **swap**: delete one space, commit `punct + " "`.
+     Result `word, ` (space now *after* the punctuation, ready for the next word).
+   - typed punct ∈ `{ ( [ { }` → **leave** the existing `word␣`, commit the
+     bracket → `word (`. (Opening brackets want a leading space.)
+   - typed punct ∈ `{ - / @ _ ' }` → delete the trailing space, commit the punct
+     bare, add no space → `word-`.
+   - Then clear the flag.
+
+3. **Compose with §2 double-space-period.** The swap only fires on punctuation,
+   never on `space`, so it cannot collide with double-space→`". "`. After a swap
+   to `". "`, the §1 auto-cap path then capitalizes the next letter — same chain
+   LatinIME gets.
+
+4. **Platform notes:**
+   - iOS: "delete one space" = `textDocumentProxy.deleteBackward()` once;
+     guard with `documentContextBeforeInput?.hasSuffix(" ") == true` so we never
+     delete a non-space. Re-insert with `insertText(String(punct) + " ")`.
+     Respect the existing `isSelfUpdate` recursion guard.
+   - Android: `ic.getTextBeforeCursor(1,0)` to confirm the space, then
+     `ic.deleteSurroundingText(1,0)` + `ic.commitText(punct + " ", 1)`. Wrap in
+     `beginBatchEdit()` / `endBatchEdit()`. This lives in the punctuation branch
+     of `onKey` / `pickSuggestionManually`'s sibling key path, English-mode only.
+
+5. **Scope guard.** English mode only (`mEnglishOnly` / `mEnglishOnly` iOS).
+   Do **not** touch Chinese/table-IM candidate commit or its end-key behavior.
+   No swap when the previous non-space char is already terminal punctuation
+   (avoid `word,,`).
+
+### Edge cases to verify
+
+- `word␣` + `,` → `word,␣` then type `Hi` → `word, Hi`.
+- `word␣` + `.` → `word.␣` then auto-cap makes next letter uppercase.
+- `word␣` + `(` → `word (` (no swap; bracket keeps its leading space).
+- `word␣` + `-` → `word-` (space removed, none added).
+- pick, then move cursor, then `,` → flag cleared, no swap (normal `,`).
+- pick, then backspace (removes the auto-space), then `,` → no stray delete.
+- non-English IM candidate pick → flag never set, behavior unchanged.
 
 ---
 
@@ -163,6 +262,33 @@ Out of scope for a §8.7 polish pass — these are multi-week changes
 (binary LM, history DB, ngram lookups). Park for a future "English IME v2"
 proposal. The immediate auto-cap + double-space-period improvements deliver
 80% of the perceived gboard parity at <1% of the cost.
+
+### #6 vs. wordfreq / DB 105 — scope boundary
+
+`wordfreq` (the data source evaluated in
+[LIME_DB_105.md](LIME_DB_105.md)) is **not** an alternative to #6 — it is one
+ingredient of it. wordfreq is a static `word → frequency` list (the `basescore`
+column); #6 is the full prediction *system*. The four parts of #6 and where each
+comes from:
+
+| #6 component | Provided by | Status |
+| --- | --- | --- |
+| 6.1 Main-dictionary frequency (base ranking) | **wordfreq → `basescore`** | DB 105 (Android) — planned |
+| 6.2 User-history learning (personal, decaying) | **`score` column + learning logic** | DB 105 (Android) — planned |
+| 6.3 N-gram context (bigram/trigram, "Happy→Birthday") | bigram table + prev-word lookup | **future — not in DB 105** |
+| 6.4 Auto-commit on separator (auto-correct top word on space/`.`) | input-logic change (LatinIME `mAutoCorrection` path) | **future — not in DB 105** |
+
+So the Android **DB 105** work already delivers **6.1 and 6.2** (static frequency
+plus user-learned score, manual-tap prefix completion). What remains genuinely
+"English IME v2 / weeks of work" is **6.3 n-gram context** and **6.4
+auto-commit-on-separator**. wordfreq feeds 6.1; it does not replace #6.
+
+Note: iOS is excluded — it keeps `UITextChecker` per the
+[LIME_DB_105.md](LIME_DB_105.md) scope decision, so 6.1/6.2 land on Android only.
+
+One-line summary: **wordfreq = the frequency *data* (one column); #6 = the full
+prediction *system* (frequency + personal learning + next-word context +
+auto-correct).**
 
 ---
 
@@ -253,6 +379,7 @@ Ordered by user-visible impact ÷ engineering cost:
 
 | # | Item                                                            | Platform | Est. effort | Spec note |
 | - | --------------------------------------------------------------- | -------- | ----------- | --------- |
+| 0 | ✅ Swap auto-space w/ punct after pick (no `word ,`, see §2a)    | both     | done        | §2a       |
 | 1 | Auto-cap after `\n` / paragraph boundary                        | iOS      | ~5 LOC      | §8.7      |
 | 2 | Auto-cap skip-trailing-quote/paren (`"Hello." `)                | iOS      | ~10 LOC     | §8.7      |
 | 3 | Abbreviation guard (`Mr.`, `e.g.`)                              | both     | ~20 LOC     | §8.7      |
@@ -260,6 +387,9 @@ Ordered by user-visible impact ÷ engineering cost:
 | 5 | Android: fallback heuristic when host returns `caps == 0`       | Android  | ~15 LOC     | §8.7      |
 | 6 | English n-gram / user-history dictionary                        | both     | weeks       | future    |
 | 7 | Disable English suggestions in password / NO_SUGGESTIONS fields | both     | small       | after #6  |
+
+Item 0 was a **correctness fix** (the old output `word ,` was wrong) and is now
+**implemented** on both platforms (see §2a). Items 1–5 remain.
 
 Items 1–5 are independently shippable and share the existing `auto_cap`
 preference — no new UI required. Recommend bundling 1–3 in one PR for iOS,
