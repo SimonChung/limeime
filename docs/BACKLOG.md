@@ -2,7 +2,7 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-06-05
+Last reviewed: 2026-06-06
 
 ## Completed / release-ready source fixes
 
@@ -56,12 +56,14 @@ Last reviewed: 2026-06-05
   - Current state: Single tap toggles between shifted and unshifted. Double tap enters Shift Lock. When Shift Lock is active, a single tap exits Shift Lock and returns to unshifted.
   - Follow-up: Ship with the next Android/iOS builds.
 
+- #104 — Android + iOS — related/association candidates after commit should not be highlighted or consumed by Enter
+  - Status: Source fix completed by maintainer in `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`.
+  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split. The community issue is closed by the fix commit, but the fix is not included in the current Android APK `LIMEHD2026-6.1.16.apk` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
+  - Follow-up: Ask reporter `Limeroshenko` for a scoped Enter/Search/Return retest only after a newer APK contains `1cb8dae`; do not treat 6.1.16 as containing this fix.
+
 ## Pending fixes
 
-- #104 — Android — related/association candidates after commit should not be highlighted or consumed by Enter
-  - Status: Root cause identified; source fix pending.
-  - Current state: Android 6.1.16 can highlight the first related candidate after committing a word, so Enter selects that related candidate instead of reaching the target editor for newline/search. Causal commit: `35abf08da89ddec0b221fab5612a44cbd2ea03d4`, whose default-candidate-selection helper falls back to index `0` for related-only suggestion lists.
-  - Follow-up: Restore no-default-highlight behavior for related-only/post-commit candidate strips, add Android regression coverage, then ship in a newer APK before asking reporter `Limeroshenko` to retest.
+No confirmed source fixes are pending at this time. Retest/release-QA follow-up remains for source-fixed items once newer Android/iOS builds are available.
 
 ## Confirmed feature / product work
 
