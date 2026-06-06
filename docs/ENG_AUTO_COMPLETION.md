@@ -151,6 +151,35 @@ If iOS unification is ever revisited, the least-disruptive option is "keep `UITe
 for display but learn tapped/completed words into a `score` table" — but that is explicitly
 **out of scope** here, and would not require any change to the Android-only design below.
 
+### iOS impact of the seed change (fallback rewired to `UITextChecker`)
+
+iOS English **auto-completion** uses `UITextChecker` (KeyboardViewController
+`updateEnglishPrediction`) and does **not** touch the `dictionary` table — the seed change
+cannot affect it.
+
+iOS shares the bundled seed with Android (`Database/lime.db` is byte-copied from
+`R.raw.lime`), and there is exactly one *other* iOS reader of the table:
+`SearchServer.getEnglishSuggestions` (via `assembleResultList`, SearchServer.swift:251)
+fires **only** when a Chinese-IM input code overflows `maxCodeLength` — a Chinese-IM-overflow
+English fallback ("user typed past the longest valid IM code, maybe it's English"), not
+English auto-completion. It previously queried the legacy FTS `dictionary` table with
+`MATCH`, which the scored-dictionary seed removes.
+
+**Implemented: this fallback is rewired to `UITextChecker`** — the same English source the
+keyboard already uses — so it survives the seed change with Apple's lexicon instead of the
+old 12k-word FTS table, and the dead FTS query path is gone:
+
+- `SearchServer` gains `var englishCompletionProvider: ((String) -> [String])?` (a plain
+  closure, so `SearchServer` stays UIKit-free / Foundation-only). `getEnglishSuggestions`
+  uses the provider when set, else falls back to `db.getEnglishSuggestions` (Settings-context
+  SearchServers, which have no keyboard, are unaffected).
+- `KeyboardViewController.setupDatabase` injects the provider, calling
+  `textChecker.completions(forPartialWordRange:in:language:"en_US")`.
+
+iOS still does **not** import `dictionary.db`, builds no scored table, and maintains no
+`score` — the change is query-source only (FTS table → `UITextChecker`). Covered by
+`SearchServerTest.test_3_1_9_3_getEnglishSuggestions_uses_injected_provider`.
+
 ## Current Android Implementation
 
 Files:
@@ -292,6 +321,13 @@ ORDER BY (score + basescore) DESC, word ASC
 LIMIT :limit;
 ```
 
+`:prefixUpperBound` is computed by incrementing the last code point of `:prefix`
+(`"sal"` → `"sam"`). Edge cases: build it in code, not SQL. English completion lowercases
+to `[a-z']`, so a simple "increment last char" is enough for the common path; if a prefix
+ends at the top of its range, increment the previous character instead (standard
+string-successor). Apostrophe words (`don'`) still range-scan correctly because `'`
+(0x27) sorts below letters. If `:prefix` is empty, skip the query (no completion).
+
 Why a plain indexed table, never FTS (lessons from #88):
 
 - AOSP SQLite does **not** reliably support FTS5 (`no such module: fts5`); FTS5 is a
@@ -319,18 +355,51 @@ CREATE TABLE dictionary_data (
 
 iOS does not bundle or load `dictionary.db`.
 
+### Seed strategy: empty scored table in `lime.db`, data only in `dictionary.db`
+
+Mirror emoji exactly (`emoji_data` ships with **0 rows** in the seed; data lives only in
+`emoji.db` and is imported in place at runtime). The bundled `lime.db` seed
+(`R.raw.lime` / `Database/lime.db`) ships:
+
+- the **empty** scored `dictionary(word, basescore, score)` table + indexes (0 rows);
+- **no** `im('dictionary','version')` row;
+- the legacy `CREATE VIRTUAL TABLE dictionary USING fts3(word)` and its
+  `dictionary_content/_segments/_segdir` shadows are **removed** from the seed.
+
+The English word data lives **only** in `dictionary.db` and is imported in place on first
+open (same as emoji). Consequences:
+
+- **Data shipped once** (in `dictionary.db`), not baked into the seed too — the seed stays
+  small and a payload bump touches only `dictionary.db`, never `lime.db`.
+- **One import path** for both fresh install and upgrade: the empty seed table (no version
+  row) and a restored/legacy DB both resolve to "not scored-shape-with-current-version →
+  import", so `refreshDictionaryDataIfNeeded()` handles both identically.
+- `lime.db` `user_version` stays **104** — the seed change is data/schema-shape only, not a
+  DB-version bump.
+
+Seed build (in the repo script that regenerates `dictionary.db`): drop the fts3
+`dictionary` + shadow tables from `lime.db`, create the empty scored `dictionary` table +
+indexes, leave `user_version = 104`, do **not** insert an `im` dictionary version row (its
+absence is what triggers the first-open import). Apply to both `R.raw.lime` and
+`Database/lime.db` and keep them byte-identical (per the LIME_DB_103/104 seed contract).
+
 ### The legacy `dictionary` table — what we are upgrading from
 
-The shipped seed (`R.raw.lime` / `Database/lime.db`) today contains:
+The shipped seed **before** this feature (and every existing user DB / restored backup)
+contains:
 
 ```sql
 CREATE VIRTUAL TABLE dictionary USING fts3(word)   -- + dictionary_content/_segments/_segdir shadows
 ```
 
 It has **one column, `word`** — no `basescore`, no `score`, and **no `im` dictionary
-version row** (the version scheme is new). So every existing user DB, and the bundled seed
-itself, is in this legacy state. The upgrade has nothing to preserve from it (there is no
-user-learned score yet anywhere) — it is a straight **drop-and-rebuild**.
+version row** (the version scheme is new). The upgrade has nothing to preserve from it
+(there is no user-learned score yet anywhere) — it is a straight **drop-and-rebuild**.
+
+After this feature ships, the **seed no longer carries this legacy table** (see "Seed
+strategy" above — the seed ships the empty scored table instead). The legacy fts3 table is
+then only encountered on **existing installs and restored old backups**, which the runtime
+drop-and-rebuild handles.
 
 ### How we detect which state a DB is in
 
@@ -438,6 +507,20 @@ treat `basescore` as derived data under the source terms. `score` is per-user pr
 learning data — never bundled, disclosed, or uploaded; if a backup contains `score`, that
 is the user's private backup data.
 
+## Code changes by file (Android)
+
+| Concern | File | Change |
+| --- | --- | --- |
+| Build + seed script (new) | `.claude/scripts/build_dictionary_db.py` | Generate `dictionary.db` (`dictionary_data` table + `version`) from the chosen source; **also** rewrite the seed: drop fts3 `dictionary` + shadows, create the empty scored `dictionary` table + indexes, leave `user_version = 104`, no `im` version row. Writes `R.raw.dictionary`, and patches both `R.raw.lime` and `Database/lime.db` (byte-identical). |
+| Payload asset (new) | `LimeStudio/app/src/main/res/raw/dictionary.db` | The bundled scored payload. |
+| Refresh + schema | `LimeDB.java` | Add `DICTIONARY_DATA_VERSION` constant + `refreshDictionaryDataIfNeeded()` / `ensureDictionarySchema()` / `importDictionaryData(File)`, modeled on the emoji equivalents (`refreshEmojiDataIfNeeded` / `createEmojiTables` / `importEmojiData`, including the `cacheDir` temp-file + `ATTACH` pattern via `LIMEUtilities.copyRAWFile`). |
+| Open-path wiring | `LimeDB.java` `ensureCurrentDatabase()` | Call `refreshDictionaryDataIfNeeded()` right after `refreshEmojiDataIfNeeded()` (line ~885). |
+| Query rewrite | `LimeDB.java` `getEnglishSuggestions(String)` (line 4898) | Replace `word MATCH '<typed>*'` with the indexed prefix range query; keep the `word <> :prefix` #103 filter and the `getSimilarCodeCandidates()` limit. |
+| Lazy guard | `LimeDB.java` | Before `getEnglishSuggestions` queries, ensure the dictionary is current (mirror emoji's `checkEmojiDB()`), so a session that never opened settings still has a valid table. |
+
+iOS: **no code change** (see "iOS impact of the seed change"). iOS shares only the seed
+file, which the build script patches.
+
 ## Verification Plan
 
 ### iOS
@@ -462,11 +545,14 @@ is the user's private backup data.
 
 ### Scored Dictionary (Android only)
 
-1. Fresh install creates the scored `dictionary` table and imports `basescore` from the
-   bundled `dictionary.db`. `lime.db` `user_version` stays 104.
-2. Open with the old FTS-only `dictionary(word)` present → the open-path check drops the
-   FTS table (defensively, before create) and builds the scored table. No `USING fts5` is
-   ever executed; no `table dictionary already exists` / `no such module` crash.
+1. Fresh install: the seed already ships the **empty** scored `dictionary` table (0 rows,
+   no `im` version row), so first open imports `basescore` from the bundled `dictionary.db`
+   in place. The seed contains no fts3 `dictionary` (verify `sqlite_master` has no
+   `USING fts` dictionary). `lime.db` `user_version` stays 104.
+2. Upgrade / restored old backup with the old FTS-only `dictionary(word)` present → the
+   open-path check drops the FTS table (defensively, before create) and builds the scored
+   table. No `USING fts5` is ever executed; no `table dictionary already exists` /
+   `no such module` crash.
 3. A DB that lies about its version (round-trip Android→iOS→Android, or any restore) is
    repaired because the check is gated on **actual schema state**, not `user_version`.
 4. Payload refresh (bumped `DICTIONARY_DATA_VERSION`) updates `basescore` and adds new
