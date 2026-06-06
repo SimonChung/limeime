@@ -524,6 +524,18 @@ final class KeyboardViewController: UIInputViewController {
             self.searchServer = ss
             self.activatedIMs  = resolved
 
+            // Wire the Chinese-IM-overflow English fallback to UITextChecker (the same
+            // source as keyboard English auto-completion), replacing the legacy FTS
+            // `dictionary` table which no longer exists once the scored-dictionary seed
+            // ships. Keeps SearchServer UIKit-free via a plain (String) -> [String] closure.
+            // See docs/ENG_AUTO_COMPLETION.md "iOS impact of the seed change".
+            ss.englishCompletionProvider = { [weak self] word in
+                guard let self, !word.isEmpty else { return [] }
+                let range = NSRange(location: 0, length: (word as NSString).length)
+                return self.textChecker.completions(
+                    forPartialWordRange: range, in: word, language: "en_US") ?? []
+            }
+
             // Restore the last-used IM from keyboard_list (written by cycleIM / switchIM).
             // setupDatabase runs once, async — this is the only reliable place to apply
             // the saved IM because activatedIMs is empty when initOnStartInput runs.

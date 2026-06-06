@@ -154,6 +154,22 @@ final class SearchServerTest: XCTestCase {
         }
     }
 
+    // ENG_AUTO_COMPLETION.md "iOS impact of the seed change": when the keyboard injects
+    // an englishCompletionProvider (UITextChecker), getEnglishSuggestions uses it instead
+    // of the legacy FTS dictionary table, and maps the strings to englishSuggestion records.
+    func test_3_1_9_3_getEnglishSuggestions_uses_injected_provider() throws {
+        let ss = try makeSearchServer()
+        ss.englishCompletionProvider = { word in
+            // deterministic stand-in for UITextChecker
+            word == "hel" ? ["hello", "help", "helm"] : []
+        }
+        let result = ss.getEnglishSuggestions("hel")
+        XCTAssertEqual(result.map { $0.word }, ["hello", "help", "helm"])
+        XCTAssertTrue(result.allSatisfy { $0.recordType == Mapping.RecordType.englishSuggestion })
+        // A word the provider has no completions for returns empty (not the DB path).
+        XCTAssertTrue(ss.getEnglishSuggestions("xqz").isEmpty)
+    }
+
     // SKIPPED: test_3_1_10_1_null_pref_returns_empty — mLIMEPref is Android-only
     // SKIPPED: test_3_1_10_2_abandon_phrase_reset_single_char — static field injection
     // SKIPPED: test_3_1_10_3_prefetch_skips_runtime_suggestion — static suggestionLoL field

@@ -980,6 +980,14 @@ final class SearchServer {
 
     private var coderemap: [String: [String]] = [:]
     private var englishCache: [String: [Mapping]] = [:]
+
+    /// Optional English-completion source injected by the keyboard layer (UITextChecker).
+    /// When set, `getEnglishSuggestions` uses it instead of the legacy FTS `dictionary`
+    /// table — which no longer exists once the scored-dictionary seed ships (see
+    /// docs/ENG_AUTO_COMPLETION.md "iOS impact of the seed change"). Kept as a plain
+    /// `(String) -> [String]` closure so SearchServer stays UIKit-free (Foundation only).
+    /// Settings-context SearchServers leave this nil and fall back to the DB query.
+    var englishCompletionProvider: ((String) -> [String])?
     private var emojiCache: [String: [Mapping]] = [:]
     private var emojiCategoryPagesCache: [[Mapping]]?
     private var isEmojiCategoryPreloadInFlight = false
@@ -1156,7 +1164,9 @@ final class SearchServer {
         }
         cacheLock.unlock()
 
-        let strings = db.getEnglishSuggestions(word) ?? []
+        // Prefer the injected keyboard provider (UITextChecker); fall back to the DB query
+        // for non-keyboard contexts (e.g. Settings) where no provider is set.
+        let strings = englishCompletionProvider?(word) ?? (db.getEnglishSuggestions(word) ?? [])
         let result = strings.map { s -> Mapping in
             var m = Mapping(id: 0, code: "", word: s, score: 0, baseScore: 0)
             m.recordType = Mapping.RecordType.englishSuggestion
