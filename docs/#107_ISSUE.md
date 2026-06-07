@@ -2,8 +2,8 @@
 
 GitHub issue: https://github.com/lime-ime/limeime/issues/107
 Reporter: `ejmoog`
-Status: Open / plausible Android IME startup-performance bug
-Last updated: 2026-06-06T00:12:37+08:00
+Status: Open / Android IME startup-performance fix shipped in APK `LIMEHD2026-6.1.17.apk`, awaiting reporter confirmation
+Last updated: 2026-06-07T10:31:41+08:00
 
 ## Problem statement
 
@@ -137,16 +137,18 @@ No direct iOS impact from this report. iOS uses a separate keyboard-extension li
 
 ## Backlog status
 
-Keep out of `docs/BACKLOG.md` until a maintainer/Jeremy confirms the fix direction. The likely first work item is Android-only lifecycle/startup performance, but the exact fix should wait for timing logs or local reproduction.
+The Android startup-performance fix direction is now confirmed and implemented in commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`). Track as completed/release-ready source work and pending Android reporter retest on APK `LIMEHD2026-6.1.17.apk`.
 
 ## Public follow-up status
 
-A public follow-up already asked for Android/One UI version, cold-vs-warm behavior, app/field scope, active/enabled tables, upgrade/restore history, and logcat:
+Initial public follow-up asked for Android/One UI version, cold-vs-warm behavior, app/field scope, active/enabled tables, upgrade/restore history, and logcat:
 
 - https://github.com/lime-ime/limeime/issues/107#issuecomment-4633328574
 
-Do not post another public comment unless Jeremy/maintainer wants to engage further or new evidence arrives.
+Android APK `LIMEHD2026-6.1.17.apk` now contains the targeted startup-performance optimization (commit `537a66c4c21c`). Verified APK Contents metadata: blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes. Scoped retest request posted:
+
+- https://github.com/lime-ime/limeime/issues/107#issuecomment-4641196799
 
 ## Retest condition
 
-Do not ask the reporter to retest version 6.1.16. Request retest only after a newer APK/build includes a targeted startup-performance fix.
+Await reporter `ejmoog` confirmation on Samsung A52 that switching from another IME to LIME is faster than `6.1.16`. If the delay remains visible, ask for Android/One UI version, cold-vs-warm scope, app/field scope, active IM table count, and a fresh logcat around IME selection.

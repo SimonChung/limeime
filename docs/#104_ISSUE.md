@@ -83,7 +83,7 @@ Maintainer commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` (`fix #104 android 
 3. Android regression coverage was added for related/English lists with no default highlight and for keeping end-key commit resolution separate from candidate-strip highlighting.
 4. iOS parity was audited and aligned by splitting `CandidateSelectionPolicy.defaultHighlightedCandidateIndex(...)` from `LimeEndkeyPolicy.commitCandidateIndex(...)`, and by keeping related/English candidate lists unselected. Swift tests cover the selection-policy split and no-default behavior.
 
-The fix is source-complete, but it is **not included** in the current Android APK `LIMEHD2026-6.1.16.apk` (verified current APK blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes). Do not ask the reporter to retest until a newer APK contains `1cb8dae`.
+The fix is included in Android APK `LIMEHD2026-6.1.17.apk` (verified GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes). Hermes reopened the issue and posted the scoped reporter retest request: https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759.
 
 ## Follow-up questions
 
@@ -99,7 +99,7 @@ Do not ask for retest until a newer APK/build contains a targeted fix.
 
 ### Android
 
-Confirmed reporter platform. Android source fix `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` restores no-default-highlight behavior for related-only/post-commit candidate strips and keeps `%limeendkey` commit resolution separate. Android still needs a newer APK than `6.1.16` before reporter retest.
+Confirmed reporter platform. Android source fix `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` restores no-default-highlight behavior for related-only/post-commit candidate strips and keeps `%limeendkey` commit resolution separate. Android APK `6.1.17` now contains the fix and is awaiting reporter retest on the original Enter/Search/Return path.
 
 ### iOS
 
@@ -116,7 +116,7 @@ Not reported by the community reporter. iOS has a separate Swift keyboard implem
 ## Current follow-up status
 
 - Classification: Android bug / regression with iOS parity audit.
-- Public issue: closed by maintainer/fix commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`; not yet reporter-verified on a delivered Android APK.
+- Public issue: reopened on 2026-06-07 because GitHub had closed it from the fix commit before reporter APK confirmation.
 - Root-cause attribution: `35abf08da89ddec0b221fab5612a44cbd2ea03d4` introduced default-selection fallback `return 0`, which accidentally highlighted related-only candidates.
-- Fix status: source fix completed on `master`; current APK metadata still points to `LIMEHD2026-6.1.16.apk`, which predates this fix.
-- Retest condition: when a newer Android APK containing `1cb8dae` is available, reopen or comment as needed and ask reporter `Limeroshenko` to verify that Enter/Search/Return passes through after committing a word while related candidates remain visible.
+- Fix/APK status: Android APK `LIMEHD2026-6.1.17.apk` contains commit `1cb8dae`; verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+- Retest status: scoped retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759. Await reporter `Limeroshenko` confirmation that Enter/Search/Return passes through after committing a word while related candidates remain visible.

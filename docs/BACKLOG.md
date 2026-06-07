@@ -2,7 +2,7 @@
 
 Public backlog for confirmed pending fixes and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-06-06
+Last reviewed: 2026-06-07
 
 ## Completed / release-ready source fixes
 
@@ -37,9 +37,9 @@ Last reviewed: 2026-06-06
   - Follow-up: Keep `docs/keyboard-type-field-test.html` available for visual checks of contextual return-key fields.
 
 - #103 — Android — English prediction should keep the typed word visible when no dictionary alternatives remain
-  - Status: Source fix completed by maintainer in `794f741e6102cdf1c0db82f5cc6ea6280d2d5029`.
-  - Current state: Android English prediction now keeps the composing/self candidate visible for exact-only words such as `salt`, uses a no-default-highlight candidate display path for English prediction, and orders dictionary suggestions by existing row/rank order instead of plain alphabetical order.
-  - Follow-up: Not included in the current Android APK `LIMEHD2026-6.1.16.apk`; ask reporter `SmithCCho` for a scoped retest only after a newer APK contains this commit.
+  - Status: Shipped in Android test APK `LIMEHD2026-6.1.17.apk`; reporter retest requested.
+  - Current state: Android English prediction now keeps the composing/self candidate visible for exact-only words such as `salt`, uses a no-default-highlight candidate display path for English prediction, and the longer-term scored dictionary path ships a bundled frequency dictionary plus local learning. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+  - Follow-up: Issue reopened for reporter `SmithCCho`; await scoped retest from https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
 
 - #90 — Android — keyboard theme should optionally follow system accent/dynamic colors
   - Status: Completed and visually verified in the Android next-release work.
@@ -57,13 +57,23 @@ Last reviewed: 2026-06-06
   - Follow-up: Ship with the next Android/iOS builds.
 
 - #104 — Android + iOS — related/association candidates after commit should not be highlighted or consumed by Enter
-  - Status: Source fix completed by maintainer in `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`.
-  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split. The community issue is closed by the fix commit, but the fix is not included in the current Android APK `LIMEHD2026-6.1.16.apk` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
-  - Follow-up: Ask reporter `Limeroshenko` for a scoped Enter/Search/Return retest only after a newer APK contains `1cb8dae`; do not treat 6.1.16 as containing this fix.
+  - Status: Shipped in Android test APK `LIMEHD2026-6.1.17.apk`; reporter retest requested.
+  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+  - Follow-up: Issue reopened for reporter `Limeroshenko`; await scoped Enter/Search/Return retest from https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759.
+
+- #88 — Android — stale `emoji_fts` restore path should recover on old-backup / old-Android scenarios
+  - Status: Shipped in Android test APK `LIMEHD2026-6.1.17.apk`; scoped restore-path verification requested.
+  - Current state: The follow-up fix treats `emoji_fts` as disposable derived state, removes stale/unloadable schema rows before recreate, and avoids the old FTS5-first failure path on Android platform SQLite. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+  - Follow-up: Keep #88 open until the stale-schema restore path is verified on the old-backup / old-Android scenario or the maintainer explicitly closes it; public retest/update comment is https://github.com/lime-ime/limeime/issues/88#issuecomment-4641196837.
+
+- #107 — Android — reduce IME switch/startup latency before first keyboard display
+  - Status: Shipped in Android test APK `LIMEHD2026-6.1.17.apk`; reporter retest requested.
+  - Current state: Startup optimization defers full emoji rendering, caches startup config snapshots/versions, preserves existing IME init routing, guards emoji preload work, and adds startup/config/physical-keyboard test coverage. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+  - Follow-up: Await reporter `ejmoog` retest on Samsung A52 from https://github.com/lime-ime/limeime/issues/107#issuecomment-4641196799; if still slow, collect Android/One UI version and logcat.
 
 ## Pending fixes
 
-No confirmed source fixes are pending at this time. Retest/release-QA follow-up remains for source-fixed items once newer Android/iOS builds are available.
+No confirmed source fixes are pending at this time. Android APK `LIMEHD2026-6.1.17.apk` is available for reporter retests on #88, #103, #104, and #107; iOS release-QA follow-up remains separate.
 
 ## Confirmed feature / product work
 
