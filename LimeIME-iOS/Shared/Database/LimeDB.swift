@@ -1557,7 +1557,13 @@ final class LimeDB {
             case "dayi":
                 keyString = LimeDB.DAYI_KEY
                 keynameString = LimeDB.DAYI_CHAR
-            case "array", "array10":
+            case "array":
+                // Only 行列30 ("array") uses the array keyname map (e.g. ',' → "8v").
+                // 行列10 ("array10") deliberately has NO keyname conversion — mirrors
+                // Android, where keyToKeyName switches on DB_TABLE_ARRAY ("array") only
+                // and "array10" falls through to default (returns the raw typed code).
+                // This is also why ',' / '.' show as themselves on array10 instead of
+                // their array root keynames.
                 keyString = LimeDB.ARRAY_KEY
                 keynameString = LimeDB.ARRAY_CHAR
             default:

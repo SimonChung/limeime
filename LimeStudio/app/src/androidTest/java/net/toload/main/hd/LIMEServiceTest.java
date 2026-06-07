@@ -174,8 +174,13 @@ public class LIMEServiceTest {
         assertFalse(LIMEService.isEndkeyCommitKey(',', ";/", false, 2, true));
     }
 
+    // #96: general exact-match highlight rule. When the candidate after the composing echo
+    // has the same code as the echo (the typed code), it is an exact match and must be
+    // highlighted -- including an auto-inserted full-width punctuation candidate whose code
+    // equals the typed ',' / '.'. This is NOT punctuation-specific; it is driven only by
+    // code equality. Locks the fix so future refactors do not re-introduce the drift.
     @Test
-    public void defaultHighlightedCandidateKeepsComposingEchoBeforeChinesePunctuation() {
+    public void defaultHighlightedCandidateHighlightsExactMatchAfterComposingEcho() {
         Mapping composing = createPlainCandidate(".", ".");
         composing.setComposingCodeRecord();
         Mapping punctuation = createPlainCandidate(".", "。");
@@ -184,14 +189,17 @@ public class LIMEServiceTest {
         candidates.add(composing);
         candidates.add(punctuation);
 
-        assertEquals(0, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
+        assertEquals(1, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
     }
 
+    // The exact-match rule is code-equality driven, not record-type driven: a candidate whose
+    // code differs from the composing echo's code is NOT an exact match and the composing
+    // echo stays highlighted.
     @Test
     public void defaultHighlightedCandidateDoesNotPromoteArbitrarySecondCandidate() {
         Mapping composing = createPlainCandidate(".", ".");
         composing.setComposingCodeRecord();
-        Mapping arbitrary = createPlainCandidate(".", "not-default");
+        Mapping arbitrary = createPlainCandidate("..extra", "not-default");
         List<Mapping> candidates = new ArrayList<>();
         candidates.add(composing);
         candidates.add(arbitrary);
@@ -225,7 +233,10 @@ public class LIMEServiceTest {
         candidates.add(composing);
         candidates.add(punctuation);
 
-        assertEquals(0, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
+        // For an exact-match candidate after the composing echo, the visible highlight and
+        // the endkey commit target now agree on index 1. The two resolvers stay distinct
+        // (they diverge for related/English browse-only lists) but coincide here.
+        assertEquals(1, LIMEService.defaultHighlightedCandidateIndex(candidates, false));
         assertSame(punctuation, LIMEService.endkeyCommitCandidateForSuggestions(candidates));
     }
 

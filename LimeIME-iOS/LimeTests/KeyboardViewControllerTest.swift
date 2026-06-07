@@ -751,19 +751,38 @@ final class KeyboardViewControllerTest: XCTestCase {
         ))
     }
 
-    func testDefaultHighlightedCandidateKeepsComposingEchoBeforeChinesePunctuation() {
+    // #96: general exact-match highlight rule. When the candidate after the composing echo
+    // has the same code as the echo (the typed code), it is an exact match and must be
+    // highlighted -- including an auto-inserted full-width punctuation candidate whose code
+    // equals the typed ',' / '.'. This is NOT a punctuation-specific rule; it is driven only
+    // by code equality. Locks the fix so future refactors do not re-introduce the drift.
+    func testDefaultHighlightedCandidateHighlightsExactMatchAfterComposingEcho() {
         let composing = Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
                                 recordType: Mapping.RecordType.composingCode)
         let punctuation = Mapping(id: 1, code: ".", word: "。", score: 0, baseScore: 0,
                                   recordType: Mapping.RecordType.chinesePunctuation)
 
-        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 0)
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 1)
     }
 
+    // The exact-match rule is code-equality driven, not record-type driven: a candidate
+    // whose code differs from the composing echo's code is NOT an exact match and the
+    // composing echo stays highlighted.
+    func testDefaultHighlightedCandidateKeepsComposingEchoWhenCodeDiffers() {
+        let composing = Mapping(id: 0, code: "ab", word: "ab", score: 0, baseScore: 0,
+                                recordType: Mapping.RecordType.composingCode)
+        let nonExact = Mapping(id: 1, code: "abc", word: "字", score: 0, baseScore: 0,
+                               recordType: Mapping.RecordType.chinesePunctuation)
+
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, nonExact]), 0)
+    }
+
+    // A second candidate whose code is NOT an exact match to the typed code (and is not an
+    // exact/partial code record) must not be promoted; the composing echo stays highlighted.
     func testDefaultHighlightedCandidateDoesNotPromoteArbitrarySecondCandidate() {
         let composing = Mapping(id: 0, code: ".", word: ".", score: 0, baseScore: 0,
                                 recordType: Mapping.RecordType.composingCode)
-        let arbitrary = Mapping(id: 1, code: ".", word: "not-default", score: 0, baseScore: 0,
+        let arbitrary = Mapping(id: 1, code: "..extra", word: "not-default", score: 0, baseScore: 0,
                                 recordType: Mapping.RecordType.exactMatchToWord)
 
         XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, arbitrary]), 0)
@@ -785,7 +804,10 @@ final class KeyboardViewControllerTest: XCTestCase {
         let punctuation = Mapping(id: 1, code: ".", word: "。", score: 0, baseScore: 0,
                                   recordType: Mapping.RecordType.chinesePunctuation)
 
-        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 0)
+        // For an exact-match candidate after the composing echo, the visible highlight and
+        // the endkey commit target now agree on index 1. The two policies stay distinct
+        // (e.g. they diverge for related/English browse-only lists), but they coincide here.
+        XCTAssertEqual(CandidateSelectionPolicy.defaultHighlightedCandidateIndex([composing, punctuation]), 1)
         XCTAssertEqual(LimeEndkeyPolicy.commitCandidateIndex([composing, punctuation]), 1)
     }
 

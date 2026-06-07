@@ -1289,8 +1289,16 @@ final class KeyboardViewController: UIInputViewController {
             let inImKeys = currentImKeys.contains(charStr)
                         || currentImKeys.contains(charStr.lowercased())
             accepted = isLetter || inImKeys || (isPhonetic && isSpace)
+        } else if !hasSymbol && (isComma || isPeriod) {
+            // Chinese , and . processing (mirrors Android LIMEService.handleCharacter
+            // line 5354): whenever the IM has no symbol mapping, ',' and '.' are
+            // accepted into composing so the full-width 「，」/「。」 candidate is
+            // auto-inserted. This is a general rule independent of hasNumber, so it
+            // also covers Array10 / Pinyin (hasNumber=true, hasSymbol=false), which
+            // the hasNumber branch below would otherwise route to direct output.
+            accepted = true
         } else if !hasSymbol && !hasNumber {
-            accepted = isLetter || (isPhonetic && isSpace) || isComma || isPeriod
+            accepted = isLetter || (isPhonetic && isSpace)
         } else if !hasSymbol && hasNumber {
             accepted = isLetter || isDigit
         } else if hasSymbol && !hasNumber {
@@ -3867,17 +3875,10 @@ extension KeyboardViewController: CandidateBarViewDelegate {
         // brief stage-1 window before stage 2 lands, the sentinel must not
         // appear in the grid.
         let all = mCandidateList.filter { !$0.isHasMoreMarkRecord }
-        // Apply the Android CandidateView seeding rule so the expanded grid
-        // highlights the same default entry the bar does.
-        let idx: Int
-        if all.count > 1 && all[1].isExactMatchToCodeRecord {
-            idx = 1
-        } else if let first = all.first,
-                  first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
-            idx = 0
-        } else {
-            idx = -1
-        }
+        // Reuse the single highlight policy so the expanded grid highlights the same default
+        // entry the bar does. Keeping this in one place avoids the recurring drift where the
+        // grid and the bar disagree (e.g. on an exact-match `，`/`。`). See docs/#96_ISSUE.md.
+        let idx = CandidateSelectionPolicy.defaultHighlightedCandidateIndex(all)
         showExpandedCandidates(all, selectedIndex: idx)
     }
 }

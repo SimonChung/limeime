@@ -2399,21 +2399,49 @@ public class LIMEService extends InputMethodService
                 || candidate.isChinesePunctuationSymbolRecord());
     }
 
+    // General highlight rule (not punctuation-specific):
+    // - If the first real candidate after the composing-code echo is an exact match to the
+    //   typed code, highlight that candidate (index 1).
+    // - Otherwise highlight the composing-code echo (index 0).
+    // "Exact match" means the candidate's code equals the composing-code echo's code (the
+    // full code the user typed). This deliberately does NOT inspect the record type, so any
+    // exact-code candidate -- a DB exact match or an auto-inserted comma/period whose code
+    // equals the typed ',' / '.' -- is highlighted the same way. Partial-match records stay
+    // highlighted as before.
     public static int defaultHighlightedCandidateIndex(List<Mapping> suggestions,
                                                        boolean physicalKeyPressed) {
         if (suggestions == null || suggestions.isEmpty()) {
             return -1;
         }
+        Mapping first = suggestions.get(0);
         if (suggestions.size() > 1
                 && (suggestions.get(1).isExactMatchToCodeRecord()
-                || suggestions.get(1).isPartialMatchToCodeRecord())) {
+                || suggestions.get(1).isPartialMatchToCodeRecord()
+                || isExactMatchToComposing(suggestions.get(1), first))) {
             return 1;
         }
-        Mapping first = suggestions.get(0);
         if (first.isComposingCodeRecord() || first.isRuntimeBuiltPhraseRecord()) {
             return 0;
         }
         return -1;
+    }
+
+    // True when candidate is an exact match to the composing-code echo: the echo is a
+    // composing-code record, candidate is not, both carry a non-empty code, and the codes
+    // are equal (the full code the user typed). Generalizes "exact match" beyond
+    // exactMatchToCode records so an auto-inserted full-width comma/period whose code equals
+    // the typed ',' / '.' is highlighted the same way -- without any punctuation-specific
+    // special case.
+    private static boolean isExactMatchToComposing(Mapping candidate, Mapping composing) {
+        if (candidate == null || composing == null) {
+            return false;
+        }
+        String composingCode = composing.getCode();
+        String candidateCode = candidate.getCode();
+        return composing.isComposingCodeRecord()
+                && !candidate.isComposingCodeRecord()
+                && candidateCode != null && !candidateCode.isEmpty()
+                && candidateCode.equals(composingCode);
     }
 
     private static Mapping defaultServiceSelectedCandidate(List<Mapping> suggestions,

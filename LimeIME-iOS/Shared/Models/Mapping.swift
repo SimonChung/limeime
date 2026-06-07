@@ -113,16 +113,41 @@ enum LimeEndkeyPolicy {
 }
 
 enum CandidateSelectionPolicy {
+    /// General highlight rule (not punctuation-specific):
+    /// - If the first real candidate after the composing-code echo is an exact match
+    ///   to the typed code, highlight that candidate (index 1).
+    /// - Otherwise highlight the composing-code echo (index 0).
+    ///
+    /// "Exact match" means the candidate's `code` equals the composing-code echo's
+    /// `code` (the full code the user typed). This deliberately does NOT inspect the
+    /// record type, so any exact-code candidate — a DB exact match or an auto-inserted
+    /// `，`/`。` whose code equals the typed `,`/`.` — is highlighted the same way.
+    /// Partial-match records remain highlighted as before (browse-friendly default).
     static func defaultHighlightedCandidateIndex(_ suggestions: [Mapping]) -> Int {
         guard !suggestions.isEmpty else { return -1 }
+        let first = suggestions[0]
         if suggestions.count > 1,
-           suggestions[1].isExactMatchToCodeRecord || suggestions[1].isPartialMatchToCodeRecord {
+           suggestions[1].isExactMatchToCodeRecord
+            || suggestions[1].isPartialMatchToCodeRecord
+            || isExactMatchToComposing(suggestions[1], composing: first) {
             return 1
         }
-        let first = suggestions[0]
         if first.isComposingCodeRecord || first.isRuntimeBuiltPhraseRecord {
             return 0
         }
         return -1
+    }
+
+    /// True when `candidate` is an exact match to the composing-code echo: the echo is a
+    /// composing-code record, `candidate` is not, both carry a non-empty code, and the
+    /// codes are equal (the full code the user typed). This generalizes "exact match"
+    /// beyond `exactMatchToCode` records so an auto-inserted `，`/`。` whose code equals
+    /// the typed `,`/`.` is highlighted the same way — without any punctuation-specific
+    /// special case.
+    private static func isExactMatchToComposing(_ candidate: Mapping, composing: Mapping) -> Bool {
+        composing.isComposingCodeRecord
+            && !candidate.isComposingCodeRecord
+            && !candidate.code.isEmpty
+            && candidate.code == composing.code
     }
 }
