@@ -60,6 +60,18 @@ LIME 是一個輸入法框架。從網路下載或自行加入的輸入法碼表
 The project uses the following open source libraries or platform components.
 Their licenses remain with their respective authors.
 
+### Bundled Data
+
+| Data | Source | License |
+|------|--------|---------|
+| English word frequency dictionary (`dictionary.db` `basescore`) | Google Books Ngrams (<https://books.google.com/ngrams>), English 1-grams v3 (2020-02-17) | Creative Commons Attribution 3.0 Unported (CC BY 3.0) |
+
+The bundled English `basescore` data is derived from Google Books Ngrams English
+1-gram frequency counts, aggregated and log-scaled to a word-frequency score by
+`scripts/build_dictionary_db.py`. It is redistributed under CC BY 3.0
+(<https://creativecommons.org/licenses/by/3.0/>). Per-user learned `score` is private
+local data and is not bundled or distributed.
+
 ### Android Runtime Dependencies
 
 | Component | License |
