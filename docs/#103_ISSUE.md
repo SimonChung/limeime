@@ -3,7 +3,7 @@
 ## Live issue state
 
 - Issue: https://github.com/lime-ime/limeime/issues/103
-- Status: reopened on 2026-06-07 for reporter confirmation after Android APK `LIMEHD2026-6.1.17.apk` shipped the #103 fixes.
+- Status: open / pending reporter confirmation after Android test APK `LIMEHD2026-6.1.17.apk` was posted on 2026-06-07.
 - Current labels: `enhancement`, `Usability`
 - Reporter: `SmithCCho`
 - Initial maintainer acknowledgement: https://github.com/lime-ime/limeime/issues/103#issuecomment-4629503196
@@ -97,11 +97,11 @@ The Android fix should align the visible behavior with iOS: English completion c
   - Add an explicit way to set suggestions while leaving `mSelectedIndex = -1`, scoped to English prediction.
   - Do not change normal Chinese/table IM default highlight behavior.
 
-## Future dictionary upgrade direction
+## Scored dictionary upgrade direction
 
-Use a separate bundled `dictionary.db` payload, similar to emoji data, instead of relying forever on the old FTS-only `dictionary(word)` table inside `lime.db`.
+The longer-term Android #103 path now uses a separate bundled `dictionary.db` payload, similar to emoji data, instead of relying on the old FTS-only `dictionary(word)` table inside `lime.db`.
 
-Planned shape:
+Implemented shape:
 
 ```sql
 dictionary(
@@ -134,6 +134,13 @@ dictionary(
 
 ## Public follow-up status
 
-Issue #103 was reopened after Android APK `LIMEHD2026-6.1.17.apk` shipped the #103 English composing/candidate-display fixes. Verified APK Contents metadata: blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes. Retest request posted: https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
+Issue #103 is open / pending reporter confirmation. Android test APK `LIMEHD2026-6.1.17.apk` (GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes) now includes the earlier English composing visibility/ranking fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` plus the scored dictionary / frequency-ranking / learning commits `6e667232ba3d75a45fa11957882df19e45db8c8e` and `6a2ca8d187861c0109b74c4033db7a8c3767352f`. The scored dictionary path supersedes the interim rowid-ranking behavior for Android 6.1.17 retest purposes.
 
-Reporter confirmation requested for the original `salt` / `sal` scenarios. Keep the issue open until `SmithCCho` confirms the Android APK behavior or provides new evidence. Public wording should continue to frame this as an English composing/candidate-display usability fix, not that exact-match filtering itself was a bug.
+Automation reopened #103 after the source-fix closure and posted the scoped 6.1.17 retest request: https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
+
+Retest scope:
+
+1. `salt` exact-match English composing should remain visible as a tappable candidate.
+2. `sal` should rank `salt` by the new scored dictionary/frequency path rather than leaving it behind capitalized proper nouns solely because of alphabetical order.
+
+Keep the issue open until reporter `SmithCCho` confirms the Android 6.1.17 behavior or a maintainer gives a separate closure instruction. Future public wording should continue to describe this as English composing/candidate-display and ranking usability work, not that exact-match filtering itself was a bug.
