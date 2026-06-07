@@ -40,9 +40,9 @@ Still needed from reporter or local device reproduction:
 - Clean install vs upgrade vs old database restore/import.
 - Logcat timestamps around `net.toload.main.hd2026` from IME selection to first keyboard display.
 
-## Root-cause hypothesis to test first
+## Root-cause hypothesis and shipped 6.1.17 scope
 
-The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation.
+The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation. The shipped 6.1.17 optimization (`537a66c`, `#107 Optimize LimeIME startup without changing init path`) deliberately preserves the existing IME init routing, so the lifecycle/superclass-call hypothesis below remains a follow-up investigation area if the reporter still observes a large delay.
 
 The most suspicious concrete path is:
 
@@ -82,7 +82,7 @@ The slow path is partly legacy, but several 6.x-era changes increased the amount
 - Follow-system theme/accent support calls `applyFollowSystemAccentColors()` during `initialViewAndSwitcher()`.
 - Recent config/list correctness fixes made the service rely more heavily on DB-backed IM/keyboard config reads instead of stale preference-only state.
 
-These changes are not individually blamed yet. The first fix should target the lifecycle duplication and repeated synchronous work before adding broad startup refactors.
+These changes are not individually blamed yet. The 6.1.17 fix targets the lighter pre-display work that could be safely optimized without changing IME init routing: deferring full emoji content rendering, caching startup config snapshots/versions, and guarding emoji preload work. If the reporter still sees about seven seconds of delay, the lifecycle duplication and repeated synchronous work should remain the next investigation target.
 
 ## What the next debugging run should measure
 
@@ -101,9 +101,9 @@ Add temporary timing logs with elapsed milliseconds around these exact segments:
 
 The reporter's seven seconds should be mapped to one of these stages before implementation. Without that timing split, a fix can easily move work between callbacks without reducing first-visible-keyboard latency.
 
-## Proposed fix direction after timing confirmation
+## Remaining fix direction if 6.1.17 is still slow
 
-Likely focused fixes, in priority order:
+If the 6.1.17 optimization is insufficient, likely focused fixes after timing confirmation are:
 
 1. Correct `onStartInput()` to call `super.onStartInput(attribute, restarting)` instead of `super.onStartInputView(attribute, restarting)`, then verify that initialization still happens exactly once through the correct Android IME lifecycle.
 2. Avoid calling `initOnStartInput(attribute)` twice for one visible session. Keep field-specific mode setup in the callback that Android actually uses for the visible input view.
@@ -119,7 +119,7 @@ Current tests do not directly protect this bug:
 - `LIMEServiceTest` covers service logic and candidate/keyboard behavior, but it does not assert callback ordering or that `initOnStartInput()` runs once per visible session.
 - There is no current device/emulator timing gate for “switch to LIME and first keyboard frame visible within N ms”.
 
-Useful regression coverage after the first fix:
+Useful regression coverage after any follow-up lifecycle/config fix:
 
 - A lifecycle/unit-style test or source guard that `onStartInput()` calls `super.onStartInput(...)`, not `super.onStartInputView(...)`.
 - A service test using a fake/stub `SearchServer` or instrumentation hooks to count `buildActivatedIMList()` / config-list calls during one activation.

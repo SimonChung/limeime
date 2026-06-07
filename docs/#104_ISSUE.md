@@ -93,7 +93,7 @@ The report plus root-cause attribution are sufficient to classify this as an And
 - whether related-phrase/association candidate settings are enabled,
 - the exact app/input field used in the attached video.
 
-Do not ask for retest until a newer APK/build contains a targeted fix.
+A newer Android APK now contains the targeted fix; wait for reporter confirmation on `6.1.17` before closing.
 
 ## Platform impact analysis
 
@@ -119,4 +119,4 @@ Not reported by the community reporter. iOS has a separate Swift keyboard implem
 - Public issue: reopened on 2026-06-07 because GitHub had closed it from the fix commit before reporter APK confirmation.
 - Root-cause attribution: `35abf08da89ddec0b221fab5612a44cbd2ea03d4` introduced default-selection fallback `return 0`, which accidentally highlighted related-only candidates.
 - Fix/APK status: Android APK `LIMEHD2026-6.1.17.apk` contains commit `1cb8dae`; verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
-- Retest status: scoped retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759. Await reporter `Limeroshenko` confirmation that Enter/Search/Return passes through after committing a word while related candidates remain visible.
+- Retest status: scoped Android retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759. Await reporter `Limeroshenko` confirmation that Enter/Search/Return passes through after committing a word while related candidates remain visible. iOS parity was audited/aligned in source, but this GitHub reporter retest is Android-only; iOS delivery remains normal TestFlight/App Store release-QA scope.

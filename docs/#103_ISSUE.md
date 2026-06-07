@@ -97,9 +97,9 @@ The Android fix should align the visible behavior with iOS: English completion c
   - Add an explicit way to set suggestions while leaving `mSelectedIndex = -1`, scoped to English prediction.
   - Do not change normal Chinese/table IM default highlight behavior.
 
-## Scored dictionary upgrade direction
+## Scored dictionary upgrade implemented in 6.1.17
 
-The longer-term Android #103 path now uses a separate bundled `dictionary.db` payload, similar to emoji data, instead of relying on the old FTS-only `dictionary(word)` table inside `lime.db`.
+Android APK `LIMEHD2026-6.1.17.apk` also includes the longer-term scored dictionary work from commits `6e66723` and `6a2ca8d`: a separate bundled `dictionary.db` payload, import/query support, and local English suggestion learning. This supersedes the older FTS-only `dictionary(word)` fallback for ranked prefix suggestions.
 
 Implemented shape:
 
@@ -111,11 +111,11 @@ dictionary(
 )
 ```
 
-- `basescore`: bundled frequency/rank score, potentially derived from `wordfreq` or another open data source.
-- `score`: per-user local learning score. This is private user data and should not be disclosed publicly.
-- `LICENSE.md`: disclose any third-party bundled dictionary/frequency source and license.
-- Upgrade path: schema-driven and idempotent, including restored legacy DBs whose actual schema may not match `PRAGMA user_version`.
-- Prefer normal indexed prefix lookup over FTS for English completion to avoid repeating the #88 stale FTS virtual-table failure pattern.
+- `basescore`: bundled frequency/rank score from the generated frequency payload.
+- `score`: per-user local learning score; this remains private user data and should not be disclosed publicly.
+- Android imports the bundled dictionary payload, queries prefix suggestions using scored ranking, and increments local score when users pick English suggestions.
+- Upgrade path remains schema-driven/idempotent, including restored legacy DBs whose actual schema may not match `PRAGMA user_version`.
+- The normal indexed prefix lookup avoids repeating the #88 stale FTS virtual-table failure pattern for English completion.
 
 ## Verification plan
 
