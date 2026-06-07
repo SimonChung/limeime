@@ -57,13 +57,23 @@ Last reviewed: 2026-06-07
   - Follow-up: Ship with the next Android/iOS builds.
 
 - #104 — Android + iOS — related/association candidates after commit should not be highlighted or consumed by Enter
-  - Status: Source fix completed by maintainer in `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9`.
-  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split. The community issue is closed by the fix commit, but the fix is not included in the current Android APK `LIMEHD2026-6.1.16.apk` (blob SHA `eb99705bc3f6a2668889e89c05f7d9914c574639`, size 11983378 bytes).
-  - Follow-up: Ask reporter `Limeroshenko` for a scoped Enter/Search/Return retest only after a newer APK contains `1cb8dae`; do not treat 6.1.16 as containing this fix.
+  - Status: Android fix delivered in test APK `LIMEHD2026-6.1.17.apk`; reporter retest pending.
+  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split.
+  - Follow-up: Retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759; keep #104 open until `Limeroshenko` confirms Enter/Search/Return passes through after committing a word while related candidates remain visible. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+
+- #88 — Android — stale `emoji_fts` restore path from old backups should rebuild cleanly
+  - Status: Delivered in Android test APK `LIMEHD2026-6.1.17.apk`; old-backup / old-Android restore retest pending.
+  - Current state: The 6.1.17 APK contains the stale-FTS restore fixes from PR #102 / merge commit `289907b1318bb2c7dbe599ded6b7085e0d91148f` and later open-path emoji schema cleanup.
+  - Follow-up: Retest request posted at https://github.com/lime-ime/limeime/issues/88#issuecomment-4641196837; keep #88 open until the narrow old-backup restore path is verified. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
+
+- #107 — Android — IME switch/startup latency should improve versus 6.1.16
+  - Status: Android startup/switch optimization delivered in test APK `LIMEHD2026-6.1.17.apk`; reporter retest pending.
+  - Current state: The Android startup/switch optimization is implemented by maintainer commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`). The issue remains Android-only based on the Samsung A52 report; no iOS impact is inferred.
+  - Follow-up: Retest request posted at https://github.com/lime-ime/limeime/issues/107#issuecomment-4641196799; if delay remains, ask for Android/One UI version, cold-vs-warm behavior, and logcat around the switch. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
 
 ## Pending fixes
 
-No confirmed source fixes are pending at this time. Retest/release-QA follow-up remains for source-fixed items once newer Android/iOS builds are available.
+No confirmed source fixes are pending at this time. Reporter retest/release-QA follow-up remains for delivered Android APK `6.1.17` items and for iOS/TestFlight/App Store delivery where applicable.
 
 ## Confirmed feature / product work
 
