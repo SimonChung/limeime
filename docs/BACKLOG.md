@@ -16,11 +16,6 @@ Last reviewed: 2026-06-07
   - Current state: Android English prediction keeps the composing/self candidate visible for exact-only words such as `salt`, uses a no-default-highlight candidate display path for English prediction, and now uses the bundled scored `dictionary.db` / frequency-ranking path with local learning instead of plain alphabetical or rowid ordering. The 6.1.17 APK was verified through Contents metadata (blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes), and the scoped retest request was posted at https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
   - Follow-up: Wait for reporter `SmithCCho` to verify `salt` exact-match visibility and `sal` → `salt` ranking on Android 6.1.17; do not close until reporter confirmation or maintainer instruction.
 
-- #104 — Android + iOS — related/association candidates after commit should not be highlighted or consumed by Enter
-  - Status: Android fix delivered in test APK `LIMEHD2026-6.1.17.apk`; reporter retest pending.
-  - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split in commit `1cb8dae`.
-  - Follow-up: Retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759; keep #104 open until `Limeroshenko` confirms Enter/Search/Return passes through after committing a word while related candidates remain visible. Verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
-
 - #107 — Android — IME switch/startup latency should improve versus 6.1.16
   - Status: Android startup/switch optimization delivered in test APK `LIMEHD2026-6.1.17.apk`; reporter retest pending.
   - Current state: The Android startup/switch optimization is implemented by maintainer commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`). The issue remains Android-only based on the Samsung A52 report; no iOS impact is inferred.
@@ -44,4 +39,4 @@ No confirmed source fixes are pending at this time. Reporter retest/release-QA f
 
 ## Cleared from backlog
 
-Closed/source-fixed items are no longer tracked here once the relevant Android/iOS source fixes are committed and no separate active retest watch remains. Cleared examples: #86, #90, #91, #93, #94, #96, #99, #100, and #92.
+Closed/source-fixed items are no longer tracked here once the relevant Android/iOS source fixes are committed and no separate active retest watch remains. Cleared examples: #86, #90, #91, #93, #94, #96, #99, #100, #104, and #92.

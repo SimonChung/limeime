@@ -1,5 +1,11 @@
 # Issue #104 — Android Enter key commits related candidate after 6.1.16
 
+## Current status
+
+Resolved / closed. Reporter `Limeroshenko` confirmed Android APK `6.1.17` restores the expected Enter/Search/Return behavior after committed text leaves related candidates visible: Enter no longer sends the first related candidate and instead performs newline/search in the target field. Confirmation: https://github.com/lime-ime/limeime/issues/104#issuecomment-4641235114
+
+Maintainer/automation added a `+1` reaction, posted closing acknowledgement https://github.com/lime-ime/limeime/issues/104#issuecomment-4641236316, and closed the issue as completed on 2026-06-07. The verified scope is the reporter's Android 6.1.17 retest of the original post-commit related-candidate Enter/Search/Return path; iOS parity remains source-audited/aligned but not reporter-tested through this issue.
+
 ## Problem statement
 
 Community reporter `Limeroshenko` reports a regression in Android APK `6.1.16`: after committing a word, when the candidate strip still shows related/association candidates, pressing Enter commits the first/highlighted candidate instead of passing Enter through to the target app.
@@ -83,7 +89,7 @@ Maintainer commit `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` (`fix #104 android 
 3. Android regression coverage was added for related/English lists with no default highlight and for keeping end-key commit resolution separate from candidate-strip highlighting.
 4. iOS parity was audited and aligned by splitting `CandidateSelectionPolicy.defaultHighlightedCandidateIndex(...)` from `LimeEndkeyPolicy.commitCandidateIndex(...)`, and by keeping related/English candidate lists unselected. Swift tests cover the selection-policy split and no-default behavior.
 
-The fix is included in Android APK `LIMEHD2026-6.1.17.apk` (verified GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes). Hermes reopened the issue and posted the scoped reporter retest request: https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759.
+The fix is included in Android APK `LIMEHD2026-6.1.17.apk` (verified GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes). Hermes reopened the issue and posted the scoped reporter retest request https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759; reporter `Limeroshenko` then confirmed the fixed behavior on `6.1.17` in https://github.com/lime-ime/limeime/issues/104#issuecomment-4641235114.
 
 ## Follow-up questions
 
@@ -93,13 +99,13 @@ The report plus root-cause attribution are sufficient to classify this as an And
 - whether related-phrase/association candidate settings are enabled,
 - the exact app/input field used in the attached video.
 
-A newer Android APK now contains the targeted fix; wait for reporter confirmation on `6.1.17` before closing.
+The Android `6.1.17` retest is now positive and the issue is closed. If the issue is reopened or a future retest is inconsistent, use the questions above to collect narrower reproduction details.
 
 ## Platform impact analysis
 
 ### Android
 
-Confirmed reporter platform. Android source fix `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` restores no-default-highlight behavior for related-only/post-commit candidate strips and keeps `%limeendkey` commit resolution separate. Android APK `6.1.17` now contains the fix and is awaiting reporter retest on the original Enter/Search/Return path.
+Confirmed reporter platform. Android source fix `1cb8daecdcb6dd5583542ec902fd3b1d0089b5b9` restores no-default-highlight behavior for related-only/post-commit candidate strips and keeps `%limeendkey` commit resolution separate. Android APK `6.1.17` contains the fix, and reporter `Limeroshenko` confirmed that Enter/Search/Return now passes through normally instead of committing the first related candidate.
 
 ### iOS
 
@@ -107,16 +113,15 @@ Not reported by the community reporter. iOS has a separate Swift keyboard implem
 
 ## Verification plan
 
-- Android unit/instrumentation coverage: construct a related-only candidate list and verify `defaultHighlightedCandidateIndex(...) == -1` / `CandidateView` has no highlighted item; simulate post-commit related candidates visible with no composing code, press Enter, and verify no related candidate is committed and the editor action/newline path is allowed.
-- Android manual: in a normal multiline text field, press Enter after committing a word with related candidates visible and confirm a newline occurs.
-- Android manual: in a browser/search field, press Enter/Search after committing a word with related candidates visible and confirm search/action runs.
+- Android unit/instrumentation coverage: construct a related-only candidate list and verify `defaultHighlightedCandidateIndex(...) == -1` / `CandidateView` has no highlighted item; simulate post-commit related candidates visible with no composing code, press Enter, and verify no related candidate is committed and the editor action/newline path is allowed. Commit `1cb8dae` added focused selection-policy coverage for this source fix.
+- Android manual: reporter-confirmed on APK `6.1.17` that Enter/Search/Return no longer sends the first related candidate after a word is committed.
 - Regression: active composing candidate selection with Space and valid selection keys still works; `%limeendkey`/`@limeendkey@` behavior from #96 remains unchanged.
-- iOS audit: confirm return/search key behavior with visible related candidates after commit, or document that iOS behavior is already independent.
+- iOS audit: source parity was aligned in commit `1cb8dae`; iOS delivery/QA remains separate from this Android reporter confirmation.
 
 ## Current follow-up status
 
 - Classification: Android bug / regression with iOS parity audit.
-- Public issue: reopened on 2026-06-07 because GitHub had closed it from the fix commit before reporter APK confirmation.
+- Public issue: closed as completed on 2026-06-07 after reporter confirmation.
 - Root-cause attribution: `35abf08da89ddec0b221fab5612a44cbd2ea03d4` introduced default-selection fallback `return 0`, which accidentally highlighted related-only candidates.
 - Fix/APK status: Android APK `LIMEHD2026-6.1.17.apk` contains commit `1cb8dae`; verified APK blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes.
-- Retest status: scoped Android retest request posted at https://github.com/lime-ime/limeime/issues/104#issuecomment-4641196759. Await reporter `Limeroshenko` confirmation that Enter/Search/Return passes through after committing a word while related candidates remain visible. iOS parity was audited/aligned in source, but this GitHub reporter retest is Android-only; iOS delivery remains normal TestFlight/App Store release-QA scope.
+- Retest status: reporter `Limeroshenko` confirmed in https://github.com/lime-ime/limeime/issues/104#issuecomment-4641235114 that `6.1.17` restores the familiar behavior: Enter/Search/Return no longer sends the first related candidate and instead performs newline/search. Closing acknowledgement: https://github.com/lime-ime/limeime/issues/104#issuecomment-4641236316. Remove from active retest watch unless reopened or new evidence appears. iOS parity was audited/aligned in source, but this GitHub reporter retest is Android-only; iOS delivery remains normal TestFlight/App Store release-QA scope.
