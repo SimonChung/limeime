@@ -2,8 +2,8 @@
 
 GitHub issue: https://github.com/lime-ime/limeime/issues/107
 Reporter: `ejmoog`
-Status: Open / plausible Android IME startup-performance bug
-Last updated: 2026-06-06T00:12:37+08:00
+Status: Open / Android IME startup-performance fix shipped in APK `LIMEHD2026-6.1.17.apk`, awaiting reporter confirmation
+Last updated: 2026-06-07T10:31:41+08:00
 
 ## Problem statement
 
@@ -40,9 +40,9 @@ Still needed from reporter or local device reproduction:
 - Clean install vs upgrade vs old database restore/import.
 - Logcat timestamps around `net.toload.main.hd2026` from IME selection to first keyboard display.
 
-## Root-cause hypothesis to test first
+## Root-cause hypothesis and shipped 6.1.17 scope
 
-The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation.
+The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation. The shipped 6.1.17 optimization (`537a66c`, `#107 Optimize LimeIME startup without changing init path`) deliberately preserves the existing IME init routing, so the lifecycle/superclass-call hypothesis below remains a follow-up investigation area if the reporter still observes a large delay.
 
 The most suspicious concrete path is:
 
@@ -82,7 +82,7 @@ The slow path is partly legacy, but several 6.x-era changes increased the amount
 - Follow-system theme/accent support calls `applyFollowSystemAccentColors()` during `initialViewAndSwitcher()`.
 - Recent config/list correctness fixes made the service rely more heavily on DB-backed IM/keyboard config reads instead of stale preference-only state.
 
-These changes are not individually blamed yet. The first fix should target the lifecycle duplication and repeated synchronous work before adding broad startup refactors.
+These changes are not individually blamed yet. The 6.1.17 fix targets the lighter pre-display work that could be safely optimized without changing IME init routing: deferring full emoji content rendering, caching startup config snapshots/versions, and guarding emoji preload work. If the reporter still sees about seven seconds of delay, the lifecycle duplication and repeated synchronous work should remain the next investigation target.
 
 ## What the next debugging run should measure
 
@@ -101,9 +101,9 @@ Add temporary timing logs with elapsed milliseconds around these exact segments:
 
 The reporter's seven seconds should be mapped to one of these stages before implementation. Without that timing split, a fix can easily move work between callbacks without reducing first-visible-keyboard latency.
 
-## Proposed fix direction after timing confirmation
+## Remaining fix direction if 6.1.17 is still slow
 
-Likely focused fixes, in priority order:
+If the 6.1.17 optimization is insufficient, likely focused fixes after timing confirmation are:
 
 1. Correct `onStartInput()` to call `super.onStartInput(attribute, restarting)` instead of `super.onStartInputView(attribute, restarting)`, then verify that initialization still happens exactly once through the correct Android IME lifecycle.
 2. Avoid calling `initOnStartInput(attribute)` twice for one visible session. Keep field-specific mode setup in the callback that Android actually uses for the visible input view.
@@ -119,7 +119,7 @@ Current tests do not directly protect this bug:
 - `LIMEServiceTest` covers service logic and candidate/keyboard behavior, but it does not assert callback ordering or that `initOnStartInput()` runs once per visible session.
 - There is no current device/emulator timing gate for “switch to LIME and first keyboard frame visible within N ms”.
 
-Useful regression coverage after the first fix:
+Useful regression coverage after any follow-up lifecycle/config fix:
 
 - A lifecycle/unit-style test or source guard that `onStartInput()` calls `super.onStartInput(...)`, not `super.onStartInputView(...)`.
 - A service test using a fake/stub `SearchServer` or instrumentation hooks to count `buildActivatedIMList()` / config-list calls during one activation.
@@ -137,16 +137,18 @@ No direct iOS impact from this report. iOS uses a separate keyboard-extension li
 
 ## Backlog status
 
-Keep out of `docs/BACKLOG.md` until a maintainer/Jeremy confirms the fix direction. The likely first work item is Android-only lifecycle/startup performance, but the exact fix should wait for timing logs or local reproduction.
+The Android startup-performance fix direction is now confirmed and implemented in commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`). Track as completed/release-ready source work and pending Android reporter retest on APK `LIMEHD2026-6.1.17.apk`.
 
 ## Public follow-up status
 
-A public follow-up already asked for Android/One UI version, cold-vs-warm behavior, app/field scope, active/enabled tables, upgrade/restore history, and logcat:
+Initial public follow-up asked for Android/One UI version, cold-vs-warm behavior, app/field scope, active/enabled tables, upgrade/restore history, and logcat:
 
 - https://github.com/lime-ime/limeime/issues/107#issuecomment-4633328574
 
-Do not post another public comment unless Jeremy/maintainer wants to engage further or new evidence arrives.
+Android APK `LIMEHD2026-6.1.17.apk` now contains the targeted startup-performance optimization (commit `537a66c4c21c`). Verified APK Contents metadata: blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes. Scoped retest request posted:
+
+- https://github.com/lime-ime/limeime/issues/107#issuecomment-4641196799
 
 ## Retest condition
 
-Do not ask the reporter to retest version 6.1.16. Request retest only after a newer APK/build includes a targeted startup-performance fix.
+Await reporter `ejmoog` confirmation on Samsung A52 that switching from another IME to LIME is faster than `6.1.16`. If the delay remains visible, ask for Android/One UI version, cold-vs-warm scope, app/field scope, active IM table count, and a fresh logcat around IME selection.

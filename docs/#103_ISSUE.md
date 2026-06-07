@@ -3,7 +3,7 @@
 ## Live issue state
 
 - Issue: https://github.com/lime-ime/limeime/issues/103
-- Status: closed by `jrywu` via source-fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` on 2026-06-05.
+- Status: open / pending reporter confirmation after Android test APK `LIMEHD2026-6.1.17.apk` was posted on 2026-06-07.
 - Current labels: `enhancement`, `Usability`
 - Reporter: `SmithCCho`
 - Initial maintainer acknowledgement: https://github.com/lime-ime/limeime/issues/103#issuecomment-4629503196
@@ -97,11 +97,11 @@ The Android fix should align the visible behavior with iOS: English completion c
   - Add an explicit way to set suggestions while leaving `mSelectedIndex = -1`, scoped to English prediction.
   - Do not change normal Chinese/table IM default highlight behavior.
 
-## Future dictionary upgrade direction
+## Scored dictionary upgrade implemented in 6.1.17
 
-Use a separate bundled `dictionary.db` payload, similar to emoji data, instead of relying forever on the old FTS-only `dictionary(word)` table inside `lime.db`.
+Android APK `LIMEHD2026-6.1.17.apk` also includes the longer-term scored dictionary work from commits `6e66723` and `6a2ca8d`: a separate bundled `dictionary.db` payload, import/query support, and local English suggestion learning. This supersedes the older FTS-only `dictionary(word)` fallback for ranked prefix suggestions.
 
-Planned shape:
+Implemented shape:
 
 ```sql
 dictionary(
@@ -111,11 +111,11 @@ dictionary(
 )
 ```
 
-- `basescore`: bundled frequency/rank score, potentially derived from `wordfreq` or another open data source.
-- `score`: per-user local learning score. This is private user data and should not be disclosed publicly.
-- `LICENSE.md`: disclose any third-party bundled dictionary/frequency source and license.
-- Upgrade path: schema-driven and idempotent, including restored legacy DBs whose actual schema may not match `PRAGMA user_version`.
-- Prefer normal indexed prefix lookup over FTS for English completion to avoid repeating the #88 stale FTS virtual-table failure pattern.
+- `basescore`: bundled frequency/rank score from the generated frequency payload.
+- `score`: per-user local learning score; this remains private user data and should not be disclosed publicly.
+- Android imports the bundled dictionary payload, queries prefix suggestions using scored ranking, and increments local score when users pick English suggestions.
+- Upgrade path remains schema-driven/idempotent, including restored legacy DBs whose actual schema may not match `PRAGMA user_version`.
+- The normal indexed prefix lookup avoids repeating the #88 stale FTS virtual-table failure pattern for English completion.
 
 ## Verification plan
 
@@ -134,6 +134,13 @@ dictionary(
 
 ## Public follow-up status
 
-Issue #103 is closed by maintainer/source-fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` (`Fix #103 English keyword completion and emoji FTS restore`). No retest APK has been requested yet because the current Android APK metadata still points to `LIMEHD2026-6.1.16.apk`, which predates this commit.
+Issue #103 is open / pending reporter confirmation. Android test APK `LIMEHD2026-6.1.17.apk` (GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes) now includes the earlier English composing visibility/ranking fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` plus the scored dictionary / frequency-ranking / learning commits `6e667232ba3d75a45fa11957882df19e45db8c8e` and `6a2ca8d187861c0109b74c4033db7a8c3767352f`. The scored dictionary path supersedes the interim rowid-ranking behavior for Android 6.1.17 retest purposes.
 
-When a newer Android APK includes commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029`, the appropriate public follow-up is a scoped English composing/candidate-display retest request. Future public wording should say this is an English composing/candidate-display usability fix, not that exact-match filtering itself was a bug.
+Automation reopened #103 after the source-fix closure and posted the scoped 6.1.17 retest request: https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
+
+Retest scope:
+
+1. `salt` exact-match English composing should remain visible as a tappable candidate.
+2. `sal` should rank `salt` by the new scored dictionary/frequency path rather than leaving it behind capitalized proper nouns solely because of alphabetical order.
+
+Keep the issue open until reporter `SmithCCho` confirms the Android 6.1.17 behavior or a maintainer gives a separate closure instruction. Future public wording should continue to describe this as English composing/candidate-display and ranking usability work, not that exact-match filtering itself was a bug.

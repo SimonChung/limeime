@@ -1,4 +1,4 @@
-# Issue #88: LIME v6.1.12–v6.1.15 Samsung Android 13 settings and legacy restore crashes
+# Issue #88: Samsung Android settings and legacy restore / emoji FTS crashes
 
 ## Problem statement
 
@@ -227,8 +227,15 @@ Final reporter-confirmed state as of v6.1.15: #88 was closed as completed after 
 
 Jeremy reported a newer failure while validating Android APK `LIMEHD2026-6.1.16.apk`: restoring a 6.0.x-era backup on an old Android 10 tablet can still fail with `table emoji_fts already exists` while compiling the FTS4 fallback `CREATE VIRTUAL TABLE emoji_fts USING fts4(...)`. This is the same restore/emoji-index family as the v6.1.15 fix, but with a different starting state: the restored database can already contain a stale/unusable `emoji_fts` schema entry before LIME reaches `createEmojiTables()`, so merely cleaning up after a failed FTS5 create is insufficient.
 
-Current follow-up fix makes Android emoji FTS initialization idempotent and deterministic: `emoji_fts` is treated as disposable derived state, stale/unloadable schema rows are removed before recreate, the SQLite schema version is bumped after `writable_schema` cleanup, and Android creates the table as FTS4 directly instead of trying FTS5 first. New instrumentation coverage builds a restored DB 102 fixture with a stale `emoji_fts` `sqlite_master` row and verifies restore upgrades to DB 104, rebuilds emoji data/IM rows, and recreates a usable Android FTS4 table.
+The follow-up fix makes Android emoji FTS initialization idempotent and deterministic: `emoji_fts` is treated as disposable derived state, stale/unloadable schema rows are removed before recreate, the SQLite schema version is bumped after `writable_schema` cleanup, and Android creates the table as FTS4 directly instead of trying FTS5 first. New instrumentation coverage builds a restored DB 102 fixture with a stale `emoji_fts` `sqlite_master` row and verifies restore upgrades to DB 104, rebuilds emoji data/IM rows, and recreates a usable Android FTS4 table.
 
-Verification update: `./gradlew :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac` passes, and the focused restore regression `LimeDB103IntegrationTest#restoreOldBackupWithStaleEmojiFtsSchemaRecreatesEmojiFts` passes on the Pixel_9_Pro Android emulator. The old Android 10 tablet restore path is still the best real-device confirmation before closing the follow-up publicly.
+Verification update before reporter validation: `./gradlew :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac` passes, and the focused restore regression `LimeDB103IntegrationTest#restoreOldBackupWithStaleEmojiFtsSchemaRecreatesEmojiFts` passes on the Pixel_9_Pro Android emulator. The old Android 10 tablet restore path is still the best real-device confirmation before closing the follow-up publicly.
 
-Public tracking update: Hermes reopened #88 and posted follow-up comment https://github.com/lime-ime/limeime/issues/88#issuecomment-4627623573 explaining the v6.1.16 / Android 10 / 6.0.x backup restore failure family, PR #102, and the remaining device/emulator validation need. Current #88 state is open until the fix reaches a new APK and the restore path is verified.
+Public tracking update: Hermes reopened #88 and posted follow-up comment https://github.com/lime-ime/limeime/issues/88#issuecomment-4627623573 explaining the v6.1.16 / Android 10 / 6.0.x backup restore failure family, PR #102, and the remaining device/emulator validation need. The fix has now reached APK `6.1.17`; current #88 state is open until the restore path is reporter- or maintainer-verified.
+
+
+## Webhook update: v6.1.17 APK stale `emoji_fts` restore retest
+
+Android APK `LIMEHD2026-6.1.17.apk` now contains the follow-up stale-`emoji_fts` restore fixes from PR #102 / merge commit `289907b1318bb2c7dbe599ded6b7085e0d91148f` and later open-path emoji schema cleanup. Verified GitHub Contents metadata for the APK: blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes. Direct APK link: https://raw.githubusercontent.com/lime-ime/limeime/master/LimeStudio/app/release/LIMEHD2026-6.1.17.apk.
+
+Hermes posted a scoped public retest/update comment: https://github.com/lime-ime/limeime/issues/88#issuecomment-4641196837. Keep #88 open until the stale-`emoji_fts` restore path is verified on the relevant old-backup / old-Android scenario, or until the maintainer explicitly closes the follow-up. Do not treat `ejmoog`'s Samsung A52 / Android 15 `6.1.16` backup/restore success as verification of the Android 10 / stale-schema path; it is useful compatibility context only.
