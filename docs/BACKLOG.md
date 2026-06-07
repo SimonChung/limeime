@@ -56,6 +56,16 @@ Last reviewed: 2026-06-07
   - Current state: Single tap toggles between shifted and unshifted. Double tap enters Shift Lock. When Shift Lock is active, a single tap exits Shift Lock and returns to unshifted.
   - Follow-up: Ship with the next Android/iOS builds.
 
+- Unfiled / `ENGLISH_KB.md` smart-space — Android + iOS — swap auto-inserted English suggestion space before punctuation
+  - Status: Completed and compile/test verified; Android side is included in test APK `LIMEHD2026-6.1.17.apk` (blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes), while iOS ships through the normal TestFlight/App Store path.
+  - Current state: After picking an English suggestion that auto-appends a space, typing punctuation now produces LatinIME-style `word,` instead of `word ,` on both Android and iOS, with focused Android and iOS coverage.
+  - Follow-up: Ship with the next Android/iOS builds; collect user feedback before expanding into broader English keyboard behavior changes.
+
+- Unfiled — Android — enabling the first IM on a fresh install should activate that IM immediately
+  - Status: Completed and included in Android test APK `LIMEHD2026-6.1.17.apk` (blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes).
+  - Current state: Enabling an IM now makes it active when the persisted active IM is missing or no longer enabled, avoiding the fresh-install fallback to the English layout.
+  - Follow-up: Verify during normal fresh-install / table-enable release QA.
+
 - #104 — Android + iOS — related/association candidates after commit should not be highlighted or consumed by Enter
   - Status: Android fix delivered in test APK `LIMEHD2026-6.1.17.apk`; reporter retest pending.
   - Current state: Android restores no-default-highlight behavior for related-only/post-commit candidate strips and separates `%limeendkey` commit resolution from normal candidate-strip selection. iOS parity was aligned with the same selection-policy split.
@@ -73,7 +83,7 @@ Last reviewed: 2026-06-07
 
 ## Pending fixes
 
-No confirmed source fixes are pending at this time. Reporter retest/release-QA follow-up remains for delivered Android APK `6.1.17` items and for iOS/TestFlight/App Store delivery where applicable.
+No confirmed source fixes are pending at this time. Reporter retest/release-QA follow-up remains for delivered Android APK `6.1.17` items, fresh-install IM activation, English punctuation-space behavior, and iOS/TestFlight/App Store delivery where applicable.
 
 ## Confirmed feature / product work
 
