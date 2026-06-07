@@ -121,6 +121,11 @@ public class LimeDB extends LimeSQLiteOpenHelper {
     private static SQLiteDatabase db = null;  //Jeremy '12,5,1 add static modifier. Shared db instance for dbserver and searchserver
     private final static int DATABASE_VERSION = 104;
     private final static String EMOJI_DATA_VERSION = "17.0";
+    // Scored English dictionary payload (docs/ENG_AUTO_COMPLETION.md). Self-versioned via
+    // an im(code='dictionary', title='version') row — independent of DATABASE_VERSION.
+    private final static String DICTIONARY_DATA_VERSION = "1.0";
+    private final static String DICTIONARY_TABLE = "dictionary";
+    private final static String DICTIONARY_PAYLOAD_TABLE = "dictionary_data";
     private final static String EMOJI_TABLE_DATA = "emoji_data";
     private final static String EMOJI_TABLE_FTS = "emoji_fts";
     private final static String EMOJI_TABLE_USER = "emoji_user";
@@ -889,6 +894,7 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             db.setVersion(DATABASE_VERSION);
         }
         refreshEmojiDataIfNeeded();
+        refreshDictionaryDataIfNeeded();
     }
 
     /**
@@ -4906,16 +4912,26 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         //Jeremy '12,5,1 checkDBConnection() when db is restoring or replaced.
         if (checkDBConnection()) return null;
 
+        // Lazy guard: make sure the scored dictionary is present/current even in a session
+        // that never opened settings (mirrors emoji's checkEmojiDB()).
+        refreshDictionaryDataIfNeeded();
 
         List<String> result = new ArrayList<>();
+        String prefix = (word == null) ? "" : word;
+        String upper = prefixUpperBound(prefix);
+        if (prefix.isEmpty() || upper == null) return result;
+
         try {
-            //String value = "";
             int similarSize = mLIMEPref.getSimilarCodeCandidates();
 
-            String selectString = "SELECT word FROM dictionary WHERE word MATCH '" + word + "*' AND word <> '"+ word +"'ORDER BY rowid ASC LIMIT " + similarSize + ";";
-            //SQLiteDatabase db = this.getSqliteDb(true);
+            // Indexed prefix range scan (no FTS). Ranking: (score + basescore) DESC, word ASC.
+            // Keeps the #103 exact-match filter (word <> prefix).
+            String selectString =
+                    "SELECT word FROM " + DICTIONARY_TABLE +
+                    " WHERE word >= ? AND word < ? AND word <> ?" +
+                    " ORDER BY (score + basescore) DESC, word ASC LIMIT " + similarSize;
 
-            Cursor cursor = db.rawQuery(selectString, null);
+            Cursor cursor = db.rawQuery(selectString, new String[]{prefix, upper, prefix});
             if (cursor != null) {
                 if (cursor.getCount() > 0) {
                     cursor.moveToFirst();
@@ -4933,6 +4949,26 @@ public class LimeDB extends LimeSQLiteOpenHelper {
         }
 
         return result;
+    }
+
+    /**
+     * Half-open upper bound for a prefix range scan: the prefix with its final code point
+     * incremented ("sal" -> "sam"). If the prefix ends at the maximum code point, drop it
+     * and increment the previous character (standard string-successor). Returns null when no
+     * successor exists (empty prefix or all-max), in which case the caller skips the query.
+     */
+    private static String prefixUpperBound(String prefix) {
+        if (prefix == null || prefix.isEmpty()) return null;
+        char[] chars = prefix.toCharArray();
+        for (int i = chars.length - 1; i >= 0; i--) {
+            if (chars[i] != Character.MAX_VALUE) {
+                char[] out = new char[i + 1];
+                System.arraycopy(chars, 0, out, 0, i + 1);
+                out[i] = (char) (chars[i] + 1);
+                return new String(out);
+            }
+        }
+        return null; // all characters at max — no successor
     }
 
     /**
@@ -5206,6 +5242,229 @@ public class LimeDB extends LimeSQLiteOpenHelper {
             } catch (Exception e) {
                 Log.w(TAG, "Error detaching emoji import database", e);
             }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Scored English dictionary (docs/ENG_AUTO_COMPLETION.md "Scored Dictionary (Android)")
+    //
+    // Replaces the legacy fts3(word) dictionary with a plain indexed scored table
+    // dictionary(word, basescore, score). Self-versioned via im(code='dictionary',
+    // title='version') — checked on every open in ensureCurrentDatabase(), NOT via
+    // lime.db user_version (which stays 104). Mirrors the emoji payload mechanism above.
+    // ---------------------------------------------------------------------------------
+
+    /**
+     * Idempotent open-path dictionary check. Drops a legacy fts3 dictionary, creates the
+     * scored table if missing/wrong-shape, then imports basescore from the bundled
+     * R.raw.dictionary payload when the im version row is absent or stale. Gated on actual
+     * schema state, never on user_version, so a restored DB that lies about its version is
+     * still repaired.
+     */
+    private void refreshDictionaryDataIfNeeded() {
+        if (checkDBConnection()) {
+            return;
+        }
+        ensureDictionarySchema(db);
+        if (isDictionaryDataCurrent()) {
+            return;
+        }
+
+        File importFile = new File(mContext.getCacheDir(), "dictionary_import.db");
+        try (InputStream inputStream = mContext.getResources().openRawResource(R.raw.dictionary)) {
+            LIMEUtilities.copyRAWFile(inputStream, importFile);
+            if (!tableExists(importFile.getAbsolutePath(), DICTIONARY_PAYLOAD_TABLE)) {
+                Log.w(TAG, "Bundled dictionary.db does not contain dictionary_data; keeping existing dictionary");
+                return;
+            }
+            importDictionaryData(importFile);
+        } catch (Exception e) {
+            Log.e(TAG, "Error refreshing dictionary data", e);
+        } finally {
+            if (importFile.exists() && !importFile.delete()) {
+                Log.w(TAG, "Failed to delete temporary dictionary import database");
+            }
+        }
+    }
+
+    /**
+     * Ensure the scored dictionary table exists in the expected shape. Drops a legacy fts3
+     * dictionary defensively (BEFORE create), creates the scored table + indexes when the
+     * current object is missing or not the scored shape. The legacy fts3(word) table has no
+     * score column, so this is a clean drop-and-rebuild (nothing to preserve).
+     */
+    private static void ensureDictionarySchema(SQLiteDatabase targetDb) {
+        if (isLegacyFtsDictionary(targetDb)) {
+            dropLegacyFtsDictionary(targetDb);
+        }
+        if (!isScoredDictionaryShape(targetDb)) {
+            targetDb.execSQL("DROP TABLE IF EXISTS " + DICTIONARY_TABLE);
+            targetDb.execSQL("CREATE TABLE IF NOT EXISTS " + DICTIONARY_TABLE + " (" +
+                    "word TEXT PRIMARY KEY, " +
+                    "basescore INTEGER NOT NULL DEFAULT 0, " +
+                    "score INTEGER NOT NULL DEFAULT 0)");
+        }
+        targetDb.execSQL("CREATE INDEX IF NOT EXISTS dictionary_word_idx ON " + DICTIONARY_TABLE + "(word)");
+        targetDb.execSQL("CREATE INDEX IF NOT EXISTS dictionary_rank_idx ON " + DICTIONARY_TABLE + "(score + basescore)");
+    }
+
+    /** True when a 'dictionary' object exists and is an FTS virtual table. */
+    private static boolean isLegacyFtsDictionary(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery(
+                "SELECT sql FROM sqlite_master WHERE name=?", new String[]{DICTIONARY_TABLE})) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String sql = cursor.getString(0);
+                return sql != null && sql.toLowerCase(Locale.US).contains("virtual table")
+                        && sql.toLowerCase(Locale.US).contains("using fts");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error probing legacy fts dictionary", e);
+        }
+        return false;
+    }
+
+    /** True when 'dictionary' exists with both basescore and score columns. */
+    private static boolean isScoredDictionaryShape(SQLiteDatabase targetDb) {
+        boolean hasBase = false, hasScore = false;
+        try (Cursor cursor = targetDb.rawQuery("PRAGMA table_info(" + DICTIONARY_TABLE + ")", null)) {
+            if (cursor != null) {
+                int nameIdx = cursor.getColumnIndex("name");
+                while (cursor.moveToNext()) {
+                    String col = nameIdx >= 0 ? cursor.getString(nameIdx) : null;
+                    if ("basescore".equals(col)) hasBase = true;
+                    else if ("score".equals(col)) hasScore = true;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error probing scored dictionary shape", e);
+        }
+        return hasBase && hasScore;
+    }
+
+    /**
+     * Remove a legacy fts3 dictionary and its shadow tables. Tries a normal DROP first; if
+     * SQLite rejects it because the saved DDL references an unavailable fts module (the #88
+     * crash family), falls back to a narrow writable_schema cleanup of the dictionary object
+     * and its shadow tables. Then bumps the schema version so the connection re-reads it.
+     */
+    private static void dropLegacyFtsDictionary(SQLiteDatabase targetDb) {
+        try {
+            targetDb.execSQL("DROP TABLE IF EXISTS " + DICTIONARY_TABLE);
+        } catch (Exception dropEx) {
+            Log.w(TAG, "Normal DROP of legacy fts dictionary failed; using writable_schema cleanup", dropEx);
+            try {
+                targetDb.execSQL("PRAGMA writable_schema=ON");
+                targetDb.execSQL("DELETE FROM sqlite_master WHERE name='" + DICTIONARY_TABLE +
+                        "' OR name LIKE 'dictionary\\_%' ESCAPE '\\'");
+                targetDb.execSQL("PRAGMA writable_schema=OFF");
+                targetDb.execSQL("PRAGMA schema_version=" + (getSchemaVersion(targetDb) + 1));
+            } catch (Exception cleanupEx) {
+                Log.e(TAG, "writable_schema cleanup of legacy fts dictionary failed", cleanupEx);
+            }
+        }
+        // Android's fts3 DROP TABLE does not always cascade-drop the shadow tables, so drop
+        // every remaining 'dictionary_%' SHADOW TABLE discovered from sqlite_master. Restrict
+        // to type='table' so we never touch the scored table's own indexes (dictionary_word_idx
+        // / dictionary_rank_idx also match 'dictionary_%').
+        for (String shadow : remainingDictionaryShadowTables(targetDb)) {
+            try {
+                targetDb.execSQL("DROP TABLE IF EXISTS " + shadow);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /** Names of remaining 'dictionary_%' shadow TABLES (excludes indexes). */
+    private static java.util.List<String> remainingDictionaryShadowTables(SQLiteDatabase targetDb) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        try (Cursor cursor = targetDb.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                        + "AND name LIKE 'dictionary\\_%' ESCAPE '\\'", null)) {
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    names.add(cursor.getString(0));
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error listing dictionary shadow tables", e);
+        }
+        return names;
+    }
+
+    private static int getSchemaVersion(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery("PRAGMA schema_version", null)) {
+            return (cursor != null && cursor.moveToFirst()) ? cursor.getInt(0) : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** True when the dictionary has rows and the stored im version row matches the constant. */
+    private boolean isDictionaryDataCurrent() {
+        if (!hasDictionaryRows(db)) {
+            return false;
+        }
+        try (Cursor cursor = db.rawQuery(
+                "SELECT desc FROM " + LIME.DB_TABLE_IM + " WHERE code=? AND title=?",
+                new String[]{"dictionary", "version"})) {
+            return cursor != null && cursor.moveToFirst()
+                    && DICTIONARY_DATA_VERSION.equals(cursor.getString(0));
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking dictionary data version", e);
+            return false;
+        }
+    }
+
+    private static boolean hasDictionaryRows(SQLiteDatabase targetDb) {
+        try (Cursor cursor = targetDb.rawQuery("SELECT COUNT(*) FROM " + DICTIONARY_TABLE, null)) {
+            return cursor != null && cursor.moveToFirst() && cursor.getInt(0) > 0;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking dictionary row count", e);
+            return false;
+        }
+    }
+
+    /**
+     * Import basescore from the bundled dictionary.db payload. Upserts basescore for every
+     * word while preserving any existing per-user score, then stamps the im version row.
+     * Never clears existing data on a bad payload (guarded by the caller).
+     */
+    private void importDictionaryData(File importFile) {
+        String attachedPath = quoteSqlString(importFile.getAbsolutePath());
+        db.beginTransaction();
+        try {
+            db.execSQL("ATTACH DATABASE " + attachedPath + " AS dict_src");
+            // Upsert basescore; keep score. INSERT defaults score to 0 for new words.
+            db.execSQL("INSERT INTO " + DICTIONARY_TABLE + " (word, basescore, score) " +
+                    "SELECT word, basescore, 0 FROM dict_src." + DICTIONARY_PAYLOAD_TABLE + " " +
+                    "WHERE true " +
+                    "ON CONFLICT(word) DO UPDATE SET basescore = excluded.basescore");
+            db.execSQL("INSERT OR REPLACE INTO " + LIME.DB_TABLE_IM + " (code, title, desc) " +
+                    "VALUES ('dictionary', 'version', '" + DICTIONARY_DATA_VERSION + "')");
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+            try {
+                db.execSQL("DETACH DATABASE dict_src");
+            } catch (Exception e) {
+                Log.w(TAG, "Error detaching dictionary import database", e);
+            }
+        }
+    }
+
+    /**
+     * Learn a picked English word by incrementing its score (+1). UPDATE-only: a picked word
+     * is always already in the dictionary, so a missing row is a stale pick and is ignored.
+     * Safe to call from any thread; guarded by checkDBConnection() like other writes.
+     */
+    public synchronized void recordEnglishUsage(String word) {
+        if (word == null || word.trim().isEmpty()) return;
+        if (checkDBConnection()) return;
+        try {
+            db.execSQL("UPDATE " + DICTIONARY_TABLE + " SET score = score + 1 WHERE word = ?",
+                    new Object[]{word});
+        } catch (Exception e) {
+            Log.e(TAG, "Error recording English usage for: " + word, e);
         }
     }
 

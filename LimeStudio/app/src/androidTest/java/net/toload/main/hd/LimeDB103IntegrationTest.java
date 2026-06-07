@@ -470,4 +470,114 @@ public class LimeDB103IntegrationTest {
             db.close();
         }
     }
+
+    // ---- Scored English dictionary (docs/ENG_AUTO_COMPLETION.md) ----
+
+    @Test
+    public void freshInstallImportsScoredDictionaryFromPayload() throws Exception {
+        LimeDB db = new LimeDB(appContext);
+        db.close();
+
+        // user_version unchanged; dictionary is the scored shape (not fts); rows imported;
+        // im version row stamped.
+        assertEquals(104, queryUserVersion());
+        assertEquals("dictionary must be a plain (non-fts) table",
+                0, queryInt("SELECT COUNT(*) FROM sqlite_master WHERE name='dictionary' "
+                        + "AND sql LIKE '%USING fts%'"));
+        assertTrue("scored dictionary must have basescore + score columns",
+                dictionaryHasColumn("basescore") && dictionaryHasColumn("score"));
+        assertTrue("dictionary rows imported from payload",
+                queryInt("SELECT COUNT(*) FROM dictionary") > 0);
+        assertEquals("1.0", queryString(
+                "SELECT desc FROM im WHERE code='dictionary' AND title='version'"));
+    }
+
+    @Test
+    public void openingLegacyFtsDictionaryRebuildsScoredTable() throws Exception {
+        File fixture = createLegacyFtsDictionaryFixture("lime_legacy_fts_dictionary.db");
+        replaceAppDatabaseWith(fixture);
+
+        LimeDB db = new LimeDB(appContext);
+        db.close();
+
+        // The legacy fts3 dictionary is dropped and rebuilt as the scored table, populated.
+        assertEquals(0, queryInt("SELECT COUNT(*) FROM sqlite_master WHERE name='dictionary' "
+                + "AND sql LIKE '%USING fts%'"));
+        assertEquals("no fts shadow tables remain", 0,
+                queryInt("SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
+                        + "AND name LIKE 'dictionary\\_%' ESCAPE '\\'"));
+        assertTrue(dictionaryHasColumn("basescore") && dictionaryHasColumn("score"));
+        assertTrue("scored dictionary populated after legacy upgrade",
+                queryInt("SELECT COUNT(*) FROM dictionary") > 0);
+        assertEquals("1.0", queryString(
+                "SELECT desc FROM im WHERE code='dictionary' AND title='version'"));
+    }
+
+    @Test
+    public void secondOpenDoesNotReimportDictionary() throws Exception {
+        LimeDB db1 = new LimeDB(appContext);
+        db1.close();
+        int rowsAfterFirst = queryInt("SELECT COUNT(*) FROM dictionary");
+        int imRowsAfterFirst = queryInt(
+                "SELECT COUNT(*) FROM im WHERE code='dictionary' AND title='version'");
+
+        LimeDB db2 = new LimeDB(appContext);
+        db2.close();
+
+        assertEquals("dictionary rows unchanged on second open",
+                rowsAfterFirst, queryInt("SELECT COUNT(*) FROM dictionary"));
+        assertEquals("no duplicate im dictionary version row",
+                imRowsAfterFirst, queryInt(
+                        "SELECT COUNT(*) FROM im WHERE code='dictionary' AND title='version'"));
+        assertEquals(1, imRowsAfterFirst);
+    }
+
+    @Test
+    public void recordEnglishUsageIncrementsScore() throws Exception {
+        LimeDB db = new LimeDB(appContext);
+        try {
+            // pick a word that exists in the payload
+            String word = queryString("SELECT word FROM dictionary LIMIT 1");
+            int before = queryInt("SELECT score FROM dictionary WHERE word = ?", word);
+            db.recordEnglishUsage(word);
+            int after = queryInt("SELECT score FROM dictionary WHERE word = ?", word);
+            assertEquals(before + 1, after);
+            // unknown word is a no-op (UPDATE-only)
+            db.recordEnglishUsage("zzqqxx_not_a_word");
+        } finally {
+            db.close();
+        }
+    }
+
+    private boolean dictionaryHasColumn(String column) {
+        SQLiteDatabase db = SQLiteDatabase.openDatabase(appDb.getPath(), null, SQLiteDatabase.OPEN_READONLY);
+        Cursor c = null;
+        try {
+            c = db.rawQuery("PRAGMA table_info(dictionary)", null);
+            int nameIdx = c.getColumnIndex("name");
+            while (c.moveToNext()) {
+                if (column.equals(c.getString(nameIdx))) return true;
+            }
+            return false;
+        } finally {
+            if (c != null) c.close();
+            db.close();
+        }
+    }
+
+    /** A seed copy whose scored dictionary is replaced by a populated legacy fts3 table. */
+    private File createLegacyFtsDictionaryFixture(String name) throws Exception {
+        File dbFile = new File(appContext.getFilesDir(), name);
+        copyRawResourceToFile(R.raw.lime, dbFile);
+        SQLiteDatabase db = SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READWRITE);
+        try {
+            db.execSQL("DROP TABLE IF EXISTS dictionary");
+            db.execSQL("CREATE VIRTUAL TABLE dictionary USING fts3(word)");
+            db.execSQL("INSERT INTO dictionary(word) VALUES ('the'),('and'),('salt'),('year')");
+            db.execSQL("DELETE FROM im WHERE code='dictionary'");
+        } finally {
+            db.close();
+        }
+        return dbFile;
+    }
 }

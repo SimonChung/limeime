@@ -305,7 +305,7 @@ emoji data (see "The dictionary is self-versioned" above).
 -- Replaces: CREATE VIRTUAL TABLE dictionary USING fts3(word)
 CREATE TABLE dictionary (
     word      TEXT    PRIMARY KEY,
-    basescore INTEGER NOT NULL DEFAULT 0,  -- bundled frequency/rank, from dictionary.db
+    basescore INTEGER NOT NULL DEFAULT 0,  -- bundled log-scaled frequency (0..10000), from dictionary.db
     score     INTEGER NOT NULL DEFAULT 0   -- per-user local learning (private)
 );
 
@@ -324,6 +324,27 @@ WHERE word >= :prefix
 ORDER BY (score + basescore) DESC, word ASC
 LIMIT :limit;
 ```
+
+### basescore is log-scaled frequency, not a rank
+
+`basescore` is the **log-scaled** Ngrams frequency, normalized to **0..10000** — the LatinIME
+approach (which uses a 0..255 log-frequency), broadened here for finer resolution and more
+headroom against user `score`:
+
+```text
+basescore = round(10000 * (log(count) - log(min_count)) / (log(max_count) - log(min_count)))
+```
+
+Why log-scaled, **not** a dense rank (1..N): English frequency is ~Zipfian, spanning ~10^7:1
+between `the` and a mid-list word. A rank flattens that to evenly-spaced integers — `the`,
+`of`, `and` would sit 1 apart — discarding the *magnitude* that makes frequency useful and
+letting a handful of user picks leapfrog genuinely-common words. Log-scaling preserves
+relative magnitude: `the`≈10000, `of`≈9600, `salt`≈5900, rare words near 0, so common words
+keep a strong prior that `score += 1` per pick adjusts gradually rather than overturns.
+
+The bootstrap (`--source wordlist`) path has only frequency *order*, no counts, so it
+approximates via Zipf (count ~ 1/rank) then applies the same log-scale; the shipped payload
+uses real Ngrams counts.
 
 `:prefixUpperBound` is computed by incrementing the last code point of `:prefix`
 (`"sal"` → `"sam"`). Edge cases: build it in code, not SQL. English completion lowercases
@@ -531,29 +552,72 @@ Rules:
 Scope note: this is the v1 learning path (pick → +1). Tap-frequency only; no bigram/context
 learning (that is the parked "English IME v2" — see ENGLISH_KB.md §4).
 
-### Dictionary source and license
+### Dictionary source and build
 
-`basescore` is bundled and redistributed, so its source license matters. Do **not** use
-AOSP LatinIME's dictionary *data*: the AOSP `NOTICE` marks it "Dictionaries © Lexiteria
-LLC. Used by permission" — proprietary, licensed to Google only, not redistributable.
-LatinIME validates the *design*, not the data.
+`basescore` is built from **Google Books Ngrams, English 1-grams, version 3 (2020-02-17
+release)** — chosen because it is **CC BY 3.0** (attribution only, no copyleft,
+commercial-OK), so it is freely redistributable in the bundled `dictionary.db`.
 
-Safe sources:
+> Not used: AOSP LatinIME's own dictionary *data* (AOSP `NOTICE`: "Dictionaries © Lexiteria
+> LLC. Used by permission" — proprietary, licensed to Google only, not redistributable;
+> LatinIME validates the *design*, not the data). Also rejected: `wordfreq` (its data is
+> CC BY-SA 4.0 copyleft), Norvig `count_1w.txt` (LDC-sourced, no redistribution license),
+> and SUBTLEX (non-commercial-leaning).
 
-- **Recommended: Google Books Ngrams 1-grams (CC BY 3.0)** — attribution only, no copyleft,
-  commercial-OK. Aggregate counts → normalize to `basescore`; pre-extract top ~100k words
-  in a repo script.
-- **wordfreq v3.1.1** — pre-normalized, but its *data* is **CC BY-SA 4.0 (copyleft)**, not
-  Apache-compatible and not usable in a proprietary build. Use only if the project commits
-  to a copyleft-compatible license, and credit every upstream source per its `NOTICE.md`.
-- Avoid Norvig `count_1w.txt` (LDC-sourced, no redistribution license) and SUBTLEX
-  (non-commercial-leaning).
+**Source data.** 24 prefix-sharded gzip files (~10 GB total compressed), English 1-grams:
 
-Rules: generate `dictionary.db` reproducibly from a committed script (record the source
-snapshot in the payload `version`); disclose the source + URL + license in `LICENSE.md`;
-treat `basescore` as derived data under the source terms. `score` is per-user private
-learning data — never bundled, disclosed, or uploaded; if a backup contains `score`, that
-is the user's private backup data.
+```text
+http://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00000-of-00024.gz
+  … through …
+http://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00023-of-00024.gz
+```
+
+Dataset info + license: <https://books.google.com/ngrams/info>. Each line is
+`WORD<TAB>YEAR,match_count,volume_count<TAB>…`.
+
+**Generator script.** `scripts/build_dictionary_db.py` (committed, sibling of
+`scripts/build_emoji_db.py`). What it does, end to end:
+
+1. **Stream** each of the 24 `.gz` shards over HTTP and decompress on the fly, so the full
+   ~10 GB is never all on disk (nothing is kept after aggregation).
+2. **Aggregate** per word: strip POS tags (`book_NOUN` → `book`), lowercase, keep only
+   `[a-z']` words, and sum `match_count` across years **≥ 1950** (favors modern usage).
+   ~15.2M distinct words result.
+3. **Select** the top `--limit` (default 100,000) by total count.
+4. **Log-scale** the counts to `basescore` in **0..10000** (the LatinIME approach — see
+   "basescore is log-scaled frequency, not a rank" above): `the` (count ≈ 1.4e11) → 10000,
+   `salt` → ~4646, the rarest kept word → 0.
+5. **Write** `dictionary.db` (the `dictionary_data` table + `version`).
+6. **Patch the seeds** in the same run: drop the legacy fts3 `dictionary` + shadow tables
+   from both `LimeStudio/app/src/main/res/raw/lime.db` and `Database/lime.db`, create the
+   empty scored `dictionary` table + indexes, leave `user_version = 104`, write no `im`
+   version row, and verify the two seeds are byte-identical (LIME_DB_103/104 contract).
+
+Build the shipped payload:
+
+```sh
+python3 scripts/build_dictionary_db.py \
+    --source ngrams \
+    --out LimeStudio/app/src/main/res/raw/dictionary.db \
+    --patch-seeds LimeStudio/app/src/main/res/raw/lime.db Database/lime.db \
+    --version 1.0 --limit 100000
+```
+
+Offline fallback (no download; uses the committed word list
+`scripts/data/english_dictionary_words.txt`, which has only frequency *order* so it
+Zipf-approximates `basescore` on the same log scale):
+
+```sh
+python3 scripts/build_dictionary_db.py --source wordlist \
+    --out LimeStudio/app/src/main/res/raw/dictionary.db \
+    --patch-seeds LimeStudio/app/src/main/res/raw/lime.db Database/lime.db
+```
+
+**License + privacy.** The Google Ngrams snapshot (`20200217`) is pinned in the script
+header and recorded in the payload `version`; the CC BY 3.0 attribution is in `LICENSE.md`
+under "Bundled Data". Treat `basescore` as derived data under CC BY 3.0. The per-user
+`score` is private local learning data — never bundled, disclosed, or uploaded; if a backup
+contains `score`, that is the user's private backup data.
 
 ## Code changes by file (Android)
 
@@ -564,7 +628,7 @@ cases against the new frequency rank).
 
 | Concern | File | Change |
 | --- | --- | --- |
-| Build + seed script (new) | `.claude/scripts/build_dictionary_db.py` | Build `dictionary.db` (`dictionary_data` + `version`) from **Google Books Ngrams 1-grams (CC BY 3.0)**: aggregate counts, lowercase to `[a-z']`, take top ~100k, normalize counts → `basescore`. **Also** rewrite the seed: drop fts3 `dictionary` + shadows, create the empty scored table + indexes, leave `user_version = 104`, no `im` version row. Writes `R.raw.dictionary`, patches `R.raw.lime` + `Database/lime.db` (byte-identical). Pin the Ngrams snapshot in the script header + payload `version`. |
+| Build + seed script (new) | `scripts/build_dictionary_db.py` | Build `dictionary.db` (`dictionary_data` + `version`) from **Google Books Ngrams 1-grams (CC BY 3.0)**: aggregate counts, lowercase to `[a-z']`, take top ~100k, normalize counts → `basescore`. **Also** rewrite the seed: drop fts3 `dictionary` + shadows, create the empty scored table + indexes, leave `user_version = 104`, no `im` version row. Writes `R.raw.dictionary`, patches `R.raw.lime` + `Database/lime.db` (byte-identical). Pin the Ngrams snapshot in the script header + payload `version`. |
 | License disclosure | `LICENSE.md` | Add the Google Books Ngrams (CC BY 3.0) attribution line. |
 | Payload asset (new) | `LimeStudio/app/src/main/res/raw/dictionary.db` | The bundled scored payload. |
 | Refresh + schema | `LimeDB.java` | Add `DICTIONARY_DATA_VERSION` constant + `refreshDictionaryDataIfNeeded()` / `ensureDictionarySchema()` / `importDictionaryData(File)`, modeled on the emoji equivalents (`refreshEmojiDataIfNeeded` / `createEmojiTables` / `importEmojiData`, including the `cacheDir` temp-file + `ATTACH` pattern via `LIMEUtilities.copyRAWFile`). |

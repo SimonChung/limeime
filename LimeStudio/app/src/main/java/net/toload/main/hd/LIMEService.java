@@ -3832,7 +3832,18 @@ public class LIMEService extends InputMethodService
             // if the selected keyboard is not in the active keyboard list.
             // set the keyboard to the first active keyboard
             try {
-                activeIM = activatedIMList.get(0);
+                String corrected = activatedIMList.get(0);
+                if (!corrected.equals(activeIM)) {
+                    activeIM = corrected;
+                    // Persist the correction so the next onStartInput() (which reloads
+                    // activeIM from preferences) does not revert to a stale/default IM
+                    // that has no loaded keyboard config and falls back to English.
+                    // This is what makes the first installed IM activate on a fresh
+                    // install instead of showing the English keyboard.
+                    if (mLIMEPref != null) {
+                        mLIMEPref.setActiveIM(activeIM);
+                    }
+                }
             } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "IndexOutOfBoundsException getting active IM", e);
             }
@@ -5614,10 +5625,12 @@ public class LIMEService extends InputMethodService
                     mEmojiCategoryPages = null;
                 }
             } else {
+                String pickedWord = this.tempEnglishList.get(index).getWord();
                 if (ic != null) ic.commitText(
-                        this.tempEnglishList.get(index).getWord()
-                                .substring(tempEnglishWord.length())
-                                + " ", 1);
+                        pickedWord.substring(tempEnglishWord.length()) + " ", 1);
+                // ENG_AUTO_COMPLETION.md "Learning": increment the picked word's score so
+                // frequently chosen words rank higher (mirrors the emoji recordEmojiUsage hook).
+                if (SearchSrv != null) SearchSrv.recordEnglishUsage(pickedWord);
             }
 
             // ENGLISH_KB.md #0 / §2a: both pick paths appended a trailing space.

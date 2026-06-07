@@ -903,6 +903,16 @@ public class SearchServer {
     }
 
     /**
+     * Learn a picked English suggestion by incrementing its score in the scored dictionary.
+     * Delegates to LimeDB (UPDATE-only, +1). See docs/ENG_AUTO_COMPLETION.md "Learning".
+     */
+    public void recordEnglishUsage(String word) {
+        if (dbadapter != null) {
+            dbadapter.recordEnglishUsage(word);
+        }
+    }
+
+    /**
      * Core method to retrieve mappings for a code from cache or database.
      * <p>
      * Handles complex logic including:
