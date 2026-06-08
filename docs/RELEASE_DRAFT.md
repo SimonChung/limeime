@@ -110,13 +110,6 @@
   - 修正 iOS theme-screenshot UITest，讓截圖測試顯示正確主題下的注音鍵盤。
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/108>
 
-### 文件與維護
-
-- 更新 Google Play 上架準備文件、privacy policy、listing 草稿與 checklist。
-  - 相關提交：<https://github.com/lime-ime/limeime/commit/d03d46dd>
-- 更新 issue analysis、backlog 與 release-QA 追蹤文件；目前 `docs/BACKLOG.md` 沒有已確認但尚未完成的 source fix。
-  - Backlog：<https://github.com/lime-ime/limeime/blob/master/docs/BACKLOG.md>
-
 ## APK 驗證資訊
 
 - APK 路徑：`LimeStudio/app/release/LIMEHD2026-6.1.18.apk`
