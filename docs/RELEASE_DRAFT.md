@@ -48,7 +48,7 @@
 - **#96 — 標點 end-key / Lime end-key 行為與匯出保留**
   - 新增並補強 LIME 專用 `%limeendkey` / `@limeendkey@` 行為，支援指定標點鍵直接送出目前候選字。
   - 匯出／重新匯入時會保留 Lime end-key metadata。
-  - 沒有設定 Lime end-key 的表格，逗號與句號根鍵仍維持一般候選字輸入邏輯；v6.1.18 也修正無 end-key 時標點候選的預設高亮對齊問題。
+  - 沒有設定 Lime end-key 的表格，逗號與句號根鍵仍維持一般候選字輸入邏輯；v6.1.18 也修正無 end-key 時標點候選的預設高亮狀態問題。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/96>
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
   - 分析文件：[#96_ISSUE.md](https://github.com/lime-ime/limeime/blob/master/docs/%2396_ISSUE.md)
@@ -89,16 +89,16 @@
 > 本次 GitHub Release 附上的安裝檔是 Android APK。以下為同一期間已合併到 `master` 的 iOS 來源與測試更新；iOS 使用者仍需等待後續 TestFlight／App Store 發布。
 
 - **#86 — iOS restore 後鍵盤 extension 狀態同步**
-  - 還原後鍵盤 extension 會重新開啟資料庫 runtime，並對齊預設資料庫與已啟用輸入法狀態。
+  - 還原後鍵盤 extension 會重新開啟資料庫 runtime，並同步預設資料庫與已啟用輸入法狀態。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/86>
   - 分析文件：[#86_ISSUE.md](https://github.com/lime-ime/limeime/blob/master/docs/%2386_ISSUE.md)
 
 - **#91 / #94 — iOS 表格順序與備份安全性同步**
-  - 對齊 iOS 匯入表格順序與備份安全性修正，降低與 Android 行為差距。
+  - 同步改善 iOS 匯入表格順序與備份安全性，降低與 Android 行為差距。
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
 
-- **#93 / #96 — iOS metadata 與 Lime end-key 對齊**
-  - 對齊 iOS `.lime` metadata、匯入註冊與 Lime end-key 儲存／讀取行為。
+- **#93 / #96 — iOS metadata 與 Lime end-key 同步**
+  - 同步改善 iOS `.lime` metadata、匯入註冊與 Lime end-key 儲存／讀取行為。
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
 
 - **#99 / #100 — iOS 鍵盤視覺狀態與 contextual return key 對比**
