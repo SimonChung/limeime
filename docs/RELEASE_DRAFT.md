@@ -45,18 +45,20 @@
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
   - 分析文件：[#94_ISSUE.md](https://github.com/lime-ime/limeime/blob/master/docs/%2394_ISSUE.md)
 
-- **#96 — 標點 end-key / Lime end-key 行為與匯出保留**
-  - 新增並補強 LIME 專用 `%limeendkey` / `@limeendkey@` 行為，支援指定標點鍵直接送出目前候選字。
-  - 匯出／重新匯入時會保留 Lime end-key metadata。
+- **#96 — 標點 end-key / Lime end-key 行為、設定與匯出保留**
+  - 新增並補強 Android / iOS LIME 專用 `%limeendkey` / `@limeendkey@` 行為，支援指定標點鍵直接送出目前候選字。
+  - Android / iOS 皆可在個別輸入法詳細設定頁調整 Lime end-key（結束鍵），匯出／重新匯入時也會保留 Lime end-key metadata。
   - 沒有設定 Lime end-key 的表格，逗號與句號根鍵仍維持一般候選字輸入邏輯；v6.1.18 也修正無 end-key 時標點候選的預設高亮狀態問題。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/96>
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
   - 分析文件：[#96_ISSUE.md](https://github.com/lime-ime/limeime/blob/master/docs/%2396_ISSUE.md)
 
-- **#99 — Shift / Caps Lock 狀態下的非英文字根標籤顯示**
-  - 調整 Android 注音等非英文字根鍵盤在 shifted layout 的視覺標籤，降低 Shift / Caps Lock 狀態下的顯示混淆。
+- **#99 — Shift / Caps Lock 狀態下的非英文字根標籤與 Shift 雙擊鎖定**
+  - 調整 Android / iOS 注音等非英文字根鍵盤在 shifted layout 的視覺標籤，降低 Shift / Caps Lock 狀態下的顯示混淆。
+  - Android / iOS 軟鍵盤 Shift 改為雙擊進入大寫鎖定；單擊 Shift 只切換一次 shifted 狀態。
   - 相關 issue：<https://github.com/lime-ime/limeime/issues/99>
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
+  - 相關提交：<https://github.com/lime-ime/limeime/commit/08bf30b951fcf6dd41f4d681036685904d8a081f>、<https://github.com/lime-ime/limeime/commit/2541fc2880c344e5e2a43378635d8d0170d2f124>
 
 - **#103 — Android 英文候選字與預測排序**
   - 保留使用者已完整輸入的英文 exact-match 候選，避免完整字被預測候選擠掉。
@@ -98,7 +100,7 @@
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
 
 - **#93 / #96 — iOS metadata 與 Lime end-key 同步**
-  - 同步改善 iOS `.lime` metadata、匯入註冊與 Lime end-key 儲存／讀取行為。
+  - 同步改善 iOS `.lime` metadata、匯入註冊與 Lime end-key 儲存／讀取行為，並可在個別輸入法詳細設定頁編輯 Lime end-key（結束鍵）。
   - 相關 PR：<https://github.com/lime-ime/limeime/pull/101>
 
 - **#99 / #100 — iOS 鍵盤視覺狀態與 contextual return key 對比**
