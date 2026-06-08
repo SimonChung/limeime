@@ -252,7 +252,32 @@ Former hard-coded values:
 2. Android explicit light and the four custom themes were screenshot-verified.
 3. Android system-following dark emoji panel and dark emoji search were screenshot-verified.
 4. iOS was screenshot-verified for system light, explicit light, explicit dark, system
-   dark, and the four custom themes across 注音 keyboard, English keyboard, and emoji
-   panel.
+   dark, and the six fixed-palette themes (Light, Dark, Pink, Tech Blue, Fashion Purple,
+   Relax Green) across 注音 keyboard, English keyboard, and emoji panel.
 5. iOS was policy-reviewed against the transparent background rule: backdrop-drawn
    controls should remain system light/dark aware unless a concrete contrast bug appears.
+
+## iOS Theme Screenshot Capture Harness
+
+The iOS theme screenshots are produced by the per-theme XCUITest capture methods
+(`testIOSKeyboardThemeScreenshot<Theme>` in `LimeIME-iOS/LimeUITests/LimeUITests.swift`),
+driven by `.claude/scripts/ios_capture_theme_screenshots.sh <UDID> [theme ...]`.
+
+Two non-obvious mechanics make the capture correct, and must be preserved:
+
+- **Theme + IM reach the keyboard via the host app, not the test runner.** The XCUITest
+  runner is not a member of the `group.net.toload.limeime` app group, so its
+  `UserDefaults(suiteName:)` writes land in the runner's private container and never
+  reach the keyboard extension. Instead the test passes `-LimeUITestKeyboardTheme` and
+  `-LimeUITestKeyboardList` launch arguments; `AppDelegate.applyUITestKeyboardPrefsIfNeeded`
+  (host app, a group member) writes `keyboard_theme` / `keyboard_list` into the real
+  shared defaults. `keyboard_list=phonetic` makes the keyboard restore 注音 on launch.
+- **The keyboard re-reads `keyboard_theme` on every show.** `viewDidLoad` reads it only
+  once per extension process; the extension stays warm across host-app relaunches, so
+  `initOnStartInput` re-reads `keyboard_theme` and calls `applyFeedbackSettings()` to
+  re-apply the palette. Without this the keyboard keeps whatever theme it first loaded.
+
+Output goes to `docs/pictures` via `TEST_RUNNER_LIME_VISUAL_VERIFY_OUTPUT_DIR` (xcodebuild
+forwards `TEST_RUNNER_`-prefixed vars into the runner; plain shell env is not forwarded).
+The simulator appearance is forced to light so the system backdrop and candidate bar
+render light while the fixed palettes (2–5) draw their own colors.

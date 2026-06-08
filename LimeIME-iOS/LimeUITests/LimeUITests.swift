@@ -128,6 +128,14 @@ final class LimeUITests: XCTestCase {
     private func captureIOSKeyboardThemeScreenshotScenario(label: String, theme: Int) throws {
         configureKeyboardThemeCaptureDefaults(theme: theme)
         let app = XCUIApplication()
+        // The UITest runner cannot join the app group, so its UserDefaults writes never
+        // reach the keyboard extension. Pass the theme + IM as launch arguments; the host
+        // app (a group member) applies them to the shared defaults on launch, so the
+        // keyboard restores 注音 (phonetic) in the requested theme.
+        app.launchArguments += [
+            "-LimeUITestKeyboardTheme", "\(theme)",
+            "-LimeUITestKeyboardList", "phonetic",
+        ]
         app.launch()
         Thread.sleep(forTimeInterval: 0.5)
 
@@ -489,7 +497,14 @@ final class LimeUITests: XCTestCase {
     }
 
     private func saveScreenshot(named name: String) throws {
-        let outputDir = ProcessInfo.processInfo.environment["LIME_VISUAL_VERIFY_OUTPUT_DIR"] ?? NSTemporaryDirectory()
+        // xcodebuild does not propagate plain shell env vars into the test-runner
+        // process, but it DOES forward TEST_RUNNER_-prefixed vars (with the prefix
+        // stripped). Accept either so the output dir reaches saveScreenshot; fall back
+        // to the runner tmp dir.
+        let env = ProcessInfo.processInfo.environment
+        let outputDir = env["LIME_VISUAL_VERIFY_OUTPUT_DIR"]
+            ?? env["TEST_RUNNER_LIME_VISUAL_VERIFY_OUTPUT_DIR"]
+            ?? NSTemporaryDirectory()
         let url = URL(fileURLWithPath: outputDir).appendingPathComponent("\(name).png")
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
