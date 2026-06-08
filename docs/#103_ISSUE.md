@@ -3,7 +3,7 @@
 ## Live issue state
 
 - Issue: https://github.com/lime-ime/limeime/issues/103
-- Status: open / pending reporter confirmation after Android test APK `LIMEHD2026-6.1.17.apk` was posted on 2026-06-07.
+- Status: closed / reporter-confirmed fixed for the English candidate scope on Android APK `LIMEHD2026-6.1.17.apk`; adjacent punctuation/no-endkey follow-up confirmed on APK `LIMEHD2026-6.1.18.apk`.
 - Current labels: `enhancement`, `Usability`
 - Reporter: `SmithCCho`
 - Initial maintainer acknowledgement: https://github.com/lime-ime/limeime/issues/103#issuecomment-4629503196
@@ -134,13 +134,17 @@ dictionary(
 
 ## Public follow-up status
 
-Issue #103 is open / pending reporter confirmation. Android test APK `LIMEHD2026-6.1.17.apk` (GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes) now includes the earlier English composing visibility/ranking fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` plus the scored dictionary / frequency-ranking / learning commits `6e667232ba3d75a45fa11957882df19e45db8c8e` and `6a2ca8d187861c0109b74c4033db7a8c3767352f`. The scored dictionary path supersedes the interim rowid-ranking behavior for Android 6.1.17 retest purposes.
+Android test APK `LIMEHD2026-6.1.17.apk` (GitHub Contents blob SHA `4b0f42af2b9d97e9b9c1e87ec87bffa1271d1e2f`, size 13930960 bytes) included the earlier English composing visibility/ranking fix commit `794f741e6102cdf1c0db82f5cc6ea6280d2d5029` plus the scored dictionary / frequency-ranking / learning commits `6e667232ba3d75a45fa11957882df19e45db8c8e` and `6a2ca8d187861c0109b74c4033db7a8c3767352f`. The scored dictionary path superseded the interim rowid-ranking behavior for Android 6.1.17 retest purposes.
 
 Automation reopened #103 after the source-fix closure and posted the scoped 6.1.17 retest request: https://github.com/lime-ime/limeime/issues/103#issuecomment-4641196730.
 
-Retest scope:
+Resolved English retest scope:
 
-1. `salt` exact-match English composing should remain visible as a tappable candidate.
-2. `sal` should rank `salt` by the new scored dictionary/frequency path rather than leaving it behind capitalized proper nouns solely because of alphabetical order.
+1. `salt` exact-match English composing remains visible as a tappable candidate.
+2. `sal` / `salt` ranking is improved by the new scored dictionary/frequency path.
 
-Keep the issue open until reporter `SmithCCho` confirms the Android 6.1.17 behavior or a maintainer gives a separate closure instruction. Future public wording should continue to describe this as English composing/candidate-display and ranking usability work, not that exact-match filtering itself was a bug.
+Reporter `SmithCCho` confirmed in https://github.com/lime-ime/limeime/issues/103#issuecomment-4641456931 that APK `6.1.17` keeps full English matches visible in the candidate strip and improves the English candidate ordering.
+
+The same comment raised an adjacent #96-style punctuation/end-key concern: on `6.1.17`, `,` / `.` did not behave like `6.1.16` when no end-key was set. Maintainer `jrywu` then posted APK `6.1.18` in https://github.com/lime-ime/limeime/issues/103#issuecomment-4643262621 for that no-endkey punctuation follow-up. Reporter `SmithCCho` confirmed in https://github.com/lime-ime/limeime/issues/103#issuecomment-4643356687 that on `6.1.18`, with end-key set `,` / `.` output full-width punctuation directly, and without end-key the candidate default is on the full-width punctuation. Maintainer `jrywu` closed #103 as completed on 2026-06-07.
+
+Future public wording should continue to describe #103 itself as English composing/candidate-display and ranking usability work, not that exact-match filtering itself was a bug. The punctuation/no-endkey notes are adjacent #96 behavior verification, not a reason to reopen #103 unless new evidence appears.

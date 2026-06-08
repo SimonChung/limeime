@@ -2,8 +2,8 @@
 
 GitHub issue: https://github.com/lime-ime/limeime/issues/107
 Reporter: `ejmoog`
-Status: Open / Android IME startup-performance fix shipped in APK `LIMEHD2026-6.1.17.apk`, awaiting reporter confirmation
-Last updated: 2026-06-07T10:31:41+08:00
+Status: Closed / reporter-confirmed fixed on Android APK `LIMEHD2026-6.1.17.apk`
+Last updated: 2026-06-08T18:45:00+08:00
 
 ## Problem statement
 
@@ -19,7 +19,7 @@ Known environment:
 
 - Device: Samsung A52
 - LIME version: 6.1.16
-- Android / One UI version: not yet provided
+- Android / One UI version: Android 14 / One UI 6.0 (provided in the 6.1.17 confirmation)
 - Symptom scope: Android IME activation / first visible keyboard after switching input methods
 
 This should be treated as a real Android performance bug report, not a vague UX complaint: the reporter compares the same device and same IME-switch action against Trime/gcin and reports a multi-second visible delay. It is not yet proven to be a regression versus an earlier LIME build because the report does not include an older-LIME baseline.
@@ -31,18 +31,20 @@ This should be treated as a real Android performance bug report, not a vague UX 
 3. Switch the active input method to LIME version 6.1.16.
 4. LIME appears after about seven seconds.
 
-Still needed from reporter or local device reproduction:
+Historical information requested before the 6.1.17 confirmation:
 
-- Android OS / One UI version.
+- Android OS / One UI version. Reporter later provided Android 14 / One UI 6.0.
 - Whether the delay happens every switch or only after cold process start, reboot, install/update, or process kill.
 - Whether the delay happens in all apps/text fields or only specific host apps / field types.
 - Active input table and enabled-table count.
 - Clean install vs upgrade vs old database restore/import.
 - Logcat timestamps around `net.toload.main.hd2026` from IME selection to first keyboard display.
 
+These are no longer active asks for #107 because the reporter confirmed APK `6.1.17` is fast enough. Keep them only as a checklist if a new startup-latency report or reopened issue appears.
+
 ## Root-cause hypothesis and shipped 6.1.17 scope
 
-The strongest code-level hypothesis is not simply “startup is slow”; it is that LIME does too much synchronous IME/session initialization before the first keyboard can be shown, and some of that work appears duplicated on each activation. The shipped 6.1.17 optimization (`537a66c`, `#107 Optimize LimeIME startup without changing init path`) deliberately preserves the existing IME init routing, so the lifecycle/superclass-call hypothesis below remains a follow-up investigation area if the reporter still observes a large delay.
+The strongest code-level hypothesis before the 6.1.17 confirmation was not simply “startup is slow”; it was that LIME did too much synchronous IME/session initialization before the first keyboard could be shown, and some of that work appeared duplicated on each activation. The shipped 6.1.17 optimization (`537a66c`, `#107 Optimize LimeIME startup without changing init path`) deliberately preserved the existing IME init routing. Because the reporter later confirmed the switch is fast enough on 6.1.17, the lifecycle/superclass-call hypothesis below is retained only as a regression-contingency note, not as active #107 work.
 
 The most suspicious concrete path is:
 
@@ -82,9 +84,9 @@ The slow path is partly legacy, but several 6.x-era changes increased the amount
 - Follow-system theme/accent support calls `applyFollowSystemAccentColors()` during `initialViewAndSwitcher()`.
 - Recent config/list correctness fixes made the service rely more heavily on DB-backed IM/keyboard config reads instead of stale preference-only state.
 
-These changes are not individually blamed yet. The 6.1.17 fix targets the lighter pre-display work that could be safely optimized without changing IME init routing: deferring full emoji content rendering, caching startup config snapshots/versions, and guarding emoji preload work. If the reporter still sees about seven seconds of delay, the lifecycle duplication and repeated synchronous work should remain the next investigation target.
+These changes are not individually blamed yet. The 6.1.17 fix targeted the lighter pre-display work that could be safely optimized without changing IME init routing: deferring full emoji content rendering, caching startup config snapshots/versions, and guarding emoji preload work. Since the reporter confirmed 6.1.17 is fast enough, lifecycle duplication and repeated synchronous work should be revisited only if a new regression report appears.
 
-## What the next debugging run should measure
+## Reopen-contingency measurements
 
 Add temporary timing logs with elapsed milliseconds around these exact segments:
 
@@ -99,11 +101,11 @@ Add temporary timing logs with elapsed milliseconds around these exact segments:
 - `onStartInputView()` total.
 - `initOnStartInput()` total, split around `getAllImKeyboardConfigList()`, `resetKeyboards(...)`, `loadSettings()`, `buildActivatedIMList()`, and `initialIMKeyboard()`.
 
-The reporter's seven seconds should be mapped to one of these stages before implementation. Without that timing split, a fix can easily move work between callbacks without reducing first-visible-keyboard latency.
+If a similar startup-latency issue is reopened or newly reported, the reported delay should be mapped to one of these stages before implementation. Without that timing split, a fix can easily move work between callbacks without reducing first-visible-keyboard latency.
 
-## Remaining fix direction if 6.1.17 is still slow
+## Contingent fix direction if startup latency returns
 
-If the 6.1.17 optimization is insufficient, likely focused fixes after timing confirmation are:
+If a future report shows the 6.1.17 optimization is insufficient on another path, likely focused fixes after timing confirmation are:
 
 1. Correct `onStartInput()` to call `super.onStartInput(attribute, restarting)` instead of `super.onStartInputView(attribute, restarting)`, then verify that initialization still happens exactly once through the correct Android IME lifecycle.
 2. Avoid calling `initOnStartInput(attribute)` twice for one visible session. Keep field-specific mode setup in the callback that Android actually uses for the visible input view.
@@ -137,7 +139,7 @@ No direct iOS impact from this report. iOS uses a separate keyboard-extension li
 
 ## Backlog status
 
-The Android startup-performance fix direction is now confirmed and implemented in commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`). Track as completed/release-ready source work and pending Android reporter retest on APK `LIMEHD2026-6.1.17.apk`.
+The Android startup-performance fix direction is implemented in commit `537a66c4c21c` (`#107 Optimize LimeIME startup without changing init path`) and reporter-confirmed fixed on APK `LIMEHD2026-6.1.17.apk`. No active backlog or retest-watch item remains for #107 unless the issue is reopened or new startup-latency evidence appears.
 
 ## Public follow-up status
 
@@ -149,6 +151,8 @@ Android APK `LIMEHD2026-6.1.17.apk` now contains the targeted startup-performanc
 
 - https://github.com/lime-ime/limeime/issues/107#issuecomment-4641196799
 
+Reporter `ejmoog` confirmed in https://github.com/lime-ime/limeime/issues/107#issuecomment-4644700954 that on Samsung A52 5G / Android 14 / One UI 6.0, APK `6.1.17` is now fast enough when switching from other input methods to LIME. Maintainer `jrywu` closed the issue as completed on 2026-06-08.
+
 ## Retest condition
 
-Await reporter `ejmoog` confirmation on Samsung A52 that switching from another IME to LIME is faster than `6.1.16`. If the delay remains visible, ask for Android/One UI version, cold-vs-warm scope, app/field scope, active IM table count, and a fresh logcat around IME selection.
+No active retest condition remains. If the issue is reopened or a new report says LIME startup/switch latency is still slow, ask for Android/One UI version, cold-vs-warm scope, app/field scope, active IM table count, and a fresh logcat around IME selection.
