@@ -423,6 +423,20 @@ final class KeyboardViewController: UIInputViewController {
         // without a full extension restart. Mirrors Android's per-onStartInput re-read.
         refreshPhoneticKeyboardPrefs()
 
+        // Re-read keyboard_theme so a theme change made in Settings while the keyboard
+        // extension stayed warm takes effect on the next keyboard show. viewDidLoad reads
+        // it only once per process; without this, the keyboard keeps the theme it loaded
+        // with. applyFeedbackSettings() re-applies the resolved palette to the live views.
+        if let d = sharedDefaults {
+            let savedTheme = (d.object(forKey: "keyboard_theme") != nil)
+                ? d.integer(forKey: "keyboard_theme")
+                : 6
+            if savedTheme != currentKeyboardTheme {
+                currentKeyboardTheme = savedTheme
+                applyFeedbackSettings()
+            }
+        }
+
         mCompletionOn = false
         clearShiftState()
 
