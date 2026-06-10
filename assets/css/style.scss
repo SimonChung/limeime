@@ -9,3 +9,134 @@
   vertical-align: middle;
   margin-right: 0.35em;
 }
+
+.markdown-body .manual-hero {
+  margin: 1.5rem 0 2rem;
+  padding: 1.4rem 1.6rem;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #f6f8fa;
+}
+
+.markdown-body .manual-hero h1,
+.markdown-body .manual-hero h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 0;
+}
+
+.markdown-body .manual-kicker {
+  margin: 0 0 0.4rem;
+  color: #57606a;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.markdown-body .manual-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.markdown-body .manual-card {
+  display: block;
+  padding: 1rem;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  background: #ffffff;
+}
+
+.markdown-body .manual-card:hover {
+  border-color: #0969da;
+  text-decoration: none;
+}
+
+.markdown-body .manual-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body .manual-card span {
+  color: #57606a;
+}
+
+.markdown-body .manual-screenshot-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.markdown-body .manual-screenshot-pair figure {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.markdown-body .manual-screenshot-pair img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 6px;
+}
+
+.markdown-body .manual-screenshot-pair figcaption {
+  margin-top: 0.5rem;
+  color: #57606a;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.markdown-body .manual-note,
+.markdown-body .manual-warning {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+}
+
+.markdown-body .manual-note {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.markdown-body .manual-warning {
+  border: 1px solid #f0c36d;
+  background: #fff8c5;
+}
+
+.markdown-body .manual-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 0.85rem 0 1.4rem;
+}
+
+.markdown-body .manual-theme-grid figure {
+  margin: 0;
+  padding: 0.6rem;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.markdown-body .manual-theme-grid img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 6px;
+}
+
+.markdown-body .manual-theme-grid figcaption {
+  margin-top: 0.45rem;
+  color: #57606a;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: center;
+}

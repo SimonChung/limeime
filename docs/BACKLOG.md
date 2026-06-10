@@ -9,6 +9,8 @@ Last reviewed: 2026-06-08
 
 ## Unfiled release-QA follow-up
 
+- Unify full database backup ZIP filenames across Android and iOS. Android currently defaults to `limeBackup.zip`, while iOS creates `lime_backup_<timestamp>.zip`; choose one user-facing naming convention for DB Manager backup/restore docs, QA, and support.
+
 ## Pending fixes
 
 No confirmed source fixes are pending at this time. Reporter retest/release-QA follow-up remains only for the active items above.

@@ -853,10 +853,10 @@ Platform styling requirements:
 
 Visual verification evidence:
 
-| State | iOS | Android |
-|---|---|---|
-| Related add | ![iOS related add sheet with editable score](../.Codex/txt/issue66_add_related_editable_score.png) | ![Android related add sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_add_rect_buttons.png) |
-| Related edit | ![iOS related edit sheet with editable score](../.Codex/txt/issue66_edit_related_editable_score.png) | ![Android related edit sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_edit_rect_buttons.png) |
+The related add/edit sheet screenshots were captured during issue verification, but
+the original `../.Codex/txt/` image files are not part of this repository. Do not
+treat those historical captures as reusable manual screenshots unless fresh files are
+added under `docs/` or `assets/screenshots/`.
 
 ---
 
