@@ -1,4 +1,4 @@
-﻿# Android Backport Gap - iOS Settings Spec to Android Implementation
+# Android Backport Gap - iOS Settings Spec to Android Implementation
 
 > Source of truth: docs/LIME_SETTINGS.md (LIME Settings iOS App Specification).
 > This document enumerates every gap between that iOS spec and the current Android
@@ -459,7 +459,7 @@ Drive code may exist in SetupImController; out of View-layer scope.)
 
 ## 10. TODO Checklist - Close the Gaps
 
-> **Session log 2026-05-14 (visual-parity pass against iOS screenshots):** Side-by-side comparison of each tab/screen against the iOS reference screenshots in `docs/lime_settings_ios_*.png`, with verification on emulator after each change. All edits are layout/styling-only (no controller/model changes). Build clean: `gradlew :app:installDebug`.
+> **Session log 2026-05-14 (visual-parity pass against iOS screenshots):** Side-by-side comparison of each tab/screen against the iOS reference screenshots in `docs/assets/lime_settings_ios_*.png`, with verification on emulator after each change. All edits are layout/styling-only (no controller/model changes). Build clean: `gradlew :app:installDebug`.
 >
 > - **Setup tab status banner** — Three colour states (`fragment_setup.xml` + `SetupFragment.refreshStatus()`) restyled: neutral grey background `@color/setup_status_bg` with colour applied to icon + text only (green/yellow/red foreground), not as solid fill. About card stroke set to `0dp`, background switched to `setup_status_bg` (white frame removed).
 > - **Preferences page left padding** — Programmatic `setIconSpaceReserved(false)` cascade through `PreferenceGroup` tree (`LIMEPreference.disableIconSpaceReserved`) after `setPreferencesFromResource`, because the XML-only attribute does not propagate to children on AndroidX Preference. `search_bar_bg.xml` switched to filled grey pill (no stroke).

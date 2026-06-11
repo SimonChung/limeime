@@ -184,7 +184,7 @@ The **Model and Controller layers must achieve the same testability goals** as t
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the 設定 tab](lime_settings_ios_setup.png) | ![Android emulator screenshot of the 設定 tab](lime_settings_android_setup.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the 設定 tab](assets/lime_settings_ios_setup.png) | ![Android emulator screenshot of the 設定 tab](assets/lime_settings_android_setup.png) |
 
 ### 4.1 Layout
 
@@ -386,7 +386,7 @@ Entry point for the **輸入法** tab.
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the 輸入法 tab IM list](lime_settings_ios_im_list.png) | ![Android emulator screenshot of the 輸入法 tab IM list](lime_settings_android_im_list.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the 輸入法 tab IM list](assets/lime_settings_ios_im_list.png) | ![Android emulator screenshot of the 輸入法 tab IM list](assets/lime_settings_android_im_list.png) |
 
 ```
 NavigationStack
@@ -419,7 +419,7 @@ Drill-down from any IM row **or** from the synthetic 關聯字庫 entry. Shows m
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the IM detail screen](lime_settings_ios_im_detail.png) | ![Android emulator screenshot of the IM detail screen](lime_settings_android_im_detail.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the IM detail screen](assets/lime_settings_ios_im_detail.png) | ![Android emulator screenshot of the IM detail screen](assets/lime_settings_android_im_detail.png) |
 
 ```
 NavigationStack (continued)
@@ -545,7 +545,7 @@ Entry point reachable from the "下載 / 匯入輸入法" NavigationLink in §5.
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the IM install and import screen](lime_settings_ios_im_install.png) | ![Android emulator screenshot of the IM install and import screen](lime_settings_android_im_install.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the IM install and import screen](assets/lime_settings_ios_im_install.png) | ![Android emulator screenshot of the IM install and import screen](assets/lime_settings_android_im_install.png) |
 
 ```
 NavigationStack (continued)
@@ -659,7 +659,7 @@ Reached via NavigationLink from §5.2 ("瀏覽 / 編輯資料表").
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the mapping record list](lime_settings_ios_record_list.png) | ![Android emulator screenshot of the mapping record list](lime_settings_android_record_list.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the mapping record list](assets/lime_settings_ios_record_list.png) | ![Android emulator screenshot of the mapping record list](assets/lime_settings_android_record_list.png) |
 
 ```
 NavigationStack (continued)
@@ -747,7 +747,7 @@ The related-phrase editor is reached via **輸入法 → 關聯字庫 → 瀏覽
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the related phrase list](lime_settings_ios_related_list.png) | ![Android emulator screenshot of the related phrase list](lime_settings_android_related_list.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the related phrase list](assets/lime_settings_ios_related_list.png) | ![Android emulator screenshot of the related phrase list](assets/lime_settings_android_related_list.png) |
 
 ```
 NavigationStack (continued from §5.2)
@@ -853,10 +853,10 @@ Platform styling requirements:
 
 Visual verification evidence:
 
-| State | iOS | Android |
-|---|---|---|
-| Related add | ![iOS related add sheet with editable score](../.Codex/txt/issue66_add_related_editable_score.png) | ![Android related add sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_add_rect_buttons.png) |
-| Related edit | ![iOS related edit sheet with editable score](../.Codex/txt/issue66_edit_related_editable_score.png) | ![Android related edit sheet with rectangular framed buttons and editable score](../.Codex/txt/android_issue66_related_edit_rect_buttons.png) |
+The related add/edit sheet screenshots were captured during issue verification, but
+the original `../.Codex/txt/` image files are not part of this repository. Do not
+treat those historical captures as reusable manual screenshots unless fresh files are
+added under `docs/` or `assets/screenshots/`.
 
 ---
 
@@ -866,7 +866,7 @@ Visual verification evidence:
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the 資料庫 tab](lime_settings_ios_database.png) | ![Android emulator screenshot of the 資料庫 tab](lime_settings_android_database.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the 資料庫 tab](assets/lime_settings_ios_database.png) | ![Android emulator screenshot of the 資料庫 tab](assets/lime_settings_android_database.png) |
 
 ### 7.1 Layout
 
@@ -967,7 +967,7 @@ Error branch: catch sets `isWorking = false`, `preparingShare = false`, `backupP
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the 喜好設定 tab](lime_settings_ios_preferences.png) | ![Android emulator screenshot of the 喜好設定 tab](lime_settings_android_preferences.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the 喜好設定 tab](assets/lime_settings_ios_preferences.png) | ![Android emulator screenshot of the 喜好設定 tab](assets/lime_settings_android_preferences.png) |
 
 Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime"))` (aliased as `sharedDefaults` constant) for every value.
 
@@ -1013,7 +1013,7 @@ A `NavigationLink` "字根反查設定" appears as the last row inside §8.4 and
 
 | iOS | Android |
 |---|---|
-| ![iPhone 17 Pro Max simulator screenshot of the 字根反查設定 sub-screen](lime_settings_ios_reverse_lookup.png) | ![Android emulator screenshot of the 字根反查設定 sub-screen](lime_settings_android_reverse_lookup.png) |
+| ![iPhone 17 Pro Max simulator screenshot of the 字根反查設定 sub-screen](assets/lime_settings_ios_reverse_lookup.png) | ![Android emulator screenshot of the 字根反查設定 sub-screen](assets/lime_settings_android_reverse_lookup.png) |
 
 ```
 NavigationLink "字根反查設定" → ReverseLookupSettingsView
