@@ -1,6 +1,6 @@
 # Manual Review Workflow
 
-This document defines the required review workflow for `manual/**/*.md`.
+This document defines the required review workflow for `docs/manuals/**/*.md`.
 No manual page may be considered complete based only on the writer's self-review.
 Every page must pass the auditor roles below.
 
@@ -51,7 +51,7 @@ Read the topic-relevant design/spec/reference docs under `docs/`, including:
 - iPhone `允許完整取用` is described as required for database access, backup/restore, App Group, sharing, or basic input.
 - iPhone `允許完整取用` is described as anything other than the permission needed for LIME key vibration feedback.
 - iPad 13-inch, 11-inch, or mini size tiers are described as implemented functionality.
-- A Settings App screen is described without using the relevant `lime_settings_*` screenshot when one exists in `docs/LIME_SETTINGS.md`.
+- A Settings App screen is described without using the relevant `assets/lime_settings_*` screenshot when one exists in `docs/LIME_SETTINGS.md`.
 
 ## 2. User Task Flow Auditor
 
@@ -109,10 +109,10 @@ Confirm that the manual structure is coherent, pages are not fragmented, and all
 
 ### Checks
 
-- All manual pages live under `/manual/`.
+- All manual pages live under `/docs/manuals/`.
 - Paths use ASCII English only; no Chinese file or folder names.
 - Standalone pages under 30 lines must be merged into a parent page unless they are necessary index pages.
-- Small related topics must be consolidated. For example, thin pages for English input, Chinese input, and symbol input should become `manual/keyboard-input.md`.
+- Small related topics must be consolidated. For example, thin pages for English input, Chinese input, and symbol input should become `docs/manuals/keyboard-input.md`.
 - Every Markdown link points to an existing file.
 - No link points to a deleted or renamed page.
 - `README.md`, `docs/USER_MANUAL_PLAN.md`, and internal manual links agree with the final structure.
@@ -120,7 +120,7 @@ Confirm that the manual structure is coherent, pages are not fragmented, and all
 ### Suggested Verification
 
 ```powershell
-$files = Get-ChildItem -Recurse -File manual -Filter *.md
+$files = Get-ChildItem -Recurse -File docs/manuals -Filter *.md
 $broken=@()
 foreach ($file in $files) {
   $text = Get-Content -Path $file.FullName -Raw
@@ -171,7 +171,7 @@ Confirm that screenshots are complete, accurate, readable, and tied to real manu
 
 ### Mandatory Coverage
 
-Every screenshot documented in `docs/LIME_SETTINGS.md` and `docs/KEYBOARD_THEME.md` must be embedded somewhere under `/manual/`.
+Every screenshot documented in `docs/LIME_SETTINGS.md` and `docs/KEYBOARD_THEME.md` must be embedded somewhere under `/docs/manuals/`.
 
 Each embedded screenshot must have a corresponding section that explains:
 
@@ -190,7 +190,7 @@ Screenshots may not be orphaned, skipped, dumped into galleries, or shown withou
 ### Reject If
 
 - Any screenshot documented in `docs/LIME_SETTINGS.md` or `docs/KEYBOARD_THEME.md` is missing from the manual.
-- A Settings App screen is described without the relevant `lime_settings_*` screenshot.
+- A Settings App screen is described without the relevant `assets/lime_settings_*` screenshot.
 - A screenshot is embedded without a matching heading and explanation.
 - Screenshot alt text is vague, generic, or only repeats the filename.
 - The iOS keyboard screenshot only shows Apple's system Zhuyin keyboard and lacks a LIME candidate-bar signal.

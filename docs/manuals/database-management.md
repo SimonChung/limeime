@@ -14,11 +14,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_database.png" alt="iPhone LIME 資料庫分頁，顯示備份資料庫、還原資料庫與還原預設資料庫">
+    <img src="../assets/lime_settings_ios_database.png" alt="iPhone LIME 資料庫分頁，顯示備份資料庫、還原資料庫與還原預設資料庫">
     <figcaption>iPhone：資料庫分頁提供完整資料庫層級的備份與還原。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_database.png" alt="Android LIME 資料庫分頁，顯示備份資料庫、還原資料庫與還原預設資料庫">
+    <img src="../assets/lime_settings_android_database.png" alt="Android LIME 資料庫分頁，顯示備份資料庫、還原資料庫與還原預設資料庫">
     <figcaption>Android：同一分頁處理備份、還原與回到預設資料庫。</figcaption>
   </figure>
 </div>

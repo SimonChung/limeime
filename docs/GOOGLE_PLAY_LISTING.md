@@ -1,9 +1,9 @@
-﻿# Google Play — Prepared Listing Content & Answers
+# Google Play — Prepared Listing Content & Answers
 
 Ready-to-paste content for the [GOOGLE_PLAY.md](GOOGLE_PLAY.md) checklist.
 Decisions locked: **Personal developer account**, **Free app**, **privacy policy
 hosted on GitHub Pages**. Privacy policy draft lives in
-[PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+[ANDROID_PRIVACY.md](ANDROID_PRIVACY.md).
 
 > Edit the bracketed `[…]` spots and trim Chinese wording to taste before
 > pasting into Play Console. Character limits are noted; current drafts are
@@ -204,7 +204,7 @@ If the review asks about `RECORD_AUDIO`, declare:
 
 | Item | Answer |
 | --- | --- |
-| Privacy policy URL | `https://lime-ime.github.io/limeime/PRIVACY/` (publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) first) |
+| Privacy policy URL | `https://lime-ime.github.io/limeime/PRIVACY/` (publish [ANDROID_PRIVACY.md](ANDROID_PRIVACY.md) first) |
 | Ads | **No ads** |
 | App access | All functionality available without restrictions (no login) |
 | Content rating | Complete IARC questionnaire → expected **Everyone** |

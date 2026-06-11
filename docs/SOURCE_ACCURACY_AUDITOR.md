@@ -16,7 +16,7 @@ For each page, identify the topic-relevant source docs before editing. Common so
 - iPhone `允許完整取用` is described as anything other than the permission needed for LIME key vibration feedback.
 - iPad size tiers are presented as implemented.
 - Android voice input behavior differs from `docs/ANDROID_VOICE_INPUT.md`.
-- A Settings App screen is described without using the relevant existing `lime_settings_*` screenshot.
+- A Settings App screen is described without using the relevant existing `assets/lime_settings_*` screenshot.
 
 ## Pass Evidence
 

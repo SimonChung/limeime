@@ -4,7 +4,7 @@ This auditor owns information architecture, path rules, page size, and link inte
 
 ## Structure Rules
 
-- All manual pages must live under `/manual/`.
+- All manual pages must live under `/docs/manuals/`.
 - File and folder names must use ASCII English only.
 - Do not create fragmented thin pages.
 - Merge any non-index page under 30 lines into its parent page.
@@ -13,7 +13,7 @@ This auditor owns information architecture, path rules, page size, and link inte
 
 ## Reject If
 
-- A manual file lives outside `/manual/`.
+- A manual file lives outside `/docs/manuals/`.
 - A path contains non-ASCII characters.
 - A deleted or renamed page is still linked.
 - A page is too thin to stand alone.
@@ -22,4 +22,4 @@ This auditor owns information architecture, path rules, page size, and link inte
 
 ## Required Verification
 
-Run a broken Markdown link check across `/manual/`, an ASCII path check, a stale path search, and a page line-count report before completion.
+Run a broken Markdown link check across `/docs/manuals/`, an ASCII path check, a stale path search, and a page line-count report before completion.

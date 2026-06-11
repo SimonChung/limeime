@@ -23,11 +23,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁">
+    <img src="../assets/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁">
     <figcaption>iPhone：從設定分頁前往系統鍵盤設定，開啟 LIME 後回到文字欄位測試。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_setup.png" alt="Android LIME 設定分頁">
+    <img src="../assets/lime_settings_android_setup.png" alt="Android LIME 設定分頁">
     <figcaption>Android：從設定分頁前往系統輸入法設定，啟用後使用鍵盤切換器。</figcaption>
   </figure>
 </div>

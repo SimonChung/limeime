@@ -1,6 +1,6 @@
 # Formal Traditional Chinese Auditor
 
-This auditor reviews `manual/**/*.md` for publication-quality Traditional Chinese written for Taiwan users. The role is not cosmetic editing. It decides whether a page is useful, clear, trustworthy, and immediately actionable.
+This auditor reviews `docs/manuals/**/*.md` for publication-quality Traditional Chinese written for Taiwan users. The role is not cosmetic editing. It decides whether a page is useful, clear, trustworthy, and immediately actionable.
 
 ## Pass Standard
 
@@ -42,7 +42,7 @@ Reject the page if it contains:
 3. Check every UI label against source docs and screenshots.
 4. Remove filler and rewrite as task steps, visible states, warnings, or routing choices.
 5. Confirm success states and failure next steps are present.
-6. Confirm links point to existing `manual/` files.
+6. Confirm links point to existing `docs/manuals/` files.
 7. Run a grammar pass for full-width Chinese semicolons, sentence endings, comma presence, and subject-verb-object clarity.
 
 ## Style Examples

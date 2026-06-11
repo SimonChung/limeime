@@ -1,6 +1,6 @@
 # Manual Visual Designer
 
-This role reviews how `manual/**/*.md` renders as a GitHub Pages manual. It owns visual hierarchy, screenshot placement, CSS component use, mobile readability, and warning visibility.
+This role reviews how `docs/manuals/**/*.md` renders as a GitHub Pages manual. It owns visual hierarchy, screenshot placement, CSS component use, mobile readability, and warning visibility.
 
 ## Design Goal
 
@@ -13,7 +13,7 @@ Manual pages should feel like practical product documentation, not raw notes. A 
 
 ## CSS Components
 
-The manual may use the following HTML/CSS components in Markdown. Styles live in `assets/css/style.scss`.
+The manual may use the following HTML/CSS components in Markdown. Styles live in `docs/assets/css/style.scss`.
 
 ### Task Entry
 
@@ -37,7 +37,7 @@ Use `.manual-card-grid` and `.manual-card` for choices such as new setup, device
     <strong>第一次安裝</strong>
     <span>完成系統鍵盤啟用。</span>
   </a>
-  <a class="manual-card" href="../database-management/guide.md">
+  <a class="manual-card" href="database-management.md">
     <strong>換機還原</strong>
     <span>從舊裝置備份完整資料庫。</span>
   </a>
@@ -51,11 +51,11 @@ Use `.manual-screenshot-pair` for iPhone/Android pairs from `docs/LIME_SETTINGS.
 ```html
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../../docs/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁">
+    <img src="../assets/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁">
     <figcaption>iPhone</figcaption>
   </figure>
   <figure>
-    <img src="../../docs/lime_settings_android_setup.png" alt="Android LIME 設定分頁">
+    <img src="../assets/lime_settings_android_setup.png" alt="Android LIME 設定分頁">
     <figcaption>Android</figcaption>
   </figure>
 </div>

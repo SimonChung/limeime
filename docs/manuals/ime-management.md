@@ -12,11 +12,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_im_list.png" alt="iPhone LIME 輸入法分頁，顯示已安裝輸入法列表">
+    <img src="../assets/lime_settings_ios_im_list.png" alt="iPhone LIME 輸入法分頁，顯示已安裝輸入法列表">
     <figcaption>iPhone：輸入法列表用來啟用、排序與進入詳細設定。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_im_list.png" alt="Android LIME 輸入法分頁，顯示已安裝輸入法列表">
+    <img src="../assets/lime_settings_android_im_list.png" alt="Android LIME 輸入法分頁，顯示已安裝輸入法列表">
     <figcaption>Android：同一分頁管理已安裝輸入法、下載功能與匯入功能。</figcaption>
   </figure>
 </div>
@@ -51,11 +51,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_im_install.png" alt="iPhone LIME 輸入法下載與匯入畫面">
+    <img src="../assets/lime_settings_ios_im_install.png" alt="iPhone LIME 輸入法下載與匯入畫面">
     <figcaption>iPhone：每個輸入法項目提供下載與匯入功能。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_im_install.png" alt="Android LIME 輸入法下載與匯入畫面">
+    <img src="../assets/lime_settings_android_im_install.png" alt="Android LIME 輸入法下載與匯入畫面">
     <figcaption>Android：可下載官方碼表，也可匯入本機碼表檔。</figcaption>
   </figure>
 </div>
@@ -87,11 +87,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_im_detail.png" alt="iPhone LIME 輸入法詳細畫面，顯示輸入法資訊與鍵盤設定">
+    <img src="../assets/lime_settings_ios_im_detail.png" alt="iPhone LIME 輸入法詳細畫面，顯示輸入法資訊與鍵盤設定">
     <figcaption>iPhone：設定頁面管理單一輸入法的資訊與專屬設定。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_im_detail.png" alt="Android LIME 輸入法詳細畫面，顯示輸入法資訊與鍵盤設定">
+    <img src="../assets/lime_settings_android_im_detail.png" alt="Android LIME 輸入法詳細畫面，顯示輸入法資訊與鍵盤設定">
     <figcaption>Android：設定頁面用來確認碼表狀態與進入資料表操作。</figcaption>
   </figure>
 </div>
@@ -148,11 +148,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_record_list.png" alt="iPhone LIME 字根資料列表，顯示碼表記錄">
+    <img src="../assets/lime_settings_ios_record_list.png" alt="iPhone LIME 字根資料列表，顯示碼表記錄">
     <figcaption>iPhone：字根資料列表用來查找與編輯單筆碼表記錄。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_record_list.png" alt="Android LIME 字根資料列表，顯示碼表記錄">
+    <img src="../assets/lime_settings_android_record_list.png" alt="Android LIME 字根資料列表，顯示碼表記錄">
     <figcaption>Android：可在列表中搜尋、編輯或刪除字根資料。</figcaption>
   </figure>
 </div>
@@ -175,11 +175,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_related_list.png" alt="iPhone LIME 關聯字詞列表，顯示關聯資料">
+    <img src="../assets/lime_settings_ios_related_list.png" alt="iPhone LIME 關聯字詞列表，顯示關聯資料">
     <figcaption>iPhone：關聯字詞列表管理選字後的後續候選提示。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_related_list.png" alt="Android LIME 關聯字詞列表，顯示關聯資料">
+    <img src="../assets/lime_settings_android_related_list.png" alt="Android LIME 關聯字詞列表，顯示關聯資料">
     <figcaption>Android：可新增、編輯或刪除關聯字詞資料。</figcaption>
   </figure>
 </div>

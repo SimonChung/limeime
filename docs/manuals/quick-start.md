@@ -21,11 +21,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁，顯示鍵盤啟用狀態與前往設定按鈕">
+    <img src="../assets/lime_settings_ios_setup.png" alt="iPhone LIME 設定分頁，顯示鍵盤啟用狀態與前往設定按鈕">
     <figcaption>iPhone：設定分頁用來確認鍵盤是否已加入系統鍵盤清單。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_setup.png" alt="Android LIME 設定分頁，顯示鍵盤啟用與語音輸入狀態">
+    <img src="../assets/lime_settings_android_setup.png" alt="Android LIME 設定分頁，顯示鍵盤啟用與語音輸入狀態">
     <figcaption>Android：設定分頁同時顯示鍵盤啟用與語音輸入權限狀態。</figcaption>
   </figure>
 </div>
@@ -99,11 +99,11 @@ LIME 啟用後，下一步取決於你是否已有舊裝置資料。有舊裝置
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_database.png" alt="iPhone LIME 資料庫分頁，顯示備份資料庫與還原資料庫">
+    <img src="../assets/lime_settings_ios_database.png" alt="iPhone LIME 資料庫分頁，顯示備份資料庫與還原資料庫">
     <figcaption>iPhone：換機前先在舊裝置備份資料庫。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_database.png" alt="Android LIME 資料庫分頁，顯示備份資料庫與還原資料庫">
+    <img src="../assets/lime_settings_android_database.png" alt="Android LIME 資料庫分頁，顯示備份資料庫與還原資料庫">
     <figcaption>Android：新裝置可用還原資料庫取回舊資料。</figcaption>
   </figure>
 </div>
@@ -127,11 +127,11 @@ LIME 啟用後，下一步取決於你是否已有舊裝置資料。有舊裝置
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_im_list.png" alt="iPhone LIME 輸入法分頁，顯示目前已安裝輸入法列表">
+    <img src="../assets/lime_settings_ios_im_list.png" alt="iPhone LIME 輸入法分頁，顯示目前已安裝輸入法列表">
     <figcaption>iPhone：先確認輸入法列表是否已有可用碼表。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_im_list.png" alt="Android LIME 輸入法分頁，顯示目前已安裝輸入法列表">
+    <img src="../assets/lime_settings_android_im_list.png" alt="Android LIME 輸入法分頁，顯示目前已安裝輸入法列表">
     <figcaption>Android：列表空白時，請下載或匯入第一個輸入法。</figcaption>
   </figure>
 </div>
@@ -155,11 +155,11 @@ LIME 啟用後，下一步取決於你是否已有舊裝置資料。有舊裝置
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_im_install.png" alt="iPhone LIME 輸入法下載與匯入畫面，顯示可下載或匯入的輸入法">
+    <img src="../assets/lime_settings_ios_im_install.png" alt="iPhone LIME 輸入法下載與匯入畫面，顯示可下載或匯入的輸入法">
     <figcaption>iPhone：下載畫面列出可安裝的輸入法與匯入方式。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_im_install.png" alt="Android LIME 輸入法下載與匯入畫面，顯示可下載或匯入的輸入法">
+    <img src="../assets/lime_settings_android_im_install.png" alt="Android LIME 輸入法下載與匯入畫面，顯示可下載或匯入的輸入法">
     <figcaption>Android：可從同一畫面下載官方碼表或匯入本機檔案。</figcaption>
   </figure>
 </div>

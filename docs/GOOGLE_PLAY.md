@@ -1,9 +1,9 @@
-﻿# Google Play Submission Checklist — LimeIME
+# Google Play Submission Checklist — LimeIME
 
 Preparation checklist for publishing **LIME IME 6** (`org.limeime`) to the Google Play Store.
 
 > **Decisions locked:** Personal developer account · Free app · privacy policy hosted on GitHub Pages.
-> **Prepared content is ready to paste** — see [GOOGLE_PLAY_LISTING.md](GOOGLE_PLAY_LISTING.md) (store text, Data Safety answers, asset spec) and [PRIVACY_POLICY.md](PRIVACY_POLICY.md) (privacy policy draft, EN + zh-TW).
+> **Prepared content is ready to paste** — see [GOOGLE_PLAY_LISTING.md](GOOGLE_PLAY_LISTING.md) (store text, Data Safety answers, asset spec) and [ANDROID_PRIVACY.md](ANDROID_PRIVACY.md) (privacy policy draft, EN + zh-TW).
 
 Current build facts (from [LimeStudio/app/build.gradle](../LimeStudio/app/build.gradle)):
 
@@ -120,10 +120,10 @@ The `signingConfigs {}` block in [LimeStudio/app/build.gradle](../LimeStudio/app
 
 ## 9. Privacy policy
 
-> ✅ **Drafted** (EN + zh-TW): [PRIVACY_POLICY.md](PRIVACY_POLICY.md). Content matches the Data Safety answers.
+> ✅ **Drafted** (EN + zh-TW): [ANDROID_PRIVACY.md](ANDROID_PRIVACY.md). Content matches the Data Safety answers.
 
-- [x] **Privacy policy written** — [PRIVACY_POLICY.md](PRIVACY_POLICY.md), covering on-device learning, voice input handling, backup files, permissions, and contact info.
-- [ ] **Publish to GitHub Pages** (repo already uses Jekyll). Add `PRIVACY_POLICY.md` to the Pages includes (like `LICENSE.md` in [_config.yml](../_config.yml)) so it serves at a public HTTPS URL — target `https://lime-ime.github.io/limeime/PRIVACY/`.
+- [x] **Privacy policy written** — [ANDROID_PRIVACY.md](ANDROID_PRIVACY.md), covering on-device learning, voice input handling, backup files, permissions, and contact info.
+- [ ] **Publish to GitHub Pages** (repo already uses Jekyll). Add `ANDROID_PRIVACY.md` to the Pages includes (like `LICENSE.md` in [_config.yml](../_config.yml)) so it serves at a public HTTPS URL — target `https://lime-ime.github.io/limeime/PRIVACY/`.
 - [ ] Add the live privacy policy URL in **Play Console → App content → Privacy policy**.
 
 ---

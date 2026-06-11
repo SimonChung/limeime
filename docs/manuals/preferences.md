@@ -12,11 +12,11 @@
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_preferences.png" alt="iPhone LIME 喜好設定分頁，顯示鍵盤外觀與輸入行為設定">
+    <img src="../assets/lime_settings_ios_preferences.png" alt="iPhone LIME 喜好設定分頁，顯示鍵盤外觀與輸入行為設定">
     <figcaption>iPhone：喜好設定分頁集中管理鍵盤外觀、回饋與輸入行為。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_preferences.png" alt="Android LIME 喜好設定分頁，顯示鍵盤外觀與輸入行為設定">
+    <img src="../assets/lime_settings_android_preferences.png" alt="Android LIME 喜好設定分頁，顯示鍵盤外觀與輸入行為設定">
     <figcaption>Android：同一組主要偏好設定以 Android 版面呈現。</figcaption>
   </figure>
 </div>
@@ -48,12 +48,12 @@
 系統外觀是淺色時，「系統設定」主題會呈現淺色鍵盤，請檢查注音鍵盤、英文鍵盤與 Emoji 面板是否都維持淺色可讀性。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_system_light.png" alt="Android 系統淺色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_system_light.png" alt="Android 系統淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_system_light.png" alt="Android 系統淺色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_system_light.png" alt="iOS 系統淺色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_system_light.png" alt="iOS 系統淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_system_light.png" alt="iOS 系統淺色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_system_light.png" alt="Android 系統淺色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_system_light.png" alt="Android 系統淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_system_light.png" alt="Android 系統淺色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_system_light.png" alt="iOS 系統淺色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_system_light.png" alt="iOS 系統淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 系統淺色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 淺色
@@ -61,12 +61,12 @@
 固定淺色會忽略系統深色狀態，鍵盤仍維持淺色，這個選項適合希望鍵盤永遠保持高亮背景的使用者。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_light.png" alt="Android 淺色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_light.png" alt="Android 淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_light.png" alt="Android 淺色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_light.png" alt="iOS 淺色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_light.png" alt="iOS 淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_light.png" alt="iOS 淺色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_light.png" alt="Android 淺色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_light.png" alt="Android 淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_light.png" alt="Android 淺色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_light.png" alt="iOS 淺色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_light.png" alt="iOS 淺色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 淺色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 系統設定：系統深色
@@ -74,12 +74,12 @@
 系統外觀是深色時，「系統設定」主題會呈現深色鍵盤，請同時檢查候選列文字、Emoji 搜尋列與分類列是否仍清楚可讀。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_system_dark.png" alt="Android 系統深色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_system_dark.png" alt="Android 系統深色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_system_dark.png" alt="Android 系統深色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_system_dark.png" alt="iOS 系統深色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_system_dark.png" alt="iOS 系統深色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_system_dark.png" alt="iOS 系統深色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_system_dark.png" alt="Android 系統深色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_system_dark.png" alt="Android 系統深色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_system_dark.png" alt="Android 系統深色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_system_dark.png" alt="iOS 系統深色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_system_dark.png" alt="iOS 系統深色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_dark.png" alt="iOS 系統深色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 深色
@@ -87,12 +87,12 @@
 固定深色會讓鍵盤持續使用深色鍵面，若你在白天仍偏好暗色鍵盤，選這個選項比「系統設定」更穩定。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_dark.png" alt="Android 深色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_dark.png" alt="Android 深色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_dark.png" alt="Android 深色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_dark.png" alt="iOS 深色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_dark.png" alt="iOS 深色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_dark.png" alt="iOS 深色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_dark.png" alt="Android 深色 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_dark.png" alt="Android 深色 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_dark.png" alt="Android 深色 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_dark.png" alt="iOS 深色 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_dark.png" alt="iOS 深色 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_dark.png" alt="iOS 深色 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 粉紅
@@ -100,12 +100,12 @@
 粉紅主題使用較亮的粉色鍵面，選用後請確認候選字文字與按鍵文字都清楚，不要只看背景顏色。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_pink.png" alt="Android 粉紅 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_pink.png" alt="Android 粉紅 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_pink.png" alt="Android 粉紅 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_pink.png" alt="iOS 粉紅 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_pink.png" alt="iOS 粉紅 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_pink.png" alt="iOS 粉紅 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_pink.png" alt="Android 粉紅 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_pink.png" alt="Android 粉紅 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_pink.png" alt="Android 粉紅 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_pink.png" alt="iOS 粉紅 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_pink.png" alt="iOS 粉紅 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 粉紅 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 科技藍
@@ -113,12 +113,12 @@
 科技藍主題使用藍色鍵面與候選列配色，若你常在低亮度環境輸入，請實際打字確認候選字對比。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_tech_blue.png" alt="Android 科技藍 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_tech_blue.png" alt="Android 科技藍 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_tech_blue.png" alt="Android 科技藍 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_tech_blue.png" alt="iOS 科技藍 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_tech_blue.png" alt="iOS 科技藍 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_tech_blue.png" alt="iOS 科技藍 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_tech_blue.png" alt="Android 科技藍 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_tech_blue.png" alt="Android 科技藍 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_tech_blue.png" alt="Android 科技藍 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_tech_blue.png" alt="iOS 科技藍 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_tech_blue.png" alt="iOS 科技藍 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 科技藍 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 時尚紫
@@ -126,12 +126,12 @@
 時尚紫主題使用紫色鍵面，若候選列或副鍵符號不易辨識，先改回淺色或系統設定確認是否為主題對比問題。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_fashion_purple.png" alt="Android 時尚紫 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_fashion_purple.png" alt="Android 時尚紫 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_fashion_purple.png" alt="Android 時尚紫 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_fashion_purple.png" alt="iOS 時尚紫 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_fashion_purple.png" alt="iOS 時尚紫 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_fashion_purple.png" alt="iOS 時尚紫 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_fashion_purple.png" alt="Android 時尚紫 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_fashion_purple.png" alt="Android 時尚紫 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_fashion_purple.png" alt="Android 時尚紫 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_fashion_purple.png" alt="iOS 時尚紫 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_fashion_purple.png" alt="iOS 時尚紫 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 時尚紫 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ### 放鬆綠
@@ -139,12 +139,12 @@
 放鬆綠主題使用綠色鍵面，選用後請確認候選字、功能鍵與 Emoji 面板的文字在你的螢幕亮度下都能辨識。
 
 <div class="manual-theme-grid">
-  <figure><img src="../docs/pictures/android_keyboard_zhuyin_relax_green.png" alt="Android 放鬆綠 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/android_keyboard_english_relax_green.png" alt="Android 放鬆綠 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
-  <figure><img src="../docs/pictures/android_emoji_panel_relax_green.png" alt="Android 放鬆綠 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_zhuyin_relax_green.png" alt="iOS 放鬆綠 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_keyboard_english_relax_green.png" alt="iOS 放鬆綠 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
-  <figure><img src="../docs/pictures/ios_emoji_panel_relax_green.png" alt="iOS 放鬆綠 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_zhuyin_relax_green.png" alt="Android 放鬆綠 LIME 注音鍵盤"><figcaption>Android 注音</figcaption></figure>
+  <figure><img src="../assets/android_keyboard_english_relax_green.png" alt="Android 放鬆綠 LIME 英文鍵盤，顯示中鍵"><figcaption>Android English</figcaption></figure>
+  <figure><img src="../assets/android_emoji_panel_relax_green.png" alt="Android 放鬆綠 LIME Emoji 面板"><figcaption>Android Emoji</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_zhuyin_relax_green.png" alt="iOS 放鬆綠 LIME 注音鍵盤，候選列提供 Emoji 按鈕"><figcaption>iOS 注音</figcaption></figure>
+  <figure><img src="../assets/ios_keyboard_english_relax_green.png" alt="iOS 放鬆綠 LIME 英文鍵盤，顯示中鍵"><figcaption>iOS English</figcaption></figure>
+  <figure><img src="../assets/ios_emoji_panel_system_light.png" alt="iOS 放鬆綠 LIME Emoji 面板"><figcaption>iOS Emoji</figcaption></figure>
 </div>
 
 ## 鍵盤大小、候選字大小與輔助鍵
@@ -262,11 +262,11 @@ Email、URL、密碼或其他受限欄位可能使用不同鍵盤行為，這些
 
 <div class="manual-screenshot-pair">
   <figure>
-    <img src="../docs/lime_settings_ios_reverse_lookup.png" alt="iPhone LIME 字根反查設定畫面，顯示各輸入法反查來源選擇">
+    <img src="../assets/lime_settings_ios_reverse_lookup.png" alt="iPhone LIME 字根反查設定畫面，顯示各輸入法反查來源選擇">
     <figcaption>iPhone：每個輸入法可選擇反查來源，來源清單依已啟用輸入法產生。</figcaption>
   </figure>
   <figure>
-    <img src="../docs/lime_settings_android_reverse_lookup.png" alt="Android LIME 字根反查設定畫面，顯示各輸入法反查來源選擇">
+    <img src="../assets/lime_settings_android_reverse_lookup.png" alt="Android LIME 字根反查設定畫面，顯示各輸入法反查來源選擇">
     <figcaption>Android：反查來源同樣使用已啟用輸入法清單。</figcaption>
   </figure>
 </div>
