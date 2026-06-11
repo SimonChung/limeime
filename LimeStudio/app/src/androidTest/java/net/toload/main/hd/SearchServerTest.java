@@ -985,6 +985,64 @@ public class SearchServerTest {
         assertTrue(found);
     }
 
+    @Test(timeout = 5000)
+    public void test_3_1_10_7b_bestSuggestion_skips_duplicate_db_word() throws Exception {
+        Map<String, List<Mapping>> cache = getStatic("cache", Map.class);
+        cache.clear();
+        List<List<Pair<Mapping, String>>> suggestionLoL = getStatic("suggestionLoL", List.class);
+        Stack<Pair<Mapping, String>> bestSuggestionStack = getStatic("bestSuggestionStack", Stack.class);
+        suggestionLoL.clear();
+        bestSuggestionStack.clear();
+        setStatic("abandonPhraseSuggestion", false);
+
+        StubLimeDBRuntime stub = new StubLimeDBRuntime(appContext);
+        Mapping first = new Mapping();
+        first.setCode("a");
+        first.setWord("甲");
+        first.setBasescore(200);
+        first.setExactMatchToCodeRecord();
+        stub.responses.put("a", Collections.singletonList(first));
+
+        Mapping second = new Mapping();
+        second.setCode("b");
+        second.setWord("乙");
+        second.setBasescore(200);
+        second.setExactMatchToCodeRecord();
+        stub.responses.put("b", Collections.singletonList(second));
+
+        Mapping partial = new Mapping();
+        partial.setCode("abx");
+        partial.setWord("placeholder");
+        partial.setBasescore(1);
+        partial.setPartialMatchToCodeRecord();
+        stub.responses.put("ab", Collections.singletonList(partial));
+
+        LimeDB original = getStatic("dbadapter", LimeDB.class);
+        setStatic("dbadapter", stub);
+        try {
+            searchServer.getMappingByCode("a", true, false);
+            searchServer.getMappingByCode("ab", true, false);
+
+            cache.clear();
+            Mapping exact = new Mapping();
+            exact.setCode("ab");
+            exact.setWord("甲乙");
+            exact.setBasescore(0);
+            exact.setExactMatchToCodeRecord();
+            stub.responses.put("ab", Collections.singletonList(exact));
+
+            List<Mapping> result = searchServer.getMappingByCode("ab", true, false);
+
+            int count = 0;
+            for (Mapping mapping : result) {
+                if ("甲乙".equals(mapping.getWord())) count++;
+            }
+            assertEquals("runtime phrase must not duplicate an existing DB candidate with the same word", 1, count);
+        } finally {
+            setStatic("dbadapter", original);
+        }
+    }
+
     /**
      * Exact-match remap updates coderemapcache.
      */

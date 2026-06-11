@@ -1636,6 +1636,35 @@ final class SearchServerTest: XCTestCase {
             "\"ab\" should have been fetched at least twice: once for pre-warm, once for re-warm")
     }
 
+    func test_3_3_4_1b_getMappingByCode_deduplicates_runtime_phrase_when_db_contains_same_word() throws {
+        let spy = SpyLimeDB()
+        spy.getMappingByCodeResponses["a"] = [
+            Mapping(id: 1, code: "a", word: "甲", score: 0, baseScore: 200,
+                    recordType: Mapping.RecordType.exactMatchToCode)
+        ]
+        spy.getMappingByCodeResponses["b"] = [
+            Mapping(id: 2, code: "b", word: "乙", score: 0, baseScore: 200,
+                    recordType: Mapping.RecordType.exactMatchToCode)
+        ]
+        spy.getMappingByCodeResponses["ab"] = [
+            Mapping(id: 3, code: "ab", word: "placeholder", score: 0, baseScore: 1,
+                    recordType: Mapping.RecordType.partialMatchToCode)
+        ]
+        let ss = makeSearchServerWithSpy(spy)
+
+        _ = ss.getMappingByCode("a")
+        _ = ss.getMappingByCode("ab")
+
+        spy.getMappingByCodeResponses["ab"] = [
+            Mapping(id: 4, code: "ab", word: "甲乙", score: 0, baseScore: 0,
+                    recordType: Mapping.RecordType.exactMatchToCode)
+        ]
+        let result = ss.getMappingByCode("ab", getAllRecords: true)
+
+        XCTAssertEqual(result.filter { $0.word == "甲乙" }.count, 1,
+                       "runtime phrase must not duplicate an existing DB candidate with the same word")
+    }
+
     // Single-char code: updateSimilarCodeCache returns [] (len ≤ 1), so no prefix evictions
     // occur and learnRelatedPhraseAndUpdateScore only re-queries the candidate code itself.
     func test_3_3_4_2_updateSimilarCodeCache_prefetch_single_char() throws {

@@ -144,7 +144,7 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.4
                 Section(header: Text("輸入法行為")) {
-                    Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧選字", "部份輸入法可能會影響中英混打功能") }
+                    Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧組詞", "部份輸入法可能會影響中英混打功能") }
                     Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點模式", "無候選字詞時顯示中文標點選項") }
                     Toggle(isOn: $persistentLanguageMode) { prefRow("記憶中英模式", "下次切換前保持中英模式") }
                     Picker("設定 EMOJI 候選列顯示位置", selection: $emojiPosition) {

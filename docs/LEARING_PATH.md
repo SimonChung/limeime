@@ -11,7 +11,7 @@ This document maps every runtime path that writes learned data, which preference
 | `candidate_suggestion` | 啟動自建關聯字 | Build related-phrase records from consecutive committed candidates. |
 | `learn_phrase` | 自動學習新詞 | Promote frequent or continuous phrases into the main IM table as learned mappings. |
 | `learning_switch` | 啟動選取排序 | Sort candidate results by learned score. This is not a write gate by itself. |
-| `smart_chinese_input` | 開啟中文智慧選字 | Build/show runtime phrase suggestions. It indirectly controls runtime-built phrase selection opportunities. |
+| `smart_chinese_input` | 開啟中文智慧組詞 | Build/show runtime phrase suggestions. It indirectly controls runtime-built phrase selection opportunities. |
 
 ## Android Paths
 

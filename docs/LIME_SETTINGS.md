@@ -1000,7 +1000,7 @@ Use `@AppStorage(key, store: UserDefaults(suiteName: "group.net.toload.limeime")
 
 | UI Control | Pref Key | Type | Default | Values / Notes |
 |---|---|---|---|---|
-| `Toggle` "智慧組詞" | `smart_chinese_input` | Bool | true | 部份輸入法可能會影響中英混打功能. |
+| `Toggle` "開啟中文智慧組詞" | `smart_chinese_input` | Bool | true | 部份輸入法可能會影響中英混打功能. |
 | `Toggle` "自動中文標點" | `auto_chinese_symbol` | Bool | false | 無候選字詞時顯示中文標點選項. |
 | `Toggle` "滑動選取候選字" | `candidate_switch` | Bool | true | 開啟：跟手滑動 關閉：滑動翻頁 |
 | `Toggle` "記憶中英模式" | `persistent_language_mode` | Bool | false | 下次切換前保持中英模式. |

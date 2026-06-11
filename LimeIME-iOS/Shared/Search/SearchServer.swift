@@ -263,11 +263,15 @@ final class SearchServer {
             bestLen = bs.word.count
             if bestLen > 0 { averageScore = bs.baseScore / bestLen }
         }
+        let bestSuggestionDuplicatesDbResult = bestSuggestion.map { bs in
+            dbResults.contains { $0.word == bs.word }
+        } ?? false
 
         var result: [Mapping] = [echo]
         if let bs = bestSuggestion,
            !abandonPhraseSuggestion,
            !bs.isExactMatchToCodeRecord,
+           !bestSuggestionDuplicatesDbResult,
            bestLen > 1,
            (englishSuggestion == nil && averageScore > minScoreThreshold)
              || (englishSuggestion != nil && averageScore > maxScoreThreshold) {

@@ -1075,10 +1075,13 @@ public class SearchServer {
                     averageScore = bestSuggestion.getBasescore() / bestSuggestionLength;
                 }
             }
+            boolean bestSuggestionDuplicatesResultList =
+                    bestSuggestion != null && mappingListContainsWord(resultlist, bestSuggestion.getWord());
 
             if (bestSuggestion != null    // the last element is run-time built suggestion from remaining code query
                     && !abandonPhraseSuggestion
                     && !bestSuggestion.isExactMatchToCodeRecord() //will be the first item of result list, dont' add duplicated item
+                    && !bestSuggestionDuplicatesResultList
                     && bestSuggestionLength > 1
                     && ( (englishSuggestion==null && averageScore  > MIN_SCORE_THRESHOLD) || (englishSuggestion!=null && averageScore > MAX_SCORE_THRESHOLD ))  ) {
                 result.add(self);
@@ -1122,6 +1125,16 @@ public class SearchServer {
 
         return result;
 
+    }
+
+    private static boolean mappingListContainsWord(List<Mapping> mappings, String word) {
+        if (mappings == null || word == null) return false;
+        for (Mapping mapping : mappings) {
+            if (mapping != null && word.equals(mapping.getWord())) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
