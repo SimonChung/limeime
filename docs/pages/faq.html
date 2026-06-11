@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>常見問題 · 萊姆輸入法 使用手冊</title>
+<link rel="icon" type="image/png" href="../assets/lime-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="manual.css?v=3"/>
+<style>
+.faq{display:flex;flex-direction:column;gap:10px;margin:20px 0}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.faq summary{list-style:none;cursor:default;padding:17px 20px;font-weight:700;font-size:16.5px;
+  display:flex;align-items:flex-start;gap:12px;pointer-events:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .q{font-family:var(--latin);color:var(--lime-deep);flex:none}
+.faq .a{padding:0 20px 18px 52px;color:#2C2C27}
+.faq .a p{margin:6px 0}
+@media(max-width:560px){.faq .a{padding-left:20px}}
+</style>
+</head>
+<body>
+
+<div class="m-top">
+  <div class="bar">
+    <a class="logo" href="../index.html"><img src="../assets/lime-icon.png" alt=""/><span class="wm">萊姆輸入法</span></a>
+  </div>
+</div>
+
+<div class="m-shell">
+  <aside class="m-side">
+    <div class="grp">開始</div>
+    <a href="index.html"><span class="n">00</span>手冊首頁</a>
+    <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+    <div class="grp">日常使用</div>
+    <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+    <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+    <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+    <div class="grp">資料與進階</div>
+    <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+    <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+    <div class="grp">支援</div>
+    <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+    <a class="on" href="faq.html"><span class="n">08</span>常見問題</a>
+    <div class="grp">法務</div>
+    <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+    <a href="license.html"><span class="n">10</span>版權說明</a>
+  </aside>
+
+  <main class="m-content">
+    <nav class="m-toc">
+      <details>
+        <summary>📖 手冊目錄</summary>
+        <div class="list">
+          <a href="index.html"><span class="n">00</span>手冊首頁</a>
+          <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+          <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+          <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+          <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+          <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+          <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+          <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+          <a class="on" href="faq.html"><span class="n">08</span>常見問題</a>
+          <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+          <a href="license.html"><span class="n">10</span>版權說明</a>
+        </div>
+      </details>
+    </nav>
+
+    <section class="manual-hero">
+      <span class="crumb">08 · 支援</span>
+      <h1>常見問題</h1>
+      <p>跨主題的快速解答。找不到答案時可先看這裡，或前往對應的主題頁與疑難排解。</p>
+    </section>
+
+    <div class="faq">
+      <details open>
+        <summary><span class="q">Q</span>萊姆輸入法要付費嗎？</summary>
+        <div class="a"><p>萊姆輸入法是自由、開源的軟體，原始碼公開，你可以自行取得並建置。Android 版可免費下載，iOS 版可能於 App Store 酌收少許費用，用以支應 Apple 每年向開發者收取的年費。無論哪個平台，都沒有廣告，也不會追蹤你的輸入。原始碼公開在 <a href="https://github.com/lime-ime/limeime" target="_blank" rel="noopener">GitHub</a>。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>萊姆輸入法會收集我打的字嗎？</summary>
+        <div class="a"><p>不會。萊姆輸入法不收集或傳送任何個人資料，學習記錄只儲存在你的裝置上。詳見「<a href="privacy.html">隱私說明</a>」。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>iPhone 的「允許完整取用」一定要開嗎？</summary>
+        <div class="a"><p>不一定。這個權限僅用於啟用按鍵震動回饋。若不需要震動，可以不開啟，仍能正常打字。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>支援哪些輸入法？</summary>
+        <div class="a"><p>注音、倉頡（含五代、香港字）、速成、快倉、大易、行列與行列 10、拼音、華象直覺、輕鬆、筆順五碼，以及自建輸入法。你也可以匯入自己的 <code>.cin</code> 碼表。下載方式見「<a href="ime-management.html">管理輸入法</a>」。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>注音可以換成倚天或許氏鍵盤嗎？</summary>
+        <div class="a"><p>可以。進入注音輸入法的詳細頁，於「注音鍵盤類型」選擇標準、倚天 41 鍵、倚天 26 鍵或許氏等配置。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>換新手機，要怎麼把碼表和學習記錄帶過去？</summary>
+        <div class="a"><p>在舊機的「資料庫」分頁「備份資料庫」，把備份檔存到雲端或檔案，再到新機「還原資料庫」。完整步驟見「<a href="database-management.html">備份與還原</a>」。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>Android 與 iOS 的設定一樣嗎？</summary>
+        <div class="a"><p>核心功能一致，啟用步驟因系統而略有差異。主要差別在系統權限與語音輸入：iOS 的按鍵震動需要「允許完整取用」，且不提供鍵盤內語音輸入，Android 則可使用鍵盤內語音輸入（需麥克風權限），Android 13 起按鍵震動強度改由系統控制。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>iPhone 和 iPad 的鍵盤一樣嗎？</summary>
+        <div class="a"><p>不一樣，iPhone 與 iPad 使用不同的鍵盤版面。iPad 版面較完整，按鍵上提供副鍵符號，可向下滑動或長按直接輸入，並支援分割鍵盤，iPhone 版面較精簡，英文模式可另外開啟數字列。詳見「<a href="keyboard-input.html#ipad">鍵盤輸入 · iPad 副鍵符號與分割鍵盤</a>」。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>打不出字怎麼辦？</summary>
+        <div class="a"><p>先確認鍵盤已啟用、至少安裝一套輸入法且目前為中文模式。詳細排查見「<a href="troubleshooting.html">疑難排解</a>」。</p></div>
+      </details>
+      <details open>
+        <summary><span class="q">Q</span>我想回報問題或貢獻，該去哪裡？</summary>
+        <div class="a"><p>歡迎到 <a href="https://github.com/lime-ime/limeime/issues" target="_blank" rel="noopener">GitHub Issues</a> 回報問題或提出建議，也歡迎與開發團隊聯絡參與開發。</p></div>
+      </details>
+    </div>
+
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>還是找不到答案？</b>各主題頁有更完整的說明，或到 <a href="https://github.com/lime-ime/limeime/issues" target="_blank" rel="noopener">GitHub Issues</a> 與社群討論。</div>
+    </div>
+
+    <div class="m-pagenav">
+      <a class="prev" href="troubleshooting.html"><div class="dir">← 上一篇</div><div class="ttl">疑難排解</div></a>
+      <a class="next" href="index.html"><div class="dir">回到 →</div><div class="ttl">手冊首頁</div></a>
+    </div>
+  </main>
+</div>
+
+
+</body>
+</html>

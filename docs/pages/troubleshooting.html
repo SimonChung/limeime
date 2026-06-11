@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>疑難排解 · 萊姆輸入法 使用手冊</title>
+<link rel="icon" type="image/png" href="../assets/lime-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="manual.css?v=3"/>
+</head>
+<body>
+
+<div class="m-top">
+  <div class="bar">
+    <a class="logo" href="../index.html"><img src="../assets/lime-icon.png" alt=""/><span class="wm">萊姆輸入法</span></a>
+  </div>
+</div>
+
+<div class="m-shell">
+  <aside class="m-side">
+    <div class="grp">開始</div>
+    <a href="index.html"><span class="n">00</span>手冊首頁</a>
+    <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+    <div class="grp">日常使用</div>
+    <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+    <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+    <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+    <div class="grp">資料與進階</div>
+    <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+    <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+    <div class="grp">支援</div>
+    <a class="on" href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+    <a href="faq.html"><span class="n">08</span>常見問題</a>
+    <div class="grp">法務</div>
+    <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+    <a href="license.html"><span class="n">10</span>版權說明</a>
+  </aside>
+
+  <main class="m-content">
+    <nav class="m-toc">
+      <details>
+        <summary>📖 手冊目錄</summary>
+        <div class="list">
+          <a href="index.html"><span class="n">00</span>手冊首頁</a>
+          <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+          <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+          <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+          <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+          <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+          <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+          <a class="on" href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+          <a href="faq.html"><span class="n">08</span>常見問題</a>
+          <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+          <a href="license.html"><span class="n">10</span>版權說明</a>
+        </div>
+      </details>
+    </nav>
+
+    <section class="manual-hero">
+      <span class="crumb">07 · 支援</span>
+      <h1>疑難排解</h1>
+      <div class="quick">
+        <a href="#enable">無法啟用或叫不出鍵盤</a>
+        <a href="#noim">打不出字</a>
+        <a href="#db">資料庫問題</a>
+        <a href="#voice">語音輸入</a>
+      </div>
+    </section>
+
+    <p class="lead">打不出字、找不到輸入法或備份還原出問題時，可依下方常見狀況快速排查。遇到問題時，先回到「設定」分頁看狀態橫幅的顏色，多數啟用相關問題都能由此判斷。</p>
+
+    <h2 id="enable">無法啟用或叫不出鍵盤</h2>
+    <ul>
+      <li><strong>狀態橫幅是紅色：</strong>代表尚未啟用萊姆輸入法鍵盤，請回到「<a href="quick-start.html">快速上手</a>」依平台完成啟用。</li>
+      <li><strong>狀態橫幅是橙色（iPhone）：</strong>代表鍵盤已啟用，但尚未允許完整取用。若需要按鍵震動，請開啟「允許完整取用」，不需要震動則可忽略，仍能打字。</li>
+      <li><strong>叫出的不是萊姆輸入法：</strong>在任一輸入欄位長按或點按系統的地球鍵，切換到萊姆輸入法。</li>
+    </ul>
+
+    <h2 id="noim">打字沒有候選字、打不出字</h2>
+    <ul>
+      <li><strong>確認已安裝輸入法：</strong>到「輸入法」分頁確認至少有一套輸入法且已啟用。若清單為空，請點「＋」下載或匯入，詳見「<a href="ime-management.html">管理輸入法</a>」。</li>
+      <li><strong>確認輸入模式：</strong>確認目前是中文模式，必要時點「中／英」鍵切換。</li>
+      <li><strong>剛清除過輸入法：</strong>若先前移除了正在使用的輸入法，鍵盤會找不到候選字，請重新下載或切換到其他已安裝的輸入法。</li>
+    </ul>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>找不到某個字</b>可使用「字根反查」功能，在喜好設定的「字根反查設定」指定反查來源，打字找不到字時以其他輸入法字根標注說明。</div>
+    </div>
+
+    <h2 id="db">備份還原相關問題</h2>
+    <ul>
+      <li><strong>還原後資料不見了：</strong>還原會以備份檔完全取代現有資料。若還原後內容不如預期，請改用正確的備份檔重新還原。</li>
+      <li><strong>備份卡住：</strong>大型資料庫打包需要數秒到數十秒，畫面會顯示進度或「準備備份中…」，請耐心等待，勿中途關閉 App。</li>
+      <li><strong>資料庫疑似損壞：</strong>可嘗試「還原預設資料庫」回到初始狀態，再重新下載需要的輸入法。此操作會覆蓋現有資料。</li>
+    </ul>
+
+    <h2 id="voice">語音輸入</h2>
+    <p>語音輸入行為依平台而不同。</p>
+    <ul>
+      <li><strong>Android：</strong>可使用系統或 Google 語音輸入。萊姆輸入法內建的語音輸入需要麥克風（<code>RECORD_AUDIO</code>）權限，若略過或拒絕，仍可改用 Google／廠商的語音輸入。</li>
+      <li><strong>權限被永久拒絕：</strong>若系統不再跳出授權視窗，請前往系統設定，於萊姆輸入法的「權限 → 麥克風」改為允許。</li>
+    </ul>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>仍無法解決？</b>歡迎到 <a href="https://github.com/lime-ime/limeime/issues" target="_blank" rel="noopener">GitHub Issues</a> 回報問題，附上裝置型號與系統版本，有助於更快定位。</div>
+    </div>
+
+    <div class="m-pagenav">
+      <a class="prev" href="advanced.html"><div class="dir">← 上一篇</div><div class="ttl">進階自訂</div></a>
+      <a class="next" href="faq.html"><div class="dir">下一篇 →</div><div class="ttl">常見問題</div></a>
+    </div>
+  </main>
+</div>
+
+
+</body>
+</html>
