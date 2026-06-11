@@ -155,7 +155,7 @@ struct PreferencesTabView: View {
                     }
                     Picker("建議字顯示數量", selection: $similiarList) {
                         ForEach(similiarOpts, id: \.self) { v in
-                            Text(v == 0 ? "關閉" : "\(v)").tag(v)
+                            Text("\(v)").tag(v)
                         }
                     }
                     .disabled(!similiarEnable)
