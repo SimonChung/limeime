@@ -108,13 +108,25 @@ final class LimeUITests: XCTestCase {
         try cycleToLimeKeyboard(in: safari, scenario: "emoji_search_dismiss")
         try ensureLimeChineseKeyboardVisible(in: safari, scenario: "emoji_search_dismiss")
 
-        safari.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.64)).tap()
-        let searchField = safari.descendants(matching: .any)["lime_emoji_search_field"]
+        // Open the emoji panel by tapping the candidate-bar emoji button via its
+        // accessibility id rather than a hardcoded normalized coordinate, which
+        // misses the key across themes / layouts. This button is the same stop
+        // condition cycleToLimeKeyboard waited on, so it is present and hittable.
+        let candidateEmojiButton = safari.descendants(matching: .any)["lime_candidate_bar_emoji_button"]
+        XCTAssertTrue(candidateEmojiButton.waitForExistence(timeout: 3),
+                      "LIME candidate-bar emoji button not found.")
+        candidateEmojiButton.tap()
+        // The emoji panel's own search field (distinct id from the in-search
+        // header field) is the one whose tap begins search mode.
+        let searchField = safari.descendants(matching: .any)["lime_emoji_panel_search_field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 3),
                       "LIME emoji search field did not appear.")
 
         searchField.tap()
-        let dismissButton = safari.descendants(matching: .any)["lime_emoji_search_dismiss_button"]
+        // Entering search mode hides the emoji panel and surfaces the candidate
+        // bar's leading xmark as the dismiss control (the panel's own
+        // searchDismissButton is never shown in this flow). Target that.
+        let dismissButton = safari.descendants(matching: .any)["lime_candidate_bar_dismiss_button"]
         XCTAssertTrue(dismissButton.waitForExistence(timeout: 3),
                       "Emoji search dismiss button did not appear in search mode.")
 

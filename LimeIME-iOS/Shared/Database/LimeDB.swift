@@ -1209,6 +1209,17 @@ final class LimeDB {
                                   symbolkb: "symbols", symbolshiftkb: "symbols_shift",
                                   isDisabled: false)
         }
+        // Hardcoded fallback for "cj" (倉頡). cj4 (Haha Cangjie, #84) deletes its own
+        // keyboard row in ensureCj4Schema and reuses the existing Cangjie keyboard, so
+        // "cj" must always resolve even when the bundled keyboard catalog is absent.
+        if keyboard == "cj" {
+            return KeyboardConfig(id: 0, code: "cj", name: "倉頡", desc: "倉頡輸入法鍵盤",
+                                  type: "phone", image: "cj_keyboard_preview",
+                                  imkb: "lime_cj", imshiftkb: "lime_cj_shift",
+                                  engkb: "lime", engshiftkb: "lime_shift",
+                                  symbolkb: "symbols", symbolshiftkb: "symbols_shift",
+                                  isDisabled: false)
+        }
         return try? dbQueue.read { db in
             guard let row = try Row.fetchOne(db,
                 sql: "SELECT * FROM keyboard WHERE code = ? LIMIT 1",

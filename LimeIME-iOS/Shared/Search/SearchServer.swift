@@ -542,7 +542,11 @@ final class SearchServer {
         scorelistLock.unlock()
 
         let tableName = currentTableName
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        // .utility (not .background): the score update + cache re-warm is a
+        // user-initiated learning step that the next composition depends on,
+        // so it must not be starved. Mirrors Android's normal-priority learning
+        // thread and the emoji preload path's .utility QoS below.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
             // Score update
             if candidate.id > 0 {

@@ -4120,7 +4120,12 @@ final class EmojiPanelView: UIView, UITextFieldDelegate, UIScrollViewDelegate {
         backgroundColor = .clear
 
         searchField.placeholder = "搜尋表情符號"
-        searchField.accessibilityIdentifier = "lime_emoji_search_field"
+        // Distinct id from the in-search-mode header field (also
+        // "lime_emoji_search_field"): this panel field is the one whose tap
+        // begins search mode (textFieldDidBeginEditing →
+        // emojiPanelViewDidBeginSearch), so UI tests must target it
+        // unambiguously to enter search and reveal the dismiss button.
+        searchField.accessibilityIdentifier = "lime_emoji_panel_search_field"
         searchField.delegate = self
         searchField.autocorrectionType = .no
         searchField.autocapitalizationType = .none

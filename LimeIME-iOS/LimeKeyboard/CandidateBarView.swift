@@ -300,6 +300,11 @@ final class CandidateBarView: UIView {
         dismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
         dismissButton.tintColor = effectiveCandiText
         dismissButton.isHidden = true
+        // The leading xmark is the dismiss control for composing, empty-bar
+        // chrome, AND emoji-search mode (setEmptyDismissChromeEnabled →
+        // candidateBarViewDidRequestDismiss → hideEmojiPanel). UI tests target
+        // it by this id to exit emoji search.
+        dismissButton.accessibilityIdentifier = "lime_candidate_bar_dismiss_button"
         dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
         // Visible rounded background so the full button extent (restRowH) is apparent.
         // Colour is applied in applyTheme(); corner radius is permanent.

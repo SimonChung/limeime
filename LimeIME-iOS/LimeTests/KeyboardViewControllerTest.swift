@@ -700,13 +700,14 @@ final class KeyboardViewControllerTest: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains(".constrainedDetailLayout(im.label) {"))
+        XCTAssertTrue(source.contains(".constrainedDetailLayout(displayName) {"))
         XCTAssertFalse(source.contains("ToolbarItem(placement: .navigationBarTrailing)"))
         XCTAssertTrue(source.contains("showSharePicker = true"))
         XCTAssertTrue(source.contains("square.and.arrow.up"))
         XCTAssertTrue(source.contains(".font(.title2.weight(.semibold))"))
-        XCTAssertTrue(source.contains(".frame(width: 44, height: 44)"))
-        XCTAssertTrue(layoutSource.contains("private let titleSectionHeight: CGFloat = 60"))
+        XCTAssertTrue(source.contains(".frame(width: SettingsMetrics.detailToolbarButtonSize,"))
+        XCTAssertTrue(source.contains("height: SettingsMetrics.detailToolbarButtonSize)"))
+        XCTAssertTrue(layoutSource.contains("private let titleSectionHeight: CGFloat = SettingsMetrics.titleSectionHeight"))
         XCTAssertTrue(layoutSource.contains("HStack(alignment: .center, spacing: 12)"))
         XCTAssertTrue(layoutSource.contains(".frame(height: titleSectionHeight)"))
     }

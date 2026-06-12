@@ -230,6 +230,7 @@ LimeStudio/app/release/baselineProfiles
 #output-metadata.json
 LimeStudio/gradle/gradle-daemon-jvm.properties
 /.claude
+/LimeIME-iOS/.claude
 /.omc
 /LimeIME-iOS/.omc
 /LimeIME-iOS/LimeKeyboard/Layouts/.omc
@@ -240,3 +241,4 @@ LimeStudio/gradle/gradle-daemon-jvm.properties
 /LimeStudio/.omc
 /LimeStudio/.idea
 /LimeStudio/.omc
+/LimeIME-iOS/.claude

@@ -89,20 +89,9 @@ final class StrokeBenchmark: XCTestCase {
     /// user's typing cadence.
     private func runFixture(im: String, strokes: String) throws {
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
-        try ensureBenchmarkPage(in: safari)
-
-        // Wait for Safari to come to the foreground with the page loaded.
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10),
-                      "Safari did not become foreground (im=\(im))")
-
-        // Wait for the textarea to receive focus and the keyboard to
-        // appear. The textarea is exposed as a textView in the a11y
-        // tree under WebKit.
-        let textArea = safari.webViews.textViews.firstMatch
-        XCTAssertTrue(textArea.waitForExistence(timeout: 10),
-                      "Safari textarea did not appear (im=\(im))")
-        // Already autofocused, but tap to be safe.
-        textArea.tap()
+        // ensureBenchmarkPage foregrounds Safari and returns the keyboard-
+        // focused address field, ready to receive strokes.
+        let inputField = try ensureBenchmarkPage(in: safari)
 
         // NOTE: Keyboard switching via the globe key is intentionally
         // NOT performed here on iOS 26 simulators. Querying
@@ -124,7 +113,7 @@ final class StrokeBenchmark: XCTestCase {
         // which is the canary that this precondition was violated.
 
         for char in strokes {
-            textArea.typeText(String(char))
+            inputField.typeText(String(char))
             // Tiny pause so signposts from the previous stroke close
             // before the next stroke begins. Keep this small enough that
             // the trace still captures genuine inter-stroke latency.
@@ -139,117 +128,63 @@ final class StrokeBenchmark: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Ensure Safari has the benchmark textarea open. Consecutive UI
-    /// benchmark tests often leave that textarea focused, while iOS 26
-    /// exposes the minimized address pill as an `Other` instead of a
-    /// text field. Reusing the page avoids a fragile URL-bar round trip.
-    private func ensureBenchmarkPage(in safari: XCUIApplication) throws {
-        safari.activate()
-        if safari.wait(for: .runningForeground, timeout: 3) {
-            dismissSafariFirstLaunch(in: safari)
-            let existingTextArea = safari.webViews.textViews.firstMatch
-            if existingTextArea.waitForExistence(timeout: 1) {
-                existingTextArea.tap()
-                return
-            }
-        }
-
-        // Open the data: URL via SpringBoard's URL handler. This works
-        // around iOS 26's bottom address bar layout (which moves and
-        // renames the URL field every few releases) and survives the
-        // post-rebuild active-keyboard reset by avoiding the URL field
-        // entirely. The data: URL is small enough to fit in a single
-        // openURL.
-        let html = """
-        <!doctype html><meta name=viewport content='width=device-width'>\
-        <body style='margin:0'>\
-        <textarea autofocus style='width:100vw;height:100vh;font-size:24px;border:0;outline:0'></textarea>
-        """
-        let dataURL = "data:text/html;charset=utf-8," +
-            (html.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
-        try openURLViaSpringBoard(dataURL)
-    }
-
-    /// Open a URL in Safari via SpringBoard, sidestepping Safari's URL
-    /// bar entirely. Uses the `x-safari-https://` scheme trick is not
-    /// safe for `data:` URLs, so we go through the standard URL field
-    /// in SpringBoard's app switcher path: launch via `XCUIApplication`
-    /// of SpringBoard and use its private URL-open accessibility hook.
-    /// Falls back to opening Safari and pasting via the URL bar if the
-    /// private hook fails.
-    private func openURLViaSpringBoard(_ urlString: String) throws {
-        // The cleanest cross-version way: terminate Safari, then relaunch
-        // it with `XCUIApplication.launch()` and use the URL field. But
-        // since the URL field name changes per iOS version, prefer the
-        // `XCUIDevice` system-open path via NSURL handling.
-        guard let url = URL(string: urlString) else {
-            XCTFail("Bad URL"); return
-        }
-        // XCUIRemote/XCUIDevice cannot open URLs directly. Use
-        // SpringBoard's `OpenSensitiveURL:` via the private API exposed
-        // through `UIApplication.shared.open(_:)` is not reachable from
-        // an XCUITest process (no UIApplication). Fall back to driving
-        // the Safari URL field across all known identifiers.
-        try driveSafariURLBar(url.absoluteString)
-    }
-
-    /// Type a URL into Safari's address bar. Tries every known
-    /// identifier across iOS 16–26 (top bar, bottom bar, tab overview).
-    private func driveSafariURLBar(_ urlString: String) throws {
-        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+    /// Ensure Safari has a focused text input with the keyboard visible,
+    /// and return that input element so the fixture can type strokes into it.
+    ///
+    /// Previously this navigated to a `data:` URL containing an autofocused
+    /// `<textarea>`, but modern Safari refuses to load `data:` URLs entered
+    /// in the address bar (a WebKit anti-phishing policy → "Safari cannot
+    /// open the page"), so the textarea never appeared and `typeText`
+    /// failed with "Neither element nor any descendant has keyboard focus".
+    ///
+    /// The fixture's only job is to drive IM strokes through the LimeIME
+    /// extension so the production-code signposts fire (see the file header);
+    /// it does not assert on inserted text. Safari's own address field is a
+    /// reliable text input that brings up the active keyboard without any
+    /// page navigation — the same surface the passing screenshot tests use —
+    /// so we focus it directly.
+    ///
+    /// We deliberately do NOT reuse a webview textView: a prior failed
+    /// navigation can leave a Safari error page ("Safari cannot open the
+    /// page…") whose static TextView matches `webViews.textViews` but cannot
+    /// take keyboard focus, which caused the strokes to fail.
+    @discardableResult
+    private func ensureBenchmarkPage(in safari: XCUIApplication) throws -> XCUIElement {
         safari.activate()
         XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10),
-                      "Safari did not foreground for URL entry")
-
-        // Dismiss Safari's first-launch overlay if present. Xcode's
-        // test clones are fresh sims, so Safari shows this on every
-        // first run inside a clone.
+                      "Safari did not become foreground")
         dismissSafariFirstLaunch(in: safari)
 
-        // Known identifiers across iOS versions:
-        //   iOS 15-:  textFields["URL"] (top bar)
-        //   iOS 17+:  textFields["TabBarItemTitle"] (bottom bar tab pill)
-        //   iOS 18+ iPad: textFields["Address"]
-        //   Fallback: any visible text field.
+        // Tap Safari's address pill (URL / TabBarItemTitle / Address across
+        // iOS versions). Tapping it raises the active keyboard.
         let candidateIDs = ["URL", "TabBarItemTitle", "Address"]
-        var bar: XCUIElement?
+        var pill: XCUIElement?
         for id in candidateIDs {
-            let f = safari.textFields[id]
-            if f.waitForExistence(timeout: 2) { bar = f; break }
+            let predicate = NSPredicate(format: "identifier == %@ OR label == %@", id, id)
+            let field = safari.textFields.matching(predicate).firstMatch
+            if field.waitForExistence(timeout: 2) { pill = field; break }
         }
-        if bar == nil {
-            let any = safari.textFields.firstMatch
-            if any.waitForExistence(timeout: 3) { bar = any }
+        if pill == nil {
+            let anyField = safari.textFields.firstMatch
+            if anyField.waitForExistence(timeout: 3) { pill = anyField }
         }
-        guard let urlBar = bar else {
-            XCTFail("Safari address bar not found. Tree:\n\(safari.debugDescription)")
-            return
+        guard let addressPill = pill else {
+            XCTFail("Safari address field not found. Tree:\n\(String(safari.debugDescription.prefix(4000)))")
+            throw XCTSkip("Safari address field unavailable")
         }
-        urlBar.tap()
+        addressPill.tap()
         dismissSafariFirstLaunch(in: safari)
 
-        // After tap, iOS 26 expands the tab-pill into a separate
-        // search field. The originally-tapped pill stays in the tree,
-        // so `firstMatch` would return it again. Find the
-        // keyboard-focused field instead (identifier contains
-        // "isActive=true").
+        // iOS 26 expands the tapped pill into a separate active search field;
+        // the original pill stays in the tree, so prefer the keyboard-focused
+        // field. Fall back to the pill itself on older layouts.
         let activePred = NSPredicate(format:
             "identifier CONTAINS 'isActive=true' OR hasKeyboardFocus == true")
         let active = safari.descendants(matching: .textField).matching(activePred).firstMatch
         if active.waitForExistence(timeout: 3) {
-            active.typeText(urlString + "\n")
-        } else if safari.keyboards.firstMatch.waitForExistence(timeout: 2) {
-            urlBar.typeText(urlString + "\n")
-        } else {
-            XCTFail("""
-                Safari URL field did not accept keyboard focus.
-                Field tree:
-                \(String(urlBar.debugDescription.prefix(2000)))
-
-                Safari tree:
-                \(String(safari.debugDescription.prefix(4000)))
-                """)
+            return active
         }
+        return addressPill
     }
 
     /// Dismiss Safari's first-launch overlays (iOS 15+ "Continue",
