@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>鍵盤輸入 · 萊姆輸入法 使用手冊</title>
+<link rel="icon" type="image/png" href="../assets/lime-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="manual.css?v=3"/>
+</head>
+<body>
+
+<div class="m-top">
+  <div class="bar">
+    <a class="logo" href="../index.html"><img src="../assets/lime-icon.png" alt=""/><span class="wm">萊姆輸入法</span></a>
+  </div>
+</div>
+
+<div class="m-shell">
+  <aside class="m-side">
+    <div class="grp">開始</div>
+    <a href="index.html"><span class="n">00</span>手冊首頁</a>
+    <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+    <div class="grp">日常使用</div>
+    <a class="on" href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+    <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+    <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+    <div class="grp">資料與進階</div>
+    <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+    <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+    <div class="grp">支援</div>
+    <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+    <a href="faq.html"><span class="n">08</span>常見問題</a>
+    <div class="grp">法務</div>
+    <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+    <a href="license.html"><span class="n">10</span>版權說明</a>
+  </aside>
+
+  <main class="m-content">
+    <nav class="m-toc">
+      <details>
+        <summary>📖 手冊目錄</summary>
+        <div class="list">
+          <a href="index.html"><span class="n">00</span>手冊首頁</a>
+          <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+          <a class="on" href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+          <a href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+          <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+          <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+          <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+          <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+          <a href="faq.html"><span class="n">08</span>常見問題</a>
+          <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+          <a href="license.html"><span class="n">10</span>版權說明</a>
+        </div>
+      </details>
+    </nav>
+
+    <section class="manual-hero">
+      <span class="crumb">02 · 打字</span>
+      <h1>鍵盤輸入</h1>
+      <div class="quick">
+        <a href="#screen">鍵盤畫面</a>
+        <a href="#chinese">中文輸入</a>
+        <a href="#mixed">中英混合</a>
+        <a href="#ld">連打輸入</a>
+        <a href="#smart">智慧組詞</a>
+        <a href="#learning">學習功能</a>
+        <a href="#english">英文輸入</a>
+        <a href="#switch">切換輸入法</a>
+        <a href="#shift">Shift</a>
+        <a href="#field">欄位類型</a>
+        <a href="#emoji">Emoji</a>
+        <a href="#symbol">符號</a>
+        <a href="#ipad">iPad</a>
+      </div>
+    </section>
+
+    <h2 id="screen">鍵盤畫面</h2>
+    <p>萊姆輸入法輸入畫面通常分成兩部分，候選列在上，鍵盤區在下。候選列會顯示輸入碼、中文候選字與英文建議字，左右兩側可能有 Emoji、麥克風、選單或鍵盤收合按鈕。鍵盤區則依目前輸入法、英文模式、符號模式或 Emoji 面板，顯示不同的版面。</p>
+    <div class="manual-screenshot-pair trio">
+      <figure>
+        <img src="../assets/kb/and_zhuyin.png" alt="Android 萊姆輸入法注音鍵盤，上方為候選列，下方為鍵盤區"/>
+        <figcaption>Android 鍵盤畫面，候選列在鍵盤上方，右側固定按鈕可顯示麥克風或鍵盤功能。</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/kb/ios_zhuyin.png" alt="iPhone 萊姆輸入法注音鍵盤，上方為候選列，下方為鍵盤區"/>
+        <figcaption>iPhone 鍵盤畫面，候選列左右兩側提供 Emoji 與選單按鈕。</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/kb/ios_legacy_zhuyin.png" alt="舊版 iPhone（Home 鍵）萊姆輸入法注音鍵盤，右上角為鍵盤收合鍵"/>
+        <figcaption>舊版 iPhone（含 Home 鍵）鍵盤畫面，右上角以鍵盤收合鍵取代選單鍵，左下角為地球鍵。</figcaption>
+      </figure>
+    </div>
+    <p>一般鍵會輸入字根、字母或符號，功能鍵則負責切換模式、刪除、輸入空白、收合鍵盤或開啟功能選單。若按鍵右下角或下方顯示 <code>...</code>，代表這顆鍵支援長按迷你鍵盤。</p>
+
+    <h3>候選字上方的輸入碼與字根反查</h3>
+    <p>候選字上方有一條細長的提示區，會在兩種時機顯示不同資訊：</p>
+    <ul>
+      <li><strong>輸入碼提示：</strong>組字時，這裡會以可讀的鍵名顯示你目前輸入的字根，例如注音會顯示「ㄉㄚˊ」（含聲調），方便邊打邊確認字根對不對。輸入碼改變時即時更新，上屏或取消後消失。</li>
+      <li><strong>字根反查：</strong>選出一個字後，這裡會顯示該字在你指定的反查輸入法中的字根，例如打出「日」後顯示它的注音讀音「ㄖˋ」，或其他輸入法的字根。反查結果會一直留著，直到你按下一個鍵。要設定反查哪一個輸入法，請到「<a href="preferences.html#reverse">喜好設定 · 字根反查設定</a>」。</li>
+      <li><strong>輸入法名稱：</strong>切換到不同的萊姆內部輸入法時，這裡也會顯示目前輸入法的名稱（例如「注音」、「大易」），讓你確認切到了哪一個輸入法。</li>
+    </ul>
+
+    <h3>候選列按鈕與功能鍵</h3>
+    <p>候選列除了顯示候選字，左右兩側也提供常用按鈕，鍵盤本體的功能鍵則負責模式切換、收合、游標與選單。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>候選列按鈕</th><th>位置</th><th>點按</th><th>長按</th></tr></thead>
+      <tbody>
+        <tr><td>取消鍵（X）</td><td>候選列最左側</td><td>清除目前正在輸入的組字碼，取消這次輸入</td><td>無獨立功能</td></tr>
+        <tr><td>Emoji 鍵</td><td>三平台候選列左側</td><td>開啟 Emoji 面板</td><td>無獨立功能</td></tr>
+        <tr><td>Android 麥克風鍵</td><td>Android 候選列右側</td><td>啟動語音輸入</td><td>無獨立功能</td></tr>
+        <tr><td>iOS 選單鍵</td><td>iPhone／iPad 候選列右側（三橫線）</td><td>開啟鍵盤功能選單（輸入法切換、反查、繁簡）</td><td>無獨立功能</td></tr>
+        <tr><td>舊版 iPhone 鍵盤鍵</td><td>有 Home 鍵的 iPhone 候選列右側</td><td>收合鍵盤</td><td>開啟鍵盤功能選單</td></tr>
+        <tr><td>展開鍵（⌄）</td><td>候選列最右側</td><td>展開更多候選字，切換為多列檢視</td><td>無獨立功能</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="lead" style="font-size:15px">iPhone 與 iPad 版萊姆輸入法不提供麥克風按鈕，因為 iOS 第三方鍵盤不能自行錄音，也不能直接啟動系統聽寫。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>功能鍵</th><th>點按</th><th>長按</th></tr></thead>
+      <tbody>
+        <tr><td><code>中</code> / <code>ABC</code></td><td>切換中文與英文模式</td><td>通常不需另外長按</td></tr>
+        <tr><td>Shift</td><td>切換單次 shifted／取消／離開 Caps Lock（雙擊進入 Caps Lock）</td><td>按住期間顯示 shifted 鍵位</td></tr>
+        <tr><td>符號切換鍵</td><td>進入符號鍵盤或返回文字鍵盤</td><td>通常不需另外長按</td></tr>
+        <tr><td>刪除鍵</td><td>刪除游標前字元，組字中先刪字根</td><td>連續刪除</td></tr>
+        <tr><td>空白鍵</td><td>輸入空白，組字中依輸入法處理候選</td><td>開啟內部輸入法選單</td></tr>
+        <tr><td>Android 鍵盤收合鍵</td><td>收合鍵盤</td><td>開啟功能選單，含偏好設定、反查、繁簡、輸入法清單、系統輸入法、分割鍵盤、語音輸入</td></tr>
+        <tr><td>iPhone／iPad 鍵盤收合鍵</td><td>收合鍵盤</td><td>開啟功能選單，含反查、繁簡、萊姆輸入法切換、系統鍵盤切換、取消</td></tr>
+        <tr><td>iPhone／iPad 地球鍵</td><td>切換到下一個系統鍵盤</td><td>顯示系統鍵盤清單</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="chinese">中文輸入</h2>
+    <p>切到萊姆輸入法中文模式後，鍵盤上方會出現候選字列。注音輸入法顯示注音鍵位，其他輸入法則依目前碼表顯示對應鍵盤。輸入中文時，依下列步驟操作。</p>
+    <ol class="steps">
+      <li><strong>確認已安裝中文輸入法</strong>在「輸入法」分頁確認至少安裝一套中文輸入法。</li>
+      <li><strong>切到中文模式</strong>確認候選字列出現在鍵盤上方。</li>
+      <li><strong>輸入字根</strong>選擇要使用的輸入法，依序輸入該輸入法的字根。</li>
+      <li><strong>從候選列選字</strong>萊姆輸入法會依碼表顯示候選字，點選想要的字即可上屏。</li>
+      <li><strong>縮小範圍</strong>候選字太多時，繼續輸入更多字根可縮小候選範圍。</li>
+    </ol>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>切換到萊姆輸入法</b>在 iPhone／iPad 上，可長按或點按地球鍵，再從鍵盤清單選擇萊姆輸入法。Android 不一定會顯示地球鍵，若找不到地球鍵，可打開萊姆輸入法 App 的「設定」分頁，依畫面指示把目前使用的輸入法切換為萊姆輸入法。</div>
+    </div>
+
+    <h2 id="mixed">中文鍵盤混合輸入</h2>
+    <p>萊姆輸入法中文鍵盤支援中英混合輸入。候選列第 0 項會固定顯示你目前輸入中的輸入碼，點選第 0 項時，萊姆輸入法會直接送出這串輸入碼。輸入 <code>lime</code> 時，第 0 項會保留 <code>lime</code>，點選後文字欄位就會輸入 <code>lime</code>，不必每次切到英文鍵盤。</p>
+    <p>若已開啟「啟用英文建議字」，當輸入碼長度超過目前輸入法的碼長後，候選列會加入英文字典建議字。多數輸入法的碼長門檻是 4 碼，輸入第 5 個英文字母後可能就出現英文單字建議。倉頡的碼長門檻是 5 碼，輸入第 6 個英文字母後才會檢查。</p>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>同一條候選列的三種選擇</b>要輸入中文，就選中文候選字。要輸入英文原文，就選第 0 項。要接受英文建議字，就選候選列中的英文單字。若沒出現英文建議字，請檢查<a href="preferences.html">喜好設定</a>的「啟用英文建議字」，並確認已超過碼長門檻。</div>
+    </div>
+
+    <h2 id="ld">中文連打輸入</h2>
+    <p>連打讓你不必每打完一個字就停下選字——字根可以跨越單字邊界連續輸入，再從候選列逐字選出。以大易為例，<strong>明</strong>的字根是 <code>dj</code>、<strong>天</strong>的字根是 <code>ev</code>：</p>
+    <ol class="steps">
+      <li><strong>連續輸入字根</strong>不中斷地輸入 <code>djev</code>，候選列會先出現 <strong>明</strong></li>
+      <li><strong>選出第一個字</strong>點選 <strong>明</strong>後，已對應的 <code>dj</code> 會從組字碼移除，組字碼僅剩下 <code>ev</code>。</li>
+      <li><strong>選出下一個字</strong>接著從候選列點選 <strong>天</strong>，完成「明天」的輸入。</li>
+    </ol>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>連打會自動學習成片語</b>用連打依序選出的字會被記錄成片語（需開啟「<a href="preferences.html#learning">自動學習新詞</a>」）。下次只要輸入第一個字的字根，例如 <code>dj</code>，候選列就會直接出現 <strong>明天</strong>，省去逐字輸入。連打自動學詞功能需「<a href="preferences.html#learning">建議字顯示數量</a>」不為 0 才會顯示。</div>
+    </div>
+
+    <h2 id="smart">中文智慧組詞</h2>
+    <p>智慧組詞會在你<strong>還在組字、尚未上屏時</strong>，即時把候選字組成可能想輸入的詞。它的做法是把前一個完全符合的候選字，和剩餘字根的完全符合候選字組合起來。</p>
+    <p>以大易為例，<code>8n</code> 可選出「分」、<code>0vf</code> 可選出「鍾」。當你連續輸入 <code>8n0vf</code>，智慧組詞會把前段的「分」與後段的「鍾」組成「分鍾」，當作即時候選詞顯示。若關聯字庫已記錄「分」常接「鍾」，這個組出來的「分鍾」還會獲得額外加分，更容易排在前面。</p>
+    <p>也就是說，這裡的「分鍾」不是單純靠輸入碼表查出來的，而是由智慧組詞依前後字關聯即時推測出的候選詞。</p>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>智慧組詞只負責「顯示」，不會自己學習</b>智慧組詞本身只即時組出並顯示候選詞，不會把詞寫進碼表。只有當你<strong>選用</strong>了這個組出來的詞、且開啟「<a href="preferences.html#learning">自動學習新詞</a>」時，這個詞才會被學起來（見下方「學習功能」）。</div>
+    </div>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>需開啟智慧組詞</b>智慧組詞由「<a href="preferences.html#behavior">開啟中文智慧組詞</a>」控制。部分輸入法可能影響此功能。</div>
+    </div>
+
+    <h2 id="learning">學習功能</h2>
+    <p>萊姆輸入法會依你的輸入習慣持續學習，讓打字越用越順手。所有學習資料只儲存在你的裝置上，不會上傳（見「<a href="privacy.html">隱私說明</a>」）。下面是萊姆輸入法會學習的幾種路徑，以及控制它們的設定。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>學習路徑</th><th>作用</th><th>控制設定</th></tr></thead>
+      <tbody>
+        <tr><td>候選字分數</td><td>每次選字都會更新所選字詞的使用分數，寫入目前輸入法的<strong>碼表</strong>。</td><td>分數一律會更新，「<a href="preferences.html#learning">啟動選取排序</a>」只決定候選排序是否依分數。</td></tr>
+        <tr><td>關聯詞學習</td><td>記錄前字接後字的關聯詞（例如「分」→「鍾」），寫入<strong>關聯字庫</strong>。</td><td>由「<a href="preferences.html#learning">啟動自建關聯字</a>」控制。</td></tr>
+        <tr><td>關聯詞升級為片語</td><td>當「分」→「鍾」這類關聯累積到夠高分數後，會把關聯詞（例如「分鍾」）從關聯字庫<strong>升級為片語並寫入碼表</strong>，之後輸入即可直接當片語選出。</td><td>需同時開啟「<a href="preferences.html#learning">啟動自建關聯字</a>」與「<a href="preferences.html#learning">自動學習新詞</a>」。</td></tr>
+        <tr><td>連打學片語</td><td>一次連續輸入中逐字選出的多個字會學習成片語，寫入<strong>碼表</strong>，下次輸入第一個字的字根即可直接選出整個片語。</td><td>由「<a href="preferences.html#learning">自動學習新詞</a>」控制。</td></tr>
+        <tr><td>智慧組詞學片語</td><td>當你選用智慧組詞即時組出的候選詞時，把組成的字學習成片語，寫入<strong>碼表</strong>。</td><td>需「<a href="preferences.html#behavior">開啟中文智慧組詞</a>」建立候選，並開啟「<a href="preferences.html#learning">自動學習新詞</a>」，且實際選用該詞。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>學習資料可備份與清除</b>學習記錄隨資料庫保存，可到「<a href="database-management.html">備份與還原</a>」打包備份或跨機轉移。移除輸入法時可先勾選備份學習記錄，以便重新匯入時還原。</div>
+    </div>
+
+    <h3>片語長度與注音的聲調、快拼</h3>
+    <p>萊姆輸入法只會學習 2 到 4 個字的片語。</p>
+    <p>注音輸入有特別的聲調處理，因為聲調鍵不一定是查詢碼的一部分。注音的聲調鍵是 <code>3</code>、<code>4</code>、<code>6</code>、<code>7</code> 與空白鍵，分別對應四聲與輕聲。當萊姆輸入法把注音片語學起來時，會同時建立兩種查詢碼：</p>
+    <ul>
+      <li><strong>連打碼：</strong>取整個片語的拼碼並去掉聲調，作為連打輸入時的查詢碼。</li>
+      <li><strong>快拼碼：</strong>取每個字的第一個鍵組成，作為快拼輸入時的查詢碼。</li>
+    </ul>
+    <p>快拼碼目前僅注音適用，其他輸入法只會寫入連打碼，不會建立快拼碼。查詢時若沒有輸入聲調，會以去聲調的碼比對；聲調落在中間或音節之外時也會先去聲調再查，只有單一音節的最後一鍵是聲調時才保留。</p>
+
+    <h2 id="english">英文輸入</h2>
+    <p>切到萊姆輸入法英文模式後即可直接輸入英文字母，鍵盤上的 <code>中</code> 鍵會把輸入狀態切回中文模式。</p>
+    <div class="manual-screenshot-pair">
+      <figure>
+        <img src="../assets/kb/and_english.png" alt="Android 萊姆輸入法英文鍵盤，顯示可切回中文的中鍵"/>
+        <figcaption>Android 英文模式，可看到切回中文的 <code>中</code> 鍵。</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/kb/ios_english.png" alt="iOS 萊姆輸入法英文鍵盤，顯示可切回中文的中鍵"/>
+        <figcaption>iOS 英文模式，可看到切回中文的 <code>中</code> 鍵。</figcaption>
+      </figure>
+    </div>
+    <p>開啟「首字自動大寫」時，萊姆輸入法會在英文句首、換行後，或 <code>. </code>、<code>! </code>、<code>? </code> 之後自動切到大寫狀態。常見縮寫後的句點不會被當成新句子，例如 <code>U.S.</code> 或 <code>Dr.</code> 後面不會強制大寫。</p>
+
+    <h3>英文預測與自動補字</h3>
+    <p>開啟「啟用英文建議字」後，萊姆輸入法會在英文模式追蹤你正在輸入的單字並顯示預測字。iPhone 與 iPad 使用 iOS 的 <code>UITextChecker</code> 產生補字，Android 則使用萊姆輸入法的英文字典。兩個平台都不會預設反白英文候選字，需要你明確點選。</p>
+    <ul>
+      <li><strong>只補後綴並加空白：</strong>已輸入 <code>sal</code> 並點選 <code>salt</code> 時，萊姆輸入法會補上 <code>t </code>，得到 <code>salt </code>。</li>
+      <li><strong>標點會調整空白位置：</strong>選完 <code>salt</code> 後再輸入逗號，會輸出 <code>salt, </code> 而不是 <code>salt ,</code>。</li>
+      <li><strong>Android 會學習：</strong>常被點選的英文單字，會在後續預測中提高排序。開啟 Emoji 建議時，預測列也可能顯示相關 Emoji。</li>
+    </ul>
+
+    <h2 id="switch">切換萊姆輸入法與系統鍵盤</h2>
+    <p>萊姆輸入法的切換操作分成兩種，差別在於是否離開萊姆輸入法鍵盤。切換「內部輸入法」時，仍停留在萊姆輸入法鍵盤內。切換「系統鍵盤」時，會離開萊姆輸入法，改用其他鍵盤 App。</p>
+    <ul>
+      <li><strong>切換內部輸入法：</strong>長按空白鍵，開啟萊姆輸入法選單，再選擇已啟用的輸入法。iPhone／iPad 也可點按候選列右側的選單鍵，從鍵盤功能選單選「萊姆輸入法切換」。Android 則長按鍵盤收合鍵開啟功能選單，再選輸入法清單。</li>
+      <li><strong>切換系統鍵盤：</strong>iPhone／iPad 點按地球鍵可切到下一個系統鍵盤，長按地球鍵則開啟系統鍵盤清單。Android 則從萊姆輸入法的鍵盤功能選單選「系統輸入法」，實際清單由系統提供。</li>
+    </ul>
+    <p>萊姆輸入法會記住上次選取的內部輸入法，下次回到中文模式時沿用該輸入法的版面。</p>
+
+    <h2 id="shift">Shift 與 Caps Lock</h2>
+    <p>Shift 鍵控制目前版面的大寫／替代狀態，中文與英文鍵盤都會依版面定義切換到對應鍵位。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>操作</th><th>鍵盤狀態</th><th>輸入結果</th></tr></thead>
+      <tbody>
+        <tr><td>點按 Shift 一次</td><td>進入單次 shifted 狀態，顯示 shifted 鍵位。</td><td>輸入下一個按鍵後回到一般狀態。</td></tr>
+        <tr><td>單次 shifted 時再點 Shift</td><td>取消單次 shifted，回到一般鍵位。</td><td>接著輸入的按鍵使用一般狀態。</td></tr>
+        <tr><td>雙擊 Shift</td><td>進入 Caps Lock，持續顯示 shifted 鍵位。</td><td>可連續輸入 shifted 鍵位，直到再次點按 Shift。</td></tr>
+        <tr><td>Caps Lock 時點 Shift</td><td>離開 Caps Lock，回到一般鍵位。</td><td>接著輸入的按鍵使用一般狀態。</td></tr>
+        <tr><td>長按 Shift</td><td>按住期間顯示 shifted 鍵位。</td><td>放開後回到一般狀態。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>英文鍵盤的 shifted 鍵位通常是大寫字母，中文鍵盤的 shifted 鍵位則依版面提供符號、替代字根或字母。iPad 鍵盤可能左右各有一顆 Shift 鍵，兩顆控制同一個 shifted 狀態。</p>
+
+    <h2 id="field">欄位類型會改變鍵盤</h2>
+    <p>系統會依文字欄位類型調整鍵盤。測試萊姆輸入法時，建議使用備忘錄、訊息輸入框等一般文字欄位。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>欄位類型</th><th>萊姆輸入法行為</th></tr></thead>
+      <tbody>
+        <tr><td>一般文字</td><td>正常處理，開啟「記憶中英模式」時會沿用上次中／英狀態。測試中文輸入時，建議優先用這類欄位。</td></tr>
+        <tr><td>電話</td><td>Android 使用受限電話數字鍵盤，iPhone／iPad 通常由系統電話鍵盤處理。</td></tr>
+        <tr><td>數字</td><td>Android 使用受限數字鍵盤，iPhone／iPad 可能改用符號或數字鍵盤，通常不提供中英切換鍵。</td></tr>
+        <tr><td>Email</td><td>三平台都使用英文鍵盤並關閉預測，仍可輸入 <code>@</code>、<code>.</code>、<code>-</code>、<code>_</code> 等符號。</td></tr>
+        <tr><td>密碼</td><td>Android 使用英文鍵盤並關閉預測，iPhone／iPad 通常改用系統安全鍵盤，可能完全不顯示萊姆輸入法。</td></tr>
+        <tr><td>網址與搜尋</td><td>當作一般文字處理，可輸入中文搜尋關鍵字，Enter 鍵可能顯示搜尋或前往。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>看得到鍵盤卻打不出字？</b>若一般欄位顯示萊姆輸入法鍵盤，但中文候選字一直是空的，請檢查<a href="ime-management.html">輸入法管理</a>。若一般欄位完全不顯示萊姆輸入法鍵盤，請先完成<a href="quick-start.html">快速設定</a>。</div>
+    </div>
+
+    <h2 id="emoji">Emoji 輸入</h2>
+    <p>開啟 Emoji 面板後，畫面由三部分組成，最上方是搜尋列，中間是 Emoji 網格，底部是分類列。</p>
+    <div class="manual-screenshot-pair">
+      <figure>
+        <img src="../assets/kb/and_emoji_v2.png" alt="Android 萊姆輸入法 Emoji 面板，含搜尋列、Emoji 網格與底部分類列"/>
+        <figcaption>Android Emoji 面板，上方是搜尋列，中間是 Emoji 網格，底部是分類列（最左為 ABC，接著是最近使用，再往右是各分類）。</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/kb/ios_emoji.png" alt="iOS 萊姆輸入法 Emoji 面板，含搜尋列、Emoji 網格與底部分類列"/>
+        <figcaption>iOS Emoji 面板，搜尋列顯示「搜尋表情符號」，底部分類列右側被裁切，代表可向右滑動看到更多分類。</figcaption>
+      </figure>
+    </div>
+    <ul>
+      <li><strong><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>上方搜尋列：</strong>輸入關鍵字即可搜尋 Emoji，中英文皆可，例如打「火」或 <code>fire</code> 都能找到 🔥。</li>
+      <li><strong>底部最左的 ABC／中：</strong>點按可離開 Emoji 面板，切回文字鍵盤。切回的是英文或中文鍵盤，取決於你是從哪個模式進入 Emoji 面板的。</li>
+      <li><strong><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>最近使用：</strong>分類列左側的時鐘圖示是「最近使用」，集中顯示你最近選過的 Emoji。</li>
+      <li><strong>其他分類與滑動：</strong>時鐘之後依序是表情、人物、動物、食物等分類圖示。分類圖示較多時，分類列可左右滑動，捲到後面的分類。</li>
+    </ul>
+    <h3>候選列中的 Emoji 建議</h3>
+    <p>除了開啟 Emoji 面板，萊姆輸入法也會在一般打字的候選列中插入相關 Emoji。只要「<a href="preferences.html#behavior">EMOJI 候選列顯示位置</a>」不是「不顯示」，當組字碼、英文鍵盤上輸入的英文單字符合 Emoji 關鍵字，或候選列第 1 項的中文字詞對應到某個 Emoji 時，對應的 Emoji 就會插入到你設定的位置（預設為第 5 個候選字之後）。</p>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>不想看到 Emoji 建議</b>到「<a href="preferences.html#behavior">喜好設定 · EMOJI 候選列顯示位置</a>」選「不顯示」，候選列就不會再插入 Emoji，其餘候選字不受影響。</div>
+    </div>
+
+    <h2 id="symbol">符號與標點輸入</h2>
+    <p>需要符號時，先用符號切換鍵進入符號頁，中文模式則會依設定提供中文標點或標點轉換。常見的輸入方式有以下三種。</p>
+    <ol class="steps">
+      <li><strong>符號頁直接點選</strong>最穩定的方式，直接在符號頁點選需要的符號。</li>
+      <li><strong>長按迷你鍵盤</strong>長按支援迷你鍵盤的按鍵，滑到需要的字元再放開。</li>
+      <li><strong>iPad 副鍵符號</strong>依按鍵上的副鍵提示，用下滑或長按輸入符號。</li>
+    </ol>
+    <p>按鍵右下角或下方顯示 <code>...</code> 時，代表支援長按迷你鍵盤。長按後保持手指在畫面上，滑到要輸入的字元再放開即可。若只有單一選項，萊姆輸入法可能直接輸入，不顯示多鍵迷你鍵盤。</p>
+
+    <h2 id="space">用空白鍵移動游標</h2>
+    <p>在支援的平台與鍵盤狀態下，於空白鍵上左右滑動可移動文字游標，方便修改句子中間的文字，不必反覆點按螢幕。</p>
+    <ul>
+      <li><strong>輕微移動不會觸發：</strong>手指要明顯滑動才會開始移動游標，輕碰一下仍是輸入空白。</li>
+      <li><strong>滑得越遠移動越快：</strong>拖曳距離越長，游標移動的步幅會逐段加速。</li>
+      <li><strong>組字中不移動：</strong>還在組字（尚未上屏）時滑動空白鍵不會移動游標。</li>
+      <li><strong>沒反應時：</strong>密碼或受限欄位可能停用游標手勢，請改用一般文字欄位測試。</li>
+    </ul>
+
+    <h2 id="ipad">iPad 副鍵符號與分割鍵盤</h2>
+    <p>iPad 鍵盤可在按鍵上顯示副鍵符號，依畫面提示用下滑或長按輸入。副鍵符號是 iPad 鍵盤特有的功能。</p>
+    <ul>
+      <li><strong>副鍵符號（iPad 專屬）：</strong>在按鍵上向下滑動或長按即可輸入副鍵符號（直接落在鍵上，和長按浮出的迷你鍵盤不同）。</li>
+    </ul>
+    <h3>分割鍵盤（Android 與 iPad）</h3>
+    <p>分割鍵盤不限 iPad，Android 與 iPad 都支援，方便雙手握持時用拇指打字。</p>
+    <ul>
+      <li><strong>Android：</strong>長按鍵盤收合鍵開啟功能選單，選「分割鍵盤」即可分割或合併。</li>
+      <li><strong>iPad：</strong>可在鍵盤功能選單分割或合併鍵盤，橫向版面與分割鍵盤會改變按鍵寬度。遇到副鍵或長按異常時，先關閉分割模式，改用一般鍵盤測試。</li>
+    </ul>
+
+    <h2 id="trouble">異常狀態處理</h2>
+    <ul>
+      <li><strong>看得到鍵盤但沒有候選字：</strong>先確認輸入法已安裝，並確認目前是中文模式。</li>
+      <li><strong>無法從英文回到中文：</strong>重新開啟一般文字欄位，再用切換鍵回到萊姆輸入法中文模式。</li>
+      <li><strong>密碼欄位看不到萊姆輸入法：</strong>改用一般文字欄位測試，平台可能在安全欄位接管鍵盤。</li>
+    </ul>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>語音輸入</b>Android 可使用內建或系統語音輸入，萊姆輸入法內建的語音輸入需要麥克風權限。相關說明，請見「<a href="troubleshooting.html#voice">疑難排解 · 語音輸入</a>」。</div>
+    </div>
+
+
+    <div class="m-pagenav">
+      <a class="prev" href="quick-start.html"><div class="dir">← 上一篇</div><div class="ttl">快速上手</div></a>
+      <a class="next" href="ime-management.html"><div class="dir">下一篇 →</div><div class="ttl">管理輸入法</div></a>
+    </div>
+  </main>
+</div>
+
+
+</body>
+</html>

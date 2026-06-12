@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>管理輸入法 · 萊姆輸入法 使用手冊</title>
+<link rel="icon" type="image/png" href="../assets/lime-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="manual.css?v=3"/>
+</head>
+<body>
+
+<div class="m-top">
+  <div class="bar">
+    <a class="logo" href="../index.html"><img src="../assets/lime-icon.png" alt=""/><span class="wm">萊姆輸入法</span></a>
+  </div>
+</div>
+
+<div class="m-shell">
+  <aside class="m-side">
+    <div class="grp">開始</div>
+    <a href="index.html"><span class="n">00</span>手冊首頁</a>
+    <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+    <div class="grp">日常使用</div>
+    <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+    <a class="on" href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+    <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+    <div class="grp">資料與進階</div>
+    <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+    <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+    <div class="grp">支援</div>
+    <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+    <a href="faq.html"><span class="n">08</span>常見問題</a>
+    <div class="grp">法務</div>
+    <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+    <a href="license.html"><span class="n">10</span>版權說明</a>
+  </aside>
+
+  <main class="m-content">
+    <nav class="m-toc">
+      <details>
+        <summary>📖 手冊目錄</summary>
+        <div class="list">
+          <a href="index.html"><span class="n">00</span>手冊首頁</a>
+          <a href="quick-start.html"><span class="n">01</span>快速上手</a>
+          <a href="keyboard-input.html"><span class="n">02</span>鍵盤輸入</a>
+          <a class="on" href="ime-management.html"><span class="n">03</span>管理輸入法</a>
+          <a href="preferences.html"><span class="n">04</span>喜好設定</a>
+          <a href="database-management.html"><span class="n">05</span>備份與還原</a>
+          <a href="advanced.html"><span class="n">06</span>進階自訂</a>
+          <a href="troubleshooting.html"><span class="n">07</span>疑難排解</a>
+          <a href="faq.html"><span class="n">08</span>常見問題</a>
+          <a href="privacy.html"><span class="n">09</span>隱私說明</a>
+          <a href="license.html"><span class="n">10</span>版權說明</a>
+        </div>
+      </details>
+    </nav>
+
+    <section class="manual-hero">
+      <span class="crumb">03 · 輸入法</span>
+      <h1>管理輸入法</h1>
+      <div class="quick">
+        <a href="#install">下載與匯入</a>
+        <a href="#enable">啟用與停用</a>
+        <a href="#edit">編輯字根</a>
+        <a href="#related">關聯字庫</a>
+        <a href="#share">匯出表格</a>
+        <a href="#remove">移除輸入法</a>
+      </div>
+    </section>
+
+    <p class="lead">「輸入法」分頁列出已安裝的輸入法，右下角的「＋」用於下載或匯入新的輸入法，每一列點進去可編輯字根、關聯字與匯出分享。</p></p>
+
+    <h2 id="install">下載與匯入輸入法</h2>
+    <p>點按右下角「＋」進入下載與匯入畫面，每套輸入法是一個可展開的項目。</p>
+    <ol class="steps">
+      <li><strong>展開輸入法</strong>點開想安裝的輸入法（例如「倉頡」），內建輸入法會列出雲端字根下載與本機匯入選項。</li>
+      <li><strong>雲端下載</strong>點選要下載的字根版本（例如「倉頡字根」「倉頡香港字字根」），系統會從雲端下載並安裝。</li>
+      <li><strong>本機匯入</strong>選「匯入 .cin／.lime」匯入文字碼表，或「匯入 .limedb」匯入資料庫格式。</li>
+      <li><strong>還原已學習記錄</strong>若先前曾備份該輸入法的學習記錄，匯入前可開啟「還原已學習記錄」一併還原。</li>
+    </ol>
+    <div class="manual-screenshot-pair">
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M16.5 1.6c.1 1-.3 2-1 2.8-.7.8-1.8 1.4-2.8 1.3-.1-1 .4-2 1-2.7.7-.8 1.9-1.3 2.8-1.4zM19.9 17c-.5 1.2-.8 1.7-1.5 2.7-.9 1.4-2.2 3.1-3.8 3.1-1.4 0-1.8-.9-3.7-.9-1.9 0-2.3.9-3.7.9-1.6 0-2.8-1.5-3.7-2.9C.9 16.5.6 12 2.2 9.6c1-1.6 2.7-2.5 4.3-2.5 1.6 0 2.6 1 3.9 1 1.3 0 2-.9 3.9-1 1.4 0 2.9.8 3.9 2.1-3.5 1.9-2.9 6.9 1.8 7.8z"/></svg>iPhone</span>下載 / 匯入</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_ios_im_install.png" alt="iPhone 下載與匯入輸入法畫面"/></div>
+        <p class="ph-note">展開輸入法後可雲端下載字根，或匯入 .cin／.lime／.limedb。</p>
+      </div>
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M6 9h12v8a1 1 0 0 1-1 1h-1v3h-2v-3h-4v3H8v-3H7a1 1 0 0 1-1-1V9zm-3 .5a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zm15 0a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zM7.5 7.8C7.8 5.4 9.7 3.6 12 3.6s4.2 1.8 4.5 4.2H7.5zM10 5.6a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2zm4 0a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2z"/></svg>Android</span>下載 / 匯入</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_android_im_install.png" alt="Android 下載與匯入輸入法畫面"/></div>
+        <p class="ph-note">Android 的下載 / 匯入畫面，操作方式與 iOS 一致。</p>
+      </div>
+    </div>
+
+    <h2 id="enable">啟用與停用</h2>
+    <ul>
+      <li><strong>啟用／停用：</strong>在清單中切換每套輸入法的開關，開啟的才會出現在鍵盤切換中。</li>
+      <li><strong>停用的顯示：</strong>已停用的輸入法會以較淡的樣式顯示。</li>
+    </ul>
+    <div class="manual-screenshot-pair">
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M16.5 1.6c.1 1-.3 2-1 2.8-.7.8-1.8 1.4-2.8 1.3-.1-1 .4-2 1-2.7.7-.8 1.9-1.3 2.8-1.4zM19.9 17c-.5 1.2-.8 1.7-1.5 2.7-.9 1.4-2.2 3.1-3.8 3.1-1.4 0-1.8-.9-3.7-.9-1.9 0-2.3.9-3.7.9-1.6 0-2.8-1.5-3.7-2.9C.9 16.5.6 12 2.2 9.6c1-1.6 2.7-2.5 4.3-2.5 1.6 0 2.6 1 3.9 1 1.3 0 2-.9 3.9-1 1.4 0 2.9.8 3.9 2.1-3.5 1.9-2.9 6.9 1.8 7.8z"/></svg>iPhone</span>已安裝清單</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_ios_im_list.png" alt="iPhone 已安裝輸入法清單"/></div>
+        <p class="ph-note">「輸入法」分頁列出已安裝的輸入法，可開關啟用或停用。</p>
+      </div>
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M6 9h12v8a1 1 0 0 1-1 1h-1v3h-2v-3h-4v3H8v-3H7a1 1 0 0 1-1-1V9zm-3 .5a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zm15 0a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zM7.5 7.8C7.8 5.4 9.7 3.6 12 3.6s4.2 1.8 4.5 4.2H7.5zM10 5.6a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2zm4 0a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2z"/></svg>Android</span>已安裝清單</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_android_im_list.png" alt="Android 已安裝輸入法清單"/></div>
+        <p class="ph-note">Android 的輸入法清單，同樣可開關啟用或停用。</p>
+      </div>
+    </div>
+
+    <h2 id="edit">編輯輸入法與字根</h2>
+    <p>點進任一輸入法的詳細頁，可查看並編輯該輸入法的設定。下列設定每套輸入法都有：</p>
+    <ul>
+      <li><strong>輸入法資訊：</strong>名稱、版本與結束鍵可分別編輯，並顯示目前的字根筆數。名稱不可空白，版本與結束鍵可留空，留空時顯示為「—」。</li>
+      <li><strong>軟鍵盤配置：</strong>選擇此輸入法搭配的鍵盤佈局。</li>
+      <li><strong>瀏覽 / 編輯資料表：</strong>進入字根資料表，可搜尋、新增、編輯或刪除單筆字根對應，每頁顯示 100 筆。</li>
+      <li><strong>刪除時備份已學習記錄：</strong>移除此輸入法前先備份學習記錄，預設為開啟。</li>
+    </ul>
+    <p>此外，部分輸入法在詳細頁還有專屬設定：</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>輸入法</th><th>專屬設定</th></tr></thead>
+      <tbody>
+        <tr><td>注音</td><td><strong>注音鍵盤類型：</strong>標準、倚天 41 鍵、倚天 26 鍵（英文／符號）、許氏（英文／符號），共六種版面。</td></tr>
+        <tr><td>行列 10</td><td><strong>自動上屏：</strong>設定第幾碼自動上屏（4 至 10 碼），用於電話數字鍵盤，設為「無」則不自動上屏。</td></tr>
+        <tr><td>自建</td><td><strong>字根對應設定：</strong>可開啟「數字字根對應」與「符號字根對應」，允許以數字或符號作為輸入法字根。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>字根對應為何只有自建可調</b>其他輸入法會依據使用的字根自動決定是否啟用數字與符號對應，因此「字根對應設定」僅在自建輸入法的詳細頁出現。</div>
+    </div>
+    <div class="manual-screenshot-pair">
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M16.5 1.6c.1 1-.3 2-1 2.8-.7.8-1.8 1.4-2.8 1.3-.1-1 .4-2 1-2.7.7-.8 1.9-1.3 2.8-1.4zM19.9 17c-.5 1.2-.8 1.7-1.5 2.7-.9 1.4-2.2 3.1-3.8 3.1-1.4 0-1.8-.9-3.7-.9-1.9 0-2.3.9-3.7.9-1.6 0-2.8-1.5-3.7-2.9C.9 16.5.6 12 2.2 9.6c1-1.6 2.7-2.5 4.3-2.5 1.6 0 2.6 1 3.9 1 1.3 0 2-.9 3.9-1 1.4 0 2.9.8 3.9 2.1-3.5 1.9-2.9 6.9 1.8 7.8z"/></svg>iPhone</span>輸入法詳細</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_ios_im_detail.png" alt="iPhone 輸入法詳細與編輯畫面"/></div>
+        <p class="ph-note">輸入法詳細頁，編輯資訊、選擇鍵盤配置，並可進入資料表。</p>
+      </div>
+      <div class="shot">
+        <div class="cap"><span class="pf"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M6 9h12v8a1 1 0 0 1-1 1h-1v3h-2v-3h-4v3H8v-3H7a1 1 0 0 1-1-1V9zm-3 .5a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zm15 0a1.5 1.5 0 0 1 3 0v5a1.5 1.5 0 0 1-3 0v-5zM7.5 7.8C7.8 5.4 9.7 3.6 12 3.6s4.2 1.8 4.5 4.2H7.5zM10 5.6a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2zm4 0a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2z"/></svg>Android</span>輸入法詳細</div>
+        <div class="shot-frame"><img src="../assets/shots/lime_settings_android_im_detail.png" alt="Android 輸入法詳細與編輯畫面"/></div>
+        <p class="ph-note">Android 的輸入法詳細頁，同樣可編輯資訊與字根資料表。</p>
+      </div>
+    </div>
+    <div class="manual-note">
+      <span class="ti">i</span>
+      <div><b>搜尋字根或文字</b>在資料表中可切換以「字根」或「文字」搜尋，分別對字根欄做前綴比對、對文字欄做包含比對。</div>
+    </div>
+
+    <h2 id="related">關聯字庫</h2>
+    <p>清單底部的「關聯字庫」是跨輸入法共用的詞彙關聯資料。點進去可「瀏覽 / 編輯關聯字庫」，新增或修改詞彙與其關聯字、調整分數。</p>
+
+    <h2 id="share">匯出輸入法表格與關聯字庫</h2>
+    <p>在輸入法詳細頁右上角的分享按鈕（iOS 為 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 14V3M12 3 9 6M12 3l3 3"/><path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v7A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 18.5 10H17"/></svg>、Android 為 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 10.8 15.9 6.2M8.1 13.2l7.8 4.6"/></svg>），可將輸入法匯出後分享。不同項目可匯出的格式如下。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>項目</th><th>可匯出格式</th></tr></thead>
+      <tbody>
+        <tr><td>一般輸入法</td><td><code>.lime</code>（文字）或 <code>.limedb</code>（資料庫）</td></tr>
+        <tr><td>關聯字庫</td><td>僅能匯出為 <code>.limedb</code></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="manual-warning">
+      <span class="ti">!</span>
+      <div><b>移除輸入法會清除其字根資料</b>移除輸入法會清除該輸入法的所有對應資料。若開啟「刪除時備份已學習記錄」，學習記錄會先備份，可在重新匯入時還原，否則無法還原。</div>
+    </div>
+
+    <h2 id="remove">移除輸入法</h2>
+    <p>在輸入法詳細頁最下方有「移除輸入法」按鈕。請謹慎使用：按下後，該輸入法資料表的內容會全部刪除。通常只有在你想重新下載或匯入新的資料表時才需要移除。</p>
+    <ol class="steps">
+      <li><strong>勾選備份學習記錄</strong>移除前，在詳細頁開啟「刪除時備份已學習記錄」（預設已開啟），就會先把你在該輸入法累積的個人學習資料備份起來。</li>
+      <li><strong>移除輸入法</strong>點「移除輸入法」並確認，資料表隨即清除。</li>
+      <li><strong>重新下載或匯入</strong>之後可從「＋」重新下載或匯入該輸入法的資料表。</li>
+      <li><strong>還原學習記錄</strong>重新匯入時開啟「還原已學習記錄」，先前備份的個人學習資料就會一併還原。</li>
+    </ol>
+
+    <div class="m-pagenav">
+      <a class="prev" href="keyboard-input.html"><div class="dir">← 上一篇</div><div class="ttl">鍵盤輸入</div></a>
+      <a class="next" href="preferences.html"><div class="dir">下一篇 →</div><div class="ttl">喜好設定</div></a>
+    </div>
+  </main>
+</div>
+
+
+</body>
+</html>
