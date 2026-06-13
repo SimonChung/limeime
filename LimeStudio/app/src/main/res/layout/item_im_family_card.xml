@@ -24,21 +24,40 @@
             android:gravity="center_vertical"
             android:background="?attr/selectableItemBackground">
 
-            <!-- Per-family icon -->
-            <ImageView
-                android:id="@+id/iv_family_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="12dp"
-                android:contentDescription="@null"
-                app:tint="?attr/colorControlNormal" />
+            <!-- Per-family badge: grey rounded-square + representative character,
+                 matching the IM-list page (ㄅ 倉 速 易 行 拼 …). -->
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/bg_im_badge">
+
+                <TextView
+                    android:id="@+id/tv_family_badge"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:textSize="18sp"
+                    android:textColor="@color/im_badge_foreground"
+                    android:contentDescription="@null" />
+
+                <ImageView
+                    android:id="@+id/iv_family_badge"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone"
+                    app:tint="@color/im_badge_foreground"
+                    android:contentDescription="@null" />
+
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/tv_im_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textAppearance="?attr/textAppearanceSubtitle1"
+                android:textAppearance="@style/LIME.Body"
                 android:textStyle="bold" />
 
             <!-- Shown when installed; replaces chevron -->
@@ -47,7 +66,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/im_installed_badge"
-                android:textAppearance="?attr/textAppearanceCaption"
+                android:textAppearance="@style/LIME.Caption"
                 android:textColor="?attr/colorPrimary"
                 android:layout_marginEnd="4dp"
                 android:visibility="gone" />

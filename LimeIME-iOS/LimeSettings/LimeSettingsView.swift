@@ -56,6 +56,10 @@ struct LimeSettingsView: View {
         // bar for the search field. The modifier is iOS 18+, so guard with
         // `if #available` to keep iOS 16/17 builds working.
         .iOS18SidebarAdaptableTabStyle()
+        // LIME-forward re-layout: brand green is the app-wide accent. Tinting
+        // the root propagates to every `.accentColor`, `.borderedProminent`
+        // button, Link, and `.tint`-based chevron in the settings tabs.
+        .tint(SettingsTheme.accent)
         .environmentObject(navManager)
         .environmentObject(progressManager)
         .environmentObject(setupController)

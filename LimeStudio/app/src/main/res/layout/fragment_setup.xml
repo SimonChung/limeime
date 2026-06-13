@@ -33,7 +33,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="萊姆輸入法"
-                android:textAppearance="?attr/textAppearanceHeadline5"
+                android:textAppearance="@style/LIME.TabTitle"
                 android:layout_marginStart="16dp" />
 
         </LinearLayout>
@@ -65,7 +65,7 @@
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceBody2" />
+                    android:textAppearance="@style/LIME.Subheadline" />
 
             </LinearLayout>
 
@@ -76,7 +76,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/setupHeading"
-            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:textAppearance="@style/LIME.Title1"
             android:text="@string/setup_im_system_settings"
             android:layout_marginBottom="8dp" />
 
@@ -84,7 +84,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/setupStep1Description"
-            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textAppearance="@style/LIME.Subheadline"
             android:text="@string/setup_im_system_settings_description"
             android:layout_marginBottom="5dp" />
 
@@ -92,7 +92,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/setupStep2Description"
-            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textAppearance="@style/LIME.Subheadline"
             android:text="@string/setup_im_system_impicker_description"
             android:layout_marginBottom="16dp" />
 
@@ -105,175 +105,205 @@
             android:text="@string/setup_im_wizard_nextstep"
             android:layout_marginBottom="8dp" />
 
-        <!-- Button: IM Picker -->
+        <!-- Button: IM Picker — bordered (12% green tinted fill, no stroke) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSetupImSystemIMPicker"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+            app:backgroundTint="@color/button_tint_primary"
+            android:textColor="?attr/colorPrimary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/setup_im_system_selectLIME"
             android:layout_marginBottom="24dp" />
 
-        <com.google.android.material.card.MaterialCardView
+        <!-- Voice permission block: a tinted status BANNER (icon + title only),
+             then the description and action button on the plain page background. -->
+        <LinearLayout
             android:id="@+id/voicePermissionCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:visibility="gone"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="@color/setup_status_bg"
             android:layout_marginBottom="24dp">
 
+            <!-- Tinted banner row (only this carries the status tint) -->
             <LinearLayout
+                android:id="@+id/voicePermissionBanner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/status_tint_red"
                 android:padding="12dp">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <ImageView
-                        android:id="@+id/voicePermissionIcon"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/sym_keyboard_voice_light"
-                        android:contentDescription="@null"
-                        android:layout_marginEnd="10dp" />
-
-                    <TextView
-                        android:id="@+id/voicePermissionTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/setup_voice_permission_title"
-                        android:textAppearance="?attr/textAppearanceBody2" />
-
-                </LinearLayout>
+                <ImageView
+                    android:id="@+id/voicePermissionIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/sym_keyboard_voice_light"
+                    android:contentDescription="@null"
+                    android:layout_marginEnd="10dp" />
 
                 <TextView
-                    android:id="@+id/voicePermissionDetail"
-                    android:layout_width="match_parent"
+                    android:id="@+id/voicePermissionTitle"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/setup_voice_permission_not_granted"
-                    android:textAppearance="?android:attr/textAppearanceMedium"
-                    android:layout_marginTop="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/voicePermissionButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/setup_voice_permission_open_settings"
-                    android:layout_marginTop="12dp" />
+                    android:layout_weight="1"
+                    android:text="@string/setup_voice_permission_title"
+                    android:textAppearance="@style/LIME.Subheadline" />
 
             </LinearLayout>
 
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- About Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:strokeWidth="0dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="@color/setup_status_bg">
-
-            <LinearLayout
+            <TextView
+                android:id="@+id/voicePermissionDetail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@string/setup_voice_permission_not_granted"
+                android:textAppearance="@style/LIME.Subheadline"
+                android:layout_marginTop="12dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+            <!-- Bordered (12% green tinted fill, no stroke) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/voicePermissionButton"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                app:backgroundTint="@color/button_tint_primary"
+                android:textColor="?attr/colorPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/setup_voice_permission_open_settings"
+                android:layout_marginTop="12dp" />
+
+        </LinearLayout>
+
+        <!-- About footer: full-bleed separator, three equal-width link chips
+             (使用手冊 / 版權說明 / 原始碼) and a one-line copyright banner.
+             Same IDs as before so SetupFragment's click handlers are unchanged;
+             only the layout is re-laid-out to match the iOS About footer. -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="-16dp"
+            android:layout_marginEnd="-16dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="16dp"
+            android:background="?attr/colorControlHighlight" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+
+            <!-- 使用手冊 chip -->
+            <LinearLayout
+                android:id="@+id/txtManualUrl"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="5dp"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:paddingTop="15dp"
+                android:paddingBottom="13dp"
+                android:background="@drawable/bg_about_chip"
+                android:clickable="true"
+                android:focusable="true">
 
-                <!-- Version Row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_menu_book_24"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="版本" />
-
-                    <TextView
-                        android:id="@+id/txtVersion"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end" />
-
-                </LinearLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorControlHighlight"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- License Row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="授權" />
-
-                    <TextView
-                        android:id="@+id/txtLicenseUrl"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="版權聲明"
-                        android:textColor="?attr/colorPrimary"
-                        android:clickable="true"
-                        android:focusable="true" />
-
-                </LinearLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorControlHighlight"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- Source Row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="原始碼" />
-
-                    <TextView
-                        android:id="@+id/txtGithubUrl"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="@string/url_github_limeime"
-                        android:textColor="?attr/colorPrimary"
-                        android:clickable="true"
-                        android:focusable="true" />
-
-                </LinearLayout>
+                    android:layout_marginTop="7dp"
+                    android:text="@string/about_manual_label"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="14sp" />
 
             </LinearLayout>
 
-        </com.google.android.material.card.MaterialCardView>
+            <!-- 版權說明 chip -->
+            <LinearLayout
+                android:id="@+id/txtLicenseUrl"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="5dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingTop="15dp"
+                android:paddingBottom="13dp"
+                android:background="@drawable/bg_about_chip"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_description_24"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:text="@string/about_license_link"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <!-- 原始碼 chip -->
+            <LinearLayout
+                android:id="@+id/txtGithubUrl"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="5dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingTop="15dp"
+                android:paddingBottom="13dp"
+                android:background="@drawable/bg_about_chip"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_code_24"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:text="@string/about_source_label"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- One-line copyright banner (txtVersion: set by SetupFragment) -->
+        <TextView
+            android:id="@+id/txtVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textAppearance="@style/LIME.Footnote" />
 
     </LinearLayout>
 

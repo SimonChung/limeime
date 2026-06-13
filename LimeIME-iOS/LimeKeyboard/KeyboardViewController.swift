@@ -222,6 +222,10 @@ final class KeyboardViewController: UIInputViewController {
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private weak var inlineMenuPanel: UIView?
     private weak var inlineMenuDismissTapGesture: UITapGestureRecognizer?
+    /// Fired once when the inline menu is dismissed (完成 / tap-outside). Used by the
+    /// long-press menu to apply its inline segmented choices (漢字轉換 / 分離鍵盤) on
+    /// dismiss, matching the Android keyboard menu's apply-on-dismiss model.
+    private var inlineMenuOnDismiss: (() -> Void)?
     private weak var keyboardTopCoverView: UIView?
     private var keyboardHostCoverHeight: CGFloat { isOnPad ? 0 : 12 }
 
@@ -3291,11 +3295,31 @@ extension KeyboardViewController: KeyboardViewDelegate {
             view?.removeGestureRecognizer(tap)
             inlineMenuDismissTapGesture = nil
         }
+        let onDismiss = inlineMenuOnDismiss
+        inlineMenuOnDismiss = nil
+        onDismiss?()
+    }
+
+    /// One row in the inline menu: either a tappable action row (optional leading
+    /// icon) or an inline segmented control (Android-parity 漢字轉換 / 分離鍵盤).
+    private enum InlineMenuEntry {
+        case action(title: String, icon: String?, action: () -> Void)
+        case segmented(title: String, icon: String?, labels: [String], selected: Int, onSelect: (Int) -> Void)
     }
 
     /// Build and show an inline menu panel overlaying the keyboard.
+    /// Back-compat: items without icons (sub-pickers). Delegates to the icon-aware form.
     private func showInlineMenu(items: [(title: String, action: () -> Void)]) {
+        showInlineMenu(items: items.map { (title: $0.title, icon: nil, action: $0.action) })
+    }
+
+    private func showInlineMenu(items: [(title: String, icon: String?, action: () -> Void)]) {
+        showInlineMenu(entries: items.map { .action(title: $0.title, icon: $0.icon, action: $0.action) })
+    }
+
+    private func showInlineMenu(entries: [InlineMenuEntry], onDismiss: (() -> Void)? = nil) {
         dismissInlineMenu()
+        inlineMenuOnDismiss = onDismiss
         guard let root = view else { return }
 
         let panel = UIView()
@@ -3324,30 +3348,83 @@ extension KeyboardViewController: KeyboardViewDelegate {
         stack.translatesAutoresizingMaskIntoConstraints = false
         scroll.addSubview(stack)
 
-        for (idx, item) in items.enumerated() {
-            let btn = UIButton(type: .system)
-            btn.setTitle(item.title, for: .normal)
-            btn.titleLabel?.font = UIFont.systemFont(ofSize: LayoutMetrics.InlineMenu.buttonFontSize)
-            btn.contentHorizontalAlignment = .center
-            btn.heightAnchor.constraint(equalToConstant: LayoutMetrics.InlineMenu.buttonHeight).isActive = true
-            btn.tag = idx
-            // Separator line (except last)
-            if idx < items.count - 1 {
-                let sep = UIView()
-                sep.backgroundColor = UIColor.separator
-                sep.heightAnchor.constraint(equalToConstant: LayoutMetrics.InlineMenu.separatorHeight).isActive = true
+        let iconPointSize = LayoutMetrics.InlineMenu.buttonFontSize
+        func addSeparator() {
+            let sep = UIView()
+            sep.backgroundColor = UIColor.separator
+            sep.heightAnchor.constraint(equalToConstant: LayoutMetrics.InlineMenu.separatorHeight).isActive = true
+            stack.addArrangedSubview(sep)
+        }
+        for (idx, entry) in entries.enumerated() {
+            let isLast = idx == entries.count - 1
+            switch entry {
+            case let .action(title, icon, action):
+                let btn = UIButton(type: .system)
+                btn.setTitle(title, for: .normal)
+                btn.titleLabel?.font = UIFont.systemFont(ofSize: LayoutMetrics.InlineMenu.buttonFontSize)
+                btn.titleLabel?.adjustsFontForContentSizeCategory = true
+                btn.heightAnchor.constraint(greaterThanOrEqualToConstant: LayoutMetrics.InlineMenu.buttonHeight).isActive = true
+                if let iconName = icon, !isLast {
+                    // Android-style row: leading icon + left-aligned title.
+                    let cfg = UIImage.SymbolConfiguration(pointSize: iconPointSize, weight: .regular)
+                    btn.setImage(UIImage(systemName: iconName, withConfiguration: cfg), for: .normal)
+                    btn.contentHorizontalAlignment = .leading
+                    btn.imageEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 12)
+                    btn.titleEdgeInsets = UIEdgeInsets(top: 0, left: 28, bottom: 0, right: 0)
+                    btn.contentEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 16)
+                    btn.tintColor = .label
+                } else {
+                    btn.contentHorizontalAlignment = .center
+                    if isLast { btn.setTitleColor(.systemBlue, for: .normal) }  // 完成
+                }
                 stack.addArrangedSubview(btn)
-                stack.addArrangedSubview(sep)
-            } else {
-                // Last item is Cancel — style differently
-                btn.setTitleColor(.systemBlue, for: .normal)
-                stack.addArrangedSubview(btn)
+                if !isLast { addSeparator() }
+                btn.addAction(UIAction { [weak self] _ in
+                    self?.dismissInlineMenu()
+                    action()
+                }, for: .touchUpInside)
+
+            case let .segmented(title, icon, labels, selected, onSelect):
+                // Inline segmented row: leading icon + title, then a UISegmentedControl
+                // (Android-parity 漢字轉換 / 分離鍵盤). Selection is recorded immediately;
+                // the menu's onDismiss applies it.
+                let rowFont = UIFont.systemFont(ofSize: LayoutMetrics.InlineMenu.buttonFontSize)
+                let header = UILabel()
+                header.font = rowFont
+                header.adjustsFontForContentSizeCategory = true
+                header.textColor = .label
+                header.text = title
+                if let iconName = icon {
+                    let cfg = UIImage.SymbolConfiguration(pointSize: iconPointSize, weight: .regular)
+                    let iv = UIImageView(image: UIImage(systemName: iconName, withConfiguration: cfg))
+                    iv.tintColor = .label
+                    iv.setContentHuggingPriority(.required, for: .horizontal)
+                    let hRow = UIStackView(arrangedSubviews: [iv, header])
+                    hRow.axis = .horizontal
+                    hRow.spacing = 12
+                    hRow.alignment = .center
+                    let seg = UISegmentedControl(items: labels)
+                    seg.selectedSegmentIndex = max(0, min(selected, labels.count - 1))
+                    seg.addAction(UIAction { _ in onSelect(seg.selectedSegmentIndex) }, for: .valueChanged)
+                    let col = UIStackView(arrangedSubviews: [hRow, seg])
+                    col.axis = .vertical
+                    col.spacing = 8
+                    col.isLayoutMarginsRelativeArrangement = true
+                    col.layoutMargins = UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+                    stack.addArrangedSubview(col)
+                } else {
+                    let seg = UISegmentedControl(items: labels)
+                    seg.selectedSegmentIndex = max(0, min(selected, labels.count - 1))
+                    seg.addAction(UIAction { _ in onSelect(seg.selectedSegmentIndex) }, for: .valueChanged)
+                    let col = UIStackView(arrangedSubviews: [header, seg])
+                    col.axis = .vertical
+                    col.spacing = 8
+                    col.isLayoutMarginsRelativeArrangement = true
+                    col.layoutMargins = UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+                    stack.addArrangedSubview(col)
+                }
+                if !isLast { addSeparator() }
             }
-            let capture = item.action
-            btn.addAction(UIAction { [weak self] _ in
-                self?.dismissInlineMenu()
-                capture()
-            }, for: .touchUpInside)
         }
 
         let menuInset = LayoutMetrics.InlineMenu.edgeInset
@@ -3415,33 +3492,54 @@ extension KeyboardViewController: KeyboardViewDelegate {
 
     /// Long-press on keyboard key: inline options menu (mirrors Android handleOptions()).
     private func showGlobeMenu(from sourceView: UIView) {
-        var items: [(title: String, action: () -> Void)] = []
+        var entries: [InlineMenuEntry] = []
 
+        // 字根反查 — drill-down sub-picker.
         let reverseLookupValue = LIMEPreferenceManager.shared.reverseLookup(for: activeIM)
         let reverseLookupOptions = LIMEPreferenceManager.reverseLookupOptions(from: activatedIMs)
         let reverseLookupLabel = LIMEPreferenceManager.reverseLookupLabel(for: reverseLookupValue,
                                                                           options: reverseLookupOptions)
-        items.append(("字根反查：\(reverseLookupLabel) ▸", { [weak self] in
+        entries.append(.action(title: "字根反查：\(reverseLookupLabel) ▸", icon: "magnifyingglass", action: { [weak self] in
             self?.showReverseLookupPicker()
         }))
 
-        // 漢字轉換 — sub-picker (mirrors Android showHanConvertPicker())
-        let hanStateLabels = ["關閉", "繁→簡", "簡→繁"]
-        let hanState = hanStateLabels[max(0, min(hanConvertOption, hanStateLabels.count - 1))]
-        items.append(("漢字轉換：\(hanState) ▸", { [weak self] in self?.showHanConvertPicker() }))
+        // 漢字轉換 — inline segmented control (無 / 繁→簡 / 簡→繁), Android-parity.
+        // Choice is recorded as pending and applied on dismiss.
+        var pendingHan = max(0, min(hanConvertOption, 2))
+        let hanStart = pendingHan
+        entries.append(.segmented(title: "漢字轉換", icon: "arrow.left.arrow.right",
+                                  labels: ["無", "繁→簡", "簡→繁"], selected: pendingHan,
+                                  onSelect: { pendingHan = $0 }))
 
-        // LIME 輸入法切換 — mirrors Android showIMPicker()
-        items.append(("LIME 輸入法切換", { [weak self] in self?.showLimeIMPicker() }))
-
-        // 系統輸入法切換 — only when no globe key is visible (tap-globe already handles this when visible)
-        let isPadIPad = isOnPad && currentLayout.id.contains("_ipad")
-        let globeIsVisible = isPadIPad || needsInputModeSwitchKey
-        if !globeIsVisible {
-            items.append(("系統輸入法切換", { [weak self] in self?.advanceToNextInputMode() }))
+        // 分離鍵盤 — iPad only: inline segmented control (關閉 / 開啟 / 僅橫向).
+        var pendingSplit = max(0, min(splitKeyboardMode, 2))
+        let splitStart = pendingSplit
+        if isOnPad {
+            entries.append(.segmented(title: "分離鍵盤", icon: "rectangle.split.2x1",
+                                      labels: ["關閉", "開啟", "僅橫向"], selected: pendingSplit,
+                                      onSelect: { pendingSplit = $0 }))
         }
 
-        items.append(("取消", {}))
-        showInlineMenu(items: items)
+        // LIME 輸入法切換 — mirrors Android showIMPicker()
+        entries.append(.action(title: "LIME 輸入法切換", icon: "list.bullet", action: { [weak self] in self?.showLimeIMPicker() }))
+
+        // 系統輸入法切換 was removed: the globe key is always present (App Store policy),
+        // so the system-keyboard switcher is already reachable from the keyboard itself.
+
+        entries.append(.action(title: "完成", icon: nil, action: {}))
+
+        showInlineMenu(entries: entries, onDismiss: { [weak self] in
+            guard let self else { return }
+            if pendingHan != hanStart {
+                self.hanConvertOption = pendingHan
+                self.sharedDefaults?.set(pendingHan, forKey: "han_convert_option")
+            }
+            if pendingSplit != splitStart {
+                self.splitKeyboardMode = pendingSplit
+                self.sharedDefaults?.set(pendingSplit, forKey: "split_keyboard_mode")
+                self.view.setNeedsLayout()   // re-applies splitMode in viewWillLayoutSubviews
+            }
+        })
     }
 
     /// Reverse lookup source sub-picker for the current active IM.

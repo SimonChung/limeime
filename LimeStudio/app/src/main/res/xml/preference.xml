@@ -41,6 +41,9 @@
             android:entries="@array/keyboard_themes_options"
             android:entryValues="@array/keyboard_themes_values"
             android:key="keyboard_theme"
+            android:icon="@drawable/ic_palette_24"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/keyboard_themes" />
         <ListPreference
             android:defaultValue="1"
@@ -48,6 +51,8 @@
             android:entries="@array/five_size_scale_options"
             android:entryValues="@array/five_size_scale_values"
             android:key="keyboard_size"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/keyboard_size" />
         <ListPreference
             android:defaultValue="1"
@@ -55,8 +60,10 @@
             android:entries="@array/five_size_scale_options"
             android:entryValues="@array/five_size_scale_values"
             android:key="font_size"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/font_size" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="number_row_in_english"
             android:summary="@string/number_row_in_english_summary"
@@ -67,6 +74,8 @@
             android:entries="@array/show_arrow_keys_options"
             android:entryValues="@array/show_arrow_keys_values"
             android:key="show_arrow_key"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/show_arrow_keys" />
         <ListPreference
             android:defaultValue="0"
@@ -74,6 +83,8 @@
             android:entries="@array/split_keyboard_options"
             android:entryValues="@array/split_keyboard_values"
             android:key="split_keyboard_mode"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/split_keyboard" />
     </PreferenceCategory>
 
@@ -81,9 +92,10 @@
     <PreferenceCategory
         android:key="pref_section_feedback"
         android:title="@string/pref_section_feedback">
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="vibrate_on_keypress"
+            android:icon="@drawable/ic_vibration_24"
             android:title="@string/vibrate_on_keypress" />
         <ListPreference
             android:defaultValue="40"
@@ -91,8 +103,10 @@
             android:entries="@array/vibrate_level_options"
             android:entryValues="@array/vibrate_level_values"
             android:key="vibrate_level"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/vibrate_level" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="sound_on_keypress"
             android:title="@string/sound_on_keypress" />
@@ -102,17 +116,18 @@
     <PreferenceCategory
         android:key="pref_section_im_behaviour"
         android:title="@string/pref_section_im_behaviour">
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="smart_chinese_input"
+            android:icon="@drawable/ic_auto_awesome_24"
             android:summary="@string/preference_smart_chinese_input_message"
             android:title="@string/preference_smart_chinese_input" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="auto_chinese_symbol"
             android:summary="@string/auto_chinese_symbol_summary"
             android:title="@string/auto_chinese_symbol" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="persistent_language_mode"
             android:summary="@string/persistent_language_mode_summary"
@@ -123,6 +138,8 @@
             android:entries="@array/emoji_display_position_title"
             android:entryValues="@array/emoji_display_position"
             android:key="enable_emoji_position"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/enable_emoji_position" />
         <ListPreference
             android:defaultValue="20"
@@ -130,9 +147,12 @@
             android:entries="@array/similiar_codes"
             android:entryValues="@array/similiar_codes"
             android:key="similiar_list"
+            app:useSimpleSummaryProvider="true"
+            android:layout="@layout/preference_value_chevron"
             android:title="@string/similiar_list" />
         <PreferenceScreen
             android:key="reverse_lookup_screen"
+            android:icon="@drawable/ic_search_24"
             android:title="@string/im_reverse_lookup_screen_title">
 
             <Preference
@@ -263,12 +283,13 @@
     <PreferenceCategory
         android:key="pref_section_han_convert"
         android:title="@string/pref_section_han_convert">
-        <ListPreference
+        <!-- Inline segmented control (無 / 繁轉簡 / 簡轉繁). Persists the same
+             han_convert_option String ("0"/"1"/"2") as the former ListPreference,
+             so the keyboard picks up the change identically. -->
+        <net.toload.main.hd.ui.view.SegmentedHanPreference
             android:defaultValue="0"
-            android:dialogTitle="@string/han_convert_option_list"
-            android:entries="@array/han_convert_options"
-            android:entryValues="@array/han_convert_options_values"
             android:key="han_convert_option"
+            android:persistent="true"
             android:title="@string/han_convert_option_list" />
     </PreferenceCategory>
 
@@ -276,22 +297,23 @@
     <PreferenceCategory
         android:key="pref_section_related_learning"
         android:title="@string/pref_section_related_learning">
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="similiar_enable"
+            android:icon="@drawable/ic_chat_24"
             android:summary="@string/similiar_enable_switch_summary"
             android:title="@string/similiar_enable_switch" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="candidate_suggestion"
             android:summary="@string/candidate_suggestion_summary"
             android:title="@string/candidate_suggestion" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="learn_phrase"
             android:summary="@string/learn_phrase_summary"
             android:title="@string/learn_phrase" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="learning_switch"
             android:summary="@string/learning_switch_summary"
@@ -302,12 +324,13 @@
     <PreferenceCategory
         android:key="pref_section_english_dictionary"
         android:title="@string/pref_section_english_dictionary">
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="english_dictionary_enable"
+            android:icon="@drawable/ic_abc_24"
             android:summary="@string/enable_english_dictionary_summary"
             android:title="@string/enable_english_dictionary" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="auto_cap"
             android:summary="@string/auto_cap_summary"
@@ -318,22 +341,23 @@
     <PreferenceCategory
         android:key="pref_section_physical_keyboard"
         android:title="@string/pref_section_physical_keyboard">
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="hide_software_keyboard_typing_with_physical"
+            android:icon="@drawable/ic_keyboard_24"
             android:summary="@string/hide_software_keyboard_typing_with_physical_summary"
             android:title="@string/hide_software_keyboard_typing_with_physical" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="switch_english_mode"
             android:summary="@string/switch_english_mode_summary_1"
             android:title="@string/switch_english_mode_1" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="switch_english_mode_shift"
             android:summary="@string/switch_english_mode_summary_2"
             android:title="@string/switch_english_mode_2" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="disable_physical_selkey"
             android:title="@string/disable_physical_selkey_option" />
@@ -344,13 +368,13 @@
             android:entryValues="@array/selkey_options_values"
             android:key="selkey_option"
             android:title="@string/selkey_option_list" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:dependency="english_dictionary_enable"
             android:key="english_dictionary_physical_keyboard"
             android:summary="@string/enable_english_dictionary_physical_keyboard_summary"
             android:title="@string/enable_english_dictionary_physical_keyboard" />
-        <CheckBoxPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="physical_keyboard_sort"
             android:summary="@string/physical_keyboard_sort_summary"

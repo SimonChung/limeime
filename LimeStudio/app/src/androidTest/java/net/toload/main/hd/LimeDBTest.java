@@ -1073,7 +1073,19 @@ public class LimeDBTest {
 
         assertNotNull("Suggestions should be available", suggestions);
         assertFalse("sal should return bundled dictionary suggestions", suggestions.isEmpty());
-        assertEquals("salt", suggestions.get(0));
+
+        // The bundled dictionary.db ranks by real Google Books Ngrams frequency
+        // (ORDER BY score + basescore DESC), NOT alphabetically. In that corpus
+        // "sales" (basescore 5357) outranks the alphabetically-earlier-or-later
+        // "sale"/"salt", so the most frequent prefix match leads.
+        assertEquals("most frequent 'sal' prefix should lead", "sales", suggestions.get(0));
+
+        // Prove the ranking is genuinely frequency-driven, not alphabetical: a
+        // pure A→Z order of this set would put "sale" before "sales" and "salt"
+        // last — the dictionary order differs.
+        List<String> alphabetical = new ArrayList<>(suggestions);
+        java.util.Collections.sort(alphabetical);
+        assertNotEquals("ranking must not be plain alphabetical", alphabetical, suggestions);
     }
 
     @Test(timeout = 10000)

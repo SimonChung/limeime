@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dark-theme colour overrides. The status inks and tints are fixed hex (they are
+  intentionally NOT the Material You accent), so they need explicit dark variants:
+  brighter inks that read on a dark surface, and translucent tints derived from
+  those inks (subtle wash, not an opaque pastel). Mirrors m3.jsx dark status.
+-->
+<resources>
+    <!-- Brighter status inks for dark surfaces (m3.jsx dark: success/warning). -->
+    <color name="setup_status_fg_green">#9CD67D</color>
+    <color name="setup_status_fg_yellow">#FFB951</color>
+    <color name="setup_status_fg_red">#FFB4AB</color>
+
+    <!-- Translucent tints derived from the dark inks. -->
+    <color name="status_tint_green">#269CD67D</color>
+    <color name="status_tint_yellow">#26FFB951</color>
+    <color name="status_tint_red">#26FFB4AB</color>
+
+    <!-- Neutral status-card / chip background on dark. -->
+    <color name="setup_status_bg">#1FFFFFFF</color>
+</resources>

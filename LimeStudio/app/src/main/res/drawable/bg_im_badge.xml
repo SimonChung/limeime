@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grey rounded-square behind an installed IM's representative character.
+     A single neutral badge — accent colour is reserved for interactive
+     controls (switches, buttons, links). Matches the iOS list badge.
+     See docs/LIME_SETTINGS.md §5.1. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/im_badge_background" />
+    <corners android:radius="11dp" />
+</shape>

@@ -1,0 +1,19 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Neutral Surfaces" subtitle="iOS light-appearance system grays — page, grouped bg, cards, fills" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;font-family:var(--font-sans)}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr)}
+  .sw{height:150px;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;box-sizing:border-box;border-right:1px solid rgba(0,0,0,.05)}
+  .sw span{font:600 12px/1.4 var(--font-sans);color:var(--text-primary)}
+  .sw small{font:500 10px/1.5 var(--font-mono);color:var(--text-secondary)}
+</style></head>
+<body>
+<div class="grid">
+  <div class="sw" style="background:var(--bg)"><span>bg</span><small>#FFFFFF</small></div>
+  <div class="sw" style="background:var(--bg-grouped)"><span>bg-grouped</span><small>#F2F2F7</small></div>
+  <div class="sw" style="background:var(--surface-secondary)"><span>surface-2</span><small>#F2F2F7</small></div>
+  <div class="sw" style="background:var(--surface-tertiary)"><span>surface-3</span><small>#E9E9EB</small></div>
+  <div class="sw" style="background:var(--fill-quaternary)"><span>fill-4</span><small>rgba(116,118,128,.08)</small></div>
+</div>
+</body></html>

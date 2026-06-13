@@ -278,7 +278,12 @@ public class LIMEPreference extends AppCompatActivity {
 			group.setIconSpaceReserved(false);
 			for (int i = 0; i < group.getPreferenceCount(); i++) {
 				Preference p = group.getPreference(i);
-				p.setIconSpaceReserved(false);
+				// Keep icon space for rows that actually have a leading icon
+				// (the design's section-leading rows); only collapse it for
+				// icon-less rows so they aren't indented.
+				if (p.getIcon() == null) {
+					p.setIconSpaceReserved(false);
+				}
 				if (p instanceof PreferenceGroup) {
 					disableIconSpaceReserved((PreferenceGroup) p);
 				}

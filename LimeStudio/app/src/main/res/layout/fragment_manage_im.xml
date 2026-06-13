@@ -32,8 +32,7 @@
                 android:id="@+id/tv_im_label_heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="28sp"
-                android:textStyle="bold"
+                android:textAppearance="@style/LIME.Title1"
                 android:textColor="?android:attr/textColorPrimary"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
@@ -113,10 +112,9 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceMedium"
                 android:text="0"
                 android:id="@+id/txtNavigationInfo"
-                android:textSize="13sp"
+                android:textAppearance="@style/LIME.Footnote"
                 android:gravity="center_horizontal"
                 android:layout_weight="1" />
 

@@ -251,6 +251,8 @@ struct IMDetailView: View {
             }
 
             if im.tableNick != "related" {
+                // Full-width bordered destructive button at the bottom of the
+                // detail screen (spec §5.2 — was a plain destructive list row).
                 Section {
                     Button(role: .destructive) {
                         showRemoveAlert = true
@@ -265,7 +267,12 @@ struct IMDetailView: View {
                             Spacer()
                         }
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .tint(SettingsTheme.destructive)
                     .disabled(isRemoving)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 }
                 .setupMatchedSectionBlock()
             }

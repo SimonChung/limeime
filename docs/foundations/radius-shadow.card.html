@@ -1,0 +1,27 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Radius & Shadow" subtitle="Corner radii and the elevation set (FAB · modal · switch · logo)" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--bg-grouped)}
+  .wrap{padding:24px;display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+  .group{display:flex;gap:16px;align-items:flex-end}
+  .box{width:64px;height:64px;background:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:500 10px/1 var(--font-mono);color:var(--text-secondary);box-shadow:0 0 0 .5px var(--separator)}
+  .sh{width:72px;height:72px;border-radius:12px;background:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:500 10px/1 var(--font-mono);color:var(--text-secondary)}
+  .div{width:1px;align-self:stretch;background:var(--separator)}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="group">
+    <div class="box" style="border-radius:var(--radius-field)">8</div>
+    <div class="box" style="border-radius:var(--radius-card)">10</div>
+    <div class="box" style="border-radius:var(--radius-button)">12</div>
+    <div class="box" style="border-radius:var(--radius-logo)">18</div>
+  </div>
+  <div class="div"></div>
+  <div class="group">
+    <div class="sh" style="box-shadow:var(--shadow-fab)">FAB</div>
+    <div class="sh" style="box-shadow:var(--shadow-modal)">modal</div>
+    <div class="sh" style="box-shadow:var(--shadow-logo)">logo</div>
+  </div>
+</div>
+</body></html>

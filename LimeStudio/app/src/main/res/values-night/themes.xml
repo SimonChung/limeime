@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variant of the keyboard long-press menu dialog. -->
+    <style name="LIME_KeyboardMenuDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_keyboard_menu_dialog</item>
+    </style>
+</resources>

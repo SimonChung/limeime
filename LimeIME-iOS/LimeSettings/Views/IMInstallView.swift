@@ -157,14 +157,10 @@ struct IMInstallView: View {
         }
         .listStyle(.insetGrouped)
         .setupMatchedGroupedSurface()
-        .constrainedDetailLayout("下載 / 匯入輸入法") {
-            Button {
-                downloadManager.refreshInstalledTables()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.title2.weight(.regular))
-            }
-        }
+        // No manual refresh action: installed state is re-queried automatically
+        // on appear and after every download/import (see refreshInstallStates /
+        // downloadManager.installedTables). LIME_SETTINGS.md §5.3.
+        .constrainedDetailLayout("下載 / 匯入輸入法")
         .onAppear {
             refreshInstallStates()
         }
@@ -338,8 +334,11 @@ private struct FamilyInstallGroup: View {
                     .foregroundColor(.accentColor)
             }
         } label: {
-            HStack {
-                Label(family.chineseName, systemImage: family.systemIcon)
+            HStack(spacing: SettingsMetrics.imRowSpacing) {
+                // Same grey rounded-square representative-character badge as the
+                // IM-list page (ㄅ / 倉 / 速 / 易 / 行 / 拼 …).
+                InstallBadge(character: installBadgeCharacter(for: family))
+                Text(family.chineseName)
                 if isInstalled {
                     Spacer()
                     Text("已安裝")
@@ -371,5 +370,37 @@ private struct FamilyInstallGroup: View {
                 isExpanded = true
             }
         }
+    }
+
+    /// Representative character for the family badge — same rule as the IM-list
+    /// page: first char of the name, except 注音→ㄅ, 大易→易,
+    /// 倉頡-family (cj/cj4/cj5/scj)→倉, 行列10→10.
+    private func installBadgeCharacter(for family: IMFamily) -> String {
+        switch family.id {
+        case "phonetic":              return "ㄅ"
+        case "cj", "cj4", "cj5", "scj": return "倉"
+        case "dayi":                  return "易"
+        case "array10":               return "10"
+        default:
+            return family.chineseName.isEmpty ? "?" : String(family.chineseName.prefix(1))
+        }
+    }
+}
+
+// MARK: - InstallBadge
+
+/// Grey rounded-square tile carrying a family's representative character on the
+/// install page — identical styling to the IM-list `IMBadge`. Spec §5.1 / §5.3.
+private struct InstallBadge: View {
+    let character: String
+
+    var body: some View {
+        Text(character)
+            .font(.system(size: SettingsMetrics.imBadgeFontSize, weight: .medium))
+            .foregroundColor(SettingsTheme.imBadgeForeground)
+            .frame(width: SettingsMetrics.imBadgeSize,
+                   height: SettingsMetrics.imBadgeSize)
+            .background(SettingsTheme.imBadgeBackground,
+                        in: RoundedRectangle(cornerRadius: SettingsMetrics.imBadgeCornerRadius))
     }
 }

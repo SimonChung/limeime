@@ -1087,7 +1087,10 @@ public class SearchServer {
                 result.add(self);
                 result.add(bestSuggestion);
 
-            } else if( englishSuggestion!=null && averageScore <= MAX_SCORE_THRESHOLD){
+            } else if( !prefetchCache && englishSuggestion!=null && averageScore <= MAX_SCORE_THRESHOLD){
+                // Prefetch queries are background cache warming, not real user input:
+                // they must not clear the runtime phrase suggestion state (mirrors the
+                // !prefetchCache guards above at the reset / makeRunTimeSuggestion paths).
                 clearRunTimeSuggestion(true);
                 result.add(self);
                 result.add(englishSuggestion);

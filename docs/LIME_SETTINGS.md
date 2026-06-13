@@ -1,5 +1,170 @@
 # LIME Settings iOS App — Specification
 
+> ### Revision — 4-tab top-page re-layout (2026-06)
+>
+> The four top-level tab pages (設定 · 輸入法 · 喜好設定 · 資料庫) were re-laid-out, the two
+> platforms were brought as visually close as possible, reference links were moved into an in-app
+> browser, and the Android keyboard's long-press options menu was restyled. Only the deltas below
+> change; the MVC mandate (§3), IM Table Editor (§6), and install/download flows (§5.3) are unchanged.
+>
+> - **Icons / colour scheme.** Dropped the multi-colour rounded-square icon tiles. List-row
+>   leading badges are now a single neutral grey (`systemGray` / `#8E8E93`); accent colour is
+>   reserved for interactive controls (switches, buttons, links). See §4.1, §5.1.
+> - **IM rows.** Each installed IM is shown as a **grey badge containing the IM's
+>   representative character** (注音→ㄅ, 倉頡→倉, 速成→速, 大易→易, 行列→行, 拼音→拼) — the
+>   bopomofo symbol ㄅ for 注音, otherwise the first character of the name — identical on both
+>   platforms, replacing the former per-IM coloured icon. Rows are **name only**: no catalog
+>   descriptions, record counts, or status subtitle (those live in the IM catalogue, not the
+>   installed list); enabled/disabled is conveyed by the switch + opacity. The 關聯字庫 row is
+>   likewise a single line (no subtitle). See §5.1.
+> - **IM list — no reorder.** Drag-to-reorder was removed; the list is not editable and has no
+>   Edit affordance. The add control is a **round FAB showing only `+`** (no label). See §5.1.
+> - **Type scale.** Android body / list rows / values / buttons were aligned up to the iOS
+>   sizes (17px body & values, 17px buttons, 34px bold tab titles); each Android tab carries a
+>   single large bold inline title (no duplicate app-bar title). See §5.1, §7.
+> - **Tablet (Android).** The 輸入法 tab implements the real app's tablet layout — a left
+>   `NavigationRailView` + a two-pane `TwoPaneHostFragment` (IM list ⇄ detail pane, with a
+>   「請從左側選擇輸入法」 empty state); phones keep the bottom nav + full-screen drill-down. See §5.1.
+> - **About section.** Added a **使用手冊** row linking the user manual
+>   (`https://lime-ime.github.io/limeime/pages/index.html`), and repointed **版權說明** to the
+>   published licence page (`https://lime-ime.github.io/limeime/pages/license.html`) instead of
+>   the raw `LICENSE.md`. See §4.1. External links carry a leave-the-app glyph.
+> - **Android Material You.** The Android accent is **inherited from the system** (Dynamic
+>   Colors, resolved by `SystemAccentColor.java` from `Settings.Secure`); there is **no in-app
+>   theme picker**. iOS keeps the fixed LIME brand palette. See §4.1 (Android).
+> - **Android day/night.** The app follows the system light/dark setting
+>   (`MODE_NIGHT_FOLLOW_SYSTEM`); the full M3 light and dark role sets are both modelled and
+>   compose with the inherited accent. Like the accent, it is a system setting (no in-app
+>   control). See §4.1 (Android).
+> - **IM detail — 移除輸入法.** Rendered as a full-width **bordered destructive button** at the
+>   bottom of the detail screen (was a plain destructive list row). See §5.2.
+> - **DB Manager.** Unified to an identical three-section structure on both platforms (only the
+>   platform skin differs); the **還原預設資料庫** description is a red warning: 「警告：將清除
+>   目前所有輸入法資料表，還原為萊姆內建的空白預設資料庫，此動作無法復原。」 See §7.
+> - **Setup hero.** The app logo is shown plain (no white rounded-rect tile / shadow) **beside**
+>   the 萊姆輸入法 wordmark in a centered **horizontal** row (logo ~92pt, wordmark 30pt; the
+>   設定萊姆輸入法 step-guide title is 28pt), on both platforms. See §4.1.
+> - **About footer.** The About block is a **full-bleed separator**, then **three equal-width
+>   tonal link chips** (使用手冊 / 版權說明 / 原始碼 — icon over label with a leave-the-app
+>   glyph), above a **one-line copyright banner** `© LIME 萊姆輸入法 <version> - <year>`. iOS
+>   uses brand-green chip labels; Android uses the Material You `colorPrimary`. The chip tap
+>   targets and URLs are unchanged from the old row list. See §4.1.
+> - **IM badge shape.** The grey representative-character badge is a **rounded square**
+>   (iOS `cornerRadius` 7 on a 30pt tile; Android 11dp corners on a 40dp tile), not a circle.
+>   See §5.1.
+> - **IM badge glyph (final rule).** First character of the IM name, with curated exceptions:
+>   注音→ㄅ; 大易→**易** (not 大); 倉頡-family (倉頡 / 四碼倉頡 `cj4` / 倉頡五代 `cj5` / 快倉 `scj`)→**倉**;
+>   行列10 `array10`→**10** (not 行). Keyed by `tableNick`, identical on both platforms. See §5.1.
+> - **關聯字庫 icon.** The 關聯字庫 row carries the same grey rounded-square tile as the IM badges,
+>   with a chat/bubble glyph (iOS `text.bubble`, Android `chat`). Single line, name only. See §5.1.
+> - **Status banner.** iOS renders the filled status glyph (✓/⚠/✕ disc) + label in the design's
+>   deep "ink" colour (`--success/warning/danger-ink`) over a subtle **status tint**; Android
+>   renders the same filled disc + state ink over the neutral `setup_status_bg`. See §4.2.
+> - **Android bottom navigation.** The 4 tabs (設定/輸入法/喜好設定/資料庫) use authentic Material
+>   Symbols (settings / format_list_bulleted / tune / inventory_2), a pill-shaped
+>   `colorSecondaryContainer` active indicator, and selected icon fill + bold label — all tracking
+>   the system Material You palette. See §2.
+> - **Preference second-level rows.** Every 喜好設定 row that opens a chooser shows its **current
+>   value** inline (`useSimpleSummaryProvider`) and a **trailing chevron** (`preference_value_chevron`).
+>   **簡繁轉換** is an inline M3 **segmented control** (無 / 繁轉簡 / 簡轉繁) + footer, via
+>   `SegmentedHanPreference`, which persists the same `han_convert_option` String — behaviour
+>   unchanged. iOS `Picker`/`NavigationLink` rows already show value + chevron. See §8.
+> - **Android colour scheme.** The Android settings chrome **inherits the system Material You
+>   palette** (Dynamic Colors + `MODE_NIGHT_FOLLOW_SYSTEM`) — no fixed brand scheme; every accent
+>   reads an `?attr/color*` M3 role. Only the neutral IM-badge grey and `setup_status_*` inks are
+>   intentionally fixed. iOS uses the fixed LIME brand palette. See §4.1.
+> - **Preference leading icons.** Section-leading rows in 喜好設定 carry a tinted leading icon
+>   matching the design kit — 鍵盤外觀 ▸ palette, 鍵盤回饋 ▸ vibration, 輸入法行為 ▸ auto-awesome,
+>   字根反查設定 ▸ search, 關聯字與學習 ▸ chat, 英文鍵盤 ▸ abc. iOS uses SF-Symbol `Label`s in the
+>   `Form`; Android uses `android:icon` on the matching `preference.xml` rows. Presentational
+>   only — no preference key, default, or binding changes. See §8.
+> - **Accent (iOS).** Brand green `#00833E` is the app-wide iOS accent (filled buttons, links,
+>   FAB, chevrons), applied once via `.tint()` at the root `TabView`. Android keeps the
+>   system-inherited Material You accent. See §4.1.
+> - **In-app browser for hero/About links.** The first two reference links — **使用手冊** and
+>   **版權說明** — now open **in-place** in an in-app browser (iOS `SFSafariViewController` via a
+>   `UIViewControllerRepresentable`; Android Chrome Custom Tabs, `androidx.browser:browser:1.8.0`,
+>   `CustomTabsIntent` with `ACTION_VIEW` fallback). **原始碼** keeps opening **externally** (system
+>   browser / GitHub app). On **iPad** the in-app browser is presented **full-screen**
+>   (`.fullScreenCover` rather than `.sheet`). URLs are unchanged. See §4.1.
+> - **Long-press keyboard-key options menu (Android keyboard extension).** The in-keyboard
+>   long-press options dialog (`LIMEService.handleOptions()`) was reworked to match the 喜好設定
+>   page's visual language. Its **title** is now **萊姆輸入法** (was `LIME-HD`; `R.string.ime_name`
+>   updated — that string is referenced only here). The plain `setItems` list was replaced by a
+>   **custom styled panel** (`keyboard_menu_panel.xml`): every entry is an icon + title (+ optional
+>   current value) + trailing-chevron row (`keyboard_menu_row.xml`). Two settings are shown as
+>   **inline M3 segmented controls** **at the top level** — no drill-down: **簡繁轉換**
+>   (無 / 繁轉簡 / 簡轉繁, persisting `han_convert_option` 0/1/2) and **分離鍵盤**
+>   (關閉 / 開啟 / 僅橫向, persisting the 3-state `split_keyboard` enum 0=NEVER / 1=ALWAYS /
+>   2=LANDSCAPE_ONLY — exposed directly, replacing the old orientation-aware split⇄merge toggle row;
+>   hidden when the split option is unavailable, i.e. landscape + arrow keys on). 反查字根 shows its
+>   current table inline. Because inline controls make a "Cancel" button a logic mismatch (select,
+>   then cancel), the negative **取消** was replaced by a positive **完成** (`keyboard_menu_done`);
+>   the inline choices are recorded as pending and **applied once on dismiss** (完成 / back /
+>   outside-tap), so the panel stays stable across multiple changes and the keyboard rebuilds at most
+>   once (only if 分離鍵盤 actually changed). New row icons: `ic_swap_24` (簡繁轉換), `ic_language_24`
+>   (系統輸入法), `ic_split_24` (分離鍵盤), `ic_mic_24` (語音輸入). This is keyboard-extension UI
+>   (parallel to the Settings-app `SegmentedHanPreference` in §8.5); persistence is unchanged.
+> - **Segmented controls — stack vertically when labels clip.** At the *maximum* accessibility
+>   sizes (system font scale 2.0 + largest display size) three side-by-side segments physically
+>   cannot fit multi-glyph Chinese labels, so the text clips — no horizontal inset/padding/ellipsize
+>   tuning can fix the geometry. The fix is **responsive orientation**: a shared helper
+>   `SegmentedHanPreference.stackIfClipped(group)` runs after layout, and **if any segment's label is
+>   actually ellipsized it flips the `MaterialButtonToggleGroup` to vertical** (each button
+>   full-width), so every label shows in full. It reacts to *measured* clipping, so it self-adapts to
+>   any font/display scale and label — horizontal segmented look at normal sizes, a 3-row stack only
+>   when needed. Applied to the 喜好設定 page (`preference_han_segmented.xml`) and both keyboard-menu
+>   controls (簡繁轉換 + 分離鍵盤, `keyboard_menu_panel.xml`). Labels are the arrow form
+>   **無 / 繁→簡 / 簡→繁** (was 無 / 繁轉簡 / 簡轉繁; `han_convert_t2s` / `han_convert_s2t`, used only by
+>   these two layouts). **Verified at font_scale 2.0 + density 640 (max).** Underlying values
+>   (`han_convert_option` 0/1/2) and persistence are unchanged. See §8.5.
+> - **Rows never clip captions or values at large fonts.** Across the Android value/chooser rows
+>   (`preference_value_chevron.xml`, `preference_value_right.xml`, `preference_lime_row.xml`, and the
+>   keyboard menu's `keyboard_menu_row.xml`) neither the **title/caption** nor the **right-side
+>   value/status** is single-line-ellipsized any more — both **wrap** instead of clipping or
+>   collapsing. Title and value each take a weighted share (title gets the larger share but never
+>   collapses to zero) and wrap to up to 3 lines; the keyboard-menu row stacks title-over-value so
+>   both always show in full. Replaces the earlier scheme where a long value could squeeze the
+>   weighted title to zero width and make the caption disappear.
+> - **IM detail rows — chevron centering + scale.** In `fragment_im_detail.xml` the value rows
+>   (名稱 / 版本 / 結束鍵 / 軟鍵盤 / 字根資料表) now set `gravity="center_vertical"`, so the trailing
+>   `›` chevron stays vertically centered when the label/value wraps to two lines (it was
+>   top-aligned). The chevron `ImageView`s were changed from `20dp` to **`20sp`** so they grow with
+>   the system font scale instead of staying fixed.
+> - **iOS keyboard long-press menu — Android-style icons + inline segmented controls,
+>   系統輸入法切換 removed, 完成.** The iOS in-keyboard options menu
+>   (`KeyboardViewController.showGlobeMenu`) now gives its action rows **leading SF-Symbol icons with
+>   left-aligned titles** (字根反查 ▸ `magnifyingglass`, LIME 輸入法切換 ▸ `list.bullet`), matching the
+>   Android themed panel. **漢字轉換** is an **inline `UISegmentedControl`** (無 / 繁→簡 / 簡→繁) and,
+>   **on iPad only**, a **分離鍵盤** inline segmented control (關閉 / 開啟 / 僅橫向) is added — replacing
+>   the old 漢字轉換 drill-down sub-picker, mirroring the Android keyboard menu. Both record a pending
+>   choice and are **applied on dismiss** (完成 / tap-outside): han writes `han_convert_option`, split
+>   writes `split_keyboard_mode` and re-runs `viewWillLayoutSubviews` to re-apply `splitMode` live. A
+>   new `InlineMenuEntry` enum (`.action` / `.segmented`) lets `showInlineMenu` render both row types;
+>   sub-pickers keep the plain centered style. The **系統輸入法切換** item was **removed entirely** —
+>   the globe key is always present (App Store policy), so the system-keyboard switcher is always
+>   reachable from the keyboard itself (was previously shown only when no globe key was visible). The
+>   dismiss item **取消 → 完成**.
+> - **iOS status banner — softer in dark mode.** The status banner's inks and tints
+>   (`SettingsTheme.successInk/warningInk/dangerInk`, `statusTintGreen/Yellow/Red`) are now
+>   **adaptive**: the opaque pastel tints (#E8F5E9 / #FFF8E1 / #FFEBEE) read far too bright on black,
+>   so — like Android's `values-night/colors.xml` — dark mode uses a **lighter ink**
+>   (#9CD67D / #FFB951 / #FFB4AB) over a **translucent ≈15% tint** of that ink, while light mode keeps
+>   the deep ink over a **≈12%** tint (matching Android's `#26` / `#1F` alpha). Implemented with a
+>   `UIColor { traitCollection }` adaptive helper.
+> - **iOS tonal button style (legible in dark).** SwiftUI's `.buttonStyle(.bordered)` renders an
+>   almost-invisible dark fill on black (the 資料庫 ▸ 還原資料庫 button). A new shared
+>   **`LimeTonalButtonStyle`** uses a stronger, theme-adaptive tonal fill (**14%** of the tint in
+>   light, **28%** in dark — paralleling the Android `button_tint_primary` / `button_tint_error`
+>   selectors) with accent-coloured text. Applied to 資料庫 ▸ **還原資料庫** (green) and **還原預設資料庫**
+>   (red), and the 設定 tab's **前往設定** button; 備份資料庫 stays filled-prominent (primary action).
+> - **Value/chooser rows wrap, never clip; IM-detail chevrons centre + scale.** Across the Android
+>   value rows neither caption nor right-side value is single-line-clipped any more — both wrap
+>   (weighted shares, up to 3 lines), and the keyboard-menu row stacks title-over-value so neither can
+>   collapse to zero. In `fragment_im_detail.xml` the value rows set `gravity="center_vertical"` (so
+>   the trailing `›` stays centred when text wraps) and the chevrons use **`20sp`** (was `20dp`) to
+>   grow with the font scale.
+
 ## 1. Overview
 
 This document specifies the design and behaviour of the **LimeIME container app** (the Settings app the user sees in the iOS Home Screen, not the keyboard extension). The goal is to replicate **every feature of the Android LIME Settings app** while applying iOS HIG conventions: `NavigationStack` / `NavigationView` for drill-down navigation, `Form + Section` for preference settings, `List` with swipe actions for record management, `Picker` for single-choice selections, and `Toggle` for boolean controls.
@@ -20,7 +185,7 @@ A fifth area — **App Setup** — handles one-time activation and app-level inf
 | Android component | iOS Feature Area | Tab |
 |---|---|---|
 | `SetupImFragment` (activation guide) | App Setup | 設定 |
-| `SetupImFragment` (IM buttons) | IM Manager — enable/reorder | 輸入法 |
+| `SetupImFragment` (IM buttons) | IM Manager — enable/disable | 輸入法 |
 | `kbsetting.xml` (IM info + keyboard picker) | IM Manager — keyboard config | 輸入法 drill-down |
 | `IMStoreView` / cloud download | IM Manager — download | 輸入法 |
 | `SetupImFragment` (import file) | IM Manager — import | 輸入法 |
@@ -285,24 +450,27 @@ NavigationStack (.navigationBarHidden(true))
         │       .frame(width: 1, height: 1)   // Access not confirmed; causes LimeKeyboard's
         │       .opacity(0.01)               // viewWillAppear to write keyboard_has_full_access
         │
-        └── // ── About section ────────────────────────────────────────
-            GroupBox {
-                LabeledContent("版本", value: appVersion())   // CFBundleShortVersionString (build)
-                    .padding(.vertical, 11)
-                Divider()
-                HStack {
-                    Text("授權")
-                    Spacer()
-                    Link("版權說明", destination: licenseURL)
+        └── // ── About footer ─────────────────────────────────────────
+            //   Full-bleed separator, three equal-width tonal link chips, then a
+            //   one-line copyright banner. Chip labels use the brand-green accent.
+            VStack(spacing: 16) {
+                Divider().padding(.horizontal, -24)   // full-bleed
+                HStack(spacing: 10) {
+                    LinkChip("使用手冊", icon: "book",        url: manualURL,  inApp: true)
+                    LinkChip("版權說明", icon: "doc.text",    url: licenseURL, inApp: true)
+                    LinkChip("原始碼",   icon: "chevron.left.forwardslash.chevron.right",
+                                                            url: githubURL,  inApp: false)
                 }
-                    .padding(.vertical, 11)
-                Divider()
-                Link("原始碼 (GitHub)", destination: githubURL)
-                    .padding(.vertical, 11)
+                Text("© LIME 萊姆輸入法 \(appVersion()) - \(year)")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
-            .groupBoxStyle(FormSectionGroupBoxStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
+        // LinkChip(inApp: true)  → in-app browser (SFSafariViewController), full-screen on iPad.
+        // LinkChip(inApp: false) → opens externally via openURL.
+        //   manualURL  = https://lime-ime.github.io/limeime/pages/index.html
+        //   licenseURL = https://lime-ime.github.io/limeime/pages/license.html
+        //   githubURL  = https://github.com/lime-ime/limeime
         // VStack modifiers:
         //   .frame(maxWidth: 560)        // iPad reading-width cap
         //   .frame(maxWidth: .infinity)  // center the column horizontally
@@ -355,7 +523,7 @@ Layout: `NestedScrollView` → `LinearLayout`. Brand block is a horizontal row: 
 | Enabled, not active | Description `"萊姆輸入法已啟用但尚未被選用，請按下方按鈕後，在系統鍵盤輸入法選擇頁選用萊姆輸入法。"`, outlined button `"選用萊姆輸入法"` → `showInputMethodPicker()` |
 | Enabled and active | Setup heading + buttons hidden; IM list (`SetupImList`) shown |
 
-**About card**: `"版本"` (right-aligned, `version_format` = `"v%1$s - %2$d"`), `"授權"` / clickable `"版權說明"` linking to `https://github.com/lime-ime/limeime/blob/master/LICENSE.md`, `"原始碼"` (right-aligned clickable `txtGithubUrl`).
+**About footer** (`fragment_setup.xml` + `SetupFragment.java`): a full-bleed separator, then three equal-width tonal link chips (使用手冊 / 版權說明 / 原始碼 — icon over label) above a one-line copyright banner `© LIME 萊姆輸入法 <version> - <year>`. Chip labels use `?attr/colorPrimary` (Material You). **使用手冊** (`https://lime-ime.github.io/limeime/pages/index.html`) and **版權說明** (`https://lime-ime.github.io/limeime/pages/license.html`) open **in-place** via Chrome Custom Tabs (`openInAppTab()` — `CustomTabsIntent.Builder().setShowTitle(true)`, with an `ACTION_VIEW` fallback). **原始碼** (`txtGithubUrl`) opens **externally** via `ACTION_VIEW`.
 
 ### 4.2 Status Banner
 
@@ -542,6 +710,14 @@ The keyboard extension re-reads both the pref and the DB row at the top of `init
 ### 5.3 IM Install Screen — Download & Import
 
 Entry point reachable from the "下載 / 匯入輸入法" NavigationLink in §5.1. Each IM is a top-level `DisclosureGroup`; cloud download options appear only for built-in IMs.
+
+> **No manual refresh action.** The install screen has **no refresh button** in the
+> top bar (the former upper-right ↻ was removed on both platforms). Installed state is
+> a local DB check (`tableHasData`) that only changes as a result of an install/import
+> performed on this screen, and every such path re-queries it automatically — iOS via
+> `refreshInstallStates()` on `.onAppear` plus the `@Published installedTables` update
+> after each import; Android via `loadFamilyListAsync()` on open and `onInstallComplete()`
+> after each install. There is nothing a manual refresh would surface that these don't.
 
 | iOS | Android |
 |---|---|
@@ -1036,6 +1212,10 @@ All pickers default to `"none"`. Picker rows are dynamic: iOS loads the same ena
 | UI Control | Pref Key | Type | Default | Notes |
 |---|---|---|---|---|
 | `Picker` "簡繁轉換" (`.segmented`) | `han_convert_option` | Int | 0 | 0=不轉換 1=繁→簡 2=簡→繁 |
+
+iOS uses a `.segmented` `Picker`. Android renders an inline M3 segmented control (無 / 繁轉簡 / 簡轉繁) via `SegmentedHanPreference` (`preference_han_segmented.xml`), persisting the same `han_convert_option` String. The Android **keyboard extension** exposes the *same* segmented control inline at the top level of its long-press options menu — alongside an inline **分離鍵盤** segmented control (`split_keyboard`) — and applies both on dismiss (see the revision note "Long-press keyboard-key options menu"); all write the same keys as the Settings app.
+
+At the maximum accessibility sizes (font scale 2.0 + largest display), three side-by-side segments can't fit the Chinese labels. `SegmentedHanPreference.stackIfClipped()` runs after layout and, if any segment's label is ellipsized, flips the `MaterialButtonToggleGroup` to **vertical** (full-width buttons) so every label shows in full — horizontal at normal sizes, a 3-row stack only when needed. Labels are 無 / 繁→簡 / 簡→繁. Same helper is reused by the keyboard long-press menu's 簡繁轉換 and 分離鍵盤 controls.
 
 ### 8.6 Section 關聯字與學習 (Related Phrases & Learning)
 

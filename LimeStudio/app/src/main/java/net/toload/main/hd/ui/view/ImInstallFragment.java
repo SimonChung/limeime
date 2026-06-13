@@ -157,21 +157,15 @@ public class ImInstallFragment extends Fragment {
 
         View rootView = inflater.inflate(R.layout.fragment_im_install, container, false);
 
-        // Toolbar with back navigation and refresh action
+        // Toolbar with back navigation only. No manual refresh action: the
+        // installed state is reloaded automatically on open and after every
+        // download/import (loadFamilyListAsync / onInstallComplete).
         MaterialToolbar toolbar = rootView.findViewById(R.id.im_install_toolbar);
         toolbar.setNavigationOnClickListener(v -> {
             Fragment host = getParentFragment();
             if (host != null) {
                 host.getChildFragmentManager().popBackStack();
             }
-        });
-        toolbar.inflateMenu(R.menu.im_install_menu);
-        toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.action_refresh) {
-                loadFamilyListAsync();
-                return true;
-            }
-            return false;
         });
 
         recyclerView = rootView.findViewById(R.id.im_install_list);
@@ -523,10 +517,34 @@ public class ImInstallFragment extends Fragment {
 
     // -------- ViewHolder --------
 
+    /**
+     * Badge character for an install-page family — same rule as the IM-list
+     * page: first character of the name, except 注音→ㄅ, 大易→易,
+     * 倉頡-family (cj/cj4/cj5/scj)→倉, 行列10→10.
+     */
+    private static String familyBadgeChar(ImFamily family) {
+        String code = family.tableName;
+        if (code != null) {
+            switch (code) {
+                case "phonetic": return "ㄅ";
+                case "cj":
+                case "cj4":
+                case "cj5":
+                case "scj":      return "倉";
+                case "dayi":     return "易";
+                case "array10":  return "10";
+            }
+        }
+        String t = family.displayTitle;
+        if (t == null || t.isEmpty()) return "?";
+        return t.substring(0, 1);
+    }
+
     private class ImFamilyViewHolder extends RecyclerView.ViewHolder {
 
         final LinearLayout cardHeader;
-        final android.widget.ImageView ivFamilyIcon;
+        final TextView tvFamilyBadge;
+        final android.widget.ImageView ivFamilyBadge;
         final TextView tvTitle;
         final TextView tvInstalledBadge;
         final android.widget.ImageView ivChevron;
@@ -540,7 +558,8 @@ public class ImInstallFragment extends Fragment {
         ImFamilyViewHolder(@NonNull View itemView) {
             super(itemView);
             cardHeader = itemView.findViewById(R.id.card_header);
-            ivFamilyIcon = itemView.findViewById(R.id.iv_family_icon);
+            tvFamilyBadge = itemView.findViewById(R.id.tv_family_badge);
+            ivFamilyBadge = itemView.findViewById(R.id.iv_family_badge);
             tvTitle = itemView.findViewById(R.id.tv_im_title);
             tvInstalledBadge = itemView.findViewById(R.id.tv_installed_badge);
             ivChevron = itemView.findViewById(R.id.iv_chevron);
@@ -553,12 +572,16 @@ public class ImInstallFragment extends Fragment {
         }
 
         void bind(ImFamily family, boolean isExpanded, Runnable toggleExpand) {
-            // Family icon
-            if (family.iconResId != 0) {
-                ivFamilyIcon.setImageResource(family.iconResId);
-                ivFamilyIcon.setVisibility(View.VISIBLE);
+            // Family badge: same grey rounded-square + representative character
+            // as the IM-list page (related shows the chat glyph).
+            if (family.isRelated) {
+                tvFamilyBadge.setVisibility(View.GONE);
+                ivFamilyBadge.setVisibility(View.VISIBLE);
+                ivFamilyBadge.setImageResource(R.drawable.ic_chat_24);
             } else {
-                ivFamilyIcon.setVisibility(View.GONE);
+                ivFamilyBadge.setVisibility(View.GONE);
+                tvFamilyBadge.setVisibility(View.VISIBLE);
+                tvFamilyBadge.setText(familyBadgeChar(family));
             }
 
             tvTitle.setText(family.displayTitle);

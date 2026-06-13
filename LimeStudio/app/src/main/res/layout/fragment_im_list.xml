@@ -8,8 +8,11 @@
 
     <com.google.android.material.appbar.MaterialToolbar
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         app:title="@string/title_im_list"
+        app:titleTextAppearance="@style/LIME.TabTitle"
         app:titleTextColor="?android:attr/textColorPrimary" />
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -35,7 +38,7 @@
         android:contentDescription="@string/im_list_action_install"
         android:src="@drawable/ic_add"
         app:backgroundTint="?attr/colorPrimary"
-        app:tint="@android:color/white" />
+        app:tint="?attr/colorOnPrimary" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

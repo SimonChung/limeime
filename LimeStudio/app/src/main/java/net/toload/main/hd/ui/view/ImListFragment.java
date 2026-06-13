@@ -254,18 +254,53 @@ public class ImListFragment extends Fragment {
         }
     }
 
+    /**
+     * The representative character shown in an installed IM's grey badge. The
+     * rule is the <b>first character of the IM name</b>, with curated exceptions:
+     *   注音 → ㄅ; 大易 → 易 (not 大); 倉頡-family (倉頡 / 四碼倉頡 / 倉頡五代 / 快倉) → 倉;
+     *   行列10 → 10 (not 行). Keyed by tableNick (code); unknown tables fall back
+     *   to the first name character. Identical to iOS. Spec §5.1.
+     */
+    private static String representativeCharacter(ImConfig im) {
+        String code = im.getCode();
+        if (code != null) {
+            switch (code) {
+                case "phonetic": return "ㄅ";
+                case "cj":       // 倉頡
+                case "cj4":      // 四碼倉頡
+                case "cj5":      // 倉頡五代
+                case "scj":      return "倉"; // 快倉
+                case "dayi":     return "易"; // 大易 → 易 (not 大)
+                case "array10":  return "10"; // 行列10 → 10 (not 行)
+            }
+        }
+        String desc = im.getDesc();
+        if (desc == null || desc.isEmpty()) {
+            return "?";
+        }
+        return desc.substring(0, 1);
+    }
+
     private class ImViewHolder extends RecyclerView.ViewHolder {
+        final TextView tvBadge;
+        final ImageView ivBadge;
         final TextView tvLabel;
         final SwitchMaterial switchEnabled;
 
         ImViewHolder(@NonNull View itemView) {
             super(itemView);
+            tvBadge = itemView.findViewById(R.id.tv_im_badge);
+            ivBadge = itemView.findViewById(R.id.iv_im_badge);
             tvLabel = itemView.findViewById(R.id.tv_im_label);
             switchEnabled = itemView.findViewById(R.id.switch_im_enabled);
         }
 
         void bind(ImConfig im) {
             tvLabel.setText(im.getDesc());
+            // Character badge: show the glyph, hide the icon overlay.
+            ivBadge.setVisibility(View.GONE);
+            tvBadge.setVisibility(View.VISIBLE);
+            tvBadge.setText(representativeCharacter(im));
             itemView.setAlpha(im.isDisable() ? LIME.HALF_ALPHA_VALUE : 1.0f);
 
             // Clear listener before setting state to avoid spurious callbacks
@@ -303,20 +338,25 @@ public class ImListFragment extends Fragment {
     }
 
     private class RelatedViewHolder extends RecyclerView.ViewHolder {
-        final ImageView ivIcon;
+        final TextView tvBadge;
+        final ImageView ivBadge;
         final TextView tvLabel;
         final SwitchMaterial switchEnabled;
 
         RelatedViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivIcon = itemView.findViewById(R.id.iv_im_icon);
+            tvBadge = itemView.findViewById(R.id.tv_im_badge);
+            ivBadge = itemView.findViewById(R.id.iv_im_badge);
             tvLabel = itemView.findViewById(R.id.tv_im_label);
             switchEnabled = itemView.findViewById(R.id.switch_im_enabled);
         }
 
         void bind() {
             tvLabel.setText(R.string.im_related_label);
-            ivIcon.setImageResource(R.drawable.ic_list_bullet);
+            // 關聯字庫 shows the same grey tile with a chat glyph (iOS parity).
+            tvBadge.setVisibility(View.GONE);
+            ivBadge.setVisibility(View.VISIBLE);
+            ivBadge.setImageResource(R.drawable.ic_chat_24);
             switchEnabled.setVisibility(View.GONE);
             itemView.setAlpha(1.0f);
 

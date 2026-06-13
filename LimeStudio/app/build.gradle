@@ -36,7 +36,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 2026
-        versionName '6.1.18'
+        versionName '6.1.19'
 
         //multiDexEnabled = true
 
@@ -166,6 +166,7 @@ dependencies {
 
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.browser:browser:1.8.0'
     implementation 'androidx.core:core:1.17.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     // implementation 'androidx.multidex:multidex:2.0.1'

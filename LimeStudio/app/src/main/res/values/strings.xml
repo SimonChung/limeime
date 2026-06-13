@@ -292,7 +292,6 @@
     <!-- IM catalog install page -->
     <string name="im_install_action">安裝</string>
     <string name="im_installed_badge">已安裝</string>
-    <string name="im_install_refresh">重新整理</string>
     <string name="im_install_title">下載 / 匯入輸入法</string>
 
     <!-- String formatting templates -->

@@ -24,57 +24,54 @@ struct DBManagerView: View {
     @State private var showShareSheet = false
     @State private var backupProgress: Double = 0
     @State private var preparingShare = false
-    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if hSize == .regular {
-                        Text("資料庫管理")
-                            .font(.largeTitle).bold()
-                            .padding(.top, 120)
-                            .padding(.bottom, 8)
-                    }
-                    formSection(
-                        header: "備份",
-                        footer: "備份包含所有字根、關聯字及喜好設定。"
-                    ) {
+                    Text("資料庫管理")
+                        .font(.largeTitle).bold()
+                        .padding(.top, SettingsMetrics.titleTopPadding)
+                        .padding(.bottom, 20)
+
+                    // 備份 — filled (primary) action.
+                    dbAction(footer: "備份包含所有字根、關聯字及喜好設定。") {
                         Button { performBackup() } label: {
                             Label("備份資料庫", systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                         .disabled(isWorking)
-                        .padding(.vertical, 11)
                     }
 
-                    formSection(
-                        header: "還原",
-                        footer: "還原後鍵盤將重新載入資料庫。"
-                    ) {
+                    // 還原 — bordered action.
+                    dbAction(footer: "還原後鍵盤將重新載入資料庫。") {
                         Button { showRestoreConfirm = true } label: {
                             Label("還原資料庫", systemImage: "arrow.down.circle")
                         }
+                        .buttonStyle(LimeTonalButtonStyle())
                         .disabled(isWorking)
-                        .foregroundColor(SettingsTheme.destructive)
-                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                     }
 
-                    formSection(header: "初始資料庫") {
+                    // 初始資料庫 — bordered destructive action + red warning footer.
+                    dbAction(
+                        footer: "警告：將清除目前所有輸入法資料表，還原為萊姆內建的空白預設資料庫，此動作無法復原。",
+                        warning: true
+                    ) {
                         Button { showInitConfirm = true } label: {
                             Label("還原預設資料庫", systemImage: "arrow.counterclockwise.circle")
                         }
+                        .buttonStyle(LimeTonalButtonStyle(tint: SettingsTheme.destructive))
                         .disabled(isWorking)
-                        .foregroundColor(SettingsTheme.destructive)
-                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
                     }
 
                     if !statusMessage.isEmpty {
-                        formSection(header: "狀態") {
-                            Text(statusMessage)
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .padding(.vertical, SettingsMetrics.rowVerticalPadding)
-                        }
+                        Label(statusMessage, systemImage: "info.circle")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                            .padding(.horizontal, SettingsMetrics.formHeaderLeadingPadding)
                     }
                 }
                 .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
@@ -83,9 +80,9 @@ struct DBManagerView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color(UIColor.systemBackground).ignoresSafeArea())
-            .navigationTitle(hSize == .regular ? "" : "資料庫管理")
-            .navigationBarTitleDisplayMode(hSize == .regular ? .inline : .large)
-            .toolbarBackground(hSize == .regular ? .hidden : .automatic, for: .navigationBar)
+            // Static inline title only (matches the other tab roots). Hide the
+            // system nav bar so the title doesn't render twice on iPhone.
+            .toolbar(.hidden, for: .navigationBar)
             .alert("確認還原", isPresented: $showInitConfirm) {
                 Button("還原", role: .destructive) { restoreBundledDatabase() }
                 Button("取消", role: .cancel) {}
@@ -143,28 +140,30 @@ struct DBManagerView: View {
         }
     }
 
+    /// A DB action: a full-width button above a supporting footer. The
+    /// 還原預設資料庫 footer is a red warning carrying a leading triangle glyph.
+    /// Mirrors the design kit's DBTab `Action` (button + footer, no grouped
+    /// section header — the button labels are self-explanatory).
     @ViewBuilder
-    private func formSection<Content: View>(
-        header: String,
-        footer: String? = nil,
+    private func dbAction<Content: View>(
+        footer: String,
+        warning: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(header)
-                .font(.footnote)
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                    .padding(.leading, SettingsMetrics.formHeaderLeadingPadding)
-                    .padding(.top, SettingsMetrics.formHeaderTopPadding)
-            GroupBox { content() }
-                .groupBoxStyle(FormSectionGroupBoxStyle())
-            if let footer {
+        VStack(alignment: .leading, spacing: 8) {
+            content()
+            HStack(alignment: .top, spacing: 6) {
+                if warning {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                }
                 Text(footer)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .padding(.leading, SettingsMetrics.formHeaderLeadingPadding)
             }
+            .font(.footnote)
+            .foregroundColor(warning ? SettingsTheme.destructive : .secondary)
+            .padding(.horizontal, SettingsMetrics.formHeaderLeadingPadding)
         }
+        .padding(.bottom, SettingsMetrics.dbActionBottomSpacing)
     }
 
     // MARK: - Backup

@@ -1,0 +1,27 @@
+<!-- @dsCard group="Brand" viewport="700x240" name="Logo & App Icon" subtitle="The lime-fruit mark — on light, and as the rounded app icon" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;font-family:var(--font-sans)}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;height:240px}
+  .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  .light{background:var(--bg)}
+  .grad{background:var(--brand-gradient)}
+  .icon{width:96px;height:96px;border-radius:var(--radius-logo);box-shadow:var(--shadow-logo)}
+  .word{display:flex;align-items:center;gap:12px}
+  .word b{font:700 30px/1 var(--font-sans);letter-spacing:-.5px;color:var(--text-primary)}
+  .cap{font:600 11px/1 var(--font-sans);letter-spacing:.6px;text-transform:uppercase}
+  .light .cap{color:var(--text-secondary)} .grad .cap{color:rgba(255,255,255,.85)}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="cell light">
+    <div class="word"><img class="icon" src="../assets/lime-logo.png" alt="LIME" /><b>萊姆輸入法</b></div>
+    <span class="cap">Primary lockup · light surface</span>
+  </div>
+  <div class="cell grad">
+    <img class="icon" style="box-shadow:0 8px 30px rgba(0,0,0,.25)" src="../assets/lime-logo.png" alt="LIME" />
+    <span class="cap">App icon · 18pt rounded</span>
+  </div>
+</div>
+</body></html>

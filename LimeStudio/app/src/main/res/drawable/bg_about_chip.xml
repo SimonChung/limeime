@@ -1,0 +1,12 @@
+<!-- Tonal rounded background for the About footer link chips (使用手冊 /
+     版權說明 / 原始碼). Subtle neutral fill + ripple, 14dp radius — matches the
+     iOS About chips. See docs/LIME_SETTINGS.md §4.1. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/setup_status_bg" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>

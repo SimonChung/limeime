@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Destructive bordered button fill: a tint of the error/red colour so it matches
+  the red text. ~22% alpha so it stays visible in both light and dark themes.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/setup_status_fg_red" android:alpha="0.22" />
+</selector>

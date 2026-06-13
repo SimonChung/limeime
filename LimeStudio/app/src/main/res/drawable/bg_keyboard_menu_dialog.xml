@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rounded surface for the keyboard long-press menu dialog, matching the
+     app's preference cards (28dp M3 dialog corners). Background follows the
+     system dialog/surface colour so it adapts to light/dark. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?android:attr/colorBackground" />
+    <corners android:radius="28dp" />
+</shape>

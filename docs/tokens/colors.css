@@ -1,0 +1,66 @@
+/* ============================================================================
+   LIME 萊姆輸入法 — Color tokens
+   Scope: the LIMESettings CONTAINER APP only — its iOS system-color chrome and
+   the LIME brand (lime-fruit app-icon gradient + brand greens). The soft-keyboard
+   themes (淺色/深色/粉紅/科技藍/時尚紫/放鬆綠) and keyboard layouts are a SEPARATE
+   concern and are deliberately NOT modelled here.
+   ============================================================================ */
+
+:root {
+  /* ---- Brand greens: the design system's OWN palette, derived from the
+         lime-fruit APP-ICON gradient (#B2D234 bright → #00833E deep). Used for the
+         wordmark and the Settings-app chrome (actions, switch, accents). Defined
+         INDEPENDENTLY of the soft-keyboard 「放鬆綠 / relax green」 theme
+         (colors.xml `keyboard_background_relax_green` etc.) — that keyboard palette
+         is the original, left untouched in the keyboard's own domain. */
+  --lime-bright:       #b2d234;  /* app-icon top-left — brightest yellow-lime  */
+  --lime:              #7bc143;  /* brand light-lime (gradient ⅓)              */
+  --lime-green:        #4caf50;  /* lime_green — iOS switch & secondary accent */
+  --green:             #2e9e4b;  /* brand mid-green (gradient ⅔)               */
+  --green-strong:      #00833e;  /* app-icon deep green — primary action/link/FAB */
+  --green-deep:        #00682f;  /* darker brand green — pressed state         */
+  --green-ink:         #00451f;  /* deepest brand green — text on lime         */
+
+  /* The diagonal wordmark gradient — app-icon brand endpoints */
+  --brand-gradient: linear-gradient(135deg, #b2d234 0%, #7bc143 33%, #2e9e4b 67%, #00833e 100%); /* @kind other */
+  --brand-gradient-soft: linear-gradient(135deg, #d7e86f 0%, #7bc143 55%, #00833e 100%); /* @kind other */
+
+  /* ---- Primary accent (the rebranded re-layout uses brand green for actions) */
+  --accent:            var(--green-strong);   /* filled buttons, links, FAB    */
+  --accent-pressed:    var(--green-deep);
+  --accent-blue:       #2196f3;   /* material_blue — iOS-native links / system */
+  --switch-on:         var(--lime-green);     /* the green ON-state toggle      */
+
+  /* ---- Semantic status (iOS systemColors + Android setup_status_fg_*) */
+  --success:           #34c759;   /* iOS systemGreen                            */
+  --success-ink:       #2e7d32;   /* setup_status_fg_green                      */
+  --warning:           #ff9500;   /* iOS systemOrange                           */
+  --warning-ink:       #ef6c00;   /* setup_status_fg_yellow                     */
+  --danger:            #ff3b30;   /* iOS systemRed — destructive                */
+  --danger-ink:        #c62828;   /* setup_status_fg_red                        */
+
+  /* ---- iOS neutral surfaces (light appearance) */
+  --bg:                #ffffff;   /* systemBackground — page                    */
+  --bg-grouped:        #f2f2f7;   /* systemGroupedBackground                    */
+  --surface:           #ffffff;   /* card / row fill on grouped bg              */
+  --surface-secondary: #f2f2f7;   /* secondarySystemBackground — grouped block  */
+  --surface-tertiary:  #e9e9eb;   /* tertiarySystemBackground                   */
+  --fill-quaternary:   rgba(116,118,128,0.08); /* quaternarySystemFill         */
+  --icon-tile:         #8e8e93;   /* monochrome list-icon badge (systemGray)    */
+
+  /* ---- Text (iOS label hierarchy) */
+  --text-primary:      #000000;   /* label                                      */
+  --text-secondary:    rgba(60,60,67,0.60);   /* secondaryLabel               */
+  --text-tertiary:     rgba(60,60,67,0.30);   /* tertiaryLabel                */
+  --text-on-brand:     #ffffff;   /* white wordmark on the lime gradient        */
+
+  /* ---- Lines */
+  --separator:         rgba(60,60,67,0.29);   /* opaque-ish separator         */
+  --separator-opaque:  #c6c6c8;
+
+  /* ---- Status banner tints (subtle neutral bg, color carried by icon+text) */
+  --status-tint-green:  #e8f5e9;
+  --status-tint-yellow: #fff8e1;
+  --status-tint-red:    #ffebee;
+  --status-tint-neutral: rgba(120,120,128,0.12);
+}

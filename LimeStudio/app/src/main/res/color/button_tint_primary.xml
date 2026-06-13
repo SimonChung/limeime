@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bordered/tonal button fill: a tint of the system primary colour (Material You)
+  so it always matches the button's text colour (?attr/colorPrimary) in both
+  light and dark themes. ~22% alpha keeps it visible on a dark surface (12% is
+  nearly invisible in dark mode) while staying subtle in light mode.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorPrimary" android:alpha="0.22" />
+</selector>

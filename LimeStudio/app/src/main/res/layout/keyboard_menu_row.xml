@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One tappable row in the long-press keyboard-key options panel: leading icon
+  tile, title, an optional right-aligned current value, and a trailing chevron.
+  Mirrors the 喜好設定 pref-page row look (preference_value_chevron.xml) so the
+  in-keyboard menu and the settings app share one visual language.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/menu_row_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:orientation="horizontal"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <ImageView
+        android:id="@+id/menu_row_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="20dp"
+        android:tint="?attr/colorPrimary"
+        android:contentDescription="@null" />
+
+    <!-- Title (label) over value, in a weighted vertical block so BOTH always show
+         in full. The value drops onto its own line(s) beneath the title — at large
+         fonts nothing is squeezed to zero or clipped. The value is hidden (GONE)
+         when the row has no value, leaving just the title. -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginEnd="6dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/menu_row_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/LIME.Body" />
+
+        <TextView
+            android:id="@+id/menu_row_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textAppearance="@style/LIME.Footnote"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/menu_row_chevron"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_chevron_right_18"
+        android:contentDescription="@null" />
+
+</LinearLayout>

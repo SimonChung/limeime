@@ -118,7 +118,9 @@ struct IMListView: View {
                                     }
                                 )
                                 NavigationLink(value: DetailSelection.im(rowId)) {
-                                    HStack {
+                                    HStack(spacing: SettingsMetrics.imRowSpacing) {
+                                        IMBadge(character: representativeCharacter(for: row))
+                                            .opacity(row.enabled ? 1.0 : 0.5)
                                         Text(row.label)
                                             .font(.body)
                                             .opacity(row.enabled ? 1.0 : 0.5)
@@ -128,14 +130,20 @@ struct IMListView: View {
                                     }
                                 }
                             }
-                            .onMove(perform: moveIMs)
+                            // No drag-to-reorder: the installed list is not
+                            // editable and has no Edit affordance (spec §5.1).
                         }
                     }
                     .setupMatchedSectionBlock()
 
                     Section(header: Text("關聯字庫")) {
                         NavigationLink(value: DetailSelection.related) {
-                            Label("關聯字庫", systemImage: "text.bubble")
+                            // Single line, name only, with the grey tile + bubble
+                            // glyph matching the IM-badge styling (spec §5.1).
+                            HStack(spacing: SettingsMetrics.imRowSpacing) {
+                                IMBadge(systemImage: "text.bubble")
+                                Text("關聯字庫").font(.body)
+                            }
                         }
                     }
                     .setupMatchedSectionBlock()
@@ -225,13 +233,60 @@ struct IMListView: View {
         }
     }
 
-    private func moveIMs(from source: IndexSet, to dest: Int) {
-        imList.move(fromOffsets: source, toOffset: dest)
-        for (idx, row) in imList.enumerated() {
-            let id = row.id
-            Task {
-                await manageImController.setIMSortOrder(id: id, sortOrder: idx)
+    /// The representative character shown in an IM row's grey badge. The rule is
+    /// the **first character of the IM name**, with curated exceptions:
+    ///   注音 → ㄅ (bopomofo symbol);
+    ///   大易 → 易 (not 大);
+    ///   倉頡-family (倉頡 / 四碼倉頡 / 倉頡五代 / 快倉) → 倉;
+    ///   行列10 → 10 (not 行).
+    /// Keyed by `tableNick`; unknown tables fall back to the first name character.
+    /// Identical on Android. Spec §5.1.
+    private func representativeCharacter(for row: IMRow) -> String {
+        if let glyph = IMListView.representativeGlyphs[row.tableNick] { return glyph }
+        return row.label.isEmpty ? "?" : String(row.label.prefix(1))
+    }
+
+    private static let representativeGlyphs: [String: String] = [
+        "phonetic": "ㄅ",
+        "cj": "倉",
+        "cj4": "倉",     // 四碼倉頡
+        "cj5": "倉",     // 倉頡五代
+        "scj": "倉",     // 快倉
+        "dayi": "易",    // 大易 → 易 (not 大)
+        "array10": "10", // 行列10 → 10 (not 行)
+    ]
+}
+
+// MARK: - IMBadge
+
+/// Grey rounded-square tile carrying an IM's representative character (or, for
+/// the 關聯字庫 row, a glyph). A single neutral badge — colour is reserved for
+/// interactive controls. Spec §5.1.
+private struct IMBadge: View {
+    private enum Content {
+        case character(String)
+        case symbol(String)
+    }
+    private let content: Content
+
+    init(character: String) { self.content = .character(character) }
+    init(systemImage: String) { self.content = .symbol(systemImage) }
+
+    var body: some View {
+        Group {
+            switch content {
+            case .character(let c):
+                Text(c)
+                    .font(.system(size: SettingsMetrics.imBadgeFontSize, weight: .medium))
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: SettingsMetrics.imBadgeFontSize, weight: .medium))
             }
         }
+        .foregroundColor(SettingsTheme.imBadgeForeground)
+        .frame(width: SettingsMetrics.imBadgeSize,
+               height: SettingsMetrics.imBadgeSize)
+        .background(SettingsTheme.imBadgeBackground,
+                    in: RoundedRectangle(cornerRadius: SettingsMetrics.imBadgeCornerRadius))
     }
 }

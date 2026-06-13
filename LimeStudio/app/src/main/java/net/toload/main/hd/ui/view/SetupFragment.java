@@ -83,7 +83,8 @@ public class SetupFragment extends Fragment {
     private TextView setupStep2Description;
     private MaterialButton btnSystemSettings;
     private MaterialButton btnImePicker;
-    private MaterialCardView voicePermissionCard;
+    private View voicePermissionCard;
+    private View voicePermissionBanner;
     private ImageView voicePermissionIcon;
     private TextView voicePermissionTitle;
     private TextView voicePermissionDetail;
@@ -112,6 +113,7 @@ public class SetupFragment extends Fragment {
         btnSystemSettings = rootView.findViewById(R.id.btnSetupImSystemSetting);
         btnImePicker = rootView.findViewById(R.id.btnSetupImSystemIMPicker);
         voicePermissionCard = rootView.findViewById(R.id.voicePermissionCard);
+        voicePermissionBanner = rootView.findViewById(R.id.voicePermissionBanner);
         voicePermissionIcon = rootView.findViewById(R.id.voicePermissionIcon);
         voicePermissionTitle = rootView.findViewById(R.id.voicePermissionTitle);
         voicePermissionDetail = rootView.findViewById(R.id.voicePermissionDetail);
@@ -125,28 +127,37 @@ public class SetupFragment extends Fragment {
             voicePermissionButton.setOnClickListener(v -> openVoicePermissionSettings());
         }
 
-        // Version in about card
+        // One-line copyright banner in the About footer:
+        // "© LIME 萊姆輸入法 <versionName> - <year>". Same view/code path as
+        // before — only the displayed copy changed to match the design footer.
         try {
             PackageInfo pInfo = requireActivity().getPackageManager()
                     .getPackageInfo(requireActivity().getPackageName(), 0);
-            long code = PackageInfoCompat.getLongVersionCode(pInfo);
+            int year = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
             ((TextView) rootView.findViewById(R.id.txtVersion))
-                    .setText(getString(R.string.version_format, pInfo.versionName, code));
+                    .setText(getString(R.string.about_copyright_format, pInfo.versionName, year));
         } catch (Exception e) {
             Log.w(TAG, "Could not read version", e);
         }
 
-        // License and GitHub link taps
-        TextView txtLicense = rootView.findViewById(R.id.txtLicenseUrl);
-        if (txtLicense != null) {
-            txtLicense.setOnClickListener(v -> {
-                Intent intent = new Intent(Intent.ACTION_VIEW,
-                        Uri.parse(getString(R.string.url_license_limeime)));
-                startActivity(intent);
-            });
+        // Manual, License and GitHub link taps. The About chips are now
+        // LinearLayouts (footer re-layout), so reference them as View — the
+        // click behaviour and target URLs are unchanged.
+        // 使用手冊 + 版權說明 open IN-PLACE (in-app Chrome Custom Tab) so the user
+        // stays in the app; 原始碼 (GitHub) opens externally in the browser.
+        View txtManual = rootView.findViewById(R.id.txtManualUrl);
+        if (txtManual != null) {
+            txtManual.setOnClickListener(v ->
+                    openInAppTab(getString(R.string.url_manual_limeime)));
         }
 
-        TextView txtGithub = rootView.findViewById(R.id.txtGithubUrl);
+        View txtLicense = rootView.findViewById(R.id.txtLicenseUrl);
+        if (txtLicense != null) {
+            txtLicense.setOnClickListener(v ->
+                    openInAppTab(getString(R.string.url_license_limeime)));
+        }
+
+        View txtGithub = rootView.findViewById(R.id.txtGithubUrl);
         if (txtGithub != null) {
             txtGithub.setOnClickListener(v -> {
                 Intent intent = new Intent(Intent.ACTION_VIEW,
@@ -184,11 +195,11 @@ public class SetupFragment extends Fragment {
         boolean active = LIMEUtilities.isLIMEActive(ctx);
         refreshVoicePermissionStatus();
 
-        // Neutral subtle background; the state color is carried by icon + text (iOS parity)
-        statusCard.setCardBackgroundColor(ContextCompat.getColor(activity, R.color.setup_status_bg));
-
+        // Banner: status glyph + text in the ink colour over the matching
+        // subtle status tint (design StatusBanner / color-status card).
         if (enabled && active) {
             int fg = ContextCompat.getColor(activity, R.color.setup_status_fg_green);
+            statusCard.setCardBackgroundColor(ContextCompat.getColor(activity, R.color.status_tint_green));
             statusIcon.setImageResource(R.drawable.ic_status_check);
             statusIcon.setColorFilter(fg);
             statusText.setTextColor(fg);
@@ -200,6 +211,7 @@ public class SetupFragment extends Fragment {
             btnImePicker.setVisibility(View.GONE);
         } else if (enabled) {
             int fg = ContextCompat.getColor(activity, R.color.setup_status_fg_yellow);
+            statusCard.setCardBackgroundColor(ContextCompat.getColor(activity, R.color.status_tint_yellow));
             statusIcon.setImageResource(R.drawable.ic_status_warning);
             statusIcon.setColorFilter(fg);
             statusText.setTextColor(fg);
@@ -211,6 +223,7 @@ public class SetupFragment extends Fragment {
             btnImePicker.setVisibility(View.VISIBLE);
         } else {
             int fg = ContextCompat.getColor(activity, R.color.setup_status_fg_red);
+            statusCard.setCardBackgroundColor(ContextCompat.getColor(activity, R.color.status_tint_red));
             statusIcon.setImageResource(R.drawable.ic_status_error);
             statusIcon.setColorFilter(fg);
             statusText.setTextColor(fg);
@@ -235,9 +248,11 @@ public class SetupFragment extends Fragment {
         voicePermissionCard.setVisibility(View.VISIBLE);
         VoicePermissionState state = VoicePermissionHelper.getRecordAudioPermissionState(this);
         int fg;
+        int tint;
         switch (state) {
             case GRANTED:
                 fg = ContextCompat.getColor(activity, R.color.setup_status_fg_green);
+                tint = ContextCompat.getColor(activity, R.color.status_tint_green);
                 voicePermissionIcon.setImageResource(R.drawable.ic_status_check);
                 voicePermissionTitle.setText(R.string.setup_voice_permission_title_granted);
                 voicePermissionDetail.setText(R.string.setup_voice_permission_granted);
@@ -246,6 +261,7 @@ public class SetupFragment extends Fragment {
                 break;
             case DENIED_DO_NOT_ASK_AGAIN:
                 fg = ContextCompat.getColor(activity, R.color.setup_status_fg_yellow);
+                tint = ContextCompat.getColor(activity, R.color.status_tint_yellow);
                 voicePermissionIcon.setImageResource(R.drawable.ic_status_warning);
                 voicePermissionTitle.setText(R.string.setup_voice_permission_title_settings);
                 voicePermissionDetail.setText(R.string.setup_voice_permission_denied_permanently);
@@ -255,6 +271,7 @@ public class SetupFragment extends Fragment {
                 break;
             case DENIED_CAN_ASK:
                 fg = ContextCompat.getColor(activity, R.color.setup_status_fg_red);
+                tint = ContextCompat.getColor(activity, R.color.status_tint_red);
                 voicePermissionIcon.setImageResource(R.drawable.ic_status_error);
                 voicePermissionTitle.setText(R.string.setup_voice_permission_title_request);
                 voicePermissionDetail.setText(R.string.setup_voice_permission_denied_once);
@@ -265,6 +282,7 @@ public class SetupFragment extends Fragment {
             case NOT_REQUESTED:
             default:
                 fg = ContextCompat.getColor(activity, R.color.setup_status_fg_red);
+                tint = ContextCompat.getColor(activity, R.color.status_tint_red);
                 voicePermissionIcon.setImageResource(R.drawable.ic_status_error);
                 voicePermissionTitle.setText(R.string.setup_voice_permission_title_request);
                 voicePermissionDetail.setText(R.string.setup_voice_permission_not_granted);
@@ -273,6 +291,8 @@ public class SetupFragment extends Fragment {
                 voicePermissionButton.setVisibility(View.VISIBLE);
                 break;
         }
+        // Tint only the banner row (icon + title), not the description/button.
+        voicePermissionBanner.setBackgroundColor(tint);
         voicePermissionIcon.setColorFilter(fg);
         voicePermissionTitle.setTextColor(fg);
     }
@@ -318,6 +338,30 @@ public class SetupFragment extends Fragment {
             } catch (IllegalArgumentException ignored) {
             }
             imeChangeReceiver = null;
+        }
+    }
+
+    /**
+     * Open a URL in-place: an in-app Chrome Custom Tab (themed to the app accent)
+     * so the user stays within LimeIME, instead of leaving for an external
+     * browser. Falls back to a normal ACTION_VIEW if no Custom Tabs provider is
+     * available.
+     */
+    private void openInAppTab(String url) {
+        if (activity == null || url == null) return;
+        Uri uri = Uri.parse(url);
+        try {
+            androidx.browser.customtabs.CustomTabsIntent intent =
+                    new androidx.browser.customtabs.CustomTabsIntent.Builder()
+                            .setShowTitle(true)
+                            .build();
+            intent.launchUrl(activity, uri);
+        } catch (Exception e) {
+            // No Custom Tabs provider (or any failure) — fall back to a browser.
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            } catch (Exception ignored) {
+            }
         }
     }
 }

@@ -125,4 +125,23 @@
     <!-- Lime green for switches and secondary accents — matches iOS LIME brand color -->
     <color name="lime_green">#FF4CAF50</color>
 
+    <!-- IM list-row leading badge: neutral grey circle carrying the IM's
+         representative character (systemGray / #8E8E93). Identical to iOS;
+         accent colour is reserved for interactive controls. -->
+    <color name="im_badge_background">#FF8E8E93</color>
+    <color name="im_badge_foreground">#FFFFFFFF</color>
+
+    <!-- Status-banner subtle tints — TRANSLUCENT versions of each status colour
+         so they read as a faint wash over whatever surface is behind them and
+         adapt to light/dark (a dark override is in values-night). The banner
+         shows the status glyph + text in the ink colour over the matching tint. -->
+    <color name="status_tint_green">#1F2E7D32</color>
+    <color name="status_tint_yellow">#1FEF6C00</color>
+    <color name="status_tint_red">#1FC62828</color>
+
+    <!-- Bordered-button tinted fill (design Button "bordered": 12% of the tint
+         colour, no outline). Green for normal, red for destructive. -->
+    <color name="button_tint_green">#1F009444</color>
+    <color name="button_tint_red">#1FFF3B30</color>
+
 </resources>

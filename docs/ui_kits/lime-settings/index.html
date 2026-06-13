@@ -1,0 +1,150 @@
+<!-- @dsCard group="LIME Settings" viewport="393x720" name="LIME Settings — 4-tab app" subtitle="Re-laid-out 設定 · 輸入法 · 喜好設定 · 資料庫 (iOS)" -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LIME Settings</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #c9ccd2; font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #device {
+    width: 393px; height: 852px; flex: 0 0 auto; transform-origin: center center;
+    background: #fff; border-radius: 54px; position: relative; overflow: hidden;
+    box-shadow: 0 1px 0 4px #1c1d22, 0 0 0 14px #2b2d34, 0 30px 80px rgba(0,0,0,.45);
+  }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+  /* Status bar */
+  .statusbar { height: 54px; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 32px 6px; position: relative; z-index: 5; }
+  .statusbar .time { font: 600 16px/1 var(--font-sans); letter-spacing: .3px; }
+  .statusbar .right { display: flex; align-items: center; gap: 6px; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    width: 124px; height: 36px; background: #000; border-radius: 20px; z-index: 6; }
+  /* Scroll area */
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; position: relative; }
+  .scroll::-webkit-scrollbar { width: 0; }
+  /* Tab bar host */
+  .tabhost { flex: 0 0 auto; padding-bottom: 22px; }
+  /* Detail slide-over */
+  .detail { position: absolute; inset: 0; background: var(--bg); z-index: 10;
+    display: flex; flex-direction: column; transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .detail.open { transform: translateX(0); }
+  .navbar { height: 44px; flex: 0 0 auto; display: flex; align-items: center; padding: 0 8px;
+    border-bottom: .5px solid var(--separator); }
+  .navback { display: flex; align-items: center; gap: 2px; color: var(--accent-blue);
+    background: none; border: none; font: 400 17px/1 var(--font-sans); cursor: pointer; padding: 6px; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="device"><div id="root"></div></div></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script>document.write('<scr'+'ipt src="../../../_ds_bundle.js?v='+Date.now()+'"><\/scr'+'ipt>');</script>
+<script>(function(){var v='?v='+Date.now();['icons.jsx','SetupTab.jsx','IMTab.jsx','PrefsTab.jsx','DBTab.jsx'].forEach(function(m){document.write('<scr'+'ipt type="text/babel" src="'+m+v+'"><\/scr'+'ipt>');});})();</script>
+<script type="text/babel">
+  const { TabBar, ListGroup, ListRow, Switch, Button } = window.LIMEDesignSystem_6ca3c0;
+  const I = window.LimeIcons;
+
+  // ── Status bar ───────────────────────────────────────────────
+  function StatusBar() {
+    return (
+      <div className="statusbar">
+        <span className="time">9:41</span>
+        <span className="right">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="#000"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4.5" width="3" height="7.5" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="#000"><path d="M8.5 2.4c2.2 0 4.2.8 5.7 2.2l1.4-1.5A10 10 0 008.5.4 10 10 0 001 3.1L2.4 4.6A8 8 0 018.5 2.4z"/><path d="M8.5 6c1.1 0 2.1.4 2.9 1.2l1.4-1.5A6 6 0 008.5 4a6 6 0 00-4.3 1.7L5.6 7.2A4 4 0 018.5 6z"/><circle cx="8.5" cy="9.6" r="1.8"/></svg>
+          <svg width="26" height="12" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="21" height="10" rx="3" stroke="#000" strokeOpacity=".4"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.6" fill="#000"/><rect x="23.5" y="4" width="1.5" height="4" rx=".7" fill="#000" fillOpacity=".4"/></svg>
+        </span>
+      </div>
+    );
+  }
+
+  // ── IM detail drill-down (§5.2) ──────────────────────────────
+  function IMDetail({ im, onClose }) {
+    const [backup, setBackup] = React.useState(true);
+    const data = im || {};
+    return (
+      <div className={"detail" + (im ? " open" : "")}>
+        <div className="island" />
+        <StatusBar />
+        <div className="navbar">
+          <button className="navback" onClick={onClose}>{I.chevronLeft({ size: 22 })}<span>輸入法</span></button>
+        </div>
+        <div className="scroll">
+          <div style={{ padding: "4px 24px 36px", display: "flex", flexDirection: "column", gap: 22 }}>
+            <div style={{ font: "700 34px/41px var(--font-sans)", letterSpacing: "-.4px" }}>{data.label}</div>
+            {!data.related && <ListGroup header="輸入法資訊">
+              <ListRow title="名稱" value={data.label} chevron />
+              <ListRow title="版本" value="2024.03" chevron />
+              <ListRow title="結束鍵" value="—" chevron />
+              <ListRow title="筆數" value={data.sub || "34,838"} />
+            </ListGroup>}
+            {!data.related && <ListGroup header="軟鍵盤配置">
+              <ListRow icon={I.keyboard({ size: 17 })} iconColor="var(--green-strong)" title="鍵盤佈局" value="標準" chevron />
+            </ListGroup>}
+            <ListGroup header={data.related ? "關聯字庫" : "字根資料表"}>
+              <ListRow icon={I.list({ size: 17 })} iconColor="#0a84c4" title={data.related ? "瀏覽 / 編輯關聯字庫" : "瀏覽 / 編輯資料表"} chevron />
+            </ListGroup>
+            {!data.related && <ListGroup header="選項" footer="刪除時會先備份已學習記錄，可於重新匯入時還原。">
+              <ListRow title="刪除時備份已學習記錄" trailing={<Switch checked={backup} onChange={setBackup} />} />
+            </ListGroup>}
+            {!data.related && (
+              <div style={{ padding: "8px 0 0" }}>
+                <Button variant="bordered" destructive size="large" fullWidth onClick={onClose}>移除輸入法</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── App shell ────────────────────────────────────────────────
+  const TABS = [
+    { key: "setup", label: "設定", icon: I.gear({ size: 25 }), Comp: window.SetupTab },
+    { key: "im", label: "輸入法", icon: I.list({ size: 25 }), Comp: window.IMTab },
+    { key: "prefs", label: "喜好設定", icon: I.sliders({ size: 25 }), Comp: window.PrefsTab },
+    { key: "db", label: "資料庫", icon: I.archive({ size: 25 }), Comp: window.DBTab },
+  ];
+
+  function App() {
+    const [tab, setTab] = React.useState("setup");
+    const [detail, setDetail] = React.useState(null);
+    const scrollRef = React.useRef(null);
+    React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
+    const active = TABS.find((t) => t.key === tab);
+    const Comp = active.Comp;
+    return (
+      <div className="screen">
+        <div className="island" />
+        <StatusBar />
+        <div className="scroll" ref={scrollRef}>
+          {tab === "im"
+            ? <Comp onOpen={(im) => setDetail(im)} />
+            : <Comp />}
+        </div>
+        <div className="tabhost">
+          <TabBar items={TABS.map(({ key, label, icon }) => ({ key, label, icon }))} active={tab} onChange={setTab} />
+        </div>
+        <IMDetail im={detail} onClose={() => setDetail(null)} />
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+  // ── Scale device to viewport ─────────────────────────────────
+  function fit() {
+    const pad = 24;
+    const s = Math.min((window.innerWidth - pad) / 393, (window.innerHeight - pad) / 852, 1);
+    document.getElementById("device").style.transform = "scale(" + s + ")";
+  }
+  window.addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

@@ -29,7 +29,7 @@
   -->
   <style name="LIMESettingsTheme" parent="Theme.MaterialComponents.DayNight">
     <item name="android:windowBackground">?android:attr/colorBackground</item>
-    <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    <item name="preferenceTheme">@style/LIME.PreferenceTheme</item>
     <!-- Action bar follows surface/background — not affected by colorPrimary -->
     <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
     <item name="actionBarTheme">@style/LIME.ToolbarContentTheme</item>
@@ -47,7 +47,7 @@
     <item name="android:windowSplashScreenAnimatedIcon">@color/color_transparent</item>
     <item name="android:windowSplashScreenBackground">?android:attr/colorBackground</item>
     <item name="android:windowSplashScreenIconBackgroundColor">@color/color_transparent</item>
-    <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
+    <item name="preferenceTheme">@style/LIME.PreferenceTheme</item>
     <!-- Action bar follows surface/background — not affected by colorPrimary -->
     <item name="actionBarStyle">@style/LIME.ActionBarStyle</item>
     <item name="actionBarTheme">@style/LIME.ToolbarContentTheme</item>
@@ -59,9 +59,28 @@
   </style>
 
   <!-- Action bar uses window background color, adapts to light/dark system theme -->
+  <!-- Keyboard long-press menu dialog — styled to match the preference page:
+       follows day/night, rounded corners, accent-coloured title + buttons that
+       track the Material You palette (applied via DynamicColors at build time). -->
+  <style name="LIME_KeyboardMenuDialog" parent="@android:style/Theme.Material.Light.Dialog.Alert">
+    <item name="android:windowBackground">@drawable/bg_keyboard_menu_dialog</item>
+  </style>
+
   <style name="LIME.ActionBarStyle" parent="Widget.AppCompat.ActionBar">
     <item name="background">?android:attr/colorBackground</item>
     <item name="elevation">4dp</item>
+    <!-- Larger, bold title so the standalone 喜好設定 activity (opened from the
+         long-press keyboard menu) reads like the in-app tab title, not a tiny
+         default ActionBar title. -->
+    <item name="titleTextStyle">@style/LIME.ActionBarTitle</item>
+  </style>
+
+  <!-- ActionBar title — bold and as large as the action bar comfortably fits
+       (a full 34sp would clip the standard action-bar height). -->
+  <style name="LIME.ActionBarTitle" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+    <item name="android:textSize">24sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
   </style>
 
   <!--
@@ -75,6 +94,89 @@
   -->
   <style name="LIME.ToolbarContentTheme" parent="ThemeOverlay.AppCompat.ActionBar">
     <item name="colorControlNormal">?attr/colorOnSurface</item>
+  </style>
+
+  <!-- ============================================================
+       iOS Dynamic Type (Large) scale, mirrored on Android in sp.
+       largeTitle 34 / title1 28 / title2 22 / title3 20 / body 17 /
+       callout 16 / subheadline 15 / footnote 13 / caption 12.
+       Shared so every Settings text element reads at the iOS size.
+       ============================================================ -->
+
+  <!-- Tab page title — 34sp bold (iOS .largeTitle). -->
+  <style name="LIME.TabTitle" parent="TextAppearance.MaterialComponents.Headline4">
+    <item name="android:textSize">34sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Drill-down screen heading — 28sp bold (iOS .title1). -->
+  <style name="LIME.Title1" parent="TextAppearance.MaterialComponents.Headline5">
+    <item name="android:textSize">28sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Section heading inside content — 22sp bold (iOS .title2). -->
+  <style name="LIME.Title2" parent="TextAppearance.MaterialComponents.Headline6">
+    <item name="android:textSize">22sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Prominent row / sub-section — 20sp (iOS .title3). -->
+  <style name="LIME.Title3" parent="TextAppearance.MaterialComponents.Subtitle1">
+    <item name="android:textSize">20sp</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Body — 17sp (iOS .body): list rows, values, button labels. -->
+  <style name="LIME.Body" parent="TextAppearance.MaterialComponents.Body1">
+    <item name="android:textSize">17sp</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Callout — 16sp (iOS .callout). -->
+  <style name="LIME.Callout" parent="TextAppearance.MaterialComponents.Body1">
+    <item name="android:textSize">16sp</item>
+    <item name="android:textColor">?android:attr/textColorPrimary</item>
+  </style>
+
+  <!-- Subheadline — 15sp (iOS .subheadline): explanatory notes. -->
+  <style name="LIME.Subheadline" parent="TextAppearance.MaterialComponents.Body2">
+    <item name="android:textSize">15sp</item>
+    <item name="android:textColor">?android:attr/textColorSecondary</item>
+  </style>
+
+  <!-- Footnote — 13sp (iOS .footnote): section headers/footers, descriptions. -->
+  <style name="LIME.Footnote" parent="TextAppearance.MaterialComponents.Caption">
+    <item name="android:textSize">13sp</item>
+    <item name="android:textColor">?android:attr/textColorSecondary</item>
+  </style>
+
+  <!-- Caption — 12sp (iOS .caption). -->
+  <style name="LIME.Caption" parent="TextAppearance.MaterialComponents.Caption">
+    <item name="android:textSize">12sp</item>
+    <item name="android:textColor">?android:attr/textColorSecondary</item>
+  </style>
+
+  <!-- Preference theme overlay: route the default preference row layouts (the
+       switches and category headers that don't use a custom android:layout) at
+       iOS-scale title/summary layouts. The androidx Preference library sizes
+       text via its row layouts, so we point each at a LIME layout instead of
+       (non-existent) text-appearance attributes. All text inside is sp, so it
+       still follows the user's system font-scale setting. -->
+  <style name="LIME.PreferenceTheme" parent="PreferenceThemeOverlay.v14.Material">
+    <item name="switchPreferenceCompatStyle">@style/LIME.Preference.Switch</item>
+    <item name="preferenceCategoryStyle">@style/LIME.Preference.Category</item>
+  </style>
+
+  <style name="LIME.Preference.Switch" parent="Preference.SwitchPreferenceCompat.Material">
+    <item name="android:layout">@layout/preference_lime_row</item>
+  </style>
+
+  <style name="LIME.Preference.Category" parent="Preference.Category.Material">
+    <item name="android:layout">@layout/preference_lime_category</item>
   </style>
 
   <style name="LIMETheme" parent="Theme.AppCompat.Light">

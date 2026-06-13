@@ -65,12 +65,34 @@ struct PreferencesTabView: View {
     private let similiarOpts    = [0, 10, 20, 30, 40, 50]
 
     @ViewBuilder
-    private func prefRow(_ title: String, _ desc: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func prefRow(_ title: String, _ desc: String,
+                         systemImage: String? = nil, tint: Color? = nil) -> some View {
+        HStack(spacing: SettingsMetrics.prefIconSpacing) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundColor(tint ?? .secondary)
+                    .frame(width: SettingsMetrics.prefIconWidth)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(desc)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    /// A single-line preference label with a tinted leading SF Symbol, matching
+    /// the design kit's coloured leading icons. Purely presentational.
+    @ViewBuilder
+    private func prefIconLabel(_ title: String, systemImage: String, tint: Color) -> some View {
+        HStack(spacing: SettingsMetrics.prefIconSpacing) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundColor(tint)
+                .frame(width: SettingsMetrics.prefIconWidth)
             Text(title)
-            Text(desc)
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
     }
 
@@ -95,10 +117,12 @@ struct PreferencesTabView: View {
                 Form {
                 // MARK: §8.1
                 Section(header: Text("鍵盤外觀")) {
-                    Picker("鍵盤樣式", selection: $keyboardTheme) {
+                    Picker(selection: $keyboardTheme) {
                         ForEach(0..<themeOptions.count, id: \.self) { i in
                             Text(themeLabels[i]).tag(themeOptions[i])
                         }
+                    } label: {
+                        prefIconLabel("鍵盤樣式", systemImage: "paintpalette", tint: SettingsTheme.accent)
                     }
                     Picker("鍵盤大小", selection: $keyboardSize) {
                         ForEach(0..<sizeOptions.count, id: \.self) { i in
@@ -131,7 +155,9 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.2
                 Section(header: Text("鍵盤回饋")) {
-                    Toggle("打字震動", isOn: $vibrateOnKeypress)
+                    Toggle(isOn: $vibrateOnKeypress) {
+                        prefIconLabel("打字震動", systemImage: "bell", tint: Color(red: 0xE0/255, green: 0x88/255, blue: 0x3A/255))
+                    }
                     Picker("震動強度", selection: $vibrateLevel) {
                         ForEach(0..<vibLevelOptions.count, id: \.self) { i in
                             Text(vibLevelLabels[i]).tag(vibLevelOptions[i])
@@ -144,7 +170,7 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.4
                 Section(header: Text("輸入法行為")) {
-                    Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧組詞", "部份輸入法可能會影響中英混打功能") }
+                    Toggle(isOn: $smartChineseInput) { prefRow("開啟中文智慧組詞", "部份輸入法可能會影響中英混打功能", systemImage: "sparkles", tint: SettingsTheme.switchTrack) }
                     Toggle(isOn: $autoChineseSymbol) { prefRow("自動中文標點模式", "無候選字詞時顯示中文標點選項") }
                     Toggle(isOn: $persistentLanguageMode) { prefRow("記憶中英模式", "下次切換前保持中英模式") }
                     Picker("設定 EMOJI 候選列顯示位置", selection: $emojiPosition) {
@@ -180,7 +206,7 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.6
                 Section(header: Text("關聯字與學習")) {
-                    Toggle(isOn: $similiarEnable) { prefRow("啟用關聯字庫", "啟用關聯字庫功能") }
+                    Toggle(isOn: $similiarEnable) { prefRow("啟用關聯字庫", "啟用關聯字庫功能", systemImage: "text.bubble", tint: Color(red: 0x55/255, green: 0x99/255, blue: 0x99/255)) }
                     Toggle(isOn: $candidateSuggestion) { prefRow("啟動自建關聯字", "依輸入文字自動建立關聯字") }
                     Toggle(isOn: $learnPhrase) { prefRow("自動學習新詞", "從常用關聯字學習新詞") }
                     Toggle(isOn: $learningSwitch) { prefRow("啟動選取排序", "依選取次數排序選字清單") }
@@ -189,7 +215,7 @@ struct PreferencesTabView: View {
 
                 // MARK: §8.7
                 Section(header: Text("英文鍵盤")) {
-                    Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字") }
+                    Toggle(isOn: $englishDictEnable) { prefRow("啟用英文字典", "當使用 英文 輸入模式時，顯示英文建議字", systemImage: "abc", tint: Color(red: 0x0A/255, green: 0x84/255, blue: 0xC4/255)) }
                     Toggle(isOn: $autoCap) { prefRow("首字自動大寫", "在英文模式下，句首字母自動轉為大寫") }
                 }
                 .setupMatchedSectionBlock()

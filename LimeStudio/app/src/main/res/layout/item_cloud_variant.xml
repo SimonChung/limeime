@@ -19,13 +19,13 @@
             android:id="@+id/tv_variant_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBody1" />
+            android:textAppearance="@style/LIME.Body" />
 
         <TextView
             android:id="@+id/tv_variant_meta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceCaption"
+            android:textAppearance="@style/LIME.Caption"
             android:textColor="?attr/colorControlNormal" />
 
     </LinearLayout>

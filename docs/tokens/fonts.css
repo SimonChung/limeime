@@ -1,0 +1,9 @@
+/* ============================================================================
+   LIME 萊姆輸入法 — Webfonts
+   The native apps render in SF Pro (iOS system) + PingFang TC. Those faces are
+   system-only and cannot be redistributed, so for web specimens we load
+   Noto Sans TC as the Traditional-Chinese fallback and let SF Pro / system-ui
+   serve Latin where available. No @font-face binaries are bundled.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');

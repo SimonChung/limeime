@@ -6,6 +6,7 @@
 
 import SwiftUI
 import UIKit
+import SafariServices
 
 // MARK: - FormSectionGroupBoxStyle
 
@@ -63,6 +64,74 @@ private struct SetupStepRow<Icon: View>: View {
     }
 }
 
+// MARK: - LinkChip
+
+/// One equal-width chip in the About footer: an icon over a brand-accent label.
+/// `inApp` chips (使用手冊 / 版權說明) open the page IN-PLACE via an in-app Safari
+/// sheet so the user stays in the app; external chips (原始碼) leave for Safari
+/// and carry a small up-right arrow to signal that. Spec §4.1.
+private struct LinkChip: View {
+    let title: String
+    let systemImage: String
+    let destination: URL
+    var inApp: Bool = false
+
+    @State private var showInAppPage = false
+
+    var body: some View {
+        Group {
+            if inApp {
+                // fullScreenCover (not .sheet) so the in-app browser fills the
+                // screen on iPad too — a .sheet shows as a small centered card
+                // there. SFSafariViewController carries its own Done button.
+                Button { showInAppPage = true } label: { chipLabel(showArrow: false) }
+                    .fullScreenCover(isPresented: $showInAppPage) {
+                        SafariView(url: destination).ignoresSafeArea()
+                    }
+            } else {
+                Link(destination: destination) { chipLabel(showArrow: true) }
+            }
+        }
+        .tint(SettingsTheme.accent)
+    }
+
+    @ViewBuilder
+    private func chipLabel(showArrow: Bool) -> some View {
+        VStack(spacing: SettingsMetrics.aboutChipInnerSpacing) {
+            Image(systemName: systemImage)
+                .font(.title3)
+            HStack(spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                if showArrow {
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption2)
+                        .opacity(0.6)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, SettingsMetrics.aboutChipVerticalPadding)
+        .padding(.horizontal, SettingsMetrics.aboutChipHorizontalPadding)
+        .background(Color(.quaternarySystemFill),
+                    in: RoundedRectangle(cornerRadius: SettingsMetrics.aboutChipCornerRadius))
+    }
+}
+
+// MARK: - SafariView (in-app Safari)
+
+/// Presents a URL in an in-app `SFSafariViewController` so the user stays within
+/// the app (used by the 使用手冊 / 版權說明 About chips).
+private struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
+}
+
 // MARK: - SetupTabView
 
 struct SetupTabView: View {
@@ -88,18 +157,19 @@ struct SetupTabView: View {
     // PrimaryLanguage from LimeKeyboard/Info.plist
     private let groupSuite   = "group.net.toload.limeime"
     private let githubURL        = URL(string: "https://github.com/lime-ime/limeime")!
-    private let licenseURL       = URL(string: "https://lime-ime.github.io/limeime/LICENSE/")!
+    private let manualURL        = URL(string: "https://lime-ime.github.io/limeime/pages/index.html")!
+    private let licenseURL       = URL(string: "https://lime-ime.github.io/limeime/pages/license.html")!
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: SettingsMetrics.pageHorizontalPadding) {
 
-                    // ── Brand block (logo + wordmark) ─────────────────────
-                    VStack(spacing: SettingsMetrics.setupHeroSpacing) {
+                    // ── Brand hero (logo beside wordmark, centered) ───────
+                    HStack(spacing: SettingsMetrics.setupHeroSpacing) {
                         logoImage
                         Text("萊姆輸入法")
-                            .font(.largeTitle).bold()
+                            .font(.system(size: SettingsMetrics.setupWordmarkFontSize, weight: .bold))
                     }
                     .padding(.top, SettingsMetrics.setupHeroTopPadding)
 
@@ -109,7 +179,7 @@ struct SetupTabView: View {
 
                     // ── Title ─────────────────────────────────────────────
                     Text("設定萊姆輸入法")
-                        .font(.largeTitle).bold()
+                        .font(.system(size: SettingsMetrics.setupTitleFontSize, weight: .bold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
@@ -136,12 +206,14 @@ struct SetupTabView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
-                    // ── CTA button ────────────────────────────────────────
-                    Button("前往設定") {
+                    // ── CTA button (full-width tonal — same legible style as the
+                    //    資料庫 restore buttons; readable in dark mode). ─────────
+                    Button {
                         openLimeKeyboardSettings()
+                    } label: {
+                        Text("前往設定")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(LimeTonalButtonStyle())
                     .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
 
                     Text("若設定未直接顯示萊姆輸入法，請到「設定」>「Apps」>「萊姆輸入法」>「Keyboards」，開啟萊姆輸入法與允許完整取用。")
@@ -161,23 +233,27 @@ struct SetupTabView: View {
                         .autocorrectionDisabled(true)
                         .accessibilityHidden(true)
 
-                    // ── About section ─────────────────────────────────────
-                    GroupBox {
-                        LabeledContent("版本", value: appVersion())
-                            .padding(.vertical, SettingsMetrics.rowVerticalPadding)
+                    // ── About footer ──────────────────────────────────────
+                    // Three equal-width link chips (使用手冊 / 版權說明 / 原始碼)
+                    // above a one-line copyright banner. Replaces the old grouped
+                    // list whose lone left-aligned GitHub row looked inconsistent.
+                    VStack(spacing: SettingsMetrics.aboutFooterSpacing) {
+                        // Full-bleed separator (extends past the 24pt page inset).
                         Divider()
-                        HStack {
-                            Text("授權")
-                            Spacer()
-                            Link("版權聲明", destination: licenseURL)
+                            .padding(.horizontal, -SettingsMetrics.pageHorizontalPadding)
+                        HStack(spacing: SettingsMetrics.aboutChipSpacing) {
+                            LinkChip(title: "使用手冊", systemImage: "book", destination: manualURL, inApp: true)
+                            LinkChip(title: "版權說明", systemImage: "doc.text", destination: licenseURL, inApp: true)
+                            LinkChip(title: "原始碼", systemImage: "chevron.left.forwardslash.chevron.right", destination: githubURL)
                         }
-                        .padding(.vertical, SettingsMetrics.rowVerticalPadding)
-                        Divider()
-                        Link("原始碼 (GitHub)", destination: githubURL)
-                            .padding(.vertical, SettingsMetrics.rowVerticalPadding)
+                        Text("© LIME 萊姆輸入法 \(copyrightLine())")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, SettingsMetrics.aboutCopyrightTopPadding)
                     }
-                    .groupBoxStyle(FormSectionGroupBoxStyle())
                     .padding(.horizontal, SettingsMetrics.pageHorizontalPadding)
+                    .padding(.top, SettingsMetrics.aboutFooterTopPadding)
                     .padding(.bottom, SettingsMetrics.setupBottomPadding)
                 }
                 // iPad / wide-screen reading-width cap: keeps the form column
@@ -254,29 +330,49 @@ struct SetupTabView: View {
 
     // MARK: - Status banner
 
+    // Status banner (§4.2): a filled status glyph + label in the state's deep
+    // "ink" colour over a subtle status tint, matching the design StatusBanner.
     private var statusBanner: some View {
-        Group {
-            switch detectionState {
-            case .fullyEnabled:
-                Label("萊姆輸入法已啟用",
-                    systemImage: "checkmark.circle.fill")
-                    .foregroundColor(SettingsTheme.success)
-            case .enabledNoFullAccess:
-                Label("鍵盤已啟用，但尚未允許完整取用",
-                    systemImage: "exclamationmark.triangle.fill")
-                    .foregroundColor(SettingsTheme.warning)
-            case .notEnabled:
-                Label("尚未啟用萊姆輸入法鍵盤",
-                    systemImage: "xmark.circle.fill")
-                    .foregroundColor(SettingsTheme.destructive)
-            }
+        Label(statusText, systemImage: statusSymbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(statusInk)
+            .padding(.vertical, SettingsMetrics.statusVerticalPadding)
+            .padding(.horizontal, SettingsMetrics.statusHorizontalPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(statusTint)
+            .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.groupedSectionCornerRadius))
+    }
+
+    private var statusText: String {
+        switch detectionState {
+        case .fullyEnabled:        return "萊姆輸入法已啟用"
+        case .enabledNoFullAccess: return "鍵盤已啟用，但尚未允許完整取用"
+        case .notEnabled:          return "尚未啟用萊姆輸入法鍵盤"
         }
-        .font(.subheadline)
-        .padding(.vertical, SettingsMetrics.statusVerticalPadding)
-        .padding(.horizontal, SettingsMetrics.statusHorizontalPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: SettingsMetrics.groupedSectionCornerRadius))
+    }
+
+    private var statusSymbol: String {
+        switch detectionState {
+        case .fullyEnabled:        return "checkmark.circle.fill"
+        case .enabledNoFullAccess: return "exclamationmark.triangle.fill"
+        case .notEnabled:          return "xmark.circle.fill"
+        }
+    }
+
+    private var statusInk: Color {
+        switch detectionState {
+        case .fullyEnabled:        return SettingsTheme.successInk
+        case .enabledNoFullAccess: return SettingsTheme.warningInk
+        case .notEnabled:          return SettingsTheme.dangerInk
+        }
+    }
+
+    private var statusTint: Color {
+        switch detectionState {
+        case .fullyEnabled:        return SettingsTheme.statusTintGreen
+        case .enabledNoFullAccess: return SettingsTheme.statusTintYellow
+        case .notEnabled:          return SettingsTheme.statusTintRed
+        }
     }
 
     // MARK: - Detection
@@ -367,5 +463,12 @@ struct SetupTabView: View {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
         return "\(v) (\(b))"
+    }
+
+    /// "6.1.15 - 2026" — short version + current year, for the © footer banner.
+    private func copyrightLine() -> String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let year = Calendar.current.component(.year, from: Date())
+        return "\(v) - \(year)"
     }
 }

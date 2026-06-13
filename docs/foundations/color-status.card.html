@@ -1,0 +1,30 @@
+<!-- @dsCard group="Colors" viewport="700x160" name="Semantic Status" subtitle="success · warning · danger — banners, toggles, destructive actions" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--bg)}
+  .wrap{padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .col{display:flex;flex-direction:column;gap:8px}
+  .chip{height:46px;border-radius:8px;display:flex;align-items:center;padding:0 12px;color:#fff;font:600 13px/1 var(--font-sans)}
+  .tint{height:38px;border-radius:8px;display:flex;align-items:center;padding:0 12px;font:600 13px/1 var(--font-sans)}
+  small{font:500 11px/1.4 var(--font-mono);color:var(--text-secondary)}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="col">
+    <div class="chip" style="background:var(--success)">success</div>
+    <div class="tint" style="background:var(--status-tint-green);color:var(--success-ink)">已啟用 · #2E7D32</div>
+    <small>--success #34C759</small>
+  </div>
+  <div class="col">
+    <div class="chip" style="background:var(--warning)">warning</div>
+    <div class="tint" style="background:var(--status-tint-yellow);color:var(--warning-ink)">尚未完整取用 · #EF6C00</div>
+    <small>--warning #FF9500</small>
+  </div>
+  <div class="col">
+    <div class="chip" style="background:var(--danger)">danger</div>
+    <div class="tint" style="background:var(--status-tint-red);color:var(--danger-ink)">移除輸入法 · #C62828</div>
+    <small>--danger #FF3B30</small>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Second-level preference row: optional leading icon, title, the currently
+  selected value on the right (secondary colour), and a trailing chevron so the
+  row visibly reads as "opens a chooser". Matches the design's Android pref rows
+  and the iOS Picker/NavigationLink value+chevron layout.
+
+  Framework auto-binds:
+    @android:id/icon     leading icon (android:icon)
+    @android:id/title    android:title
+    @android:id/summary  current value (useSimpleSummaryProvider)
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:orientation="horizontal"
+    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:id="@+id/icon_frame"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:minWidth="56dp">
+
+        <ImageView
+            android:id="@android:id/icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp" />
+
+    </LinearLayout>
+
+    <!-- Title and value each take a weighted share and WRAP (multi-line) instead of
+         clipping. Title gets the larger share (weight 3) but never collapses to zero;
+         the value (weight 2) wraps onto more lines if needed. Both always show in
+         full at any font size. -->
+    <TextView
+        android:id="@android:id/title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="3"
+        android:textAppearance="@style/LIME.Body"
+        android:maxLines="3"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@android:id/summary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="6dp"
+        android:textAppearance="@style/LIME.Body"
+        android:textColor="?android:attr/textColorSecondary"
+        android:gravity="end"
+        android:maxLines="3" />
+
+    <ImageView
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_chevron_right_18"
+        android:contentDescription="@null" />
+
+</LinearLayout>

@@ -77,6 +77,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -3544,103 +3545,108 @@ public class LIMEService extends InputMethodService
 
         builder.setCancelable(true);
         builder.setIcon(R.drawable.logo);
-        builder.setNegativeButton(android.R.string.cancel, null);
+        // Inline segmented controls make a "Cancel" button a logic mismatch (you'd
+        // select, then cancel). Use a positive 完成 that simply dismisses; the inline
+        // choices are applied on dismiss (see setOnDismissListener below).
+        builder.setPositiveButton(R.string.keyboard_menu_done, null);
         builder.setTitle(getResources().getString(R.string.ime_name));
 
-        CharSequence itemSettings = getString(R.string.lime_setting_preference);
         List<LIMEPreferenceManager.ReverseLookupOption> reverseLookupOptions = getActiveReverseLookupOptions();
-        CharSequence itemReverseLookup = getString(R.string.keyboard_menu_reverse_lookup,
-                getReverseLookupLabel(mLIMEPref.getReverseLookupTable(activeIM), reverseLookupOptions));
-        CharSequence hanConvert = getString(R.string.han_convert_option_list);
-
-        CharSequence itemSwitchIM = getString(R.string.keyboard_list);
-        CharSequence itemSwitchSytemIM = getString(R.string.input_method);
+        CharSequence reverseLookupValue = getReverseLookupLabel(
+                mLIMEPref.getReverseLookupTable(activeIM), reverseLookupOptions);
 
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int displayWidth = dm.widthPixels;
         int displayHeight = dm.heightPixels;
         final boolean isLandScape = displayWidth > displayHeight;
 
-        CharSequence itemSplitKeyboard = getString(R.string.split_keyboard);
-        if ((mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY && isLandScape)
-                || mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS)
-            itemSplitKeyboard = getString(R.string.merge_keyboard);
-
-
-        CharSequence itemVoiceInput = getString(R.string.voice_input);
-        List<CharSequence> options = new ArrayList<>();
-        List<Integer> actions = new ArrayList<>();
-
         //Jeremy '12,5,27 do not show split/merge keyboard option if in landscape mode and show arrow keys is on
         final boolean hasSplitOption = !(isLandScape && mShowArrowKeys > 0);
 
-        options.add(itemSettings);
-        actions.add(ACTION_SETTINGS);
-        options.add(itemReverseLookup);
-        actions.add(ACTION_REVERSE_LOOKUP);
-        options.add(hanConvert);
-        actions.add(ACTION_HANCONVERT);
-        options.add(itemSwitchIM);
-        actions.add(ACTION_KEYBOARD);
-        options.add(itemSwitchSytemIM);
-        actions.add(ACTION_METHOD);
-        if (hasSplitOption) {
-            options.add(itemSplitKeyboard);
-            actions.add(ACTION_SPLIT_KEYBOARD);
+        // Custom panel: every entry is a styled row and 簡繁轉換 hosts its segmented
+        // control inline at the top level (no drill-down), matching the 喜好設定 page.
+        // The Material segmented buttons need a MaterialComponents-themed inflater.
+        android.content.Context matCtx = new ContextThemeWrapper(this, R.style.LIMESettingsTheme);
+        matCtx = com.google.android.material.color.DynamicColors.wrapContextIfAvailable(
+                matCtx, net.toload.main.hd.global.SystemAccentColor.dynamicColorOptions(this));
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(matCtx);
+        android.view.View panel = inflater.inflate(R.layout.keyboard_menu_panel, null);
+        LinearLayout topRows = panel.findViewById(R.id.menu_rows_top);
+        LinearLayout bottomRows = panel.findViewById(R.id.menu_rows_bottom);
+
+        builder.setView(panel);
+        mOptionsDialog = builder.create();
+
+        // Rows above 簡繁轉換.
+        addKeyboardMenuRow(inflater, topRows, R.drawable.ic_nav_settings,
+                getString(R.string.lime_setting_preference), null,
+                () -> handleKeyboardMenuAction(ACTION_SETTINGS, isLandScape));
+        addKeyboardMenuRow(inflater, topRows, R.drawable.ic_search_24,
+                getString(R.string.im_reverse_lookup_screen_title), reverseLookupValue,
+                () -> handleKeyboardMenuAction(ACTION_REVERSE_LOOKUP, isLandScape));
+
+        // Rows below 簡繁轉換. (分離鍵盤 is the inline segmented block, not a row.)
+        addKeyboardMenuRow(inflater, bottomRows, R.drawable.ic_nav_im,
+                getString(R.string.keyboard_list), null,
+                () -> handleKeyboardMenuAction(ACTION_KEYBOARD, isLandScape));
+        addKeyboardMenuRow(inflater, bottomRows, R.drawable.ic_language_24,
+                getString(R.string.input_method), null,
+                () -> handleKeyboardMenuAction(ACTION_METHOD, isLandScape));
+        addKeyboardMenuRow(inflater, bottomRows, R.drawable.ic_mic_24,
+                getString(R.string.voice_input), null,
+                () -> handleKeyboardMenuAction(ACTION_VOICEINPUT, isLandScape));
+
+        // Inline segmented controls record a pending choice; both are applied on
+        // dismiss (完成 / back / outside-tap), so the panel stays stable while the
+        // user adjusts more than one and the keyboard rebuilds only once.
+        final int hanCurrent = clampIndex(mLIMEPref.getHanCovertOption(), 3);
+        final int[] pendingHan = { hanCurrent };
+        com.google.android.material.button.MaterialButtonToggleGroup hanGroup =
+                panel.findViewById(R.id.han_toggle_group);
+        if (hanGroup != null) {
+            final int[] hanIds = { R.id.han_opt_none, R.id.han_opt_t2s, R.id.han_opt_s2t };
+            hanGroup.check(hanIds[hanCurrent]);
+            hanGroup.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+                if (!isChecked) return;
+                for (int i = 0; i < hanIds.length; i++) {
+                    if (hanIds[i] == checkedId) { pendingHan[0] = i; break; }
+                }
+            });
+            net.toload.main.hd.ui.view.SegmentedHanPreference.stackIfClipped(hanGroup);
         }
-        options.add(itemVoiceInput);
-        actions.add(ACTION_VOICEINPUT);
 
+        // 分離鍵盤 inline segmented control (0=關閉 1=開啟 2=僅橫向), shown only when
+        // the split option is available in the current orientation.
+        final int splitCurrent = clampIndex(mSplitKeyboard, 3);
+        final int[] pendingSplit = { splitCurrent };
+        if (hasSplitOption) {
+            panel.findViewById(R.id.menu_split_block).setVisibility(android.view.View.VISIBLE);
+            com.google.android.material.button.MaterialButtonToggleGroup splitGroup =
+                    panel.findViewById(R.id.split_toggle_group);
+            final int[] splitIds = { R.id.split_opt_off, R.id.split_opt_on, R.id.split_opt_landscape };
+            splitGroup.check(splitIds[splitCurrent]);
+            splitGroup.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+                if (!isChecked) return;
+                for (int i = 0; i < splitIds.length; i++) {
+                    if (splitIds[i] == checkedId) { pendingSplit[0] = i; break; }
+                }
+            });
+            net.toload.main.hd.ui.view.SegmentedHanPreference.stackIfClipped(splitGroup);
+        }
 
-        builder.setItems(options.toArray(new CharSequence[0]), (di, position) -> {
-            di.dismiss();
-            switch (actions.get(position)) {
-
-                case ACTION_SETTINGS:
-                    launchPreference();
-                    break;
-                case ACTION_REVERSE_LOOKUP:
-                    showReverseLookupPicker();
-                    break;
-                case ACTION_HANCONVERT:  //Jeremy '11,9,17
-                    showHanConvertPicker();
-                    break;
-                case ACTION_KEYBOARD:
-                    showIMPicker();
-                    break;
-                case ACTION_METHOD:
-                    ((InputMethodManager) Objects.requireNonNull(getSystemService(INPUT_METHOD_SERVICE))).showInputMethodPicker();
-                    break;
-                case ACTION_SPLIT_KEYBOARD: //Jeremy '12,5,27 new option to split keyboard; '12,6,9 add orientation consideration on split keyboard
-                    if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_NEVER) {
-                        if (isLandScape)
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
-                        else
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
-                    } else if (mSplitKeyboard == LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS) {
-                        if (isLandScape)
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
-                        else
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY);
-                    } else {// LIMEKeyboard.SPLIT_KEYBOARD_LANDSCAPD_ONLY
-                        if (isLandScape)
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_NEVER);
-                        else
-                            mLIMEPref.setSplitKeyboard(LIMEKeyboard.SPLIT_KEYBOARD_ALWAYS);
-                    }
-
-                    invalidateStartupConfigSnapshot();
-                    handleClose();
-                    mKeyboardSwitcher.resetKeyboards(true);
-                    break;
-                case ACTION_VOICEINPUT:
-                    startVoiceInput();
-                    break;
-
+        // Apply the inline choices once, on dismiss.
+        mOptionsDialog.setOnDismissListener(d -> {
+            if (pendingHan[0] != hanCurrent) {
+                handleHanConvertSelection(pendingHan[0]);
+            }
+            if (pendingSplit[0] != splitCurrent) {
+                mLIMEPref.setSplitKeyboard(pendingSplit[0]);
+                invalidateStartupConfigSnapshot();
+                handleClose();
+                mKeyboardSwitcher.resetKeyboards(true);
             }
         });
 
-        mOptionsDialog = builder.create();
         Window window = mOptionsDialog.getWindow();
         assert window != null;
         WindowManager.LayoutParams lp = window.getAttributes();
@@ -3648,7 +3654,71 @@ public class LIMEService extends InputMethodService
         lp.type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
         window.setAttributes(lp);
         window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+
+        // Cap the scrolling panel so it never exceeds the screen — at very large
+        // system font scales the rows can be taller than one screen, in which case
+        // the ScrollView (scrollbars always shown) must take over. The dialog title
+        // and 完成 button need room, so cap the scroll region at ~62% of the screen.
+        final int maxPanelHeight = (int) (displayHeight * 0.62f);
+        panel.getViewTreeObserver().addOnGlobalLayoutListener(
+                new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                panel.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                if (panel.getHeight() > maxPanelHeight) {
+                    android.view.ViewGroup.LayoutParams plp = panel.getLayoutParams();
+                    plp.height = maxPanelHeight;
+                    panel.setLayoutParams(plp);
+                }
+            }
+        });
+
         mOptionsDialog.show();
+    }
+
+    /** Inflate one styled row into the long-press keyboard-menu panel. */
+    private void addKeyboardMenuRow(android.view.LayoutInflater inflater, LinearLayout parent,
+                                    int iconRes, CharSequence title, CharSequence value,
+                                    Runnable onClick) {
+        android.view.View row = inflater.inflate(R.layout.keyboard_menu_row, parent, false);
+        ((ImageView) row.findViewById(R.id.menu_row_icon)).setImageResource(iconRes);
+        ((TextView) row.findViewById(R.id.menu_row_title)).setText(title);
+        TextView valueView = row.findViewById(R.id.menu_row_value);
+        if (value != null && value.length() > 0) {
+            valueView.setText(value);
+            valueView.setVisibility(android.view.View.VISIBLE);
+        }
+        row.findViewById(R.id.menu_row_root).setOnClickListener(v -> {
+            if (mOptionsDialog != null) mOptionsDialog.dismiss();
+            onClick.run();
+        });
+        parent.addView(row);
+    }
+
+    /** Clamp a persisted index into [0, size); used by the inline segmented controls. */
+    private static int clampIndex(int value, int size) {
+        return (value < 0 || value >= size) ? 0 : value;
+    }
+
+    /** Dispatch a long-press keyboard-menu row action (dialog already dismissed). */
+    private void handleKeyboardMenuAction(int action, boolean isLandScape) {
+        switch (action) {
+            case ACTION_SETTINGS:
+                launchPreference();
+                break;
+            case ACTION_REVERSE_LOOKUP:
+                showReverseLookupPicker();
+                break;
+            case ACTION_KEYBOARD:
+                showIMPicker();
+                break;
+            case ACTION_METHOD:
+                ((InputMethodManager) Objects.requireNonNull(getSystemService(INPUT_METHOD_SERVICE))).showInputMethodPicker();
+                break;
+            case ACTION_VOICEINPUT:
+                startVoiceInput();
+                break;
+        }
     }
 
     private List<LIMEPreferenceManager.ReverseLookupOption> getActiveReverseLookupOptions() {
@@ -3892,14 +3962,41 @@ public class LIMEService extends InputMethodService
         builder.setIcon(R.drawable.logo);
         builder.setNegativeButton(android.R.string.cancel, null);
         builder.setTitle(getResources().getString(R.string.han_convert_option_list));
-        CharSequence[] items = getResources().getStringArray(R.array.han_convert_options);
-        builder.setSingleChoiceItems(items, mLIMEPref.getHanCovertOption(),
-                (di, position) -> {
-                    di.dismiss();
-                    handleHanConvertSelection(position);
-                });
+
+        // Inline segmented control (無 / 繁轉簡 / 簡轉繁), matching the 喜好設定
+        // page's 簡繁轉換 row, instead of a plain single-choice radio list.
+        // The segmented buttons need a MaterialComponents-themed inflater
+        // (materialButtonOutlinedStyle isn't in the framework dialog theme).
+        android.content.Context matCtx = new ContextThemeWrapper(this, R.style.LIMESettingsTheme);
+        matCtx = com.google.android.material.color.DynamicColors.wrapContextIfAvailable(
+                matCtx, net.toload.main.hd.global.SystemAccentColor.dynamicColorOptions(this));
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(matCtx);
+        android.view.View hanView = inflater.inflate(R.layout.preference_han_segmented, null);
+        // Hide the in-layout title (the dialog already shows it) and footer spacing handled by layout.
+        android.view.View titleView = hanView.findViewById(R.id.han_title);
+        if (titleView != null) titleView.setVisibility(android.view.View.GONE);
+        com.google.android.material.button.MaterialButtonToggleGroup group =
+                hanView.findViewById(R.id.han_toggle_group);
+        builder.setView(hanView);
 
         mOptionsDialog = builder.create();
+
+        if (group != null) {
+            final int[] ids = { R.id.han_opt_none, R.id.han_opt_t2s, R.id.han_opt_s2t };
+            int current = mLIMEPref.getHanCovertOption();
+            if (current < 0 || current >= ids.length) current = 0;
+            group.check(ids[current]);
+            group.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+                if (!isChecked) return;
+                for (int i = 0; i < ids.length; i++) {
+                    if (ids[i] == checkedId) {
+                        handleHanConvertSelection(i);
+                        break;
+                    }
+                }
+                if (mOptionsDialog != null) mOptionsDialog.dismiss();
+            });
+        }
         Window window = mOptionsDialog.getWindow();
         if (!(window == null)) {
             WindowManager.LayoutParams lp = window.getAttributes();
@@ -6595,10 +6692,17 @@ public class LIMEService extends InputMethodService
     private int mKeyboardThemeIndex = -1;
 
     private AlertDialog.Builder createDialogBuilder() {
-        if (isEffectiveDarkTheme()) {
-            return new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
-        }
-        return new AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog_Alert);
+        // Style the keyboard long-press menu to match the in-app preference page
+        // (rounded corners, accent-coloured title/buttons, day/night) via a
+        // custom dialog theme, instead of the plain framework dialog. Kept on
+        // android.app.AlertDialog so the IME window-token plumbing is unchanged.
+        android.content.Context base = new ContextThemeWrapper(this, R.style.LIME_KeyboardMenuDialog);
+        // Apply Material You dynamic colours so the menu accent matches the
+        // system palette, like the preference page.
+        android.content.Context themed = com.google.android.material.color.DynamicColors
+                .wrapContextIfAvailable(base,
+                        net.toload.main.hd.global.SystemAccentColor.dynamicColorOptions(this));
+        return new AlertDialog.Builder(themed);
     }
 
     private boolean isEffectiveDarkTheme() {

@@ -1,0 +1,49 @@
+/* ============================================================================
+   LIME 萊姆輸入法 — Spacing, radius, shadow & layout tokens
+   Values lifted directly from LimeSettings/SettingsMetrics.swift.
+   ============================================================================ */
+
+:root {
+  /* Spacing scale (pt → px, the values SettingsMetrics actually uses) */
+  --space-2:   2px;
+  --space-4:   4px;
+  --space-6:   6px;
+  --space-8:   8px;
+  --space-11: 11px;   /* rowVerticalPadding                    */
+  --space-12: 12px;
+  --space-16: 16px;   /* groupedSectionHorizontalPadding       */
+  --space-20: 20px;   /* titleHorizontalPadding                */
+  --space-24: 24px;   /* pageHorizontalPadding                 */
+  --space-32: 32px;   /* setupHeroTopPadding / bottomPadding   */
+
+  /* Page layout */
+  --content-max-width: 560px;  /* iPad reading-width cap                  */
+  --page-padding:      24px;
+  --tabbar-height:     49px;
+  --navbar-height:     44px;
+
+  /* Corner radii */
+  --radius-card:    10px;   /* groupedSectionCornerRadius              */
+  --radius-modal:   12px;   /* modalCornerRadius                       */
+  --radius-global:  14px;   /* globalModalCornerRadius                 */
+  --radius-button:  12px;   /* bordered-prominent control              */
+  --radius-logo:    18px;   /* setupLogoCornerRadius                   */
+  --radius-field:    8px;
+  --radius-pill:   999px;
+
+  /* iOS toggle (the green setup switch) */
+  --switch-track-w: 30px;
+  --switch-track-h: 18px;
+  --switch-thumb:   14px;
+
+  /* Shadows */
+  --shadow-fab:    0 2px 4px rgba(0,0,0,0.30);   /* floating action button   */
+  --shadow-modal:  0 4px 8px rgba(0,0,0,0.12);   /* overlay card             */
+  --shadow-switch: 0 1px 1px rgba(0,0,0,0.18);   /* switch thumb             */
+  --shadow-logo:   0 6px 20px rgba(0,131,62,0.28); /* lime hero glow         */
+
+  /* Common control sizes */
+  --row-min-height:    44px;   /* iOS minimum hit target                  */
+  --toolbar-button:    44px;
+  --logo-size:         80px;   /* setup hero logo                         */
+}

@@ -17,38 +17,25 @@
         android:maxWidth="560dp"
         android:layout_gravity="center_horizontal">
 
-        <!-- Heading -->
+        <!-- Heading — 34sp bold, matching iOS large title -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/title_db_manager"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textAppearance="@style/LIME.TabTitle"
             android:paddingTop="8dp"
             android:paddingBottom="16dp" />
 
-        <!-- Backup section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="備份"
-            android:textSize="13sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginBottom="6dp" />
-
+        <!-- Backup — filled (primary) button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDbBackup"
             style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-            app:cornerRadius="10dp"
-            app:backgroundTint="@color/setup_status_bg"
+            app:cornerRadius="20dp"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:text="備份資料庫"
             android:textAllCaps="false"
-            android:textColor="?attr/colorPrimary"
             app:icon="@drawable/ic_upload_24"
-            app:iconTint="?attr/colorPrimary"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
  />
@@ -57,32 +44,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="備份包含所有字根、關聯字及喜好設定。"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary"
+            android:textAppearance="@style/LIME.Footnote"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="16dp" />
 
-        <!-- Restore section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="還原"
-            android:textSize="13sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginBottom="6dp" />
-
+        <!-- Restore — bordered (12% green tinted fill, no stroke) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDbRestore"
             style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-            app:cornerRadius="10dp"
-            app:backgroundTint="@color/setup_status_bg"
+            app:cornerRadius="20dp"
+            app:backgroundTint="@color/button_tint_primary"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:text="還原資料庫"
             android:textAllCaps="false"
-            android:textColor="@color/setup_status_fg_red"
+            android:textColor="?attr/colorPrimary"
             app:icon="@drawable/ic_download_24"
-            app:iconTint="@color/setup_status_fg_red"
+            app:iconTint="?attr/colorPrimary"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
  />
@@ -91,27 +69,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="還原後鍵盤將重新載入資料庫。"
-            android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary"
+            android:textAppearance="@style/LIME.Footnote"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="16dp" />
 
-        <!-- Restore default section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="初始資料庫"
-            android:textSize="13sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginBottom="6dp" />
-
+        <!-- Restore default — error (12% red tinted fill, no stroke) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDbRestoreDefault"
             style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-            app:cornerRadius="10dp"
-            app:backgroundTint="@color/setup_status_bg"
+            app:cornerRadius="20dp"
+            app:backgroundTint="@color/button_tint_error"
             android:layout_width="match_parent"
             android:layout_height="48dp"
+            android:layout_marginTop="16dp"
             android:text="還原預設資料庫"
             android:textAllCaps="false"
             android:textColor="@color/setup_status_fg_red"
@@ -120,6 +90,31 @@
             app:iconGravity="textStart"
             app:iconPadding="8dp"
  />
+
+        <!-- Red warning with a leading triangle glyph: this action is irreversible -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <ImageView
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="6dp"
+                android:src="@drawable/ic_warning_15"
+                app:tint="@color/setup_status_fg_red"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/db_restore_default_warning"
+                android:textAppearance="@style/LIME.Footnote"
+                android:textColor="@color/setup_status_fg_red" />
+
+        </LinearLayout>
 
         <!-- Status section (hidden when empty) -->
         <com.google.android.material.card.MaterialCardView
@@ -137,7 +132,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="12dp"
-                android:textAppearance="?attr/textAppearanceBody2" />
+                android:textAppearance="@style/LIME.Footnote" />
 
         </com.google.android.material.card.MaterialCardView>
 

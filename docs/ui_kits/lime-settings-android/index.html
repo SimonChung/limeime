@@ -1,0 +1,289 @@
+<!-- @dsCard group="LIME Settings (Android)" viewport="412x760" name="LIME Settings — Android (Material You)" subtitle="Same 4 tabs in Material 3; chrome adopts the system colour scheme" -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LIME Settings — Android</title>
+<link rel="stylesheet" href="../../styles.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..0&family=Roboto:wght@400;500;700&display=block" rel="stylesheet" />
+<style>
+  html, body { margin: 0; height: 100%; background: #babfc7; font-family: "Roboto", var(--font-sans); -webkit-font-smoothing: antialiased; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  /* Pixel-style device */
+  #device {
+    /* Material You light-scheme roles — re-seeded by the palette switcher (Material You). */
+    --md-primary: #386a20; --md-on-primary: #ffffff;
+    --md-primary-container: #b7f397; --md-on-primary-container: #042100;
+    --md-secondary-container: #d7e8c8; --md-on-secondary-container: #121f0d;
+    --md-surface: #f8faf0; --md-surface-container-low: #f2f5e9;
+    --md-surface-container: #ecefe3; --md-surface-container-high: #e6e9de;
+    --md-surface-container-highest: #e0e4d8;
+    --md-on-surface: #1a1c16; --md-on-surface-variant: #44483b;
+    --md-outline: #75796c; --md-outline-variant: #c5c8b9;
+    --md-error: #ba1a1a;
+
+    width: 412px; height: 915px; flex: 0 0 auto; transform-origin: center center;
+    background: var(--md-surface); border-radius: 44px; position: relative; overflow: hidden;
+    box-shadow: 0 0 0 3px #15161a, 0 0 0 13px #23252b, 0 28px 70px rgba(0,0,0,.42);
+    transition: background .35s ease;
+  }
+  /* Tablet form factor — same M3 system, navigation rail + two-pane (TwoPaneHostFragment). */
+  #device.tablet { width: 1024px; height: 768px; border-radius: 30px; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--md-surface); transition: background .35s ease; }
+  .bodyrow { flex: 1; display: flex; min-height: 0; }
+  .rail-host { flex: 0 0 auto; }
+  .main { flex: 1; min-width: 0; display: flex; min-height: 0; }
+  /* Two-pane master/detail for the IM tab on tablet */
+  .pane-list { width: 392px; flex: 0 0 auto; border-right: 1px solid var(--md-outline-variant); overflow-y: auto; }
+  .pane-list::-webkit-scrollbar { width: 0; }
+  .pane-detail { flex: 1; min-width: 0; background: var(--md-surface-container-low); }
+  /* Android status bar */
+  .sysbar { height: 32px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px 0 24px; color: var(--md-on-surface); position: relative; z-index: 6; }
+  .sysbar .clock { font: 500 14px/1 "Roboto"; }
+  .sysbar .icons { display: flex; align-items: center; gap: 7px; }
+  .punch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 13px; height: 13px;
+    background: #060708; border-radius: 50%; z-index: 7; }
+  /* App bar */
+  .appbar { flex: 0 0 auto; height: 64px; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 16px;
+    background: var(--md-surface); color: var(--md-on-surface); position: relative; z-index: 5; }
+  .appbar .title { font: 500 22px/28px "Roboto", var(--font-sans); flex: 1; }
+  .appbar .leading, .appbar .action { width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; color: var(--md-on-surface-variant); cursor: pointer; }
+  .appbar .leading:active, .appbar .action:active { background: color-mix(in srgb, var(--md-on-surface) 10%, transparent); }
+  /* Scroll body */
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; position: relative; }
+  .scroll::-webkit-scrollbar { width: 0; }
+  /* Bottom navigation */
+  .navhost { flex: 0 0 auto; }
+  /* Gesture nav pill */
+  .gesture { height: 22px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--md-surface-container); }
+  .gesture::after { content: ""; width: 130px; height: 5px; border-radius: 3px; background: var(--md-on-surface); opacity: .85; }
+  /* Material Symbols */
+  .msr { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; line-height: 1;
+    letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal;
+    direction: ltr; -webkit-font-feature-settings: "liga"; -webkit-font-smoothing: antialiased; user-select: none;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; }
+  .msr.fill { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+  /* Detail slide-over */
+  .detail { position: absolute; inset: 0; background: var(--md-surface); z-index: 10; display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .28s cubic-bezier(.2,0,0,1); }
+  .detail.open { transform: translateX(0); }
+  a { color: var(--md-primary); }
+  /* System theme control — lives in the device's ENVIRONMENT (the letterbox),
+     not inside the app, because Material You is an OS-level setting the app inherits. */
+  #systheme { position: fixed; left: 20px; bottom: 20px; z-index: 20; width: 196px;
+    background: #ffffff; border-radius: 16px; padding: 14px 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.18); border: 1px solid rgba(0,0,0,.06);
+    font-family: "Roboto", var(--font-sans); }
+  #systheme .st-os { display: flex; align-items: center; gap: 6px; color: #1a73e8;
+    font: 600 11px/1 "Roboto", sans-serif; letter-spacing: .3px; text-transform: uppercase; }
+  #systheme .st-title { color: #202124; font: 600 14px/18px "Roboto", sans-serif; margin: 7px 0 1px; }
+  #systheme .st-sub { color: #5f6368; font: 400 11px/15px "Roboto", sans-serif; margin-bottom: 11px; }
+  #systheme .st-chips { display: flex; gap: 10px; }
+  #systheme .st-divider { height: 1px; background: rgba(0,0,0,.08); margin: 13px 0; }
+  #systheme .st-seg { display: flex; background: #f1f3f4; border-radius: 9px; padding: 3px; }
+  #systheme .st-seg button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    height: 30px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+    font: 500 12px/1 "Roboto", sans-serif; color: #5f6368; }
+  #systheme .st-seg button[aria-pressed="true"] { background: #fff; color: #202124; box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+  @media (max-width: 720px) { #systheme, #formfactor { display: none; } }
+  /* Form-factor switch — environment chrome, like #systheme. */
+  #formfactor { position: fixed; right: 20px; top: 20px; z-index: 20; background: #fff; border-radius: 14px;
+    padding: 12px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); border: 1px solid rgba(0,0,0,.06);
+    font-family: "Roboto", var(--font-sans); width: 168px; }
+  #formfactor .ff-os { display: flex; align-items: center; gap: 6px; color: #1a73e8; font: 600 11px/1 "Roboto", sans-serif;
+    letter-spacing: .3px; text-transform: uppercase; margin-bottom: 9px; }
+  #formfactor .ff-seg { display: flex; background: #f1f3f4; border-radius: 9px; padding: 3px; }
+  #formfactor .ff-seg button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; height: 30px;
+    border: 0; border-radius: 7px; background: transparent; cursor: pointer; font: 500 12px/1 "Roboto", sans-serif; color: #5f6368; }
+  #formfactor .ff-seg button[aria-pressed="true"] { background: #fff; color: #202124; box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+</style>
+</head>
+<body>
+<div id="stage"><div id="device"><div id="root"></div></div></div>
+<div id="systheme"></div>
+<div id="formfactor"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script>(function(){var v='?v='+Date.now();['m3.jsx','AndroidSetupTab.jsx','AndroidIMTab.jsx','AndroidPrefsTab.jsx','AndroidDBTab.jsx'].forEach(function(m){document.write('<scr'+'ipt type="text/babel" src="'+m+v+'"><\/scr'+'ipt>');});})();</script>
+<script type="text/babel">
+  const { NavBar, NavRail, Icon, PaletteSwitcher, PALETTES, applyPalette } = window.LimeM3;
+
+  // ── Android status bar ───────────────────────────────────────
+  function SysBar() {
+    return (
+      <div className="sysbar">
+        <span className="clock">9:41</span>
+        <span className="icons">
+          <span className="msr" style={{ fontSize: 17 }}>signal_cellular_alt</span>
+          <span className="msr" style={{ fontSize: 17 }}>wifi</span>
+          <span className="msr fill" style={{ fontSize: 18 }}>battery_full</span>
+        </span>
+      </div>
+    );
+  }
+
+  const TABS = [
+    { key: "setup", label: "設定", icon: "settings", Comp: window.AndroidSetupTab },
+    { key: "im", label: "輸入法", icon: "format_list_bulleted", Comp: window.AndroidIMTab },
+    { key: "prefs", label: "喜好設定", icon: "tune", Comp: window.AndroidPrefsTab },
+    { key: "db", label: "資料庫", icon: "inventory_2", Comp: window.AndroidDBTab },
+  ];
+
+  function App() {
+    const [tab, setTab] = React.useState("setup");
+    const [detail, setDetail] = React.useState(null);     // phone: slide-over IM
+    const [selected, setSelected] = React.useState(null);  // tablet: two-pane IM
+    const [ff, setFf] = React.useState("phone");
+    const scrollRef = React.useRef(null);
+    React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
+    React.useEffect(() => { window.__setFF = setFf; }, []);
+    const active = TABS.find((t) => t.key === tab);
+    const Comp = active.Comp;
+    const navItems = TABS.map(({ key, label, icon }) => ({ key, label, icon }));
+
+    // ── Tablet: navigation rail + two-pane host ──────────────────────────
+    if (ff === "tablet") {
+      const Detail = window.AndroidIMDetail;
+      return (
+        <div className="screen">
+          <div className="punch" />
+          <SysBar />
+          <div className="bodyrow">
+            <div className="rail-host">
+              <NavRail items={navItems} active={tab} onChange={setTab}
+                fab={tab === "im" ? { icon: "add", onClick: () => {} } : null} />
+            </div>
+            <div className="main">
+              {tab === "im" ? (
+                <React.Fragment>
+                  <div className="pane-list">
+                    <Comp onOpen={(im) => setSelected(im)} selectedId={selected && selected.id} hideFab />
+                  </div>
+                  <div className="pane-detail">
+                    <Detail im={selected} embedded onClose={() => setSelected(null)} />
+                  </div>
+                </React.Fragment>
+              ) : (
+                <div className="scroll" ref={scrollRef} style={{ maxWidth: 720, margin: "0 auto", width: "100%" }}>
+                  {tab === "setup" && <Comp />}
+                  {tab === "prefs" && <Comp />}
+                  {tab === "db" && <Comp />}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="gesture" />
+        </div>
+      );
+    }
+
+    // ── Phone: bottom nav + full-screen slide-over IM detail ─────────────
+    return (
+      <div className="screen">
+        <div className="punch" />
+        <SysBar />
+        <div className="scroll" ref={scrollRef}>
+          {tab === "setup" && <Comp />}
+          {tab === "im" && <Comp onOpen={(im) => setDetail(im)} />}
+          {tab === "prefs" && <Comp />}
+          {tab === "db" && <Comp />}
+        </div>
+        <div className="navhost">
+          <NavBar items={navItems} active={tab} onChange={setTab} />
+        </div>
+        <div className="gesture" />
+        {window.AndroidIMDetail && <window.AndroidIMDetail im={detail} onClose={() => setDetail(null)} />}
+      </div>
+    );
+  }
+
+  // Override per-tab app-bar titles
+  TABS[1].barTitle = "管理輸入法"; TABS[2].barTitle = "喜好設定"; TABS[3].barTitle = "資料庫管理";
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+  // ── System theme (lives OUTSIDE the app) ────────────────────────────────
+  // Material You is chosen by the user in Android system settings (wallpaper-
+  // derived). The app does NOT offer a theme picker — it simply inherits the
+  // system colour scheme. This OS-style panel sits in the device's environment
+  // (the letterbox), not in any app screen, to demonstrate that adoption.
+  (function buildSystemTheme() {
+    const host = document.getElementById("systheme");
+    if (!host) return;
+    let current = "green", mode = "light";
+    const chip = (k, p) =>
+      '<button data-seed="' + k + '" title="' + p.label + '" style="width:28px;height:28px;border-radius:50%;cursor:pointer;background:' + p.seed + ';border:2px solid ' + (k === current ? '#1a73e8' : 'transparent') + ';outline:' + (k === current ? '2px solid rgba(26,115,232,.25)' : 'none') + ';outline-offset:-4px;padding:0"></button>';
+    host.innerHTML =
+      '<div class="st-os"><span class="msr" style="font-size:15px">settings</span>系統設定</div>' +
+      '<div class="st-title">佈景主題色</div>' +
+      '<div class="st-sub">Material You · App 自動套用，無需在 App 內設定</div>' +
+      '<div class="st-chips">' + Object.entries(PALETTES).map(([k, p]) => chip(k, p)).join("") + '</div>' +
+      '<div class="st-divider"></div>' +
+      '<div class="st-os" style="margin-bottom:8px"><span class="msr" style="font-size:15px">brightness_6</span>深淺色模式</div>' +
+      '<div class="st-seg">' +
+        '<button data-mode="light" aria-pressed="true"><span class="msr" style="font-size:16px">light_mode</span>淺色</button>' +
+        '<button data-mode="dark" aria-pressed="false"><span class="msr" style="font-size:16px">dark_mode</span>深色</button>' +
+      '</div>';
+    host.querySelectorAll("button[data-seed]").forEach((b) => {
+      b.onclick = () => {
+        current = b.getAttribute("data-seed");
+        applyPalette(current, mode);
+        host.querySelectorAll("button[data-seed]").forEach((x) => {
+          const on = x.getAttribute("data-seed") === current;
+          x.style.border = "2px solid " + (on ? "#1a73e8" : "transparent");
+          x.style.outline = on ? "2px solid rgba(26,115,232,.25)" : "none";
+        });
+      };
+    });
+    host.querySelectorAll("button[data-mode]").forEach((b) => {
+      b.onclick = () => {
+        mode = b.getAttribute("data-mode");
+        applyPalette(current, mode);
+        host.querySelectorAll("button[data-mode]").forEach((x) =>
+          x.setAttribute("aria-pressed", x.getAttribute("data-mode") === mode ? "true" : "false"));
+      };
+    });
+    applyPalette(current, mode);
+  })();
+
+  // ── Form-factor switch (environment chrome, like #systheme) ─────────────
+  (function buildFormFactor() {
+    const host = document.getElementById("formfactor");
+    if (!host) return;
+    host.innerHTML =
+      '<div class="ff-os"><span class="msr" style="font-size:15px">devices</span>裝置類型</div>' +
+      '<div class="ff-seg">' +
+        '<button data-ff="phone" aria-pressed="true"><span class="msr" style="font-size:16px">smartphone</span>手機</button>' +
+        '<button data-ff="tablet" aria-pressed="false"><span class="msr" style="font-size:16px">tablet</span>平板</button>' +
+      '</div>';
+    const dev = document.getElementById("device");
+    host.querySelectorAll("button[data-ff]").forEach((b) => {
+      b.onclick = () => {
+        const ff = b.getAttribute("data-ff");
+        dev.classList.toggle("tablet", ff === "tablet");
+        host.querySelectorAll("button[data-ff]").forEach((x) =>
+          x.setAttribute("aria-pressed", x.getAttribute("data-ff") === ff ? "true" : "false"));
+        if (window.__setFF) window.__setFF(ff);
+        fit();
+      };
+    });
+  })();
+
+  function fit() {
+    const pad = 24;
+    const dev = document.getElementById("device");
+    const w = dev.offsetWidth, h = dev.offsetHeight;
+    const s = Math.min((window.innerWidth - pad) / w, (window.innerHeight - pad) / h, 1);
+    dev.style.transform = "scale(" + s + ")";
+  }
+  window.addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

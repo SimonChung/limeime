@@ -34,22 +34,34 @@ enum SettingsMetrics {
 
     static let formHeaderLeadingPadding: CGFloat = 4
     static let formHeaderTopPadding: CGFloat = 20
+    static let dbActionBottomSpacing: CGFloat = 18
     static let progressBarWidth: CGFloat = 180
 
     static let scoreFieldWidth: CGFloat = 64
     static let detailToolbarButtonSize: CGFloat = 44
     static let listCountColumnWidth: CGFloat = 48
 
-    static let setupLogoSize: CGFloat = 80
+    static let setupLogoSize: CGFloat = 92
     static let setupFallbackLogoSize: CGFloat = 60
     static let setupFallbackLogoPadding: CGFloat = 10
     static let setupLogoCornerRadius: CGFloat = 18
     static let setupStepIconWidth: CGFloat = 32
     static let setupStepSpacing: CGFloat = 16
-    static let setupHeroTopPadding: CGFloat = 32
-    static let setupHeroSpacing: CGFloat = 8
+    static let setupHeroTopPadding: CGFloat = 20
+    static let setupHeroSpacing: CGFloat = 16
+    static let setupWordmarkFontSize: CGFloat = 30
+    static let setupTitleFontSize: CGFloat = 28
     static let setupListSpacing: CGFloat = 16
     static let setupBottomPadding: CGFloat = 32
+
+    static let aboutFooterSpacing: CGFloat = 16
+    static let aboutFooterTopPadding: CGFloat = 10
+    static let aboutChipSpacing: CGFloat = 10
+    static let aboutChipCornerRadius: CGFloat = 14
+    static let aboutChipInnerSpacing: CGFloat = 7
+    static let aboutChipVerticalPadding: CGFloat = 14
+    static let aboutChipHorizontalPadding: CGFloat = 8
+    static let aboutCopyrightTopPadding: CGFloat = 6
 
     static let switchTrackWidth: CGFloat = 30
     static let switchTrackHeight: CGFloat = 18
@@ -61,6 +73,14 @@ enum SettingsMetrics {
     static let invisibleProbeSize: CGFloat = 1
     static let invisibleProbeOpacity: CGFloat = 0.01
     static let titleSectionHeight: CGFloat = 60
+
+    static let imBadgeSize: CGFloat = 30
+    static let imBadgeCornerRadius: CGFloat = 7
+    static let imBadgeFontSize: CGFloat = 15
+    static let imRowSpacing: CGFloat = 12
+
+    static let prefIconWidth: CGFloat = 22
+    static let prefIconSpacing: CGFloat = 12
 
     static let familyIconSize: CGFloat = 28
     static let familyIconCornerRadius: CGFloat = 6

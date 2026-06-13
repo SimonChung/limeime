@@ -1,0 +1,49 @@
+/* ============================================================================
+   LIME 萊姆輸入法 — Typography tokens
+   The Settings app uses the native iOS system face (SF Pro) with Dynamic Type,
+   and PingFang TC for Traditional Chinese. Web specimens fall back to
+   Noto Sans TC (Google Fonts) for consistent CJK rendering. See fonts.css.
+   Scale below mirrors iOS Dynamic Type (Large) text styles.
+   ============================================================================ */
+
+:root {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+    system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Menlo", monospace;
+
+  /* Weights (SF Pro) */
+  --weight-regular:   400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+
+  /* iOS text styles — size / line-height / default weight */
+  --large-title-size: 34px;  --large-title-line: 41px;  /* .largeTitle.bold   */
+  --title1-size:      28px;  --title1-line:      34px;  /* .title             */
+  --title2-size:      22px;  --title2-line:      28px;  /* .title2            */
+  --title3-size:      20px;  --title3-line:      25px;  /* .title3            */
+  --headline-size:    17px;  --headline-line:    22px;  /* .headline (600)    */
+  --body-size:        17px;  --body-line:        22px;  /* .body              */
+  --callout-size:     16px;  --callout-line:     21px;  /* .callout           */
+  --subheadline-size: 15px;  --subheadline-line: 20px;  /* .subheadline       */
+  --footnote-size:    13px;  --footnote-line:    18px;  /* .footnote          */
+  --caption1-size:    12px;  --caption1-line:    16px;  /* .caption           */
+  --caption2-size:    11px;  --caption2-line:    13px;  /* .caption2          */
+
+  --tracking-tight:  -0.4px;
+  --tracking-normal:  0px;
+}
+
+/* Convenience text-style classes used by specimen cards & kits */
+.lime-large-title { font: var(--weight-bold) var(--large-title-size)/var(--large-title-line) var(--font-sans); letter-spacing: var(--tracking-tight); }
+.lime-title1      { font: var(--weight-bold) var(--title1-size)/var(--title1-line) var(--font-sans); letter-spacing: var(--tracking-tight); }
+.lime-title2      { font: var(--weight-bold) var(--title2-size)/var(--title2-line) var(--font-sans); }
+.lime-title3      { font: var(--weight-semibold) var(--title3-size)/var(--title3-line) var(--font-sans); }
+.lime-headline    { font: var(--weight-semibold) var(--headline-size)/var(--headline-line) var(--font-sans); }
+.lime-body        { font: var(--weight-regular) var(--body-size)/var(--body-line) var(--font-sans); }
+.lime-callout     { font: var(--weight-regular) var(--callout-size)/var(--callout-line) var(--font-sans); }
+.lime-subheadline { font: var(--weight-regular) var(--subheadline-size)/var(--subheadline-line) var(--font-sans); }
+.lime-footnote    { font: var(--weight-regular) var(--footnote-size)/var(--footnote-line) var(--font-sans); }
+.lime-caption     { font: var(--weight-regular) var(--caption1-size)/var(--caption1-line) var(--font-sans); }

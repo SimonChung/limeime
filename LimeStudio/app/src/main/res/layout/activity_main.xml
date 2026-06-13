@@ -17,12 +17,19 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Bottom navigation — phone only -->
+    <!-- Bottom navigation — phone only. Uses authentic Material Symbols icons
+         (see @menu/main_nav). labelVisibilityMode="labeled" shows the label on
+         EVERY tab (not just the selected one), matching the design's M3 nav bar.
+         Item tint/indicator are left to the theme: the app runs a
+         MaterialComponents (M2) theme, so forcing M3-only roles
+         (colorSecondaryContainer / colorOnSurfaceVariant) here crashes at
+         inflation — those attrs are not resolvable in this theme. -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/main_bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
+        app:labelVisibilityMode="labeled"
         app:paddingBottomSystemWindowInsets="true"
         app:menu="@menu/main_nav" />
 

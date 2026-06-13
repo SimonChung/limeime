@@ -30,8 +30,8 @@
     <string name="close_cand">Close the popup candiates view.</string>
     <string name="show_keyboard">Show keyboard</string>
 
-    <!-- Title for Latin keyboard  -->
-    <string name="ime_name">LIME-HD</string>
+    <!-- Title shown atop the long-press keyboard-key options menu -->
+    <string name="ime_name">萊姆輸入法</string>
     <string name="ime_setting">喜好設定</string>
     <string name="input_method">系統輸入法切換</string>
     <string name="experienced_device">開發測試裝置</string>
@@ -489,6 +489,11 @@
     <string name="l3_initial_restore_start">開始還原資料庫</string>
     <string name="l3_initial_restore_end">資料庫還原完成</string>
     <string name="l3_restore_default_confirm">確定要還原為預設資料庫嗎？所有自訂字根將會被覆蓋。</string>
+    <string name="db_restore_default_warning">警告：將清除目前所有輸入法資料表，還原為萊姆內建的空白預設資料庫，此動作無法復原。</string>
+    <string name="han_convert_none">無</string>
+    <string name="han_convert_t2s">繁→簡</string>
+    <string name="han_convert_s2t">簡→繁</string>
+    <string name="han_convert_footer">套用於所有輸入法的候選字輸出。</string>
 
     <string name="l3_initial_cloud_backup_database">Google Drive備份</string>
     <string name="l3_initial_cloud_backup_start">開始Google Drive資料庫備份</string>
@@ -637,6 +642,14 @@
     <string name="split_keyboard">分離鍵盤</string>
 
     <string name="merge_keyboard">合併鍵盤</string>
+
+    <!-- Positive dismiss button for the long-press keyboard options panel -->
+    <string name="keyboard_menu_done">完成</string>
+
+    <!-- 分離鍵盤 segmented labels (mirror split_keyboard_options: 0=NEVER 1=ALWAYS 2=LANDSCAPE_ONLY) -->
+    <string name="split_keyboard_off">關閉</string>
+    <string name="split_keyboard_on">開啟</string>
+    <string name="split_keyboard_landscape">僅橫向</string>
 
     <string name="voice_input">啟動語音輸入…</string>
 
@@ -791,7 +804,15 @@
     <string name="setup_status_enabled_not_active">已啟用，但尚未切換為 LimeIME — 點按下方按鈕切換</string>
     <string name="setup_status_not_enabled">尚未在系統中啟用 LimeIME — 點按下方按鈕前往系統設定</string>
     <string name="url_github_limeime">https://github.com/lime-ime/limeime</string>
-    <string name="url_license_limeime">https://lime-ime.github.io/limeime/LICENSE/</string>
+    <string name="url_license_limeime">https://lime-ime.github.io/limeime/pages/license.html</string>
+    <string name="url_manual_limeime">https://lime-ime.github.io/limeime/pages/index.html</string>
+    <string name="about_manual_label">使用手冊</string>
+    <string name="about_manual_link">查看說明</string>
+    <string name="about_license_label">授權</string>
+    <string name="about_license_link">版權說明</string>
+    <string name="about_source_label">原始碼</string>
+    <!-- One-line copyright banner: "© LIME 萊姆輸入法 6.1.15 - 2026" -->
+    <string name="about_copyright_format">© LIME 萊姆輸入法 %1$s - %2$d</string>
     <string name="setup_im_privacy_note">LimeIME 不會收集任何輸入內容或個人資料。</string>
 
     <!-- Step 6: ImListFragment / ImDetailFragment strings -->
