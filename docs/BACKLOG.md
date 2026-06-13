@@ -6,7 +6,8 @@ Last reviewed: 2026-06-13
 
 ## Active issue follow-up
 
-- No active public reporter retest watches. #111 was closed by `limeimetw` after acknowledgement; the confirmed `scj` table-data correction remains tracked under pending fixes until a rebuilt table/artifact decision is made.
+- #114 Android: reporter retest requested for APK `LIMEHD2026-6.1.19.apk` after commit `0a80a082eabf` guarded the English-fallback path from clearing runtime suggestion state during background prefetch. Watch for `SmithCCho` confirmation on the Duolingo English candidate-strip issue; do not close until reporter or maintainer confirmation.
+- #111 was closed by `limeimetw` after acknowledgement; the confirmed `scj` table-data correction remains tracked under pending fixes until a rebuilt table/artifact decision is made.
 
 ## Unfiled release-QA follow-up
 
