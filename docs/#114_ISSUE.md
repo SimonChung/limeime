@@ -67,7 +67,7 @@ Existing test coverage observed:
 
 Fix/retest update:
 
-- Commit `0a80a082eabf` changed `SearchServer.getMappingByCode(...)` so the English-fallback branch no longer calls `clearRunTimeSuggestion(true)` during background `prefetchCache` queries. The maintainer-facing retest request says this is intended to address the Duolingo English candidate state issue.
+- Commit `0a80a082eabf` changed `SearchServer.getMappingByCode(...)` so the English-fallback branch no longer calls `clearRunTimeSuggestion(true)` during background `prefetchCache` queries. The public retest request says this is intended to address the Duolingo English candidate state issue.
 - APK `LIMEHD2026-6.1.19.apk` includes that change and was posted for reporter retest in https://github.com/lime-ime/limeime/issues/114#issuecomment-4698478642.
 - Treat the fix as Android APK-delivered but not reporter-confirmed until `SmithCCho` retests Duolingo on 6.1.19 or a later build.
 
