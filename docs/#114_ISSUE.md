@@ -30,10 +30,11 @@ Confirmed from the report and follow-up comment `4697486430`:
 - Failure is intermittent: sometimes the English candidate strip appears normally, sometimes it stays empty.
 - Reporter says recording the failure is difficult because it is infrequent: Duolingo may show a different exercise type such as voice input, so the reporter only knows whether the issue recurs when the next word-input exercise appears.
 
-Missing details to collect if more evidence is needed:
+Additional details to collect if they become necessary for implementation:
 
-- Whether the problem reproduces after closing/reopening the Duolingo exercise, switching away from and back to LIME, or using another English prediction field.
-- Whether Android logcat shows relevant `EditorInfo`, `InputConnection`, or LIME errors when candidates disappear.
+- Whether the problem also happens in other Duolingo text fields or other English prediction fields.
+- On the next recurrence, whether leaving/re-entering the Duolingo field, closing/reopening the exercise, or switching away from and back to LIME restores the candidate strip.
+- If the team cannot reproduce locally, targeted Android logcat/debug output showing relevant `EditorInfo`, `InputConnection`, or LIME state when candidates disappear.
 
 ## Related prior context
 
@@ -66,7 +67,7 @@ Existing test coverage observed:
 
 Root cause is not confirmed yet.
 
-The most likely investigation area is the interaction between Duolingo's exercise input field and LIME's English prediction state:
+The most likely investigation area is the interaction between Duolingo's exercise input field and LIME's English prediction state. The reporter says earlier Duolingo versions also showed the intermittent behavior, so this should not be framed as specific to Duolingo 6.83.4 yet. Because the failure is intermittent, a static `EditorInfo` classification alone may not explain the whole symptom; state carried across exercise/focus/mode transitions or inconsistent `InputConnection` context may be involved.
 
 1. Duolingo may expose unusual `EditorInfo.inputType` flags, completion mode, or no-suggestions flags for some exercise states.
 2. Duolingo's custom fill-in-the-blank field may return inconsistent cursor context through `InputConnection.getTextBeforeCursor(...)` / `getTextAfterCursor(...)` while the visible composing text still shows `fif` underlined.
@@ -92,8 +93,8 @@ Already collected from the reporter: Samsung A16, Android 16 / One UI 8.5, LIME 
 Only ask for additional details if they are needed for implementation/debugging:
 
 1. Whether the failure happens only in this Duolingo exercise type, or also in other Duolingo text fields/apps.
-2. If convenient and the issue recurs, a short screen recording showing the moment candidates disappear and whether leaving/re-entering the field restores them; the reporter noted this may be difficult because recurrence is infrequent and Duolingo alternates exercise types.
-3. If local reproduction is not possible, a filtered logcat around the failure to inspect `EditorInfo` / `InputConnection` behavior.
+2. If the issue recurs, whether leaving/re-entering the field, closing/reopening the exercise, or switching away from and back to LIME restores the candidate strip. The reporter already noted that recording the exact transition may be difficult because recurrence is infrequent and Duolingo alternates exercise types.
+3. If local reproduction is not possible and more evidence is needed, consider asking for filtered logcat/debug output only with clear steps; do not make this the next routine reporter request by default.
 
 Do not ask the reporter to retest the same APK as a fix verification. Request retest only after a newer APK contains a relevant change for this issue.
 
