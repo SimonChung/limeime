@@ -10,7 +10,7 @@
 
 ## Problem statement
 
-Reporter `SmithCCho` says that in the Duolingo Android app, LIME English candidates sometimes do not display correctly while Chinese candidates still display normally. The reporter later supplied device/version details: Samsung A16, Android 16 / One UI 8.5, LIME 6.1.18. Only Duolingo is mentioned in the report so far.
+Reporter `SmithCCho` says that in the Duolingo Android app, LIME English candidates sometimes do not display correctly while Chinese candidates still display normally. The reporter later supplied device/version details: Samsung A16, Android 16 / One UI 8.5, LIME 6.1.18, and Duolingo 6.83.4; they noted earlier Duolingo versions had also shown the intermittent behavior. Only Duolingo is mentioned in the report so far.
 
 The screenshots show the same Duolingo fill-in-the-blank style exercise around the text `Can I speak to you for fif____ minutes?`:
 
@@ -25,14 +25,13 @@ Confirmed from the report and follow-up comment `4697486430`:
 - Platform/device: Android on Samsung A16.
 - OS/UI: Android 16 / One UI 8.5.
 - LIME version: 6.1.18.
-- App context: Duolingo exercise input field.
+- App context: Duolingo 6.83.4 exercise input field; reporter says earlier Duolingo versions had also shown the intermittent behavior.
 - Input mode: English candidates are affected; Chinese candidates are visible.
 - Failure is intermittent: sometimes the English candidate strip appears normally, sometimes it stays empty.
 - Reporter says recording the failure is difficult because it is infrequent: Duolingo may show a different exercise type such as voice input, so the reporter only knows whether the issue recurs when the next word-input exercise appears.
 
 Missing details to collect if more evidence is needed:
 
-- Duolingo version.
 - Whether the problem reproduces after closing/reopening the Duolingo exercise, switching away from and back to LIME, or using another English prediction field.
 - Whether Android logcat shows relevant `EditorInfo`, `InputConnection`, or LIME errors when candidates disappear.
 
@@ -88,7 +87,7 @@ This should stay a hypothesis until local reproduction or logcat evidence shows 
 
 ## Follow-up questions for reporter
 
-Already collected from the reporter: Samsung A16, Android 16 / One UI 8.5, LIME 6.1.18.
+Already collected from the reporter: Samsung A16, Android 16 / One UI 8.5, LIME 6.1.18, Duolingo 6.83.4, and the note that earlier Duolingo versions had also shown the intermittent behavior.
 
 Only ask for additional details if they are needed for implementation/debugging:
 
