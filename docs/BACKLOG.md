@@ -2,10 +2,11 @@
 
 Public backlog for confirmed pending fixes, active retest watches, and new-feature/product work. Issue-specific investigation details stay in `docs/#NN_ISSUE.md`; mutable automation state stays outside the repo.
 
-Last reviewed: 2026-06-08
+Last reviewed: 2026-06-13
 
 ## Active issue follow-up
 
+- No active public reporter retest watches. #111 was closed by `limeimetw` after acknowledgement; the confirmed `scj` table-data correction remains tracked under pending fixes until a rebuilt table/artifact decision is made.
 
 ## Unfiled release-QA follow-up
 
@@ -13,5 +14,5 @@ Last reviewed: 2026-06-08
 
 ## Pending fixes
 
-No confirmed source fixes are pending at this time. Reporter retest/release-QA follow-up remains only for the active items above.
+- #111 Android/iOS: correct or regenerate the shared `scj` / `快倉` downloadable table data so the one-letter `x` and `z` codes no longer surface `1991` as the default/leading candidate.
 
