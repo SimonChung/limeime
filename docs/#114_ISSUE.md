@@ -7,6 +7,7 @@
 - Reporter: `SmithCCho`
 - Current labels after triage: `bug`, `Usability`
 - Assignee after triage: `jrywu`
+- Reporter follow-up with device/version details: https://github.com/lime-ime/limeime/issues/114#issuecomment-4697486430
 
 ## Problem statement
 
@@ -23,15 +24,16 @@ The screenshots show the same Duolingo fill-in-the-blank style exercise around t
 Confirmed from the report only:
 
 - Platform: Android, based on the LIME Android keyboard UI in the screenshots.
+- Device/OS from reporter follow-up: Samsung A16, Android 16 / One UI 8.5.
+- LIME version from reporter follow-up: 6.1.18.
 - App context: Duolingo exercise input field.
 - Input mode: English candidates are affected; Chinese candidates are visible.
 - Failure is intermittent: sometimes the English candidate strip appears normally, sometimes it stays empty.
 - Switching LIME Chinese/English modes during the bad state reportedly does not recover the English candidates.
+- Reporter says screen recording is difficult because the failure is infrequent: after one input-word question, the next Duolingo item may be another exercise type such as voice input, and the problem is only knowable when a later word-input item appears.
 
 Missing details to collect:
 
-- LIME version / APK version.
-- Android version and device model.
 - Duolingo version.
 - Whether the problem reproduces after closing/reopening the Duolingo exercise, switching away from and back to LIME, or using another English prediction field.
 - Whether Android logcat shows relevant `EditorInfo`, `InputConnection`, or LIME errors when candidates disappear.
@@ -74,7 +76,7 @@ The most likely investigation area is the interaction between Duolingo's exercis
 3. LIME's `updateEnglishPrediction()` can then skip rebuilding English candidates or clear suggestions, leaving the empty toolbar row instead of the `fif` / `fifth` / `fifty` list.
 4. Chinese table candidates use a different lookup path, so they can still work in the same app context.
 
-This should stay a hypothesis until we have the reporter's version/device details or a local reproduction/logcat showing `EditorInfo` and `InputConnection` values.
+This should stay a hypothesis until we have Duolingo version details or a local reproduction/logcat showing `EditorInfo` and `InputConnection` values.
 
 ## Proposed investigation / solution direction
 
@@ -88,13 +90,16 @@ This should stay a hypothesis until we have the reporter's version/device detail
 
 ## Follow-up questions for reporter
 
-Ask the reporter for:
+Already received from the reporter:
 
 1. LIME version/APK version.
 2. Android version and device model.
+
+Still useful if a follow-up is needed:
+
 3. Duolingo version.
 4. Whether the failure happens only in this Duolingo exercise type, or also in other Duolingo text fields/apps.
-5. If convenient, a short screen recording showing the moment candidates disappear and whether leaving/re-entering the field restores them.
+5. If practical despite the low frequency, a short screen recording showing the moment candidates disappear and whether leaving/re-entering the field restores them; otherwise logcat or local reproduction may be more realistic.
 
 Do not ask the reporter to retest the same APK as a fix verification. Request retest only after a newer APK contains a relevant change for this issue.
 
@@ -102,7 +107,7 @@ Do not ask the reporter to retest the same APK as a fix verification. Request re
 
 ### Android
 
-Confirmed reporter platform. The likely affected implementation is Android `LIMEService` English prediction / candidate-strip state in app-specific input fields. Chinese table input uses separate candidate lookup and appears normal in the screenshots.
+Confirmed reporter platform: Samsung A16 on Android 16 / One UI 8.5 using LIME 6.1.18. The likely affected implementation is Android `LIMEService` English prediction / candidate-strip state in app-specific input fields. Chinese table input uses separate candidate lookup and appears normal in the screenshots.
 
 ### iOS
 
