@@ -172,8 +172,8 @@
 
     <h2 id="smart">中文智慧組詞</h2>
     <p>智慧組詞會在你<strong>還在組字、尚未上屏時</strong>，即時把候選字組成可能想輸入的詞。它的做法是把前一個完全符合的候選字，和剩餘字根的完全符合候選字組合起來。</p>
-    <p>以大易為例，<code>8n</code> 可選出「分」、<code>0kf</code> 可選出「鐘」。當你連續輸入 <code>8n0kf</code>，智慧組詞會把前段的「分」與後段的「鐘」組成「鐘」，當作即時候選詞顯示。若關聯字庫已記錄「分」常接「鍾」，這個組出來的「分鍾」還會獲得額外加分，更容易排在前面。</p>
-    <p>也就是說，這裡的「分鍾」不是單純靠輸入碼表查出來的，而是由智慧組詞依前後字關聯即時推測出的候選詞。</p>
+    <p>以大易為例，<code>8n</code> 可選出「分」、<code>0kf</code> 可選出「鐘」。當你連續輸入 <code>8n0kf</code>，智慧組詞會把前段的「分」與後段的「鐘」組成「分鐘」，當作即時候選詞顯示。若關聯字庫已記錄「分」常接「鐘」，這個組出來的「分鐘」還會獲得額外加分，更容易排在前面。</p>
+    <p>也就是說，這裡的「分鐘」不是單純靠輸入碼表查出來的，而是由智慧組詞依前後字關聯即時推測出的候選詞。</p>
     <div class="manual-note">
       <span class="ti">i</span>
       <div><b>智慧組詞只負責「顯示」，不會自己學習</b>智慧組詞本身只即時組出並顯示候選詞，不會把詞寫進碼表。只有當你<strong>選用</strong>了這個組出來的詞、且開啟「<a href="preferences.html#learning">自動學習新詞</a>」時，這個詞才會被學起來（見下方「學習功能」）。</div>
@@ -190,8 +190,8 @@
       <thead><tr><th>學習路徑</th><th>作用</th><th>控制設定</th></tr></thead>
       <tbody>
         <tr><td>候選字分數</td><td>每次選字都會更新所選字詞的使用分數，寫入目前輸入法的<strong>碼表</strong>。</td><td>分數一律會更新，「<a href="preferences.html#learning">啟動選取排序</a>」只決定候選排序是否依分數。</td></tr>
-        <tr><td>關聯詞學習</td><td>記錄前字接後字的關聯詞（例如「分」→「鍾」），寫入<strong>關聯字庫</strong>。</td><td>由「<a href="preferences.html#learning">啟動自建關聯字</a>」控制。</td></tr>
-        <tr><td>關聯詞升級為片語</td><td>當「分」→「鍾」這類關聯累積到夠高分數後，會把關聯詞（例如「分鍾」）從關聯字庫<strong>升級為片語並寫入碼表</strong>，之後輸入即可直接當片語選出。</td><td>需同時開啟「<a href="preferences.html#learning">啟動自建關聯字</a>」與「<a href="preferences.html#learning">自動學習新詞</a>」。</td></tr>
+        <tr><td>關聯詞學習</td><td>記錄前字接後字的關聯詞（例如「分」→「鐘」），寫入<strong>關聯字庫</strong>。</td><td>由「<a href="preferences.html#learning">啟動自建關聯字</a>」控制。</td></tr>
+        <tr><td>關聯詞升級為片語</td><td>當「分」→「鐘」這類關聯累積到夠高分數後，會把關聯詞（例如「分鐘」）從關聯字庫<strong>升級為片語並寫入碼表</strong>，之後輸入即可直接當片語選出。</td><td>需同時開啟「<a href="preferences.html#learning">啟動自建關聯字</a>」與「<a href="preferences.html#learning">自動學習新詞</a>」。</td></tr>
         <tr><td>連打學片語</td><td>一次連續輸入中逐字選出的多個字會學習成片語，寫入<strong>碼表</strong>，下次輸入第一個字的字根即可直接選出整個片語。</td><td>由「<a href="preferences.html#learning">自動學習新詞</a>」控制。</td></tr>
         <tr><td>智慧組詞學片語</td><td>當你選用智慧組詞即時組出的候選詞時，把組成的字學習成片語，寫入<strong>碼表</strong>。</td><td>需「<a href="preferences.html#behavior">開啟中文智慧組詞</a>」建立候選，並開啟「<a href="preferences.html#learning">自動學習新詞</a>」，且實際選用該詞。</td></tr>
       </tbody>
