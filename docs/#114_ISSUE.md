@@ -91,10 +91,9 @@ Already collected from the reporter: Samsung A16, Android 16 / One UI 8.5, LIME 
 
 Only ask for additional details if they are needed for implementation/debugging:
 
-1. Duolingo version.
-2. Whether the failure happens only in this Duolingo exercise type, or also in other Duolingo text fields/apps.
-3. If convenient and the issue recurs, a short screen recording showing the moment candidates disappear and whether leaving/re-entering the field restores them; the reporter noted this may be difficult because recurrence is infrequent and Duolingo alternates exercise types.
-4. If local reproduction is not possible, a filtered logcat around the failure to inspect `EditorInfo` / `InputConnection` behavior.
+1. Whether the failure happens only in this Duolingo exercise type, or also in other Duolingo text fields/apps.
+2. If convenient and the issue recurs, a short screen recording showing the moment candidates disappear and whether leaving/re-entering the field restores them; the reporter noted this may be difficult because recurrence is infrequent and Duolingo alternates exercise types.
+3. If local reproduction is not possible, a filtered logcat around the failure to inspect `EditorInfo` / `InputConnection` behavior.
 
 Do not ask the reporter to retest the same APK as a fix verification. Request retest only after a newer APK contains a relevant change for this issue.
 
