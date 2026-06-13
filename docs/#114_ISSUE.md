@@ -54,7 +54,7 @@ Observed current behavior:
 - `updateEnglishPrediction()` builds candidates only when `mPredictionOn` and the English prediction preference are enabled.
 - `updateEnglishPrediction()` checks the current `InputConnection` with `getTextBeforeCursor(...)` and `getTextAfterCursor(...)`; if the app returns context that does not match `tempEnglishWord` and the next character is not considered a boundary, the method can skip refreshing the candidate list.
 - When English suggestions are shown, `buildEnglishPredictionCandidates(...)` always prepends the composing/self candidate, and `setEnglishPredictionSuggestions(...)` uses the no-highlight display path from the #103 fix.
-- `clearSuggestions()` / empty-toolbar behavior can leave the embedded candidate area visible without candidate words, which matches the abnormal screenshots.
+- `clearSuggestions()` / empty-toolbar behavior can leave the embedded candidate area visible without candidate words, which is consistent with the abnormal screenshots.
 
 Existing test coverage observed:
 
@@ -84,7 +84,7 @@ This should stay a hypothesis until we have the reporter's version/device detail
    - `getTextBeforeCursor(...)` / `getTextAfterCursor(...)` results when the candidate strip is empty vs normal.
 2. If the editor context is inconsistent but `tempEnglishWord` is non-empty, consider making English prediction more resilient by still showing the composing/self candidate when the local composing buffer is valid, instead of silently leaving the candidate strip empty.
 3. Ensure mode toggling or restarting input clears/rebuilds English prediction state for the current composing text.
-4. Add a focused regression test or testable helper around the `after || matchedtemp` gating logic so an app-specific `InputConnection` context mismatch cannot hide all English candidates while a local English composition exists.
+4. Add a focused regression test or testable helper around the `InputConnection`/`tempEnglishWord` gating logic so an app-specific context mismatch cannot hide all English candidates while a local English composition exists.
 
 ## Follow-up questions for reporter
 
