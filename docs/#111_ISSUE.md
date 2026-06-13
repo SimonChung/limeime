@@ -12,7 +12,9 @@ The `x`/`z` report is reproducible from the current repository data: `Database/s
 ## Observed evidence
 
 - Live issue: https://github.com/lime-ime/limeime/issues/111
+- Current live state checked after closure: closed by `limeimetw`, labeled `bug`, `enhancement`, and `Usability`, assigned to `jrywu`.
 - Reporter comment: https://github.com/lime-ime/limeime/issues/111#issuecomment-4697232328
+- Maintainer acknowledgement/closure comment: https://github.com/lime-ime/limeime/issues/111#issuecomment-4697297136
 - Repository data checked: `Database/scj.db`
 - Metadata rows checked in `Database/scj.db` identify the table as `快倉輸入法` with keyboard `LIME+數字列鍵盤` / `limenum`.
 - Verification query run locally against the repository copy of `Database/scj.db`:
@@ -47,7 +49,8 @@ For the maintainer/product decision:
 
 1. Should the immediate fix only remove/demote the `1991` rows from `scj`, or should `快倉` be deprecated/hidden from public download surfaces?
 2. If `快倉` remains available, should the UI text explain that it is a legacy table distinct from `哈哈倉頡`?
-3. Should the public reply invite the reporter to retest only after a rebuilt `scj` artifact or APK is available?
+
+The public follow-up pattern is already set by the closure comment: do not ask the reporter to retest now; update the issue only if a later table/artifact change needs reporter confirmation.
 
 No additional reporter evidence is needed to confirm the `x`/`z` data anomaly because the current repository database already reproduces the reported candidate.
 
@@ -75,3 +78,4 @@ The issue should therefore verify both Android and iOS install/import paths if t
 ## Follow-up status
 
 - 2026-06-13: Live issue and comment inspected. `Database/scj.db` verified to contain `x -> 1991` and `z -> 1991`. Classified as a confirmed table-data bug plus separate catalog/product feedback. No public retest request is appropriate until a rebuilt table/APK is available.
+- 2026-06-13: `limeimetw` posted a short acknowledgement that the `x`/`z` -> `1991` data issue and broader `快倉` follow-up will be discussed with the author team, then closed the issue: https://github.com/lime-ime/limeime/issues/111#issuecomment-4697297136. Treat the public issue as closed with no active reporter retest watch; keep the confirmed `scj` table-data correction in the backlog until a rebuilt table/artifact decision is made.

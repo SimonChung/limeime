@@ -6,7 +6,7 @@ Last reviewed: 2026-06-13
 
 ## Active issue follow-up
 
-- #111 Android/iOS `快倉` (`scj`) table data: current `Database/scj.db` contains `x -> 1991` and `z -> 1991`, matching the reporter's bad-candidate report. Fix scope is to audit/rebuild the legacy `scj` artifact so `x` / `z` no longer present `1991` as the leading candidate; broader `快倉` deprecation/replacement/catalog-order decisions are not in backlog yet.
+- No active public reporter retest watches. #111 was closed by `limeimetw` after acknowledgement; the confirmed `scj` table-data correction remains tracked under pending fixes until a rebuilt table/artifact decision is made.
 
 ## Unfiled release-QA follow-up
 
