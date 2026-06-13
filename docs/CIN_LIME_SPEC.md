@@ -201,6 +201,52 @@ When both `@version@` and `@cname@` are present, `@version@` remains the version
 
 `@imkeynames@` often contains literal `|` separators inside the value. When exporting such values, use `@format@|lime-text-v2` and escape those literal pipes as `\|`.
 
+Example conversion from a CIN `%keyname` block:
+
+```text
+%keyname begin
+a 日
+b 月
+c 金
+d 木
+e 水
+f 火
+g 土
+h 竹
+i 戈
+j 十
+k 大
+l 中
+m 一
+n 弓
+o 人
+p 心
+q 手
+r 口
+s 尸
+t 廿
+u 山
+v 女
+w 田
+x 難
+y 卜
+z 重
+%keyname end
+```
+
+Portable `.lime` v2 metadata:
+
+```text
+@format@|lime-text-v2
+@imkeys@|abcdefghijklmnopqrstuvwxyz
+@imkeynames@|日\|月\|金\|木\|水\|火\|土\|竹\|戈\|十\|大\|中\|一\|弓\|人\|心\|手\|口\|尸\|廿\|山\|女\|田\|難\|卜\|重
+```
+
+Notes:
+
+- `@imkeys@` stores the key sequence as one metadata value, so the keys are concatenated as `abcdefghijklmnopqrstuvwxyz`, not separated as `a|b|c|...`.
+- `@imkeynames@` stores one metadata value whose internal display-name list uses `|`, so in `lime-text-v2` those literal pipes are escaped as `\|`.
+
 `@limeendkey@` uses the same runtime behavior as CIN `%limeendkey`: keys also present in `@imkeys@` are appended before committing; keys absent from `@imkeys@` first finish the active composing buffer and are then processed as a fresh key.
 
 ### 2.4.1 Escaped v2 Fields
