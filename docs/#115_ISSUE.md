@@ -49,6 +49,12 @@ Important code paths:
 
 This fallback shape matches the reporter's textual description: a keyboard that looks English-like but is actually Chinese mode (`EN` key).
 
+Related prior fixes are important context but do not by themselves close this issue:
+
+- Commit `537a66c4` (`#107 Optimize LimeIME startup without changing init path`) added startup config snapshot/version tracking so `LIMEService` avoids repeated config reloads while still reloading when startup preferences change.
+- Commit `680d34e5` (`Fix: activate the enabled IM on fresh install instead of falling back to English`) fixed a closely related first-enabled-IM path: if the persisted active IM is not enabled, enabling an IM now makes the just-enabled IM active instead of leaving `activeIM` pointing at a default IM whose keyboard config is not loaded, which had caused fallback to an English-looking layout.
+- The reporter says the current symptom still occurs on 6.1.18 and 6.1.19, so this should be treated as the same bug family rather than proof that the old fix already solved the report. The remaining path is likely an import/activation/config-snapshot invalidation case that those earlier fixes did not cover, or a later startup/layout change interacting with the same fallback behavior.
+
 ### Imported table default keyboard assignment
 
 `LimeDB.importTxtTable(...)` stores metadata and then presets keyboard assignment by table name. In the inspected `LimeDB.java` branch around the import preset logic (lines 4186-4242), `arraynum` is the stored keyboard config for `array`, while `phonenum` is the stored keyboard config for `array10`. The reporter describes `phonenum` as the expected `電話數字鍵盤` behavior, but this still needs on-device/UI verification against current master.
@@ -71,6 +77,7 @@ Specific suspect areas:
 
 - IM keyboard assignment changes in `LimeDB.setIMConfigKeyboard(...)` (`LimeDB.java` line 4242, implementation starts around line 4879) may not bump the startup-config version used by `LIMEService.isStartupConfigSnapshotDirty()` (`LIMEService.java` lines 1041-1045), or a different import/activation path may update the mapping without making the running service refresh before first focus.
 - Import/activation may update the `im` table and active IM preference, but the running `LIMEService` may keep an older `mStartupImKeyboardConfigList` until a later focus/session refresh.
+- Earlier fixes already covered some nearby cases (`537a66c4` for startup config snapshots and `680d34e5` for first-enabled-IM active selection). Because #115 is reported on builds that should include those commits, the investigation should first check whether the `行列` / `行列10` load path bypasses those preference-version bumps or active-IM repairs rather than duplicating the exact old fresh-install fix.
 - The reporter's note that `注音` is intermittent while `行列` / `行列10` are consistent is useful reproduction context, but it should not be treated as proof of the cache hypothesis without logs or an instrumentation test.
 - The fallback in `LIMEKeyboardSwitcher.setKeyboardMode(...)` can mask missing IM keyboard config by showing `lime`, making the bug appear as a wrong but usable keyboard rather than a hard failure.
 
@@ -133,4 +140,4 @@ Only ask if needed after initial code/device reproduction attempts:
 
 ## Current status
 
-Open / plausible Android bug. Label as `bug` + `Usability`, assign `jrywu`, and wait for implementation investigation. No APK retest request should be made until a newer Android APK includes a relevant fix. No `docs/BACKLOG.md` update yet because the exact fix direction is not confirmed beyond investigation of import/keyboard-config invalidation.
+Open / plausible Android bug. Labeled `bug` + `Usability`, assigned to `jrywu`, and tracked in `docs/BACKLOG.md` under active issue follow-up. No APK retest request should be made until a newer Android APK includes a relevant fix. The first investigation pass should compare the #115 path against the recent `537a66c4` / `680d34e5` keyboard-startup fixes, because the symptom is likely in that same first-switch / active-IM fallback family but still reproduced on later APKs.
