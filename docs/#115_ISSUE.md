@@ -23,11 +23,11 @@ The report includes a screenshot of the wrong initial keyboard state and an atta
 2. Switch to another app and focus a normal text field.
 3. On first display, LIME shows a Chinese-mode keyboard whose physical layout resembles an English keyboard and whose mode key says `EN`.
 4. Expected: the active Chinese IM should show its configured layout immediately; if the user is on the real English keyboard, the mode key should be `中`.
-5. Workarounds reported:
+5. Workarounds originally reported for this first-startup path:
    - Tap `EN`, then tap `中`.
    - Close and reopen the target app.
 
-The edited report says `倉頡`, `大易`, `行列`, and `行列10` all reproduce when they are the first mounted IM instead of `注音`.
+The edited report says `倉頡`, `大易`, `行列`, and `行列10` all reproduce when they are the first mounted IM instead of `注音`; verify during reproduction whether the same workaround behavior applies to every expanded IM case.
 
 ### Problem 2: wrong initial keyboard after adding a second IM
 
