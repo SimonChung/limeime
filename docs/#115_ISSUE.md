@@ -47,7 +47,8 @@ The important point is that startup is *not* supposed to default to English for 
 5. On the first `onStartInput()` for a normal text field, `initOnStartInput()` reloads `activeIM`, refreshes/applies the startup keyboard snapshot, loads preferences, and then:
    - uses an English/special keyboard only for restricted field classes/variations, or if `persistent_language_mode` is enabled and `language_mode=yes`;
    - otherwise sets `mEnglishOnly=false` and calls `initialIMKeyboard()` (`LIMEService.java` lines 895-999).
-6. `initialIMKeyboard()` calls `mKeyboardSwitcher.setKeyboardMode(activeIM, ..., isIm=true, ...)`, so the first normal keyboard should be the active Chinese IM layout (`LIMEService.java` lines 5255-5340).
+6. If the first focused field is an email/password/web-email text variation, that is an expected forced-English path: `isForcedEnglishTextVariation(...)` returns true for those variations, disables prediction, sets `mEnglishOnly=true`, and calls `setKeyboardMode(..., MODE_EMAIL, isIm=false, ...)` (`LIMEService.java` lines 149-154 and 974-980). That startup should show an English/email keyboard and does not by itself prove #115.
+7. `initialIMKeyboard()` calls `mKeyboardSwitcher.setKeyboardMode(activeIM, ..., isIm=true, ...)`, so the first normal keyboard should be the active Chinese IM layout (`LIMEService.java` lines 5255-5340).
 
 Therefore the screenshot/report wording should not be analyzed as "LIME defaulted to English." A real English keyboard would show the `中` mode key. The reported keyboard shows `EN`, so LIME is already in Chinese mode; it is resolving the active Chinese IM to the wrong/generic keyboard layout.
 
@@ -97,7 +98,8 @@ This should be treated as a hypothesis until reproduced on-device or with an imp
 1. Instrument or test the exact first-install/first-focus sequence, not just generic startup:
    - before enabling/importing: persisted `keyboard_list`, `language_mode`, `persistent_language_mode`, startup-config version, current `activatedIMList`, current `imConfigMap` entry for `array` / `array10`;
    - immediately after enabling/import completion: DB `im` rows for `title='name'` and `title='keyboard'`, disabled flags, startup-config version;
-   - at the first `initOnStartInput()`: active IM, DB-derived enabled list, snapshot version decision, `mStartupImKeyboardConfigList`, and the `localImCode` chosen in `LIMEKeyboardSwitcher.setKeyboardMode()`.
+   - at the first `initOnStartInput()`: record the first field's `inputType` / variation, active IM, DB-derived enabled list, snapshot version decision, `mStartupImKeyboardConfigList`, and the `localImCode` chosen in `LIMEKeyboardSwitcher.setKeyboardMode()`.
+   - run the first-focus check twice: once on a normal text field, and once on an email/password field. The email/password field should take the forced-English `MODE_EMAIL` path; only the next normal text focus should be evaluated against the Chinese IM layout invariant.
 2. Add a regression test for the intended invariant: after `array` or `array10` is installed/enabled as the first usable IM, the first normal text `initOnStartInput()` must route to Chinese mode and resolve the active IM to its configured keyboard (`arraynum` for `array`, `phonenum` for `array10`), never generic `lime` because of a missing mapping.
 3. If the test confirms stale snapshot/versioning, fix the root cause by making IM DB changes that affect startup keyboard resolution invalidate/bump startup config, especially `setIMConfigKeyboard(...)`, import completion, and enable/disable changes. The fix should refresh `getAllImKeyboardConfigList()` before the first focus after install/import.
 4. If the test instead shows the active list is built before the async enable/import write commits, fix the sequencing so the enable/import completion signal and active-IM correction happen after the DB state is durable, or force a one-shot startup snapshot invalidation before returning to another app.
