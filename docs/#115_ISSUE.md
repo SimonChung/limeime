@@ -1,11 +1,12 @@
-# Issue #115: Android initial keyboard layout is wrong after loading Array / Array10 tables
+# Issue #115: Android initial keyboard layout is wrong after first IM changes / manual Array10 import
 
 ## Problem statement
 
-Community reporter `gontera` reports two initial-keyboard problems on Android LIME 6.1.18 and 6.1.19. Both problems are reported on Android only; problem 2 also touches `.lime` import metadata/default-keyboard assignment, so iOS impact is unconfirmed and should be audited only if shared `.lime` interpretation changes.
+Community reporter `gontera` reports three initial-keyboard/default-layout problems on Android LIME 6.1.18 and 6.1.19. The issue body was edited on 2026-06-14 to broaden the first-startup symptom from `行列` / `行列10` to the tested first mounted non-`注音` IMs (`倉頡`, `大易`, `行列`, and `行列10`), and to add a second-IM path where any active IM, including `注音`, can show the same wrong initial keyboard. These startup problems are Android-only. The manual `.lime` default-keyboard path also touches import metadata/default-keyboard assignment, so iOS impact is unconfirmed and should be audited only if shared `.lime` interpretation changes.
 
-1. After loading/enabling `行列` or `行列10` and switching to another app, the first Chinese keyboard shown is consistently wrong for those tables. The reporter says it visually resembles the English keyboard but still shows the `EN` key; that likely means LIME is in Chinese IM mode with the wrong soft-keyboard layout. The reporter can recover by tapping `EN` to switch to the real English keyboard, then tapping `中`, or by closing and reopening the target app.
-2. After manually loading the attached `行列10` `.lime` table, LIME sometimes defaults the table's keyboard layout to `行列+數字列鍵盤`; the reporter expects the default to be `電話數字鍵盤`, as with `老刀行列10字根`.
+1. On a fresh LIME install, if the first mounted IM is one of the tested non-`注音` IMs (`倉頡`, `大易`, `行列`, or `行列10`), the first Chinese keyboard can be wrong. The reporter says it visually resembles the English keyboard but still shows the `EN` key; that likely means LIME is in Chinese IM mode with the wrong/generic soft-keyboard layout. The reporter originally described the `EN` → `中` toggle and target-app restart workarounds for this first-startup path; confirm during reproduction whether they apply equally to every expanded IM case.
+2. After adding a second IM in LIME, any active IM, including `注音`, can show the same wrong initial keyboard described in problem 1. The recovery behavior for this second-IM path is not yet separately confirmed.
+3. After manually loading the attached `行列10` `.lime` table, LIME sometimes defaults the table's keyboard layout to `行列+數字列鍵盤`; the reporter expects the default to be `電話數字鍵盤`, as with `老刀行列10字根`.
 
 The report includes a screenshot of the wrong initial keyboard state and an attached table archive:
 
@@ -16,19 +17,26 @@ The report includes a screenshot of the wrong initial keyboard state and an atta
 
 ## Reproduction details from the report
 
-### Problem 1: first keyboard after loading a new IM
+### Problem 1: first keyboard after first mounting a non-phonetic IM
 
-1. Load/enable `行列` or `行列10` in LIME.
-2. Switch to another app and focus a text field.
+1. Fresh-install LIME and make the first mounted IM one of `倉頡`, `大易`, `行列`, or `行列10` rather than `注音`.
+2. Switch to another app and focus a normal text field.
 3. On first display, LIME shows a Chinese-mode keyboard whose physical layout resembles an English keyboard and whose mode key says `EN`.
 4. Expected: the active Chinese IM should show its configured layout immediately; if the user is on the real English keyboard, the mode key should be `中`.
 5. Workarounds reported:
    - Tap `EN`, then tap `中`.
    - Close and reopen the target app.
 
-The reporter says `行列` and `行列10` reproduce consistently. `注音` is intermittent.
+The edited report says `倉頡`, `大易`, `行列`, and `行列10` all reproduce when they are the first mounted IM instead of `注音`.
 
-### Problem 2: manual `.lime` Array10 table default layout
+### Problem 2: wrong initial keyboard after adding a second IM
+
+1. Add/mount a second IM in LIME; the edited report does not yet specify whether this depends on which IM is added second or which IM was mounted first.
+2. After the second IM is added, any active IM, including `注音`, can show the same wrong initial keyboard described in problem 1.
+3. Expected: adding another IM should not leave any active IM with a stale/missing keyboard mapping on the next first input session.
+4. Recovery behavior for this second-IM path is not yet separately confirmed; verify whether the `EN` → `中` toggle or target-app restart works here too.
+
+### Problem 3: manual `.lime` Array10 table default layout
 
 1. Manually load the attached `行列10` `.lime` table.
 2. LIME sometimes assigns `行列+數字列鍵盤` as the default keyboard layout.
@@ -58,7 +66,7 @@ Related prior fixes are important context but do not by themselves close this is
 
 - Commit `537a66c4` (`#107 Optimize LimeIME startup without changing init path`) added the startup keyboard-config snapshot and version tracking.
 - Commit `680d34e5` fixed only one first-enabled-IM failure: when persisted `activeIM` still pointed at a disabled/default IM, enabling the first IM now makes the enabled IM active.
-- #115 still reproduces on 6.1.18/6.1.19, so the next investigation should focus on cases where the enabled active IM is correct, but the first startup snapshot / `imConfigMap` lacks the just-installed IM's keyboard mapping or uses the wrong mapping. In particular, `LimeDB.setIMConfigKeyboard(...)` writes the IM keyboard row (`LimeDB.java` lines 4879-4895) without bumping the startup config version, while the running `LIMEService` only refreshes the startup snapshot when the preference-backed startup version changes (`LIMEService.java` lines 1041-1093). That is a more direct lead hypothesis than "English default."
+- #115 still reproduces on 6.1.18/6.1.19, including first mounted `倉頡` / `大易` / `行列` / `行列10` and after adding a second IM where even `注音` can show the wrong initial keyboard. The next investigation should focus on cases where the enabled active IM is correct, but the first startup snapshot / `imConfigMap` lacks the just-installed or just-added IM's keyboard mapping or uses the wrong mapping. In particular, `LimeDB.setIMConfigKeyboard(...)` writes the IM keyboard row (`LimeDB.java` lines 4879-4895) without bumping the startup config version, while the running `LIMEService` only refreshes the startup snapshot when the preference-backed startup version changes (`LIMEService.java` lines 1041-1093). That is a more direct lead hypothesis than "English default."
 
 ### Imported table default keyboard assignment
 
@@ -74,20 +82,20 @@ The attached table's `@cname@` is `行列10`, but the issue needs live reproduct
 
 ## Likely root cause / hypotheses
 
-### Problem 1 lead hypothesis: Chinese-mode fallback after the active IM's keyboard mapping is missing/stale on first focus
+### Problems 1 and 2 lead hypothesis: Chinese-mode fallback after the active IM's keyboard mapping is missing/stale on first focus
 
-The first keyboard should be Chinese by default for normal text input. #115 is better described as: after installing/enabling `行列` / `行列10`, LIME enters Chinese mode, but the first `setKeyboardMode(..., isIm=true, ...)` cannot resolve the intended IM keyboard mapping and falls back to generic `lime`. That fallback looks QWERTY/English-like while still showing `EN`, because it is still Chinese mode.
+The first keyboard should be Chinese by default for normal text input. #115 is better described as: after installing/enabling a first non-phonetic IM, or after adding a second IM, LIME enters Chinese mode, but the first `setKeyboardMode(..., isIm=true, ...)` cannot resolve the intended IM keyboard mapping and falls back to generic `lime`. That fallback looks QWERTY/English-like while still showing `EN`, because it is still Chinese mode.
 
 Specific suspect areas:
 
 - `buildActivatedIMList()` builds the active IM list from live DB `im` rows when `SearchSrv` is available, not from `keyboard_state`. The old `keyboard_state` preference is only a fallback when `SearchSrv` is unavailable. If the first-installed/enabled IM path races with async DB writes, either the DB-derived enabled list or, more directly, the IM keyboard mapping snapshot can be incomplete.
 - `680d34e5` repairs only the case where persisted `activeIM` points outside the enabled list. It does not guarantee that the first startup keyboard-config snapshot already contains the new IM's `title='keyboard'` mapping.
-- `setIMConfigKeyboard(...)` and related DB writes can update the IM keyboard assignment without changing the preference-backed startup-config version. If `LIMEService` already applied a snapshot, `refreshStartupConfigSnapshotIfNeeded()` can decide it is clean and keep an old `imConfigMap` for the first focus after install/import.
+- `setIMConfigKeyboard(...)` and related DB writes can update the IM keyboard assignment without changing the preference-backed startup-config version. If `LIMEService` already applied a snapshot, `refreshStartupConfigSnapshotIfNeeded()` can decide it is clean and keep an old `imConfigMap` for the first focus after install/import/add-IM changes.
 - The `LIMEKeyboardSwitcher` fallback to `lime` masks this as a usable but wrong keyboard instead of a hard failure.
 
 This is now the lead hypothesis. The older wording "falls back to English" is misleading; the observed `EN` key indicates wrong Chinese keyboard layout, not real English mode.
 
-### Problem 2 hypothesis: custom/manual Array10 imports can miss the `array10` preset-keyboard branch
+### Problem 3 hypothesis: custom/manual Array10 imports can miss the `array10` preset-keyboard branch
 
 The attached `.lime` file contains metadata for `行列10`, but the preset keyboard logic inspected in `LimeDB.importTxtTable(...)` is keyed on the internal destination table name (`array10`). If manual import stores the table under `custom` or another table code, the code path may skip the `array10 -> phonenum` assignment and fall back to `limenum` / `lime` based on `number_row_in_english`. This should be confirmed by tracing the import entry point and stored IM config for the reporter's exact manual-import path.
 
@@ -100,7 +108,7 @@ This should be treated as a hypothesis until reproduced on-device or with an imp
    - immediately after enabling/import completion: DB `im` rows for `title='name'` and `title='keyboard'`, disabled flags, startup-config version;
    - at the first `initOnStartInput()`: record the first field's `inputType` / variation, active IM, DB-derived enabled list, snapshot version decision, `mStartupImKeyboardConfigList`, and the `localImCode` chosen in `LIMEKeyboardSwitcher.setKeyboardMode()`.
    - run the first-focus check twice: once on a normal text field, and once on an email/password field. The email/password field should take the forced-English `MODE_EMAIL` path; only the next normal text focus should be evaluated against the Chinese IM layout invariant.
-2. Add a regression test for the intended invariant: after `array` or `array10` is installed/enabled as the first usable IM, the first normal text `initOnStartInput()` must route to Chinese mode and resolve the active IM to its configured keyboard (`arraynum` for `array`, `phonenum` for `array10`), never generic `lime` because of a missing mapping.
+2. Add regression tests for the intended invariants: after `倉頡`, `大易`, `行列`, or `行列10` is installed/enabled as the first usable IM, and after a second IM is added, the first normal text `initOnStartInput()` must route to Chinese mode and resolve the active IM to its configured keyboard (for example `arraynum` for `array`, `phonenum` for `array10`), never generic `lime` because of a missing mapping.
 3. If the test confirms stale snapshot/versioning, fix the root cause by making IM DB changes that affect startup keyboard resolution invalidate/bump startup config, especially `setIMConfigKeyboard(...)`, import completion, and enable/disable changes. The fix should refresh `getAllImKeyboardConfigList()` before the first focus after install/import.
 4. If the test instead shows the active list is built before the async enable/import write commits, fix the sequencing so the enable/import completion signal and active-IM correction happen after the DB state is durable, or force a one-shot startup snapshot invalidation before returning to another app.
 5. Add debug logging for missing `imConfigMap` mappings so future cases report `activeIM`, `isIm`, `localImCode`, and whether fallback to `lime` happened.
@@ -123,16 +131,18 @@ Only ask if needed after initial code/device reproduction attempts:
 
 1. Does problem 1 happen with `記憶中英模式` (remember Chinese/English mode across fields/apps) enabled, disabled, or both?
 2. For problem 1, does the wrong first keyboard appear immediately after importing/loading the table only, or also after later app launches without changing IM settings?
-3. For problem 2, in the manage-IM list, what is the internal table/import target shown for the attached `.lime` file when the default keyboard becomes `行列+數字列鍵盤`?
+3. For problem 2, after adding the second IM, does the wrong first keyboard happen only immediately after the add/change flow, or continue on later app launches after toggling `EN` / `中` or restarting the target app?
+4. For problem 2, does the behavior depend on which IM is added second, or on which IM was mounted first?
+5. For problem 3, in the manage-IM list, what is the internal table/import target shown for the attached `.lime` file when the default keyboard becomes `行列+數字列鍵盤`?
 
 ## Verification plan
 
 ### Android
 
-- Reproduce both reported paths on 6.1.19 or current `master`.
-- Add a regression test or instrumentation coverage proving that after `setIMConfigKeyboard(array10, ..., phonenum)` / active IM switch, `initOnStartInput()` uses the updated `phonenum` / Array layout on the first input session; also include normal text fields with `EditorInfo` flags that could force English-like layouts so the test does not confuse intended input-type behavior with this bug.
+- Reproduce all three reported paths on 6.1.19 or current `master`: first mounted non-phonetic IM (`倉頡`, `大易`, `行列`, `行列10`), adding a second IM where even `注音` can show the wrong first keyboard, and the manual Array10 `.lime` default-layout path.
+- Add a regression test or instrumentation coverage proving that after `setIMConfigKeyboard(...)` / active IM switch / second-IM addition, `initOnStartInput()` uses the updated configured layout on the first input session; also include normal text fields with `EditorInfo` flags that could force English-like layouts so the test does not confuse intended input-type behavior with this bug.
 - Import the attached `.lime` file through each relevant Android UI path and verify the assigned keyboard is deterministic and matches the intended Array10 default for the `行列10` path.
-- Verify `行列`, `行列10`, and `注音` still show their intended layouts after toggling `EN` / `中`, reopening apps, orientation changes, and normal text vs restricted field types.
+- Verify `倉頡`, `大易`, `行列`, `行列10`, and `注音` still show their intended layouts after toggling `EN` / `中`, reopening apps, adding/removing another IM, orientation changes, and normal text vs restricted field types.
 - Request reporter retest only after a newer Android APK contains a relevant fix.
 
 ### iOS
@@ -143,4 +153,4 @@ Only ask if needed after initial code/device reproduction attempts:
 
 ## Current status
 
-Open / plausible Android bug. Labeled `bug` + `Usability`, assigned to `jrywu`, and tracked in `docs/BACKLOG.md` under active issue follow-up. No APK retest request should be made until a newer Android APK includes a relevant fix. Revised lead analysis: the first normal text startup should be Chinese, not English; #115 may occur because the active IM's keyboard mapping is missing/stale in the first startup snapshot, causing Chinese-mode fallback to generic `lime` while still showing the `EN` key. Confirm with logging or a focused regression test before implementing the fix.
+Open / plausible Android bug. Labeled `bug` + `Usability`, assigned to `jrywu`, and tracked in `docs/BACKLOG.md` under active issue follow-up. No APK retest request should be made until a newer Android APK includes a relevant fix. Revised live issue scope after the 2026-06-14 edit: tested first mounted non-`注音` IMs (`倉頡`, `大易`, `行列`, `行列10`) can start with the wrong Chinese-mode generic keyboard; adding a second IM can make any active IM, including `注音`, show the same wrong first keyboard; manual Array10 `.lime` import can still intermittently choose the wrong default layout. Lead analysis: the first normal text startup should be Chinese, not English; #115 may occur because the active IM's keyboard mapping is missing/stale in the first startup snapshot, causing Chinese-mode fallback to generic `lime` while still showing the `EN` key. Confirm with logging or a focused regression test before implementing the fix.
