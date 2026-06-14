@@ -38,28 +38,24 @@ The reporter says `行列` and `行列10` reproduce consistently. `注音` is in
 
 ### Android startup keyboard selection
 
-Code inspected on `master` at `1ae6ad1ed274`. `LIMEService.initOnStartInput(EditorInfo attribute)` refreshes startup keyboard configuration, applies it to `LIMEKeyboardSwitcher`, loads preferences, then chooses Chinese/English/special-field keyboard mode.
+Code inspected on `master` at commit `472397e` after the triage doc was added. `LIMEService.initOnStartInput(EditorInfo attribute)` refreshes startup keyboard configuration, applies it to `LIMEKeyboardSwitcher`, loads preferences, then chooses Chinese/English/special-field keyboard mode.
 
 Important code paths:
 
-- `LIMEService.refreshStartupConfigSnapshotIfNeeded()` reads:
-  - `SearchSrv.getKeyboardConfigList()`
-  - `SearchSrv.getAllImKeyboardConfigList()`
-- `LIMEService.applyStartupConfigSnapshotToKeyboardSwitcher()` calls:
-  - `mKeyboardSwitcher.setKeyboardConfigList(...)`
-  - `mKeyboardSwitcher.setImConfigKeyboardList(...)`
-- `LIMEService.initialIMKeyboard()` calls `mKeyboardSwitcher.setKeyboardMode(activeIM, MODE_TEXT, ..., true, false, false)` for `array`, `array10`, phonetic, and other Chinese IMs. In `LIMEKeyboardSwitcher.setKeyboardMode(String imCode, int mode, int imeOptions, boolean isIm, boolean isSymbol, boolean isShift)`, that fourth argument is `isIm`, the Chinese-IM path.
-- `LIMEKeyboardSwitcher.setKeyboardMode(...)` resolves the IM's keyboard assignment from `imConfigMap`. If the map lacks the active table's keyboard assignment or the assignment is `custom`, it falls back to `lime`, which is the generic QWERTY-like Chinese keyboard layout with an `EN` mode key.
+- `LIMEService.java` lines 895-999 read `activeIM`, call `refreshStartupConfigSnapshotIfNeeded()`, apply the snapshot to `LIMEKeyboardSwitcher`, load preferences, and then either choose an English/special-field keyboard or call `initialIMKeyboard()`.
+- `LIMEService.java` lines 1041-1093 gate the startup snapshot on `isStartupConfigSnapshotDirty()`, read `SearchSrv.getKeyboardConfigList()` / `SearchSrv.getAllImKeyboardConfigList()`, and pass those lists into `mKeyboardSwitcher.setKeyboardConfigList(...)` / `setImConfigKeyboardList(...)`.
+- `LIMEKeyboardSwitcher.java` line 433 defines `setKeyboardMode(String imCode, int mode, int imeOptions, boolean isIm, boolean isSymbol, boolean isShift)`. Lines 501-514 use `isIm=true` for Chinese IM keyboard XML (`kConfig.getImkb()` / `getImshiftkb()`) and `isIm=false` for the English layout resolver.
+- `LIMEKeyboardSwitcher.java` lines 448-461 resolve the active IM through `imConfigMap`; when that mapping is missing, empty, or `custom`, lines 457-459 replace it with `lime`. This is a plausible route to a generic QWERTY-like Chinese keyboard with an `EN` mode key if the IM-keyboard map is stale or incomplete.
 
 This fallback shape matches the reporter's textual description: a keyboard that looks English-like but is actually Chinese mode (`EN` key).
 
 ### Imported table default keyboard assignment
 
-`LimeDB.loadFile(...)` stores metadata and then presets keyboard assignment by table name. In the inspected `LimeDB.java` branch around the import preset logic, `arraynum` is the stored keyboard config for `array`, while `phonenum` is the stored keyboard config for `array10` / phone-number-style Array10 layout.
+`LimeDB.importTxtTable(...)` stores metadata and then presets keyboard assignment by table name. In the inspected `LimeDB.java` branch around the import preset logic (lines 4186-4242), `arraynum` is the stored keyboard config for `array`, while `phonenum` is the stored keyboard config for `array10`. The reporter describes `phonenum` as the expected `電話數字鍵盤` behavior, but this still needs on-device/UI verification against current master.
 
-- `array` -> `arraynum`
-- `array10` -> `phonenum`
-- otherwise, if no table-specific `Keyboard` exists, the surrounding import preset branch can fall back based on `number_row_in_english`:
+- `array` -> `arraynum` (`LimeDB.java` lines 4227-4228)
+- `array10` -> `phonenum` (`LimeDB.java` lines 4229-4230)
+- otherwise, if no table-specific `Keyboard` exists, the surrounding import preset branch can fall back based on `number_row_in_english` (`LimeDB.java` lines 4235-4240):
   - `limenum` when enabled
   - `lime` when disabled
 
@@ -69,18 +65,18 @@ The attached table's `@cname@` is `行列10`, but the issue needs live reproduct
 
 ### Problem 1 hypothesis: stale or incomplete IM keyboard configuration snapshot after import/activation
 
-The wrong first keyboard is likely caused by the service using a stale or incomplete `imConfigMap` on the first `onStartInput` after a table is loaded/activated. When `LIMEKeyboardSwitcher` cannot find the active IM's assigned keyboard, it falls back to the generic `lime` layout. Toggling `EN` / `中` or reopening the app likely forces a later path to use refreshed configuration, so the correct layout appears.
+The wrong first keyboard may be caused by the service using a stale or incomplete `imConfigMap` on the first `onStartInput` after a table is loaded/activated. When `LIMEKeyboardSwitcher` cannot find the active IM's assigned keyboard, the inspected code falls back to the generic `lime` layout. Toggling `EN` / `中` or reopening the app may force a later path to use refreshed configuration, so the correct layout appears; this needs reproduction before treating it as root cause.
 
 Specific suspect areas:
 
-- IM keyboard assignment changes in `LimeDB.setIMConfigKeyboard(...)` may not bump the startup-config version used by `LIMEService.isStartupConfigSnapshotDirty()`.
+- IM keyboard assignment changes in `LimeDB.setIMConfigKeyboard(...)` (`LimeDB.java` line 4242, implementation starts around line 4879) may not bump the startup-config version used by `LIMEService.isStartupConfigSnapshotDirty()` (`LIMEService.java` lines 1041-1045), or a different import/activation path may update the mapping without making the running service refresh before first focus.
 - Import/activation may update the `im` table and active IM preference, but the running `LIMEService` may keep an older `mStartupImKeyboardConfigList` until a later focus/session refresh.
-- The reporter's note that `注音` is intermittent while `行列` / `行列10` are consistent could fit this snapshot hypothesis if phonetic sometimes already has a valid assignment in the cached map while newly loaded Array-family assignments are missing on first focus; this needs reproduction rather than assumption.
-- The fallback in `LIMEKeyboardSwitcher.setKeyboardMode(...)` masks missing IM keyboard config by silently showing `lime`, making the bug appear as a wrong but usable keyboard rather than a hard failure.
+- The reporter's note that `注音` is intermittent while `行列` / `行列10` are consistent is useful reproduction context, but it should not be treated as proof of the cache hypothesis without logs or an instrumentation test.
+- The fallback in `LIMEKeyboardSwitcher.setKeyboardMode(...)` can mask missing IM keyboard config by showing `lime`, making the bug appear as a wrong but usable keyboard rather than a hard failure.
 
 ### Problem 2 hypothesis: custom/manual Array10 imports can miss the `array10` preset-keyboard branch
 
-The attached `.lime` file contains metadata for `行列10`, but the preset keyboard logic is keyed on the internal table name (`array10`). If manual import stores the table under `custom` or another table code, the code path may skip the `array10 -> phonenum` assignment and fall back to `limenum` / `lime` based on `number_row_in_english`.
+The attached `.lime` file contains metadata for `行列10`, but the preset keyboard logic inspected in `LimeDB.importTxtTable(...)` is keyed on the internal destination table name (`array10`). If manual import stores the table under `custom` or another table code, the code path may skip the `array10 -> phonenum` assignment and fall back to `limenum` / `lime` based on `number_row_in_english`. This should be confirmed by tracing the import entry point and stored IM config for the reporter's exact manual-import path.
 
 This should be treated as a hypothesis until reproduced on-device or with an import integration test.
 
@@ -124,16 +120,16 @@ Only ask if needed after initial code/device reproduction attempts:
 ### Android
 
 - Reproduce both reported paths on 6.1.19 or current `master`.
-- Add a regression test or instrumentation coverage proving that after `setIMConfigKeyboard(array10, ..., phonenum)` / active IM switch, `initOnStartInput()` uses the updated `phonenum` / Array layout on the first input session.
-- Import the attached `.lime` file and verify the assigned keyboard is deterministic and matches the intended Array10 default.
+- Add a regression test or instrumentation coverage proving that after `setIMConfigKeyboard(array10, ..., phonenum)` / active IM switch, `initOnStartInput()` uses the updated `phonenum` / Array layout on the first input session; also include normal text fields with `EditorInfo` flags that could force English-like layouts so the test does not confuse intended input-type behavior with this bug.
+- Import the attached `.lime` file through each relevant Android UI path and verify the assigned keyboard is deterministic and matches the intended Array10 default for the `行列10` path.
 - Verify `行列`, `行列10`, and `注音` still show their intended layouts after toggling `EN` / `中`, reopening apps, orientation changes, and normal text vs restricted field types.
 - Request reporter retest only after a newer Android APK contains a relevant fix.
 
 ### iOS
 
 - Confirmed reporter platform is Android; the report references Android APK versions and Android soft-keyboard behavior.
-- iOS has separate keyboard/input-method registration code and does not use `LIMEService`, `LIMEKeyboardSwitcher`, or Android `EditorInfo`, so the first-keyboard-display symptom is probably Android-only.
-- Implementation owner should still audit iOS text import/default-keyboard registration for the attached `.lime` metadata if the chosen fix changes shared `.lime` metadata interpretation or import-target semantics.
+- The first-keyboard-display symptom is probably Android-only because it depends on Android `LIMEService`, `LIMEKeyboardSwitcher`, and `EditorInfo` startup paths.
+- If the chosen fix changes shared `.lime` metadata interpretation or import-target semantics rather than only Android IM-keyboard snapshot invalidation, audit iOS text import/default-keyboard registration separately before claiming cross-platform parity.
 
 ## Current status
 
